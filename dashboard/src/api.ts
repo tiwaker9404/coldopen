@@ -1,0 +1,104 @@
+export type Status = 'queued' | 'running' | 'waiting' | 'succeeded' | 'failed' | 'cancelled'
+export type Format = 'square' | 'landscape' | 'portrait'
+
+export interface Film {
+  id: string
+  status: Status
+  url: string
+  format: Format
+  batch: string | null
+  sender: string
+  progress: { stage?: string; label?: string; percent?: number; scene?: number } | null
+  attempts: number
+  error: string | null
+  errorCode: string | null
+  createdAt: string
+  completedAt: string | null
+  company: string | null
+  host: string | null
+  durationSec: number | null
+  files: { film: string; poster: string; gif: string; sheet: string } | null
+  share: string | null
+}
+
+export interface FilmDetail extends Film {
+  script: {
+    hook: string
+    noticed: string
+    insight: { factId: string; why: string }
+    pitch: { headline: string; points: string[] }
+    proof: number[]
+    cta: string
+  } | null
+  scriptMeta: { model: string; rounds: number; violations: string[][]; usedFallback: boolean } | null
+  qa: { issues: { kind: string; text?: string }[]; fonts: string[] } | null
+  render: { frames: number; ms: number } | null
+  steps: { key: string; kind: string; status: string; durationMs: number | null; replays: number; attempts: number; error: string | null }[]
+  timeline: { id: string; at: string; kind: string; message: string }[]
+  embed: string | null
+}
+
+export interface ProfileData {
+  preset: 'sales' | 'candidate'
+  sender: { name: string; company?: string; role?: string }
+  offer: string
+  points: string[]
+  proof: { value: string; label: string }[]
+  cta: { line: string; contact: string }
+  color?: string
+}
+
+export interface Profile {
+  id: string
+  name: string
+  data: ProfileData
+  updatedAt: string
+}
+
+export class ApiError extends Error {
+  readonly status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
+const KEY = 'coldopen.apiKey'
+export function apiKey(): string {
+  try {
+    return localStorage.getItem(KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+export function setApiKey(v: string) {
+  try {
+    localStorage.setItem(KEY, v)
+  } catch {
+    /* storage blocked: key lasts for this page */
+  }
+}
+
+/** finished films are public at /f/:id (that's the share page), so media needs no key */
+export function media(film: Film, name: 'poster.jpg' | 'preview.gif' | 'contact-sheet.jpg' | 'film'): string {
+  const file = name === 'film' ? (film.files?.film.split('/').pop() ?? '') : name
+  return `/f/${film.id}/${file}`
+}
+
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const k = apiKey()
+  const res = await fetch(path, {
+    ...init,
+    headers: {
+      ...(init.body ? { 'content-type': 'application/json' } : {}),
+      ...(k ? { authorization: `Bearer ${k}` } : {}),
+      ...init.headers,
+    },
+  })
+  const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+  if (!res.ok) throw new ApiError(res.status, body.error?.message ?? `HTTP ${res.status}`)
+  return body as T
+}
+
+export const send = <T>(method: string, path: string, body?: unknown) =>
+  api<T>(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) })

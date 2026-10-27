@@ -67,11 +67,19 @@ export type CreateRunResult =
   | { kind: 'existing'; run: Run }
   | { kind: 'conflict'; run: Run }
 
+/** Run fn in a transaction, or a savepoint when already inside one (e.g. batch creation). */
+function atomically<T>(sql: Sql, fn: (tx: Sql) => Promise<T>): Promise<T> {
+  const s = sql as unknown as { begin?: unknown; savepoint: (f: (tx: Sql) => Promise<T>) => Promise<T> }
+  return typeof s.begin === 'function'
+    ? (sql.begin((tx) => fn(tx as unknown as Sql)) as Promise<T>)
+    : s.savepoint(fn)
+}
+
 export async function createRun(
   sql: Sql,
   input: { agent: string; input: unknown; idempotencyKey?: string | undefined },
 ): Promise<CreateRunResult> {
-  return sql.begin(async (tx) => {
+  return atomically(sql, async (tx) => {
     const id = newId('run')
     const [run] = await tx<Run[]>`
       insert into runs (id, agent, input, idempotency_key)

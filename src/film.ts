@@ -9,7 +9,9 @@ import { buildTheme } from './render/theme.ts'
 import { buildStoryboard, type Storyboard } from './script/storyboard.ts'
 import { ProfileSchema, type Script, type ScriptMeta, ScriptSchema } from './script/types.ts'
 import { deterministicScript, writeScript } from './script/writer.ts'
+import { NonRetryableError } from './runtime/errors.ts'
 import { defineAgent } from './runtime/types.ts'
+import type { SlackClient } from './slack.ts'
 
 export const FilmInputSchema = z.object({
   url: z.string().url(),
@@ -41,6 +43,10 @@ export interface FilmAgentOptions {
   filmsDir: string
   /** null = deterministic writer (no model, free, reproducible) */
   llmModel: string | null
+  /** posts finished films back to Slack threads, when configured */
+  slack?: SlackClient | null
+  /** base URL for share links, e.g. https://films.example.com */
+  publicUrl?: string
 }
 
 const exists = (p: string) =>
@@ -66,9 +72,23 @@ export function createFilmAgent(opts: FilmAgentOptions) {
       await mkdir(dir, { recursive: true })
 
       ctx.progress({ stage: 'research', label: `Reading ${new URL(input.url).hostname}` })
-      const kit: BrandKit = await ctx.step('research', () => extractBrand(input.url, { outDir: dir }), {
-        retries: 1,
-      })
+      let kit: BrandKit
+      try {
+        kit = await ctx.step('research', () => extractBrand(input.url, { outDir: dir }), { retries: 1 })
+      } catch (err) {
+        const reason = err instanceof Error ? err.message.split('\n')[0]! : String(err)
+        if (input.slack && opts.slack) {
+          const slack = opts.slack
+          const thread = input.slack
+          await ctx.tool(
+            'slack-error',
+            () => slack.postMessage(thread.channel, `I couldn't open ${input.url}: ${reason}`, thread.threadTs),
+            { mode: 'at-most-once' },
+          )
+        }
+        // a site that won't load after retries won't load on the next execution either
+        throw new NonRetryableError(`could not read ${input.url}: ${reason}`)
+      }
 
       ctx.progress({ stage: 'script', label: `Writing the script for ${kit.name}` })
       const { script, meta } = opts.llmModel
@@ -170,6 +190,27 @@ export function createFilmAgent(opts: FilmAgentOptions) {
             qa: c.report,
           }
         })
+
+        if (input.slack && opts.slack) {
+          const slack = opts.slack
+          const thread = input.slack
+          const share = opts.publicUrl ? `${opts.publicUrl.replace(/\/$/, '')}/f/${ctx.runId}` : null
+          ctx.progress({ stage: 'deliver', label: 'Posting to Slack', percent: 100 })
+          // Slack uploads have no idempotency key: at-most-once, so a crash here can never
+          // post the film twice. If it's ambiguous, the run stops for a human to check.
+          await ctx.tool(
+            'slack-reply',
+            () =>
+              slack.uploadFile({
+                channel: thread.channel,
+                threadTs: thread.threadTs,
+                file: join(opts.filmsDir, out.film),
+                title: `${kit.name}: ${board.duration}s film`,
+                comment: `Here's the film for ${kit.name}.${share ? ` Share page: ${share}` : ''}`,
+              }),
+            { mode: 'at-most-once' },
+          )
+        }
 
         return {
           company: kit.name,
