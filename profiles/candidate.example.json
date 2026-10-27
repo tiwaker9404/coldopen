@@ -1,0 +1,17 @@
+{
+  "preset": "candidate",
+  "sender": { "name": "Alex Rivera", "role": "Forward deployed engineer" },
+  "offer": "An engineer who ships AI agents customers actually use",
+  "points": [
+    "Ships production agents with evals, not demos",
+    "Turns messy customer data into working pipelines",
+    "Explains technical trade-offs to non-engineers",
+    "Learns a new codebase and ships in week one"
+  ],
+  "proof": [
+    { "value": "6", "label": "open-source AI projects shipped" },
+    { "value": "0", "label": "double refunds in a 200-run chaos test" },
+    { "value": "AWS", "label": "Solutions Architect certified" }
+  ],
+  "cta": { "line": "Could we talk this week?", "contact": "alex@example.com" }
+}

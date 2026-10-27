@@ -1,0 +1,18 @@
+{
+  "preset": "sales",
+  "sender": { "name": "Maya Chen", "company": "Tessellate", "role": "Founder" },
+  "offer": "Product analytics that shows which features keep customers",
+  "points": [
+    "See which features drive retention, not just clicks",
+    "Ask questions in plain English, answered from your warehouse",
+    "Set up in a day without a tracking plan",
+    "Alerts when a key account stops using a core feature"
+  ],
+  "proof": [
+    { "value": "31%", "label": "lift in week-4 retention at Brightline" },
+    { "value": "1 day", "label": "average setup time" },
+    { "value": "140", "label": "B2B teams use it weekly" }
+  ],
+  "cta": { "line": "Worth a 15-minute look?", "contact": "maya@tessellate.example" },
+  "color": "#1d1b4b"
+}

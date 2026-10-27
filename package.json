@@ -1,0 +1,73 @@
+{
+  "name": "coldopen",
+  "version": "1.0.0",
+  "description": "Paste a company's URL, get a 30-second on-brand pitch film. An AI agent that researches, writes and renders personalized video.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "author": "Ashwin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tiwaker9404/coldopen"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "packageManager": "pnpm@10.28.0",
+  "bin": {
+    "coldopen": "src/cli.ts"
+  },
+  "scripts": {
+    "film": "node src/cli.ts",
+    "start": "node src/main.ts all",
+    "start:api": "node src/main.ts api",
+    "start:worker": "node src/main.ts worker",
+    "migrate": "node src/main.ts migrate",
+    "dashboard:dev": "vite --config dashboard/vite.config.ts",
+    "dashboard:build": "vite build --config dashboard/vite.config.ts",
+    "fixtures": "node fixtures/serve.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p dashboard/tsconfig.json",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "vitest run test",
+    "evals": "node evals/run.ts"
+  },
+  "dependencies": {
+    "@fastify/static": "^10.1.8",
+    "@fastify/swagger": "^9.9.2",
+    "@fastify/swagger-ui": "^6.1.2",
+    "@prometheus-io/client": "^0.16.1",
+    "fastify": "^5.12.7",
+    "fastify-type-provider-zod": "^7.0.0",
+    "pino": "^10.4.0",
+    "postgres": "^3.4.9",
+    "puppeteer": "^25.16.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.3",
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/instrument-sans": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource-variable/onest": "^5.3.1",
+    "@tanstack/react-query": "^5.105.0",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "puppeteer",
+      "@biomejs/biome",
+      "esbuild"
+    ]
+  }
+}

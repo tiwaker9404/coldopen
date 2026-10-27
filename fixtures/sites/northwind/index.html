@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Northwind Freight | Every pallet, visible</title>
+<meta name="description" content="Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.">
+<meta property="og:site_name" content="Northwind Freight">
+<link rel="canonical" href="https://northwindfreight.example/">
+<meta name="theme-color" content="#0f2a1d">
+<link rel="stylesheet" href="/fonts/fraunces/index.css">
+<link rel="stylesheet" href="/fonts/manrope/index.css">
+<style>
+  :root { --ink: #0f2a1d; --paper: #f2f4ec; --lime: #c6f432; --moss: #3d5a46; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Manrope Variable', sans-serif; background: var(--paper); color: var(--ink); }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 22px 56px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; color: var(--ink); text-decoration: none; }
+  nav a { margin-left: 28px; color: var(--moss); text-decoration: none; font-weight: 600; }
+  .btn { background: var(--ink); color: var(--lime); padding: 12px 22px; border-radius: 999px; font-weight: 700; text-decoration: none; display: inline-block; }
+  .btn.alt { background: var(--lime); color: var(--ink); }
+  .hero { padding: 72px 56px 96px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 48px; align-items: end; }
+  h1 { font-family: 'Fraunces Variable', serif; font-weight: 600; font-size: 78px; line-height: 0.98; margin: 0; letter-spacing: -0.02em; }
+  .lede { font-size: 20px; line-height: 1.5; color: var(--moss); max-width: 38ch; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--ink); color: var(--paper); padding: 40px 56px; gap: 24px; }
+  .stats b { display: block; font-family: 'Fraunces Variable', serif; font-size: 44px; color: var(--lime); }
+  section { padding: 64px 56px; }
+  h2 { font-family: 'Fraunces Variable', serif; font-size: 40px; margin: 0 0 18px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .grid h3 { margin: 0 0 6px; }
+  blockquote { font-family: 'Fraunces Variable', serif; font-size: 30px; margin: 0; max-width: 30ch; }
+  footer { padding: 40px 56px; color: var(--moss); }
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="/northwind/"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="8" fill="#0f2a1d"/><path d="M8 21 L15 8 L22 21" stroke="#c6f432" stroke-width="3.5" fill="none" stroke-linejoin="round"/></svg>Northwind Freight</a>
+  <nav><a href="#platform">Platform</a><a href="#carriers">Carriers</a><a href="#customers">Customers</a><a href="#pricing">Pricing</a><a class="btn" href="#demo">Book a demo</a></nav>
+</header>
+<main>
+  <div class="hero">
+    <h1>Every pallet, visible before it's late.</h1>
+    <div>
+      <p class="lede">Northwind gives mid-size shippers live visibility into every pallet, carrier and dock appointment, and flags exceptions before your customers notice.</p>
+      <a class="btn alt" href="#demo">See your lanes live</a>
+    </div>
+  </div>
+  <div class="stats">
+    <div><b>1,400+</b>shippers track freight on Northwind</div>
+    <div><b>38%</b>fewer late deliveries in the first quarter</div>
+    <div><b>9 min</b>average time to resolve a flagged exception</div>
+  </div>
+  <section id="platform">
+    <h2>One timeline for every load</h2>
+    <div class="grid">
+      <div><h3>Carrier check-ins</h3><p>Pull ELD pings from 240 carriers into a single timeline, without asking drivers to install anything.</p></div>
+      <div><h3>Dock scheduling</h3><p>Warehouses book and move dock appointments in one place, and every change reaches the carrier automatically.</p></div>
+      <div><h3>Exception alerts</h3><p>When a load drifts off its ETA, the account owner gets a Slack alert with the reason and a suggested fix.</p></div>
+    </div>
+  </section>
+  <section id="customers">
+    <blockquote>"We stopped finding out about late trucks from our customers."</blockquote>
+    <p>Dana Ruiz, VP Operations at Fieldstone Foods</p>
+  </section>
+  <section id="demo"><h2>Bring one lane. We'll show it live in 20 minutes.</h2><a class="btn" href="#">Book a demo</a></section>
+</main>
+<footer>Northwind Freight, Columbus, Ohio. Built for shippers moving 50 to 5,000 loads a month.</footer>
+</body>
+</html>

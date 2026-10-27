@@ -1,0 +1,199 @@
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { join, relative } from 'node:path'
+import { z } from 'zod'
+import { extractBrand } from './brand/extract.ts'
+import type { BrandKit } from './brand/types.ts'
+import { compose, FORMATS, type Format } from './render/composition.ts'
+import { concatSegments, frameRange, type OpenComposition, openComposition, type QaReport, renderExtras, renderSegment } from './render/render.ts'
+import { buildTheme } from './render/theme.ts'
+import { buildStoryboard, type Storyboard } from './script/storyboard.ts'
+import { ProfileSchema, type Script, type ScriptMeta, ScriptSchema } from './script/types.ts'
+import { deterministicScript, writeScript } from './script/writer.ts'
+import { defineAgent } from './runtime/types.ts'
+
+export const FilmInputSchema = z.object({
+  url: z.string().url(),
+  profile: ProfileSchema,
+  format: z.enum(['square', 'landscape', 'portrait']).default('square'),
+  /** optional label, e.g. the prospect's row id in a CSV batch */
+  ref: z.string().max(200).optional(),
+  /** batch this film belongs to */
+  batch: z.string().max(64).optional(),
+  /** reply in this Slack thread when the film is ready */
+  slack: z.object({ channel: z.string(), threadTs: z.string() }).optional(),
+})
+export type FilmInput = z.infer<typeof FilmInputSchema>
+
+export interface FilmResult {
+  company: string
+  host: string
+  format: Format
+  durationSec: number
+  /** paths relative to FILMS_DIR */
+  files: { film: string; poster: string; gif: string; sheet: string; kit: string; storyboard: string }
+  script: Script
+  scriptMeta: ScriptMeta
+  qa: QaReport
+  render: { frames: number; ms: number }
+}
+
+export interface FilmAgentOptions {
+  filmsDir: string
+  /** null = deterministic writer (no model, free, reproducible) */
+  llmModel: string | null
+}
+
+const exists = (p: string) =>
+  stat(p).then(
+    (s) => s.size > 0,
+    () => false,
+  )
+
+/**
+ * The film agent. Each ctx.* call is a checkpoint: kill the worker mid-render and the next
+ * one replays research, script and finished scenes from the journal, then renders only the
+ * scenes that never finished.
+ */
+export function createFilmAgent(opts: FilmAgentOptions) {
+  return defineAgent({
+    name: 'film',
+    input: FilmInputSchema,
+    async run(ctx, input: FilmInput): Promise<FilmResult> {
+      const profile = input.profile
+      const format = input.format
+      const dir = join(opts.filmsDir, ctx.runId)
+      const rel = (p: string) => relative(opts.filmsDir, p)
+      await mkdir(dir, { recursive: true })
+
+      ctx.progress({ stage: 'research', label: `Reading ${new URL(input.url).hostname}` })
+      const kit: BrandKit = await ctx.step('research', () => extractBrand(input.url, { outDir: dir }), {
+        retries: 1,
+      })
+
+      ctx.progress({ stage: 'script', label: `Writing the script for ${kit.name}` })
+      const { script, meta } = opts.llmModel
+        ? await writeScript({
+            kit,
+            profile,
+            model: opts.llmModel,
+            complete: (key, messages) => ctx.llm(key, { schema: ScriptSchema, messages }),
+          })
+        : await ctx.step('script', async () => ({
+            script: deterministicScript(kit, profile),
+            meta: { model: 'deterministic', rounds: 1, violations: [[]], usedFallback: false } as ScriptMeta,
+          }))
+
+      const board: Storyboard = buildStoryboard(kit, profile, script)
+      const storyboardFile = join(dir, 'storyboard.json')
+
+      ctx.progress({ stage: 'design', label: `Matching ${kit.name}'s brand` })
+      const composed = await ctx.step('compose', async () => {
+        const theme = await buildTheme(kit, profile)
+        const shot = await readFile(join(dir, kit.screenshot.file))
+        const html = compose({
+          board,
+          kit,
+          theme,
+          format,
+          screenshotDataUrl: `data:image/jpeg;base64,${shot.toString('base64')}`,
+        })
+        const file = join(dir, `composition-${format}.html`)
+        await writeFile(file, html)
+        await writeFile(storyboardFile, JSON.stringify({ board, script, meta }, null, 2))
+        return { file: rel(file), fontsEmbedded: theme.fontsEmbedded }
+      })
+
+      // One Chromium page per execution, opened only if something still needs rendering.
+      let comp: OpenComposition | null = null
+      const page = async () => {
+        if (!comp) comp = await openComposition(await readFile(join(opts.filmsDir, composed.file), 'utf8'), format)
+        return comp
+      }
+
+      try {
+        const segments: string[] = []
+        let frames = 0
+        let ms = 0
+        let t = 0
+        const totalFrames = Math.round(board.duration * 30)
+        for (const [i, scene] of board.scenes.entries()) {
+          const [f0, f1] = frameRange(t, t + scene.dur)
+          t += scene.dur
+          const file = join(dir, `scene-${i}-${format}.mp4`)
+          const seg = await ctx.step(`render:${i}`, async () => {
+            const c = await page()
+            const r = await renderSegment(c.page, {
+              f0,
+              f1,
+              file,
+              onFrame: (done) =>
+                ctx.progress({
+                  stage: 'render',
+                  label: `Rendering scene ${i + 1} of ${board.scenes.length}`,
+                  scene: i,
+                  percent: Math.round(((f0 + done) / totalFrames) * 100),
+                }),
+            })
+            return { file: rel(file), ...r }
+          })
+          // replayed from another machine without a shared volume: re-render that scene locally
+          if (!(await exists(join(opts.filmsDir, seg.file)))) {
+            await renderSegment((await page()).page, { f0, f1, file })
+          }
+          segments.push(join(opts.filmsDir, seg.file))
+          frames += seg.frames
+          ms += seg.ms
+        }
+
+        ctx.progress({ stage: 'encode', label: 'Encoding the film, GIF and poster', percent: 100 })
+        const out = await ctx.step('encode', async () => {
+          const film = join(dir, `film-${format}.mp4`)
+          await concatSegments(segments, film)
+          const sceneStarts = board.scenes.reduce<number[]>((acc, s, i) => {
+            acc.push(i === 0 ? 0 : acc[i - 1]! + board.scenes[i - 1]!.dur)
+            return acc
+          }, [])
+          const c = await page()
+          const extras = await renderExtras(c.page, {
+            outDir: dir,
+            film,
+            format,
+            posterAt: 2.6,
+            gifFrom: sceneStarts[1]! + 0.6,
+            sheetAt: board.scenes.map((s, i) => sceneStarts[i]! + s.dur * 0.72),
+          })
+          return {
+            film: rel(film),
+            poster: rel(extras.poster),
+            gif: rel(extras.gif),
+            sheet: rel(extras.sheet),
+            qa: c.report,
+          }
+        })
+
+        return {
+          company: kit.name,
+          host: kit.host,
+          format,
+          durationSec: board.duration,
+          files: {
+            film: out.film,
+            poster: out.poster,
+            gif: out.gif,
+            sheet: out.sheet,
+            kit: rel(join(dir, 'kit.json')),
+            storyboard: rel(storyboardFile),
+          },
+          script,
+          scriptMeta: meta,
+          qa: out.qa,
+          render: { frames, ms },
+        }
+      } finally {
+        if (comp) await (comp as OpenComposition).close()
+      }
+    },
+  })
+}
+
+export const FORMAT_SIZES = FORMATS
