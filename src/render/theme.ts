@@ -54,7 +54,8 @@ function field(bgHex: string, fgCandidates: string[], accentCandidates: string[]
   const bg = rgb(bgHex)
   const fg = readableOn(bg, fgCandidates.map(rgb), 4.5)
   const fgHex = toHex(fg)
-  const neutral = (c: string) => oklch(rgb(c)).c < 0.03
+  // slate and zinc greys carry a faint tint; they still read as grey, not as a brand accent
+  const neutral = (c: string) => oklch(rgb(c)).c < 0.045
   // prefer a colorful brand accent as-is, then the same hue shaded until legible, then fg
   const accent =
     accentCandidates.find(

@@ -20,7 +20,11 @@ describe('text from real homepages', () => {
     expect(tidy('Global GDP running on Stripe: 1.73958726% 1.73958727%')).toBe(
       'Global GDP running on Stripe: 1.73958726%',
     )
+    expect(tidy('Global GDP running on Stripe: 1.73959229% 1.73959230%')).toBe(
+      'Global GDP running on Stripe: 1.73959229%',
+    )
     expect(tidy('From 50 to 5,000 loads')).toBe('From 50 to 5,000 loads')
+    expect(tidy('Grew from 10,000 20,000')).toBe('Grew from 10,000 20,000')
   })
 
   it('keeps real numbers as stats, not versions, years or 24/7', () => {

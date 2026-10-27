@@ -271,7 +271,13 @@ export function tidy(text: string): string {
   for (let i = 0; i + 1 < w.length; i++) {
     const a = w[i]!,
       b = w[i + 1]!
-    if (/^\d[\d.,]{4,}%?$/.test(a) && a.length === b.length && a.slice(0, -2) === b.slice(0, -2)) {
+    const num = (x: string) => Number.parseFloat(x.replace(/,/g, ''))
+    if (
+      /^\d[\d.,]{4,}%?$/.test(a) &&
+      /^\d[\d.,]{4,}%?$/.test(b) &&
+      a.endsWith('%') === b.endsWith('%') &&
+      Math.abs(num(a) - num(b)) <= Math.abs(num(a)) * 1e-4
+    ) {
       w.splice(i + 1, 1)
       i--
     }
@@ -541,11 +547,13 @@ function readPage(): RawPage {
       if (!n.textContent?.trim() || !n.parentElement || !visible(n.parentElement)) continue
       range.selectNodeContents(n)
       for (const r of range.getClientRects()) {
+        // tight display line-heights let glyphs overhang the box vertically, so allow most of a line
+        const slack = r.height * 0.6
         const inside =
           r.left >= outer.left - 2 &&
           r.right <= outer.left + outer.width + 2 &&
-          r.top >= outer.top - 2 &&
-          r.bottom <= outer.top + outer.height + 2
+          r.top >= outer.top - slack &&
+          r.bottom <= outer.top + outer.height + slack
         if (r.width < 3 || r.height < 3 || !inside || r.right < 0 || r.left > vw) continue
         x0 = Math.min(x0, r.left)
         y0 = Math.min(y0, r.top)
