@@ -132,7 +132,9 @@ function bestFact(kit: BrandKit, profile: Profile): Fact {
       .filter((w) => vocab.has(w)).length -
     (f.text.length > 120 ? 2 : 0) -
     // release badges and link labels are on the page, but aren't about the business
-    (/\blaunch(es|ed)?\b|announcing|introducing|^new\b|read more|learn more/i.test(f.text)
+    (/\blaunch(es|ed)?\b|announcing|introducing|^new\b|read more|learn more|\braise[sd]?\b|funding|series [a-f]\b/i.test(
+      f.text,
+    )
       ? 3
       : 0) -
     (f.text.length < 25 ? 1 : 0)

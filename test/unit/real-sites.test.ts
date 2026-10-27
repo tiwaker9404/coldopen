@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isStat, quotable, tidy } from '../../src/brand/extract.ts'
+import { isStat, pickName, quotable, tidy } from '../../src/brand/extract.ts'
 
 // Every case here is text coldopen actually read from a real homepage.
 describe('text from real homepages', () => {
@@ -16,6 +16,11 @@ describe('text from real homepages', () => {
       'Where teams and agents Think together.',
     )
     expect(tidy('Very very fast')).toBe('Very very fast')
+    // Stripe's counter, caught between two ticks
+    expect(tidy('Global GDP running on Stripe: 1.73958726% 1.73958727%')).toBe(
+      'Global GDP running on Stripe: 1.73958726%',
+    )
+    expect(tidy('From 50 to 5,000 loads')).toBe('From 50 to 5,000 loads')
   })
 
   it('keeps real numbers as stats, not versions, years or 24/7', () => {
@@ -49,5 +54,32 @@ describe('text from real homepages', () => {
     ])
       expect(quotable(t), t).toBe(false)
     expect(quotable('Linear powers over 40,000 product teams.')).toBe(true)
+  })
+
+  it('finds the company name, not the tagline', () => {
+    expect(
+      pickName(
+        {
+          siteName: 'Build internal software better, with AI.',
+          title: 'Build internal software better, with AI. | Retool',
+        },
+        'retool.com',
+      ),
+    ).toBe('Retool')
+    expect(
+      pickName(
+        { siteName: '', title: 'Linear – The system for product development' },
+        'linear.app',
+      ),
+    ).toBe('Linear')
+    expect(pickName({ siteName: 'Cal.com', title: 'Cal.com | Open Scheduling' }, 'cal.com')).toBe(
+      'Cal.com',
+    )
+    expect(
+      pickName({ siteName: 'Northwind Freight', title: 'Northwind Freight' }, 'northwind.example'),
+    ).toBe('Northwind Freight')
+    expect(
+      pickName({ siteName: '', title: 'The better way to schedule your meetings' }, 'acme.io'),
+    ).toBe('Acme')
   })
 })

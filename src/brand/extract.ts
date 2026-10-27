@@ -112,7 +112,7 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
     })
     const logo = await captureLogo(page)
 
-    const name = cleanName(raw.siteName || raw.title.split(/\s[|–—:-]\s|:\s/)[0] || host)
+    const name = pickName(raw, host)
     const colors = derivePalette({
       backgrounds: toWeighted(raw.backgrounds),
       texts: toWeighted(raw.texts),
@@ -184,6 +184,30 @@ function toWeighted(list: [string, number][]): WeightedColor[] {
   return [...out.entries()].map(([hex, weight]) => ({ hex, weight }))
 }
 
+/**
+ * The company's name, not its tagline. og:site_name and the title's first segment are often a
+ * slogan ("Build internal software better, with AI. | Retool"), so prefer whichever candidate
+ * matches the domain, then the shortest name-like one, then the domain itself.
+ */
+export function pickName(raw: Pick<RawPage, 'siteName' | 'title'>, host: string): string {
+  const label = host
+    .replace(/^www\./, '')
+    .split('.')[0]!
+    .toLowerCase()
+  const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const candidates = [raw.siteName, ...raw.title.split(/\s[|–—·:-]\s|:\s/)]
+    .map(cleanName)
+    .filter((c) => c.length > 1)
+  const matching = candidates.find((c) => {
+    const q = squash(c)
+    return q.length > 1 && (q === label || q.startsWith(label) || label.startsWith(q))
+  })
+  if (matching && matching.split(' ').length <= 4) return matching
+  const short = candidates.find((c) => c.split(' ').length <= 2 && !/[.!?]$/.test(c))
+  if (short) return short
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
 function cleanName(s: string): string {
   return s
     .replace(/\s+/g, ' ')
@@ -242,6 +266,15 @@ export function tidy(text: string): string {
   if (w.length >= 2 && w.length % 2 === 0) {
     const half = w.length / 2
     if (w.slice(0, half).join(' ') === w.slice(half).join(' ')) w = w.slice(0, half)
+  }
+  // a live counter caught mid-tick renders two near-identical numbers: keep the first
+  for (let i = 0; i + 1 < w.length; i++) {
+    const a = w[i]!,
+      b = w[i + 1]!
+    if (/^\d[\d.,]{4,}%?$/.test(a) && a.length === b.length && a.slice(0, -2) === b.slice(0, -2)) {
+      w.splice(i + 1, 1)
+      i--
+    }
   }
   // an immediately repeated run: "1.73958189% 1.73958189%", "teams and agents teams and agents"
   for (let k = Math.floor(w.length / 2); k >= 1; k--) {
@@ -361,11 +394,22 @@ async function dismissOverlays(page: Page): Promise<void> {
       }
       return false
     }
-    for (const b of document.querySelectorAll<HTMLElement>('button, [role=button], a')) {
+    const deep = (root: Document | ShadowRoot, sel: string): HTMLElement[] => {
+      const out = [...root.querySelectorAll<HTMLElement>(sel)]
+      for (const el of root.querySelectorAll('*'))
+        if (el.shadowRoot) out.push(...deep(el.shadowRoot, sel))
+      return out
+    }
+    for (const b of deep(document, 'button, [role=button], a')) {
       // biome-ignore lint/performance/useDomNodeTextContent: innerText is what a visitor reads
       if (words.test(b.innerText?.trim() ?? '') && aboutConsent(b)) b.click()
     }
-    for (const el of document.querySelectorAll<HTMLElement>('body *')) {
+    // consent managers by name: some render inside closed shadow roots we can't click into
+    for (const el of document.querySelectorAll<HTMLElement>(
+      '[id*=transcend i], [id*=onetrust i], [id*=didomi i], [id*=cookiebot i], [id*=usercentrics i], [id*=osano i], [id*=truste i], [class*=osano i]',
+    ))
+      el.style.setProperty('display', 'none', 'important')
+    for (const el of deep(document, '*')) {
       const s = getComputedStyle(el)
       if (s.position !== 'fixed' && s.position !== 'sticky') continue
       const r = el.getBoundingClientRect()
@@ -375,7 +419,13 @@ async function dismissOverlays(page: Page): Promise<void> {
       if (
         /cookie|consent|modal|popup|newsletter|chat|intercom|drift/i.test(tag) ||
         // a floating card that talks about cookies, but never the site header
-        (t.length < 1500 && /\bcookies?\b/i.test(t) && r.top > 80)
+        (t.length < 1500 && /\bcookies?\b/i.test(t) && r.top > 80) ||
+        // a card pinned to the lower part of the screen: consent managers that hide inside closed
+        // shadow roots, chat bubbles, promo toasts. Page content is never fixed down there.
+        (r.top > innerHeight * 0.35 &&
+          r.width * r.height < innerWidth * innerHeight * 0.35 &&
+          r.width > 40 &&
+          s.position === 'fixed')
       ) {
         el.style.setProperty('display', 'none', 'important')
       }
@@ -397,7 +447,21 @@ async function captureLogo(page: Page): Promise<BrandKit['logo']> {
         '[class*=logo i], [id*=logo i], img[alt*=logo i], [aria-label*=logo i]',
       ),
     ].filter(graphic)
-    const candidates = [...home, ...named]
+    const loose = [
+      ...scope.querySelectorAll<HTMLElement>(
+        '[class*=logo i], [id*=logo i], img[alt*=logo i], a[aria-label*=home i], a[href="/"]',
+      ),
+    ]
+    const fits = (el: Element) => {
+      const r = el.getBoundingClientRect()
+      return r.width >= 16 && r.width <= 420 && r.height >= 12 && r.height <= 160 && r.top < 200
+    }
+    const wide = (el: Element) => {
+      const r = el.getBoundingClientRect()
+      return r.width / Math.max(1, r.height) >= 1.8
+    }
+    const graphics = [...home, ...named].filter(fits)
+    const candidates = [...graphics.filter(wide), ...graphics, ...loose]
     for (const el of candidates) {
       const r = el.getBoundingClientRect()
       if (r.width >= 16 && r.width <= 420 && r.height >= 12 && r.height <= 160 && r.top < 200)
@@ -461,12 +525,35 @@ function readPage(): RawPage {
       }
     }
   }
-  let hr = h1?.getBoundingClientRect()
-  if (h1) {
+  // the box around the words a visitor sees: union of visible text runs inside the h1's own box.
+  // Screen-reader copies and offscreen animation clones are excluded, so the zoom lands on the text.
+  let hr: { left: number; top: number; width: number; height: number } | undefined =
+    h1?.getBoundingClientRect()
+  if (h1 && hr) {
+    const outer = hr
+    let x0 = Infinity,
+      y0 = Infinity,
+      x1 = -Infinity,
+      y1 = -Infinity
+    const walker = document.createTreeWalker(h1, NodeFilter.SHOW_TEXT)
     const range = document.createRange()
-    range.selectNodeContents(h1)
-    const tr = range.getBoundingClientRect()
-    if (tr.width > 8 && tr.height > 8) hr = tr
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.textContent?.trim() || !n.parentElement || !visible(n.parentElement)) continue
+      range.selectNodeContents(n)
+      for (const r of range.getClientRects()) {
+        const inside =
+          r.left >= outer.left - 2 &&
+          r.right <= outer.left + outer.width + 2 &&
+          r.top >= outer.top - 2 &&
+          r.bottom <= outer.top + outer.height + 2
+        if (r.width < 3 || r.height < 3 || !inside || r.right < 0 || r.left > vw) continue
+        x0 = Math.min(x0, r.left)
+        y0 = Math.min(y0, r.top)
+        x1 = Math.max(x1, r.right)
+        y1 = Math.max(y1, r.bottom)
+      }
+    }
+    if (x1 - x0 > 8 && y1 - y0 > 8) hr = { left: x0, top: y0, width: x1 - x0, height: y1 - y0 }
   }
   const subheads = [...document.querySelectorAll('h2, h3')]
     .filter(visible)
