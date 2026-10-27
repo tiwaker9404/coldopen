@@ -145,7 +145,21 @@ function noticedLine(kit: BrandKit, first: string): string {
     .trim()
   const quoted = `${first} leads with \u201c${h}\u201d`
   if (h && words(quoted) <= LIMITS.noticed && !h.includes('!')) return quoted
-  return clip(`${first} leads with one clear promise. I took it seriously.`, LIMITS.noticed)
+  // too long to quote: point at the highlighted headline instead of paraphrasing it
+  return clip(`The first thing ${first} promises on its homepage`, LIMITS.noticed)
+}
+
+/** One honest sentence tying the featured fact to the sender, without claiming anything new. */
+function whyLine(fact: Fact, candidate: boolean, company: string | undefined): string {
+  const numeric = /\d/.test(fact.text)
+  if (candidate)
+    return numeric
+      ? 'I want to help move a number like this one'
+      : 'That is the kind of outcome I want to help build'
+  const who = company ? `${company} helps` : 'We help'
+  return numeric
+    ? `${who} teams measure what moves a number like this`
+    : `${who} teams turn a claim like this into proof`
 }
 
 /**
@@ -163,12 +177,7 @@ export function deterministicScript(kit: BrandKit, profile: Profile): Script {
     noticed: noticedLine(kit, first),
     insight: {
       factId: fact.id,
-      why: clip(
-        candidate
-          ? 'That is the kind of outcome I want to help build.'
-          : `That is the kind of result ${profile.sender.company ?? 'we'} help${profile.sender.company ? 's' : ''} teams prove.`,
-        LIMITS.why,
-      ),
+      why: clip(whyLine(fact, candidate, profile.sender.company), LIMITS.why),
     },
     pitch: {
       headline: clip(candidate ? `What I would bring to ${name}` : profile.offer, LIMITS.headline),

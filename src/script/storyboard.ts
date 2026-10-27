@@ -67,7 +67,7 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
       dur: 4.6,
       line: script.cta,
       contact: profile.cta.contact,
-      signoff: `Made by ${from} for ${kit.name}`,
+      signoff: `Made for ${kit.name} by ${profile.sender.name}${profile.sender.company ? ` at ${profile.sender.company}` : ''}`,
     },
   ]
   return {
