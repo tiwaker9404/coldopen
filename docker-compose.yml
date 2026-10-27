@@ -1,0 +1,65 @@
+# docker compose up --build        ->  http://localhost:8080
+# Scale renderers:                     docker compose up -d --scale worker=3
+# Use a local model (free):            docker compose --profile ollama up
+name: coldopen
+
+x-env: &env
+  DATABASE_URL: postgres://postgres:postgres@postgres:5432/coldopen
+  FILMS_DIR: /data/films
+  PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+  API_KEYS: ${API_KEYS:-}
+  # Script writer. Leave LLM_PROVIDER=none for the built-in deterministic writer,
+  # or point at any OpenAI-compatible API (Ollama below, Groq, OpenAI...).
+  LLM_PROVIDER: ${LLM_PROVIDER:-none}
+  LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
+  LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b}
+  LLM_API_KEY: ${LLM_API_KEY:-ollama}
+  SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+  SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+  LOG_LEVEL: info
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: coldopen }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U postgres"], interval: 2s, retries: 30 }
+
+  migrate:
+    build: .
+    command: ["node", "src/main.ts", "migrate"]
+    environment: *env
+    depends_on: { postgres: { condition: service_healthy } }
+
+  api:
+    build: .
+    command: ["node", "src/main.ts", "api"]
+    environment: *env
+    ports: ["8080:8080"]
+    volumes: [films:/data/films]
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: ["node", "src/main.ts", "worker"]
+    environment: *env
+    volumes: [films:/data/films]
+    shm_size: 1gb
+    healthcheck: { disable: true }
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    volumes: [ollama:/root/.ollama]
+
+volumes:
+  pgdata:
+  films:
+  ollama:
