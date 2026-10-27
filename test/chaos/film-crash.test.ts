@@ -76,7 +76,7 @@ describe('crash during render', () => {
     expect(replayed).toEqual(
       expect.arrayContaining(['research', 'script', 'compose', 'render:0', 'render:1']),
     )
-    // every scene was rendered exactly once across both workers
+    // each scene was journaled by exactly one execution: finished scenes were never redone
     for (const s of steps.filter((x) => x.key.startsWith('render:'))) expect(s.attempts).toBe(1)
     const timeline = (await getLog(sql, run.id)).map((l) => l.kind)
     expect(timeline).toEqual(expect.arrayContaining(['worker_lost', 'replayed', 'succeeded']))
