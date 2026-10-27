@@ -41,7 +41,7 @@ jobs:
       - uses: actions/setup-node@v5
         with: { node-version: 24, cache: pnpm }
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: pnpm install --frozen-lockfile   # downloads Puppeteer's Chrome
+      - run: pnpm install --frozen-lockfile # downloads Puppeteer's Chrome
       - run: pnpm test
       - name: Quality evals (brand fidelity, grounding, contrast, overflow)
         run: pnpm evals
@@ -56,4 +56,11 @@ jobs:
       - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
-        with: { context: ., push: false, tags: "coldopen:ci", cache-from: type=gha, cache-to: "type=gha,mode=max" }
+        with:
+          {
+            context: .,
+            push: false,
+            tags: "coldopen:ci",
+            cache-from: type=gha,
+            cache-to: "type=gha,mode=max",
+          }

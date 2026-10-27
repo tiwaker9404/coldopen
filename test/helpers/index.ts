@@ -131,7 +131,10 @@ export function kitFor(site: Site) {
       site,
       fixtureServer().then(async ({ url }) => {
         const dir = tmp(`kit-${site}-`)
-        return { kit: await extractBrand(`${url}/${site}/`, { outDir: dir }), dir }
+        return {
+          kit: await extractBrand(`${url}/${site}/`, { outDir: dir, allowPrivateNetworks: true }),
+          dir,
+        }
       }),
     )
   }

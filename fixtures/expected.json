@@ -1,5 +1,20 @@
 {
-  "northwind": { "name": "Northwind Freight", "primary": "#c6f432", "display": "Fraunces Variable", "logo": true },
-  "lumen": { "name": "Lumen Health", "primary": "#2f6bff", "display": "Instrument Sans Variable", "logo": true },
-  "parcelpine": { "name": "Parcelpine", "primary": "#ff6b2c", "display": "Bricolage Grotesque Variable", "logo": true }
+  "northwind": {
+    "name": "Northwind Freight",
+    "primary": "#c6f432",
+    "display": "Fraunces Variable",
+    "logo": true
+  },
+  "lumen": {
+    "name": "Lumen Health",
+    "primary": "#2f6bff",
+    "display": "Instrument Sans Variable",
+    "logo": true
+  },
+  "parcelpine": {
+    "name": "Parcelpine",
+    "primary": "#ff6b2c",
+    "display": "Bricolage Grotesque Variable",
+    "logo": true
+  }
 }

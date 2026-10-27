@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import type { Page } from 'puppeteer'
 import { getBrowser } from '../browser.ts'
 import { derivePalette, parseColor, toHex, type WeightedColor } from './color.ts'
+import { assertPublicUrl, guardPage } from './guard.ts'
 import type { BrandKit, Fact, FontRef } from './types.ts'
 
 /**
@@ -20,6 +21,8 @@ const VIEWPORT = { width: 1440, height: 900 }
 export interface ExtractOptions {
   outDir: string
   timeoutMs?: number
+  /** allow localhost / private networks (local CLI use, tests). Hosted deployments keep this off. */
+  allowPrivateNetworks?: boolean
 }
 
 interface RawPage {
@@ -41,23 +44,38 @@ interface RawPage {
 }
 
 export async function extractBrand(url: string, opts: ExtractOptions): Promise<BrandKit> {
+  if (!opts.allowPrivateNetworks) await assertPublicUrl(url)
   const browser = await getBrowser()
   const context = await browser.createBrowserContext()
   const page = await context.newPage()
   try {
+    if (!opts.allowPrivateNetworks) await guardPage(page)
     await page.setViewport({ ...VIEWPORT, deviceScaleFactor: 1 })
     await page.setUserAgent(
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36 coldopen/1.0',
     )
-    const res = await page.goto(url, {
-      waitUntil: 'networkidle2',
-      timeout: opts.timeoutMs ?? 30_000,
-    })
-    if (!res) throw new Error(`no response from ${url}`)
-    if (res.status() >= 400) throw new Error(`${url} returned HTTP ${res.status()}`)
-    await page.evaluate(() => document.fonts.ready.then(() => undefined))
+    const res = await navigate(page, url, opts.timeoutMs ?? 30_000)
+    if (res.status >= 400) {
+      throw new Error(
+        res.status === 403 || res.status === 429
+          ? `${url} blocked the request (HTTP ${res.status}); some sites refuse automated browsers`
+          : `${url} returned HTTP ${res.status}`,
+      )
+    }
+    // web fonts, lazy hero images and client-rendered apps need a moment after "load"
+    await Promise.race([
+      page.evaluate(() => document.fonts.ready.then(() => undefined)),
+      new Promise((r) => setTimeout(r, 5000)),
+    ])
+    await page.evaluate(() => window.scrollTo(0, 0))
     await dismissOverlays(page)
-    await new Promise((r) => setTimeout(r, 300))
+    await new Promise((r) => setTimeout(r, 500))
+    const textLength = await page.evaluate(() => document.body?.innerText?.trim().length ?? 0)
+    if (textLength < 40) {
+      throw new Error(
+        `${url} rendered almost no text; it may be a login wall, a bot check or an empty app shell`,
+      )
+    }
 
     const raw = (await page.evaluate(readPage)) as RawPage
     const finalUrl = page.url()
@@ -112,6 +130,23 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
     return kit
   } finally {
     await context.close().catch(() => {})
+  }
+}
+
+/**
+ * Go to a URL like a patient visitor: wait for the network to settle, but if a site never
+ * goes quiet (analytics, websockets, video), settle for whatever has loaded by the deadline.
+ */
+async function navigate(page: Page, url: string, timeoutMs: number): Promise<{ status: number }> {
+  try {
+    const res = await page.goto(url, { waitUntil: 'networkidle2', timeout: timeoutMs })
+    return { status: res?.status() ?? 200 }
+  } catch (err) {
+    if (!(err instanceof Error) || !/timeout/i.test(err.message)) throw err
+    const loaded = await page.evaluate(() => document.readyState).catch(() => 'loading')
+    if (loaded === 'loading')
+      throw new Error(`${url} did not load within ${Math.round(timeoutMs / 1000)}s`)
+    return { status: 200 }
   }
 }
 
@@ -305,7 +340,22 @@ function readPage(): RawPage {
   const meta = (sel: string) => document.querySelector<HTMLMetaElement>(sel)?.content?.trim() ?? ''
 
   // -- copy
-  const h1 = [...document.querySelectorAll('h1')].find(visible) ?? null
+  // the headline: a visible h1, else the largest text above the fold (many sites style a div)
+  let h1: Element | null =
+    [...document.querySelectorAll('h1')].find((e) => visible(e) && text(e).length > 3) ?? null
+  if (!h1) {
+    let best = 0
+    for (const el of document.querySelectorAll('h2, p, div, span')) {
+      if (el.children.length > 2 || !visible(el)) continue
+      const r = el.getBoundingClientRect()
+      const size = Number.parseFloat(getComputedStyle(el).fontSize)
+      const t = text(el)
+      if (r.top < vh && size > best && t.length > 8 && t.length < 140) {
+        best = size
+        h1 = el
+      }
+    }
+  }
   const hr = h1?.getBoundingClientRect()
   const subheads = [...document.querySelectorAll('h2, h3')]
     .filter(visible)

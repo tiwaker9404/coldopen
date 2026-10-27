@@ -30,7 +30,10 @@ import { deterministicScript, writeScript } from '../src/script/writer.ts'
 const { values } = parseArgs({
   options: {
     model: { type: 'string' },
-    'base-url': { type: 'string', default: process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1' },
+    'base-url': {
+      type: 'string',
+      default: process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1',
+    },
     'api-key': { type: 'string', default: process.env.LLM_API_KEY ?? 'ollama' },
     out: { type: 'string', default: join(import.meta.dirname, 'results.md') },
   },
@@ -47,7 +50,8 @@ const DESCRIPTIONS: Record<string, string> = {
   'copy.uses-a-stat': 'The featured fact is a number, which reads strongest on screen',
   'design.text-contrast': 'Every text color meets WCAG AA (4.5:1) on its background',
   'design.brand-fonts-loaded': "The site's own font files were embedded, not a fallback",
-  'design.no-text-overflow': 'No line overflows or breaks its line budget, in square, wide and tall',
+  'design.no-text-overflow':
+    'No line overflows or breaks its line budget, in square, wide and tall',
   'motion.frame-exact-seek': 'Any frame can be re-rendered pixel-identical (crash-safe rendering)',
 }
 
@@ -57,8 +61,12 @@ const expected = JSON.parse(readFileSync(join(ROOT, 'fixtures/expected.json'), '
   { name: string; primary: string; display: string; logo: boolean }
 >
 const profiles: Record<string, Profile> = {
-  sales: ProfileSchema.parse(JSON.parse(readFileSync(join(ROOT, 'profiles/sales.example.json'), 'utf8'))),
-  candidate: ProfileSchema.parse(JSON.parse(readFileSync(join(ROOT, 'profiles/candidate.example.json'), 'utf8'))),
+  sales: ProfileSchema.parse(
+    JSON.parse(readFileSync(join(ROOT, 'profiles/sales.example.json'), 'utf8')),
+  ),
+  candidate: ProfileSchema.parse(
+    JSON.parse(readFileSync(join(ROOT, 'profiles/candidate.example.json'), 'utf8')),
+  ),
 }
 
 interface Result {
@@ -71,14 +79,25 @@ interface Result {
 const results: Result[] = []
 const record = (r: Result) => {
   results.push(r)
-  process.stdout.write(`${r.pass ? '  pass' : '  FAIL'}  ${r.eval.padEnd(26)} ${r.site}/${r.preset}  ${r.pass ? '' : r.detail}\n`)
+  process.stdout.write(
+    `${r.pass ? '  pass' : '  FAIL'}  ${r.eval.padEnd(26)} ${r.site}/${r.preset}  ${r.pass ? '' : r.detail}\n`,
+  )
 }
 
 const llm = values.model
-  ? new OpenAICompatibleProvider({ baseUrl: values['base-url']!, model: values.model, apiKey: values['api-key']!, timeoutMs: 180_000 })
+  ? new OpenAICompatibleProvider({
+      baseUrl: values['base-url']!,
+      model: values.model,
+      apiKey: values['api-key']!,
+      timeoutMs: 180_000,
+    })
   : null
 
-async function script(kit: BrandKit, profile: Profile, id: string): Promise<{ script: Script; rounds: number; fallback: boolean }> {
+async function script(
+  kit: BrandKit,
+  profile: Profile,
+  id: string,
+): Promise<{ script: Script; rounds: number; fallback: boolean }> {
   if (!llm) return { script: deterministicScript(kit, profile), rounds: 1, fallback: false }
   const ctx = new LocalContext({ runId: id, llm })
   const r = await writeScript({
@@ -99,9 +118,12 @@ try {
   for (const site of Object.keys(expected)) {
     const want = expected[site]!
     const dir = join(ROOT, '.scratch', 'evals', site)
-    const kit = await extractBrand(`${url}/${site}/`, { outDir: dir })
+    const kit = await extractBrand(`${url}/${site}/`, { outDir: dir, allowPrivateNetworks: true })
     const html = readFileSync(join(ROOT, 'fixtures/sites', site, 'index.html'), 'utf8')
-    const pageText = html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ')
+    const pageText = html
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
 
     for (const preset of ['sales', 'candidate'] as const) {
       const profile = profiles[preset]!
@@ -109,16 +131,36 @@ try {
 
       // --- brand fidelity
       const dE = distance(parseColor(kit.colors.primary)!, parseColor(want.primary)!)
-      record({ ...base, eval: 'brand.primary-color', pass: dE < 0.03, detail: `${kit.colors.primary} vs ${want.primary}` })
-      record({ ...base, eval: 'brand.display-font', pass: kit.fonts.display.family === want.display, detail: kit.fonts.display.family })
+      record({
+        ...base,
+        eval: 'brand.primary-color',
+        pass: dE < 0.03,
+        detail: `${kit.colors.primary} vs ${want.primary}`,
+      })
+      record({
+        ...base,
+        eval: 'brand.display-font',
+        pass: kit.fonts.display.family === want.display,
+        detail: kit.fonts.display.family,
+      })
       record({ ...base, eval: 'brand.name', pass: kit.name === want.name, detail: kit.name })
-      record({ ...base, eval: 'brand.logo', pass: Boolean(kit.logo) === want.logo, detail: kit.logo ? 'captured' : 'missing' })
+      record({
+        ...base,
+        eval: 'brand.logo',
+        pass: Boolean(kit.logo) === want.logo,
+        detail: kit.logo ? 'captured' : 'missing',
+      })
 
       // --- copy quality
       const s = await script(kit, profile, `eval_${site}_${preset}`)
       const v = checkScript(s.script, kit, profile)
       record({ ...base, eval: 'copy.taste-rules', pass: v.length === 0, detail: v.join('; ') })
-      record({ ...base, eval: 'copy.no-fallback', pass: !s.fallback, detail: 'model never complied; deterministic fallback used' })
+      record({
+        ...base,
+        eval: 'copy.no-fallback',
+        pass: !s.fallback,
+        detail: 'model never complied; deterministic fallback used',
+      })
       const fact = kit.facts.find((f) => f.id === s.script.insight.factId)
       const norm = (x: string) => x.replace(/[“”"]/g, '').replace(/\s+/g, ' ').toLowerCase()
       record({
@@ -140,21 +182,36 @@ try {
       const fields = [theme.dark, theme.light, theme.brand]
       const rgb = (h: string) => parseColor(h)!
       const worst = Math.min(...fields.map((f) => contrast(rgb(f.fg), rgb(f.bg))))
-      record({ ...base, eval: 'design.text-contrast', pass: worst >= 4.5, detail: `worst ${worst.toFixed(2)}:1` })
-      record({ ...base, eval: 'design.brand-fonts-loaded', pass: theme.fontsEmbedded.display, detail: 'fell back to bundled font' })
+      record({
+        ...base,
+        eval: 'design.text-contrast',
+        pass: worst >= 4.5,
+        detail: `worst ${worst.toFixed(2)}:1`,
+      })
+      record({
+        ...base,
+        eval: 'design.brand-fonts-loaded',
+        pass: theme.fontsEmbedded.display,
+        detail: 'fell back to bundled font',
+      })
 
       const shot = `data:image/jpeg;base64,${readFileSync(join(dir, kit.screenshot.file)).toString('base64')}`
       const formats: Format[] = ['square', 'landscape', 'portrait']
       const overflow: string[] = []
       let deterministic = true
       for (const format of formats) {
-        const c = await openComposition(compose({ board, kit, theme, format, screenshotDataUrl: shot }), format)
+        const c = await openComposition(
+          compose({ board, kit, theme, format, screenshotDataUrl: shot }),
+          format,
+        )
         overflow.push(...c.report.issues.map((i) => `${format}: ${i.kind} ${i.text ?? ''}`))
         if (format === 'square') {
           // seeking is exact: the same timestamp always produces the same pixels
           const frame = async (t: number) => {
             await seek(c.page, t)
-            return createHash('sha1').update(await c.page.screenshot({ type: 'png' })).digest('hex')
+            return createHash('sha1')
+              .update(await c.page.screenshot({ type: 'png' }))
+              .digest('hex')
           }
           const a = await frame(7.3)
           await frame(20.1)
@@ -162,8 +219,18 @@ try {
         }
         await c.close()
       }
-      record({ ...base, eval: 'design.no-text-overflow', pass: overflow.length === 0, detail: overflow.join('; ') })
-      record({ ...base, eval: 'motion.frame-exact-seek', pass: deterministic, detail: 'same time, different pixels' })
+      record({
+        ...base,
+        eval: 'design.no-text-overflow',
+        pass: overflow.length === 0,
+        detail: overflow.join('; '),
+      })
+      record({
+        ...base,
+        eval: 'motion.frame-exact-seek',
+        pass: deterministic,
+        detail: 'same time, different pixels',
+      })
     }
   }
 } finally {
@@ -186,10 +253,15 @@ const lines = [
   }),
   '',
   ...(results.some((r) => !r.pass)
-    ? ['## Failures', '', ...results.filter((r) => !r.pass).map((r) => `- \`${r.eval}\` on ${r.site}/${r.preset}: ${r.detail}`)]
+    ? [
+        '## Failures',
+        '',
+        ...results
+          .filter((r) => !r.pass)
+          .map((r) => `- \`${r.eval}\` on ${r.site}/${r.preset}: ${r.detail}`),
+      ]
     : []),
 ]
 writeFileSync(values.out!, `${lines.join('\n')}\n`)
 console.log(`\n${passed}/${results.length} passed. Report: ${values.out}`)
 process.exit(passed === results.length ? 0 : 1)
-

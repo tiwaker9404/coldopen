@@ -16,7 +16,7 @@ describe('film pipeline (no database)', () => {
   it('makes a complete film, then resumes from the journal without redoing work', async () => {
     const { url } = await fixtureServer()
     const filmsDir = tmp('films-')
-    const agent = createFilmAgent({ filmsDir, llmModel: null })
+    const agent = createFilmAgent({ filmsDir, llmModel: null, allowPrivateNetworks: true })
     const input = {
       url: `${url}/parcelpine/`,
       profile: profile('candidate'),
@@ -72,7 +72,11 @@ describe('film pipeline (no database)', () => {
 
   it('stops with a clear, non-retryable error when a site cannot be read', async () => {
     const { url } = await fixtureServer()
-    const agent = createFilmAgent({ filmsDir: tmp('films-'), llmModel: null })
+    const agent = createFilmAgent({
+      filmsDir: tmp('films-'),
+      llmModel: null,
+      allowPrivateNetworks: true,
+    })
     const ctx = new LocalContext({ runId: 'run_missing' })
     await expect(
       agent.run(ctx, {

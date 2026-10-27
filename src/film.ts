@@ -62,6 +62,8 @@ export interface FilmAgentOptions {
   slack?: SlackClient | null
   /** base URL for share links, e.g. https://films.example.com */
   publicUrl?: string
+  /** research localhost / private-network sites (local CLI, tests); off for hosted use */
+  allowPrivateNetworks?: boolean
 }
 
 const exists = (p: string) =>
@@ -89,9 +91,17 @@ export function createFilmAgent(opts: FilmAgentOptions) {
       ctx.progress({ stage: 'research', label: `Reading ${new URL(input.url).hostname}` })
       let kit: BrandKit
       try {
-        kit = await ctx.step('research', () => extractBrand(input.url, { outDir: dir }), {
-          retries: 1,
-        })
+        kit = await ctx.step(
+          'research',
+          () =>
+            extractBrand(input.url, {
+              outDir: dir,
+              allowPrivateNetworks: opts.allowPrivateNetworks ?? false,
+            }),
+          {
+            retries: 1,
+          },
+        )
       } catch (err) {
         const reason = err instanceof Error ? err.message.split('\n')[0]! : String(err)
         if (input.slack && opts.slack) {

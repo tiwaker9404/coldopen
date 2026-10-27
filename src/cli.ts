@@ -103,7 +103,12 @@ async function makeFilm(url: string, opts: { id?: string; quiet?: boolean }): Pr
   })
   const resumed = await ctx.load()
   if (resumed && !opts.quiet) done(`  resuming ${id}: ${resumed} finished steps in the journal`)
-  const agent = createFilmAgent({ filmsDir, llmModel: llm ? values.model! : null })
+  // a local tool: researching localhost or an intranet site is the user's own business
+  const agent = createFilmAgent({
+    filmsDir,
+    llmModel: llm ? values.model! : null,
+    allowPrivateNetworks: true,
+  })
   return agent.run(ctx, { url, profile, format })
 }
 

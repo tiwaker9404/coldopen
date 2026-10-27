@@ -137,6 +137,17 @@ function bestFact(kit: BrandKit, profile: Profile): Fact {
   )
 }
 
+/** Quote their own headline when it's short enough to read on screen; it's the most personal line we have. */
+function noticedLine(kit: BrandKit, first: string): string {
+  const h = kit.headline
+    .replace(/[.!]+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const quoted = `${first} leads with \u201c${h}\u201d`
+  if (h && words(quoted) <= LIMITS.noticed && !h.includes('!')) return quoted
+  return clip(`${first} leads with one clear promise. I took it seriously.`, LIMITS.noticed)
+}
+
 /**
  * A rule-based writer used as the stand-in model (tests, CI, the no-key demo) and as the
  * final fallback. Plainer than a good LLM, but always on-brief and always grounded.
@@ -149,7 +160,7 @@ export function deterministicScript(kit: BrandKit, profile: Profile): Script {
   const hook = words(`Hi ${name} team`) <= LIMITS.hook ? `Hi ${name} team` : `Hi ${first} team`
   return {
     hook,
-    noticed: clip(`${first} leads with one clear promise. I took it seriously.`, LIMITS.noticed),
+    noticed: noticedLine(kit, first),
     insight: {
       factId: fact.id,
       why: clip(

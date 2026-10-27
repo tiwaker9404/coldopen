@@ -54,6 +54,7 @@ async function main() {
         llmModel: cfg.LLM_PROVIDER === 'openai' ? cfg.LLM_MODEL : null,
         slack,
         publicUrl: cfg.PUBLIC_URL,
+        allowPrivateNetworks: cfg.ALLOW_PRIVATE_NETWORKS,
       }) as never,
     )
     const worker = new Worker(sql, cfg, log, agents, llm)

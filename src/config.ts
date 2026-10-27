@@ -45,6 +45,12 @@ const schema = z.object({
   SLACK_BOT_TOKEN: z.string().optional(),
   SLACK_SIGNING_SECRET: z.string().optional(),
 
+  /** let the research browser open localhost / private-network URLs. Only for local development. */
+  ALLOW_PRIVATE_NETWORKS: z
+    .enum(['true', 'false', '1', '0'])
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
+
   CHAOS_KILL_AFTER_EFFECT: z.coerce.number().min(0).max(1).default(0),
 })
 

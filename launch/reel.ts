@@ -8,14 +8,15 @@
  *   node src/cli.ts <url> --id northwind -o <films-dir>
  */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { closeBrowser, getBrowser } from '../src/browser.ts'
 import { renderSegment, seek } from '../src/render/render.ts'
 
-const [filmsDir = '.scratch/reel/films', out = '.scratch/reel/coldopen-launch.mp4'] = process.argv.slice(2)
+const [filmsDir = '.scratch/reel/films', out = '.scratch/reel/coldopen-launch.mp4'] =
+  process.argv.slice(2)
 const W = 1080
 const H = 1350
 const work = resolve(dirname(out), 'reel-build')
@@ -23,9 +24,24 @@ rmSync(work, { recursive: true, force: true })
 mkdirSync(join(work, 'frames'), { recursive: true })
 
 const CLIPS = [
-  { id: 'northwind', company: 'Northwind Freight', from: 3.7, caption: 'Their own homepage, with the promise they lead with highlighted.' },
-  { id: 'lumen', company: 'Lumen Health', from: 8.7, caption: 'A number from their site, set in their font and colors.' },
-  { id: 'parcelpine', company: 'Parcelpine', from: 24.9, caption: 'One clear ask, signed by the sender.' },
+  {
+    id: 'northwind',
+    company: 'Northwind Freight',
+    from: 3.7,
+    caption: 'Their own homepage, with the promise they lead with highlighted.',
+  },
+  {
+    id: 'lumen',
+    company: 'Lumen Health',
+    from: 8.7,
+    caption: 'A number from their site, set in their font and colors.',
+  },
+  {
+    id: 'parcelpine',
+    company: 'Parcelpine',
+    from: 24.9,
+    caption: 'One clear ask, signed by the sender.',
+  },
 ] as const
 const CLIP_DUR = 3.8
 const FPS = 30
@@ -35,10 +51,37 @@ for (const c of CLIPS) {
   const film = readdirSync(join(filmsDir, c.id)).find((f) => /^film-.*\.mp4$/.test(f))!
   mkdirSync(join(work, 'frames', c.id), { recursive: true })
   execFileSync('ffmpeg', [
-    '-loglevel', 'error', '-y', '-ss', String(c.from), '-t', String(CLIP_DUR), '-i', join(filmsDir, c.id, film),
-    '-vf', `fps=${FPS},scale=860:-1`, '-q:v', '3', join(work, 'frames', c.id, '%04d.jpg'),
+    '-loglevel',
+    'error',
+    '-y',
+    '-ss',
+    String(c.from),
+    '-t',
+    String(CLIP_DUR),
+    '-i',
+    join(filmsDir, c.id, film),
+    '-vf',
+    `fps=${FPS},scale=860:-1`,
+    '-q:v',
+    '3',
+    join(work, 'frames', c.id, '%04d.jpg'),
   ])
-  execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-ss', '2.6', '-i', join(filmsDir, c.id, film), '-frames:v', '1', '-vf', 'scale=320:-1', '-q:v', '3', join(work, `${c.id}-poster.jpg`)])
+  execFileSync('ffmpeg', [
+    '-loglevel',
+    'error',
+    '-y',
+    '-ss',
+    '2.6',
+    '-i',
+    join(filmsDir, c.id, film),
+    '-frames:v',
+    '1',
+    '-vf',
+    'scale=320:-1',
+    '-q:v',
+    '3',
+    join(work, `${c.id}-poster.jpg`),
+  ])
 }
 const frameCount = (id: string) => readdirSync(join(work, 'frames', id)).length
 
@@ -48,7 +91,14 @@ const font = (pkg: string, file: string) =>
   `data:font/woff2;base64,${readFileSync(join(dirname(require.resolve(`@fontsource-variable/${pkg}/package.json`)), 'files', file)).toString('base64')}`
 
 // 3. the timeline
-const T = { title: 0, composer: 3.6, clips: 9.0, grid: 9.0 + CLIP_DUR * 3, crash: 9.0 + CLIP_DUR * 3 + 5.0, outro: 9.0 + CLIP_DUR * 3 + 9.4 }
+const T = {
+  title: 0,
+  composer: 3.6,
+  clips: 9.0,
+  grid: 9.0 + CLIP_DUR * 3,
+  crash: 9.0 + CLIP_DUR * 3 + 5.0,
+  outro: 9.0 + CLIP_DUR * 3 + 9.4,
+}
 const END = T.outro + 4.6
 const scenes = [
   ['title', T.title, T.composer],
@@ -61,7 +111,10 @@ const scenes = [
 
 const clipHtml = CLIPS.map((c, i) => {
   const n = frameCount(c.id)
-  const imgs = Array.from({ length: n }, (_, k) => `<img class="f" src="frames/${c.id}/${String(k + 1).padStart(4, '0')}.jpg" alt="">`).join('')
+  const imgs = Array.from(
+    { length: n },
+    (_, k) => `<img class="f" src="frames/${c.id}/${String(k + 1).padStart(4, '0')}.jpg" alt="">`,
+  ).join('')
   return `<div class="clip" data-clip="${i}" data-n="${n}"><p class="for">for ${c.company}</p><div class="player">${imgs}</div><p class="cap">${c.caption}</p></div>`
 }).join('')
 
@@ -215,9 +268,19 @@ const r = await renderSegment(page, {
   file: resolve(out),
   onFrame: (d, n) => d % 60 === 0 && process.stderr.write(`\r  ${Math.round((d / n) * 100)}%`),
 })
-for (const [name, t] of [['poster', 1.9], ['grid', T.grid + 2.2], ['crash', T.crash + 3.6]] as const) {
+for (const [name, t] of [
+  ['poster', 1.9],
+  ['grid', T.grid + 2.2],
+  ['crash', T.crash + 3.6],
+] as const) {
   await seek(page, t)
-  await page.screenshot({ path: resolve(dirname(out), `reel-${name}.jpg`), type: 'jpeg', quality: 90 })
+  await page.screenshot({
+    path: resolve(dirname(out), `reel-${name}.jpg`),
+    type: 'jpeg',
+    quality: 90,
+  })
 }
 await closeBrowser()
-console.log(`\nlaunch reel: ${out} (${END.toFixed(1)}s, ${r.frames} frames in ${(r.ms / 1000).toFixed(0)}s)`)
+console.log(
+  `\nlaunch reel: ${out} (${END.toFixed(1)}s, ${r.frames} frames in ${(r.ms / 1000).toFixed(0)}s)`,
+)
