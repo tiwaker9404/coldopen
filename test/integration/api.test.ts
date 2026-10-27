@@ -43,9 +43,9 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await app.close()
-  await sql.end()
-  slackServer.close()
+  await app?.close()
+  await sql?.end()
+  slackServer?.close()
 })
 
 const putProfile = () =>

@@ -24,6 +24,7 @@ export function testConfig(overrides: Partial<Record<keyof Config, string>> = {}
 
 /** Fresh schema per test file: drop everything and re-run migrations. */
 export async function freshDb(): Promise<Sql> {
+  await ensureDatabase(TEST_DB)
   const sql = connect(TEST_DB, 10)
   await sql.unsafe('drop schema if exists public cascade; create schema public;')
   await migrate(sql)
@@ -139,4 +140,25 @@ export function kitFor(site: Site) {
     )
   }
   return kits.get(site)!
+}
+
+/** Create the test database if it doesn't exist, with a clear message if Postgres isn't running. */
+async function ensureDatabase(url: string): Promise<void> {
+  const u = new URL(url)
+  const name = u.pathname.slice(1)
+  u.pathname = '/postgres'
+  const admin = connect(u.toString(), 1)
+  try {
+    const [row] = await admin`select 1 as ok from pg_database where datname = ${name}`
+    if (!row) await admin.unsafe(`create database "${name}"`)
+  } catch (err) {
+    if ((err as { code?: string }).code === 'ECONNREFUSED') {
+      throw new Error(
+        `These tests need Postgres at ${u.host}. Start one with: pnpm db:test  (or set TEST_DATABASE_URL)`,
+      )
+    }
+    throw err
+  } finally {
+    await admin.end()
+  }
 }

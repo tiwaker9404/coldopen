@@ -70,6 +70,7 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
     await page.evaluate(() => window.scrollTo(0, 0))
     await dismissOverlays(page)
     await new Promise((r) => setTimeout(r, 500))
+    // biome-ignore lint/performance/useDomNodeTextContent: we want visible text, not hidden markup
     const textLength = await page.evaluate(() => document.body?.innerText?.trim().length ?? 0)
     if (textLength < 40) {
       throw new Error(

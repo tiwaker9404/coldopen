@@ -33,7 +33,7 @@ beforeAll(async () => {
   sql = await freshDb()
 })
 afterAll(async () => {
-  await sql.end()
+  await sql?.end()
 })
 beforeEach(async () => {
   await sql`truncate runs cascade`

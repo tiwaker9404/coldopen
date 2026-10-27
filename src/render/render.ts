@@ -93,6 +93,12 @@ export async function renderSegment(
       'medium',
       '-crf',
       '18',
+      // Chromium's JPEGs are full-range. Convert to the limited range every player expects;
+      // newer ffmpeg (7+) otherwise keeps full range and tags the stream yuvj420p.
+      '-vf',
+      'scale=in_range=full:out_range=limited,format=yuv420p',
+      '-color_range',
+      'tv',
       '-pix_fmt',
       'yuv420p',
       '-r',

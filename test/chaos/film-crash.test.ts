@@ -20,7 +20,7 @@ beforeAll(async () => {
 })
 afterAll(async () => {
   for (const p of procs) p.kill('SIGKILL')
-  await sql.end()
+  await sql?.end()
   ;(await fixtureServer()).close()
 })
 
