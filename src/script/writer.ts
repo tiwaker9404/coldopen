@@ -130,7 +130,12 @@ function bestFact(kit: BrandKit, profile: Profile): Fact {
       .toLowerCase()
       .split(/\W+/)
       .filter((w) => vocab.has(w)).length -
-    (f.text.length > 120 ? 2 : 0)
+    (f.text.length > 120 ? 2 : 0) -
+    // release badges and link labels are on the page, but aren't about the business
+    (/\blaunch(es|ed)?\b|announcing|introducing|^new\b|read more|learn more/i.test(f.text)
+      ? 3
+      : 0) -
+    (f.text.length < 25 ? 1 : 0)
   return (
     [...kit.facts].filter((f) => f.kind !== 'headline').sort((a, b) => score(b) - score(a))[0] ??
     kit.facts[0]!
@@ -151,7 +156,7 @@ function noticedLine(kit: BrandKit, first: string): string {
 
 /** One honest sentence tying the featured fact to the sender, without claiming anything new. */
 function whyLine(fact: Fact, candidate: boolean, company: string | undefined): string {
-  const numeric = /\d/.test(fact.text)
+  const numeric = fact.kind === 'stat'
   if (candidate)
     return numeric
       ? 'I want to help move a number like this one'

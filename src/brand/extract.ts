@@ -50,6 +50,14 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
   const page = await context.newPage()
   try {
     if (!opts.allowPrivateNetworks) await guardPage(page)
+    // cross-origin stylesheets hide their rules from the page, so read @font-face from the network
+    const cssTexts: { url: string; text: string }[] = []
+    page.on('response', (r) => {
+      if (r.request().resourceType() !== 'stylesheet' || !r.ok()) return
+      r.text()
+        .then((text) => cssTexts.push({ url: r.url(), text }))
+        .catch(() => {})
+    })
     await page.setViewport({ ...VIEWPORT, deviceScaleFactor: 1 })
     await page.setUserAgent(
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36 coldopen/1.0',
@@ -68,8 +76,11 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
       new Promise((r) => setTimeout(r, 5000)),
     ])
     await page.evaluate(() => window.scrollTo(0, 0))
+    // consent banners often appear a beat after load, so sweep twice
     await dismissOverlays(page)
-    await new Promise((r) => setTimeout(r, 500))
+    await new Promise((r) => setTimeout(r, 700))
+    await dismissOverlays(page)
+    await new Promise((r) => setTimeout(r, 300))
     // biome-ignore lint/performance/useDomNodeTextContent: we want visible text, not hidden markup
     const textLength = await page.evaluate(() => document.body?.innerText?.trim().length ?? 0)
     if (textLength < 40) {
@@ -79,6 +90,9 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
     }
 
     const raw = (await page.evaluate(readPage)) as RawPage
+    raw.headline = tidy(raw.headline)
+    raw.subheads = raw.subheads.map(tidy)
+    raw.faces = mergeFaces(raw.faces, cssTexts)
     const finalUrl = page.url()
     const canonical = await page.evaluate(
       () =>
@@ -222,11 +236,89 @@ function absolutize(src: string, base: string): string {
   }
 }
 
+/** Collapse text a page renders twice (screen-reader copies, animated counters, marquee clones). */
+export function tidy(text: string): string {
+  let w = text.replace(/\s+/g, ' ').trim().split(' ')
+  if (w.length >= 2 && w.length % 2 === 0) {
+    const half = w.length / 2
+    if (w.slice(0, half).join(' ') === w.slice(half).join(' ')) w = w.slice(0, half)
+  }
+  // an immediately repeated run: "1.73958189% 1.73958189%", "teams and agents teams and agents"
+  for (let k = Math.floor(w.length / 2); k >= 1; k--) {
+    for (let i = 0; i + 2 * k <= w.length; i++) {
+      const a = w.slice(i, i + k).join(' ')
+      if (a === w.slice(i + k, i + 2 * k).join(' ') && (k >= 3 || /\d/.test(a))) {
+        w.splice(i + k, k)
+        i--
+      }
+    }
+  }
+  return w.join(' ')
+}
+
+/** Something a person would quote back to a company: not UI chrome, code, or a chat prompt. */
+export function quotable(t: string): boolean {
+  if (/^[a-z]/.test(t)) return false // prompts and fragments from product mockups
+  if (/\b[a-z]+_[a-z_]+\b|\b[a-z]+[A-Z][a-zA-Z]+\(|[{}<>=]/.test(t)) return false // code
+  if (/:$/.test(t)) return false // a label for something that follows
+  if (t === t.toUpperCase() && /[A-Z]{4}/.test(t)) return false // eyebrow labels
+  return true
+}
+
+/** A number worth putting on screen: a percent, a multiple, money, a count, a scale. */
+export function isStat(t: string): boolean {
+  const s = t
+    .replace(/\bv?\d+(\.\d+){1,3}\b(?!\s*%)/g, ' ') // version numbers
+    .replace(/\b24\/7\b|\b(19|20)\d{2}\b/g, ' ') // "24/7", years
+  return (
+    /\d\s*%|\d\s*[x×]\b|[$€£]\s*\d|\d[\d,.]*\s*(k|m|b|bn|mm|million|billion|thousand)\b|\d{1,3}(,\d{3})+|\d+\+/i.test(
+      s,
+    ) ||
+    /\b\d{2,}\s+[a-z]/i.test(s) ||
+    /\b\d+(\.\d+)?\s*(ms|sec|seconds?|min|minutes?|hrs?|hours?|days?|weeks?|months?)\b/i.test(s)
+  )
+}
+
+/** Add @font-face rules from stylesheets the page couldn't read (cross-origin). */
+function mergeFaces(
+  faces: RawPage['faces'],
+  sheets: { url: string; text: string }[],
+): RawPage['faces'] {
+  const out = [...faces]
+  const seen = new Set(faces.map((f) => `${f.family}|${f.src}`))
+  for (const { url, text } of sheets) {
+    for (const block of text.match(/@font-face\s*{[^}]*}/g) ?? []) {
+      const get = (prop: string) =>
+        block.match(new RegExp(`${prop}\\s*:\\s*([^;}]+)`, 'i'))?.[1]?.trim()
+      const family = get('font-family')?.replace(/["']/g, '').trim()
+      const src = get('src')?.match(/url\(\s*["']?([^"')]+)["']?\s*\)/)?.[1]
+      if (!family || !src) continue
+      let abs = src
+      try {
+        abs = new URL(src, url).href
+      } catch {}
+      const key = `${family}|url(${abs})`
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push({
+        family,
+        src: `url(${abs})`,
+        weight: get('font-weight') ?? '400',
+        style: get('font-style') ?? 'normal',
+        unicodeRange: get('unicode-range'),
+      })
+    }
+  }
+  return out
+}
+
 function buildFacts(raw: RawPage): Fact[] {
   const facts: Fact[] = []
   const seen = new Set<string>()
   const push = (text: string, kind: Fact['kind']) => {
-    const t = text.replace(/\s+/g, ' ').trim()
+    const t = tidy(text)
+    if (!quotable(t)) return
+    if (kind === 'stat' && !isStat(t)) kind = 'claim'
     const key = t.toLowerCase().replace(/[^a-z0-9 ]/g, '')
     if (t.length < 12 || t.length > 260 || seen.has(key)) return
     // near-duplicates: the meta description often repeats the hero copy
@@ -247,7 +339,7 @@ function buildFacts(raw: RawPage): Fact[] {
     const quote = b.tag === 'blockquote' || /^["“]/.test(b.text)
     const sentences = quote ? [b.text] : b.text.split(/(?<=[.!?])\s+(?=[A-Z0-9])/)
     for (const sentence of sentences) {
-      push(sentence, quote ? 'quote' : /\d/.test(sentence) ? 'stat' : 'claim')
+      push(sentence, quote ? 'quote' : isStat(sentence) ? 'stat' : 'claim')
     }
     if (facts.length >= 40) break
   }
@@ -256,26 +348,34 @@ function buildFacts(raw: RawPage): Fact[] {
 
 async function dismissOverlays(page: Page): Promise<void> {
   await page.evaluate(() => {
+    // prefer refusing optional cookies; any of these closes the banner
     const words =
-      /^(accept( all)?|agree|i agree|got it|allow all|ok(ay)?|close|dismiss|no thanks)$/i
-    for (const b of document.querySelectorAll<HTMLElement>('button, [role=button], a')) {
-      if (
-        // biome-ignore lint/performance/useDomNodeTextContent: innerText is what a visitor reads
-        words.test(b.innerText?.trim() ?? '') &&
-        b.closest(
-          '[class*=cookie i], [id*=cookie i], [class*=consent i], [id*=consent i], [role=dialog], [class*=banner i]',
-        )
-      ) {
-        b.click()
+      /^(reject( all)?|decline( all)?|only necessary|necessary only|accept( all)?( cookies)?|agree|i agree|got it|allow all|ok(ay)?|close|dismiss|no thanks)$/i
+    const aboutConsent = (el: Element) => {
+      for (let n: Element | null = el, i = 0; n && i < 8; n = n.parentElement, i++) {
+        // biome-ignore lint/performance/useDomNodeTextContent: we match what a visitor reads
+        const t = (n as HTMLElement).innerText ?? ''
+        if (t.length > 2000) return false
+        if (/cookie|consent|privacy/i.test(t) || /cookie|consent/i.test(`${n.id} ${n.className}`))
+          return true
       }
+      return false
+    }
+    for (const b of document.querySelectorAll<HTMLElement>('button, [role=button], a')) {
+      // biome-ignore lint/performance/useDomNodeTextContent: innerText is what a visitor reads
+      if (words.test(b.innerText?.trim() ?? '') && aboutConsent(b)) b.click()
     }
     for (const el of document.querySelectorAll<HTMLElement>('body *')) {
       const s = getComputedStyle(el)
+      if (s.position !== 'fixed' && s.position !== 'sticky') continue
+      const r = el.getBoundingClientRect()
+      const tag = `${el.id} ${el.className}`
+      // biome-ignore lint/performance/useDomNodeTextContent: visible text only
+      const t = el.innerText ?? ''
       if (
-        (s.position === 'fixed' || s.position === 'sticky') &&
-        /cookie|consent|modal|popup|newsletter|chat|intercom|drift/i.test(
-          `${el.id} ${el.className}`,
-        )
+        /cookie|consent|modal|popup|newsletter|chat|intercom|drift/i.test(tag) ||
+        // a floating card that talks about cookies, but never the site header
+        (t.length < 1500 && /\bcookies?\b/i.test(t) && r.top > 80)
       ) {
         el.style.setProperty('display', 'none', 'important')
       }
@@ -286,14 +386,18 @@ async function dismissOverlays(page: Page): Promise<void> {
 async function captureLogo(page: Page): Promise<BrandKit['logo']> {
   const handle = await page.evaluateHandle(() => {
     const scope = document.querySelector('header, [role=banner], nav') ?? document.body
-    const candidates = [
+    const graphic = (el: Element) => el.matches('svg, img') || !!el.querySelector('svg, img')
+    const home = [
       ...scope.querySelectorAll<HTMLElement>(
-        '[class*=logo i], [id*=logo i], img[alt*=logo i], a[aria-label*=home i]',
+        `a[href="/"], a[href="${location.origin}/"], a[href="${location.origin}"], a[aria-label*=home i]`,
       ),
+    ].filter(graphic)
+    const named = [
       ...scope.querySelectorAll<HTMLElement>(
-        `a[href="/"], a[href="${location.pathname}"], a[href="${location.origin}/"]`,
+        '[class*=logo i], [id*=logo i], img[alt*=logo i], [aria-label*=logo i]',
       ),
-    ]
+    ].filter(graphic)
+    const candidates = [...home, ...named]
     for (const el of candidates) {
       const r = el.getBoundingClientRect()
       if (r.width >= 16 && r.width <= 420 && r.height >= 12 && r.height <= 160 && r.top < 200)
@@ -357,7 +461,13 @@ function readPage(): RawPage {
       }
     }
   }
-  const hr = h1?.getBoundingClientRect()
+  let hr = h1?.getBoundingClientRect()
+  if (h1) {
+    const range = document.createRange()
+    range.selectNodeContents(h1)
+    const tr = range.getBoundingClientRect()
+    if (tr.width > 8 && tr.height > 8) hr = tr
+  }
   const subheads = [...document.querySelectorAll('h2, h3')]
     .filter(visible)
     .map(text)

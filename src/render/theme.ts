@@ -100,8 +100,13 @@ export function deriveFields(
   ]
   const dark = field(darkBg, [c.background, lightBg, WHITE], palette)
   const light = field(lightBg, [c.text, c.dark, INK], palette)
+  // a monochrome brand (Vercel, Cal.com) has no signature hue; a mid grey reads as dull, so the
+  // brand scenes take whichever of the brand's own black or white contrasts with the page
+  const tone = oklch(primary)
+  const grey = tone.c < 0.03 && luminance(primary) > 0.05 && luminance(primary) < 0.7
+  const brandBg = grey ? (luminance(rgb(c.background)) > 0.5 ? darkBg : lightBg) : c.primary
   const brand = field(
-    c.primary,
+    brandBg,
     [c.dark, c.text, c.background, WHITE, INK],
     [c.dark, c.background, c.accent, WHITE, INK],
   )

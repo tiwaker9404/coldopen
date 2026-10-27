@@ -100,7 +100,7 @@ Each sender profile is a small JSON file you write once ([examples](profiles/)):
 ## Quality, measured
 
 ```bash
-pnpm test         # 86 tests: runtime, extraction, render QA, pipeline resume, API, Slack, model path
+pnpm test         # 89 tests: runtime, extraction, render QA, pipeline resume, API, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
 ```
