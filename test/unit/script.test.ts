@@ -82,6 +82,15 @@ describe('taste checks', () => {
     expect(v).toContain('proof index 7')
   })
 
+  it('asks for a stat when the site has one, and accepts a quote when it has none', () => {
+    const quoted = { ...good, insight: { factId: 'f3', why: good.insight.why } }
+    expect(checkScript(quoted, kit, sales).join(' ')).toContain(
+      'pick one of the stats instead (f2)',
+    )
+    const noStats = { ...kit, facts: kit.facts.filter((f) => f.kind !== 'stat') } as BrandKit
+    expect(checkScript(quoted, noStats, sales)).toEqual([])
+  })
+
   it('accepts numbers that exist in sources', () => {
     expect(
       checkScript(

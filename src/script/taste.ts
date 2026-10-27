@@ -72,6 +72,6 @@ Taste rules (these are checked in code; a violation means a rewrite):
 - No flattery ("amazing", "impressive", "love what you're doing") and no filler ("just wanted to", "reach out").
 - Never use these words: ${BANNED.slice(0, 24).join(', ')}.
 - Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.
-- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers.
+- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.
 - The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.
 `.trim()

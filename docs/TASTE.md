@@ -24,7 +24,7 @@ The model writes six short lines and makes two choices: which fact from the comp
 ## Grounding
 
 - Every number in the model's lines must appear in the company's facts or the sender's profile.
-- The featured fact must be a real fact ID from the extracted list.
+- The featured fact must be a real fact ID from the extracted list, and a stat whenever the site has one. A number on screen lands harder than a sentence.
 - The hook or the observation must name the company.
 
 ## Tone

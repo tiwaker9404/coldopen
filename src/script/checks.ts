@@ -64,6 +64,17 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
         .join(', ')}, ...)`,
     )
   }
+  const chosen = kit.facts.find((f) => f.id === script.insight.factId)
+  // a number lands harder than a sentence; insist on one when the site offers a readable stat
+  const stats = kit.facts.filter((f) => f.kind === 'stat' && f.text.length <= 160)
+  if (chosen && chosen.kind !== 'stat' && stats.length) {
+    v.push(
+      `insight.factId "${chosen.id}" is a ${chosen.kind}; pick one of the stats instead (${stats
+        .slice(0, 6)
+        .map((f) => f.id)
+        .join(', ')})`,
+    )
+  }
   for (const i of script.proof) {
     if (i >= profile.proof.length)
       v.push(`proof index ${i} is out of range (0-${profile.proof.length - 1})`)
