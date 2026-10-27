@@ -43,6 +43,8 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: pnpm install --frozen-lockfile # downloads Puppeteer's Chrome
       - run: pnpm test
+      - name: Chaos test (SIGKILL a renderer mid-film)
+        run: pnpm test:chaos
       - name: Quality evals (brand fidelity, grounding, contrast, overflow)
         run: pnpm evals
       - uses: actions/upload-artifact@v4

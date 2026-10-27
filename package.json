@@ -29,8 +29,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p dashboard/tsconfig.json",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "test": "vitest run test",
-    "evals": "node evals/run.ts"
+    "test": "vitest run test/unit test/integration test/runtime",
+    "evals": "node evals/run.ts",
+    "test:chaos": "vitest run test/chaos"
   },
   "dependencies": {
     "@fastify/static": "^10.1.8",
