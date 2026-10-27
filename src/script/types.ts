@@ -36,9 +36,17 @@ export const ScriptSchema = z.object({
   }),
   pitch: z.object({
     headline: z.string().describe('max 10 words'),
-    points: z.array(z.string()).min(2).max(3).describe('each max 10 words, tailored from the profile points'),
+    points: z
+      .array(z.string())
+      .min(2)
+      .max(3)
+      .describe('each max 10 words, tailored from the profile points'),
   }),
-  proof: z.array(z.number().int().min(0)).min(1).max(3).describe('indices into the profile proof list'),
+  proof: z
+    .array(z.number().int().min(0))
+    .min(1)
+    .max(3)
+    .describe('indices into the profile proof list'),
   cta: z.string().describe('max 8 words'),
 })
 export type Script = z.infer<typeof ScriptSchema>

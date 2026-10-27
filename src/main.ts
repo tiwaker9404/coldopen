@@ -24,7 +24,12 @@ const stoppers: (() => Promise<void>)[] = []
 
 const llm: LlmProvider =
   cfg.LLM_PROVIDER === 'openai'
-    ? new OpenAICompatibleProvider({ baseUrl: cfg.LLM_BASE_URL, model: cfg.LLM_MODEL, apiKey: cfg.LLM_API_KEY, timeoutMs: cfg.LLM_TIMEOUT_MS })
+    ? new OpenAICompatibleProvider({
+        baseUrl: cfg.LLM_BASE_URL,
+        model: cfg.LLM_MODEL,
+        apiKey: cfg.LLM_API_KEY,
+        timeoutMs: cfg.LLM_TIMEOUT_MS,
+      })
     : {
         name: 'none',
         complete: () => Promise.reject(new Error('no LLM configured (set LLM_PROVIDER=openai)')),
@@ -68,7 +73,8 @@ async function shutdown(signal: string) {
   if (stopping) return
   stopping = true
   log.info({ signal }, 'shutting down')
-  for (const stop of stoppers) await stop().catch((err) => log.error({ err }, 'shutdown step failed'))
+  for (const stop of stoppers)
+    await stop().catch((err) => log.error({ err }, 'shutdown step failed'))
   await sql.end({ timeout: 5 })
   process.exit(0)
 }

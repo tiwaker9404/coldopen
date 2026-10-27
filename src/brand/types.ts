@@ -46,7 +46,9 @@ export const BrandKitSchema = z.object({
     file: z.string(),
     width: z.number(),
     height: z.number(),
-    headlineBox: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).nullable(),
+    headlineBox: z
+      .object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() })
+      .nullable(),
   }),
   extractedAt: z.string(),
 })

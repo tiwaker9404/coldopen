@@ -18,12 +18,24 @@ function host(url: string) {
   }
 }
 
-export function FilmCard({ film, onOpen, active }: { film: Film; onOpen: () => void; active: boolean }) {
+export function FilmCard({
+  film,
+  onOpen,
+  active,
+}: {
+  film: Film
+  onOpen: () => void
+  active: boolean
+}) {
   const live = film.status === 'queued' || film.status === 'running'
   const stage = film.progress?.stage ?? (film.status === 'queued' ? 'queued' : 'research')
   const pct = film.progress?.percent ?? 0
   return (
-    <button type="button" className={`card ${film.format}${active ? ' active' : ''}`} onClick={onOpen}>
+    <button
+      type="button"
+      className={`card ${film.format}${active ? ' active' : ''}`}
+      onClick={onOpen}
+    >
       <div className="frame">
         {film.status === 'succeeded' && film.files ? (
           <img src={media(film, 'poster.jpg')} alt="" loading="lazy" />
@@ -33,18 +45,31 @@ export function FilmCard({ film, onOpen, active }: { film: Film; onOpen: () => v
               <>
                 <span className="tally" aria-hidden="true" />
                 <span className="slate-label">
-                  {film.status === 'queued' ? 'Waiting for a renderer' : STAGE_LABEL[stage] ?? 'Working'}
+                  {film.status === 'queued'
+                    ? 'Waiting for a renderer'
+                    : (STAGE_LABEL[stage] ?? 'Working')}
                 </span>
                 <span className="steps" aria-hidden="true">
                   {STAGES.map((s) => (
-                    <i key={s} className={STAGES.indexOf(s) < STAGES.indexOf(stage as (typeof STAGES)[number]) ? 'done' : s === stage ? 'now' : ''}>
+                    <i
+                      key={s}
+                      className={
+                        STAGES.indexOf(s) < STAGES.indexOf(stage as (typeof STAGES)[number])
+                          ? 'done'
+                          : s === stage
+                            ? 'now'
+                            : ''
+                      }
+                    >
                       {s === stage && s === 'render' ? <b style={{ width: `${pct}%` }} /> : null}
                     </i>
                   ))}
                 </span>
               </>
             ) : (
-              <span className="slate-label">{film.status === 'failed' ? 'Couldn’t make this one' : 'Cancelled'}</span>
+              <span className="slate-label">
+                {film.status === 'failed' ? 'Couldn’t make this one' : 'Cancelled'}
+              </span>
             )}
           </div>
         )}

@@ -130,7 +130,12 @@ export function compose(opts: {
 }): string {
   const { board, kit, theme, format } = opts
   const { width, height } = FORMATS[format]
-  const ctx: SceneCtx = { kit, theme, shot: opts.screenshotDataUrl, logo: kit.logo?.dataUrl ?? null }
+  const ctx: SceneCtx = {
+    kit,
+    theme,
+    shot: opts.screenshotDataUrl,
+    logo: kit.logo?.dataUrl ?? null,
+  }
   let t = 0
   const scenes = board.scenes.map((s, i) => {
     const html = sceneHtml(s, i, t, ctx)

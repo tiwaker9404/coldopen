@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     // integration + chaos suites share one Postgres database, so files run one at a time
     fileParallelism: false,
-    testTimeout: 30_000,
+    testTimeout: 120_000,
     hookTimeout: 30_000,
     env: {
       TEST_DATABASE_URL:

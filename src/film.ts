@@ -4,13 +4,21 @@ import { z } from 'zod'
 import { extractBrand } from './brand/extract.ts'
 import type { BrandKit } from './brand/types.ts'
 import { compose, FORMATS, type Format } from './render/composition.ts'
-import { concatSegments, frameRange, type OpenComposition, openComposition, type QaReport, renderExtras, renderSegment } from './render/render.ts'
+import {
+  concatSegments,
+  frameRange,
+  type OpenComposition,
+  openComposition,
+  type QaReport,
+  renderExtras,
+  renderSegment,
+} from './render/render.ts'
 import { buildTheme } from './render/theme.ts'
+import { NonRetryableError } from './runtime/errors.ts'
+import { defineAgent } from './runtime/types.ts'
 import { buildStoryboard, type Storyboard } from './script/storyboard.ts'
 import { ProfileSchema, type Script, type ScriptMeta, ScriptSchema } from './script/types.ts'
 import { deterministicScript, writeScript } from './script/writer.ts'
-import { NonRetryableError } from './runtime/errors.ts'
-import { defineAgent } from './runtime/types.ts'
 import type { SlackClient } from './slack.ts'
 
 export const FilmInputSchema = z.object({
@@ -32,7 +40,14 @@ export interface FilmResult {
   format: Format
   durationSec: number
   /** paths relative to FILMS_DIR */
-  files: { film: string; poster: string; gif: string; sheet: string; kit: string; storyboard: string }
+  files: {
+    film: string
+    poster: string
+    gif: string
+    sheet: string
+    kit: string
+    storyboard: string
+  }
   script: Script
   scriptMeta: ScriptMeta
   qa: QaReport
@@ -74,7 +89,9 @@ export function createFilmAgent(opts: FilmAgentOptions) {
       ctx.progress({ stage: 'research', label: `Reading ${new URL(input.url).hostname}` })
       let kit: BrandKit
       try {
-        kit = await ctx.step('research', () => extractBrand(input.url, { outDir: dir }), { retries: 1 })
+        kit = await ctx.step('research', () => extractBrand(input.url, { outDir: dir }), {
+          retries: 1,
+        })
       } catch (err) {
         const reason = err instanceof Error ? err.message.split('\n')[0]! : String(err)
         if (input.slack && opts.slack) {
@@ -82,7 +99,12 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           const thread = input.slack
           await ctx.tool(
             'slack-error',
-            () => slack.postMessage(thread.channel, `I couldn't open ${input.url}: ${reason}`, thread.threadTs),
+            () =>
+              slack.postMessage(
+                thread.channel,
+                `I couldn't open ${input.url}: ${reason}`,
+                thread.threadTs,
+              ),
             { mode: 'at-most-once' },
           )
         }
@@ -100,7 +122,12 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           })
         : await ctx.step('script', async () => ({
             script: deterministicScript(kit, profile),
-            meta: { model: 'deterministic', rounds: 1, violations: [[]], usedFallback: false } as ScriptMeta,
+            meta: {
+              model: 'deterministic',
+              rounds: 1,
+              violations: [[]],
+              usedFallback: false,
+            } as ScriptMeta,
           }))
 
       const board: Storyboard = buildStoryboard(kit, profile, script)
@@ -126,7 +153,11 @@ export function createFilmAgent(opts: FilmAgentOptions) {
       // One Chromium page per execution, opened only if something still needs rendering.
       let comp: OpenComposition | null = null
       const page = async () => {
-        if (!comp) comp = await openComposition(await readFile(join(opts.filmsDir, composed.file), 'utf8'), format)
+        if (!comp)
+          comp = await openComposition(
+            await readFile(join(opts.filmsDir, composed.file), 'utf8'),
+            format,
+          )
         return comp
       }
 
@@ -169,10 +200,9 @@ export function createFilmAgent(opts: FilmAgentOptions) {
         const out = await ctx.step('encode', async () => {
           const film = join(dir, `film-${format}.mp4`)
           await concatSegments(segments, film)
-          const sceneStarts = board.scenes.reduce<number[]>((acc, s, i) => {
-            acc.push(i === 0 ? 0 : acc[i - 1]! + board.scenes[i - 1]!.dur)
-            return acc
-          }, [])
+          const sceneStarts = board.scenes.map((_, i) =>
+            board.scenes.slice(0, i).reduce((a, x) => a + x.dur, 0),
+          )
           const c = await page()
           const extras = await renderExtras(c.page, {
             outDir: dir,
@@ -194,7 +224,9 @@ export function createFilmAgent(opts: FilmAgentOptions) {
         if (input.slack && opts.slack) {
           const slack = opts.slack
           const thread = input.slack
-          const share = opts.publicUrl ? `${opts.publicUrl.replace(/\/$/, '')}/f/${ctx.runId}` : null
+          const share = opts.publicUrl
+            ? `${opts.publicUrl.replace(/\/$/, '')}/f/${ctx.runId}`
+            : null
           ctx.progress({ stage: 'deliver', label: 'Posting to Slack', percent: 100 })
           // Slack uploads have no idempotency key: at-most-once, so a crash here can never
           // post the film twice. If it's ambiguous, the run stops for a human to check.

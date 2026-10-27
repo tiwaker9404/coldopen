@@ -46,7 +46,8 @@ export function ProfileEditor({
         points: d.points.map((p) => p.trim()).filter(Boolean),
         proof: d.proof.filter((p) => p.value.trim() && p.label.trim()),
       }
-      const label = name.trim() || `${data.sender.name}${data.sender.company ? `, ${data.sender.company}` : ''}`
+      const label =
+        name.trim() || `${data.sender.name}${data.sender.company ? `, ${data.sender.company}` : ''}`
       const id = profile?.id ?? slug(label)
       return send<Profile>('PUT', `/v1/profiles/${id}`, { name: label, data }).then(() => id)
     },
@@ -54,6 +55,8 @@ export function ProfileEditor({
   })
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop closes; Escape and the Close button do the same
+    // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users close with Escape or the Close button
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <form
         className="panel editor"
@@ -75,24 +78,45 @@ export function ProfileEditor({
         <fieldset className="preset">
           <legend>Use it for</legend>
           <label>
-            <input type="radio" checked={d.preset === 'sales'} onChange={() => set({ preset: 'sales' })} /> Selling a product
+            <input
+              type="radio"
+              checked={d.preset === 'sales'}
+              onChange={() => set({ preset: 'sales' })}
+            />{' '}
+            Selling a product
           </label>
           <label>
-            <input type="radio" checked={d.preset === 'candidate'} onChange={() => set({ preset: 'candidate' })} /> Applying for a job
+            <input
+              type="radio"
+              checked={d.preset === 'candidate'}
+              onChange={() => set({ preset: 'candidate' })}
+            />{' '}
+            Applying for a job
           </label>
         </fieldset>
 
         <div className="two">
           <label>
             Your name
-            <input required value={d.sender.name} onChange={(e) => set({ sender: { ...d.sender, name: e.target.value } })} />
+            <input
+              required
+              value={d.sender.name}
+              onChange={(e) => set({ sender: { ...d.sender, name: e.target.value } })}
+            />
           </label>
           <label>
             {d.preset === 'candidate' ? 'Role you want (optional)' : 'Company'}
             <input
               value={(d.preset === 'candidate' ? d.sender.role : d.sender.company) ?? ''}
               onChange={(e) =>
-                set({ sender: { ...d.sender, ...(d.preset === 'candidate' ? { role: e.target.value } : { company: e.target.value }) } })
+                set({
+                  sender: {
+                    ...d.sender,
+                    ...(d.preset === 'candidate'
+                      ? { role: e.target.value }
+                      : { company: e.target.value }),
+                  },
+                })
               }
             />
           </label>
@@ -105,7 +129,11 @@ export function ProfileEditor({
             minLength={3}
             maxLength={120}
             value={d.offer}
-            placeholder={d.preset === 'candidate' ? 'An engineer who ships AI agents customers use' : 'Product analytics that shows which features keep customers'}
+            placeholder={
+              d.preset === 'candidate'
+                ? 'An engineer who ships AI agents customers use'
+                : 'Product analytics that shows which features keep customers'
+            }
             onChange={(e) => set({ offer: e.target.value })}
           />
         </label>
@@ -119,11 +147,17 @@ export function ProfileEditor({
               aria-label={`Point ${i + 1}`}
               value={p}
               maxLength={120}
-              onChange={(e) => set({ points: d.points.map((x, j) => (j === i ? e.target.value : x)) })}
+              onChange={(e) =>
+                set({ points: d.points.map((x, j) => (j === i ? e.target.value : x)) })
+              }
             />
           ))}
           {d.points.length < 6 && (
-            <button type="button" className="text" onClick={() => set({ points: [...d.points, ''] })}>
+            <button
+              type="button"
+              className="text"
+              onClick={() => set({ points: [...d.points, ''] })}
+            >
               Add a point
             </button>
           )}
@@ -139,19 +173,31 @@ export function ProfileEditor({
                 placeholder="31%"
                 maxLength={12}
                 value={p.value}
-                onChange={(e) => set({ proof: d.proof.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)) })}
+                onChange={(e) =>
+                  set({
+                    proof: d.proof.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)),
+                  })
+                }
               />
               <input
                 aria-label={`Proof ${i + 1} label`}
                 placeholder="lift in retention at Brightline"
                 maxLength={60}
                 value={p.label}
-                onChange={(e) => set({ proof: d.proof.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })}
+                onChange={(e) =>
+                  set({
+                    proof: d.proof.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
+                  })
+                }
               />
             </div>
           ))}
           {d.proof.length < 5 && (
-            <button type="button" className="text" onClick={() => set({ proof: [...d.proof, { value: '', label: '' }] })}>
+            <button
+              type="button"
+              className="text"
+              onClick={() => set({ proof: [...d.proof, { value: '', label: '' }] })}
+            >
               Add proof
             </button>
           )}
@@ -160,17 +206,31 @@ export function ProfileEditor({
         <div className="two">
           <label>
             Closing ask
-            <input required maxLength={60} value={d.cta.line} onChange={(e) => set({ cta: { ...d.cta, line: e.target.value } })} />
+            <input
+              required
+              maxLength={60}
+              value={d.cta.line}
+              onChange={(e) => set({ cta: { ...d.cta, line: e.target.value } })}
+            />
           </label>
           <label>
             Email or link
-            <input required maxLength={80} value={d.cta.contact} onChange={(e) => set({ cta: { ...d.cta, contact: e.target.value } })} />
+            <input
+              required
+              maxLength={80}
+              value={d.cta.contact}
+              onChange={(e) => set({ cta: { ...d.cta, contact: e.target.value } })}
+            />
           </label>
         </div>
 
         <label>
           Profile name
-          <input value={name} placeholder="Shown in the From menu" onChange={(e) => setName(e.target.value)} />
+          <input
+            value={name}
+            placeholder="Shown in the From menu"
+            onChange={(e) => setName(e.target.value)}
+          />
         </label>
 
         {save.error && <p className="error">{save.error.message}</p>}

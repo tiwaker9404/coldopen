@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { ApiError, api, apiKey, type Film, type Format, type Profile, send, setApiKey } from './api.ts'
+import {
+  ApiError,
+  api,
+  apiKey,
+  type Film,
+  type Format,
+  type Profile,
+  send,
+  setApiKey,
+} from './api.ts'
 import { FilmCard } from './FilmCard.tsx'
 import { FilmPanel } from './FilmPanel.tsx'
 import { ProfileEditor } from './ProfileEditor.tsx'
@@ -21,7 +30,10 @@ export function App() {
   const [profileId, setProfileId] = useState<string>('')
   const [lastBatch, setLastBatch] = useState<{ id: string; count: number } | null>(null)
 
-  const profiles = useQuery({ queryKey: ['profiles'], queryFn: () => api<{ data: Profile[] }>('/v1/profiles') })
+  const profiles = useQuery({
+    queryKey: ['profiles'],
+    queryFn: () => api<{ data: Profile[] }>('/v1/profiles'),
+  })
   const films = useQuery({
     queryKey: ['films'],
     queryFn: () => api<{ data: Film[] }>('/v1/films?limit=120'),
@@ -45,7 +57,11 @@ export function App() {
         const f = await send<Film>('POST', '/v1/films', { url: urls[0], profileId, format })
         return { film: f, batch: null as null | { id: string; count: number } }
       }
-      const b = await send<{ batch: string; films: number }>('POST', '/v1/batches', { urls, profileId, format })
+      const b = await send<{ batch: string; films: number }>('POST', '/v1/batches', {
+        urls,
+        profileId,
+        format,
+      })
       return { film: null, batch: { id: b.batch, count: b.films } }
     },
     onSuccess: (r) => {
@@ -56,7 +72,9 @@ export function App() {
     },
   })
 
-  const unauthorized = [films.error, profiles.error].some((e) => e instanceof ApiError && e.status === 401)
+  const unauthorized = [films.error, profiles.error].some(
+    (e) => e instanceof ApiError && e.status === 401,
+  )
   const noProfiles = profiles.data && profiles.data.data.length === 0
   const list = films.data?.data ?? []
 
@@ -98,7 +116,11 @@ export function App() {
                 spellCheck={false}
               />
             )}
-            <button type="submit" className="primary" disabled={make.isPending || noProfiles || !profileId}>
+            <button
+              type="submit"
+              className="primary"
+              disabled={make.isPending || noProfiles || !profileId}
+            >
               {make.isPending
                 ? 'Starting…'
                 : urls.length > 1
@@ -112,7 +134,11 @@ export function App() {
             </button>
             <label className="select">
               <span>From</span>
-              <select value={profileId} onChange={(e) => setProfileId(e.target.value)} disabled={!profiles.data?.data.length}>
+              <select
+                value={profileId}
+                onChange={(e) => setProfileId(e.target.value)}
+                disabled={!profiles.data?.data.length}
+              >
                 {profiles.data?.data.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -123,7 +149,9 @@ export function App() {
             <button
               type="button"
               className="text"
-              onClick={() => setEditing(profiles.data?.data.find((p) => p.id === profileId) ?? 'new')}
+              onClick={() =>
+                setEditing(profiles.data?.data.find((p) => p.id === profileId) ?? 'new')
+              }
             >
               {noProfiles ? 'Create your profile' : 'Edit profile'}
             </button>
@@ -134,6 +162,7 @@ export function App() {
             )}
             <div className="segmented" role="radiogroup" aria-label="Format">
               {FORMATS.map((f) => (
+                // biome-ignore lint/a11y/useSemanticElements: a segmented control; buttons with radio semantics are the WAI-ARIA pattern
                 <button
                   key={f.id}
                   type="button"
@@ -150,12 +179,17 @@ export function App() {
           </div>
           {make.error && <p className="error">{make.error.message}</p>}
           {noProfiles && (
-            <p className="hint">First, tell coldopen who the films are from and what you offer. It takes a minute.</p>
+            <p className="hint">
+              First, tell coldopen who the films are from and what you offer. It takes a minute.
+            </p>
           )}
           {lastBatch && (
             <p className="hint">
               {lastBatch.count} films queued.{' '}
-              <a href={`/v1/batches/${lastBatch.id}/results.csv`} onClick={(e) => downloadCsv(e, lastBatch.id)}>
+              <a
+                href={`/v1/batches/${lastBatch.id}/results.csv`}
+                onClick={(e) => downloadCsv(e, lastBatch.id)}
+              >
                 Download links as CSV
               </a>{' '}
               when they finish, ready for your CRM or sequencer.
@@ -169,8 +203,9 @@ export function App() {
           <div className="empty">
             <h2>No films yet</h2>
             <p>
-              Paste a company's website above. coldopen reads their homepage, matches their brand, writes a short script
-              grounded in what's on the page, and renders the film. It takes about a minute.
+              Paste a company's website above. coldopen reads their homepage, matches their brand,
+              writes a short script grounded in what's on the page, and renders the film. It takes
+              about a minute.
             </p>
           </div>
         ) : (
@@ -203,7 +238,9 @@ export function App() {
 async function downloadCsv(e: React.MouseEvent, batch: string) {
   e.preventDefault()
   const k = apiKey()
-  const res = await fetch(`/v1/batches/${batch}/results.csv`, { headers: k ? { authorization: `Bearer ${k}` } : {} })
+  const res = await fetch(`/v1/batches/${batch}/results.csv`, {
+    headers: k ? { authorization: `Bearer ${k}` } : {},
+  })
   const blob = await res.blob()
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)

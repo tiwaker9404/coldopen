@@ -1,7 +1,16 @@
 import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import {
+  contrast,
+  luminance,
+  oklch,
+  parseColor,
+  type Rgb,
+  readableOn,
+  shade,
+  toHex,
+} from '../brand/color.ts'
 import type { BrandKit, FontRef } from '../brand/types.ts'
-import { contrast, luminance, oklch, parseColor, type Rgb, readableOn, shade, toHex } from '../brand/color.ts'
 import type { Profile } from '../script/types.ts'
 
 export interface Field {
@@ -34,8 +43,9 @@ function legibleShade(hex: string, bg: Rgb, min: number): string | null {
   const c = rgb(hex)
   const dir = luminance(bg) > 0.4 ? -1 : 1
   for (let k = 0; k <= 0.9; k += 0.05) {
-    const s = shade(c, dir * k)
-    if (contrast(s, bg) >= min) return toHex(s)
+    // check the rounded hex we will actually paint, not the float color
+    const hex = toHex(shade(c, dir * k))
+    if (contrast(rgb(hex), bg) >= min) return hex
   }
   return null
 }
@@ -68,7 +78,10 @@ function field(bgHex: string, fgCandidates: string[], accentCandidates: string[]
  * accessible: every foreground meets WCAG 4.5:1 on its background, accents 3:1. The brand's
  * own colors are tried first; neutral ink/white only when the brand can't pass.
  */
-export function deriveFields(kit: BrandKit, profile: Profile): Pick<FilmTheme, 'dark' | 'light' | 'brand' | 'sender'> {
+export function deriveFields(
+  kit: BrandKit,
+  profile: Profile,
+): Pick<FilmTheme, 'dark' | 'light' | 'brand' | 'sender'> {
   const c = kit.colors
   const primary = rgb(c.primary)
 
@@ -77,10 +90,21 @@ export function deriveFields(kit: BrandKit, profile: Profile): Pick<FilmTheme, '
   let lightBg = c.background
   if (luminance(rgb(lightBg)) < 0.55) lightBg = toHex(shade(primary, 0.93))
 
-  const palette = [c.primary, c.accent, c.text, c.dark, c.background, ...c.swatches.map((s) => s.hex)]
+  const palette = [
+    c.primary,
+    c.accent,
+    c.text,
+    c.dark,
+    c.background,
+    ...c.swatches.map((s) => s.hex),
+  ]
   const dark = field(darkBg, [c.background, lightBg, WHITE], palette)
   const light = field(lightBg, [c.text, c.dark, INK], palette)
-  const brand = field(c.primary, [c.dark, c.text, c.background, WHITE, INK], [c.dark, c.background, c.accent, WHITE, INK])
+  const brand = field(
+    c.primary,
+    [c.dark, c.text, c.background, WHITE, INK],
+    [c.dark, c.background, c.accent, WHITE, INK],
+  )
   const senderBg = profile.color ?? darkBg
   const sender = field(senderBg, [lightBg, WHITE, INK], [c.primary, ...palette])
   return { dark, light, brand, sender }
@@ -89,14 +113,20 @@ export function deriveFields(kit: BrandKit, profile: Profile): Pick<FilmTheme, '
 const require = createRequire(import.meta.url)
 
 async function bundled(pkg: string, file: string): Promise<string> {
-  const dir = require.resolve(`@fontsource-variable/${pkg}/package.json`).replace(/package\.json$/, '')
+  const dir = require
+    .resolve(`@fontsource-variable/${pkg}/package.json`)
+    .replace(/package\.json$/, '')
   const data = await readFile(`${dir}files/${file}`)
   return `data:font/woff2;base64,${data.toString('base64')}`
 }
 
 const FALLBACK = {
   serif: { family: 'Fraunces Fallback', pkg: 'fraunces', file: 'fraunces-latin-wght-normal.woff2' },
-  sans: { family: 'Instrument Sans Fallback', pkg: 'instrument-sans', file: 'instrument-sans-latin-wght-normal.woff2' },
+  sans: {
+    family: 'Instrument Sans Fallback',
+    pkg: 'instrument-sans',
+    file: 'instrument-sans-latin-wght-normal.woff2',
+  },
 }
 
 async function fetchFace(src: string, timeoutMs: number): Promise<string | null> {
@@ -107,14 +137,22 @@ async function fetchFace(src: string, timeoutMs: number): Promise<string | null>
     if (!res.ok) return null
     const buf = Buffer.from(await res.arrayBuffer())
     if (buf.length > 2_000_000) return null
-    const type = url.includes('.woff2') ? 'font/woff2' : url.includes('.woff') ? 'font/woff' : 'font/ttf'
+    const type = url.includes('.woff2')
+      ? 'font/woff2'
+      : url.includes('.woff')
+        ? 'font/woff'
+        : 'font/ttf'
     return `data:${type};base64,${buf.toString('base64')}`
   } catch {
     return null
   }
 }
 
-async function embedFont(ref: FontRef, alias: string, timeoutMs: number): Promise<{ css: string; ok: boolean }> {
+async function embedFont(
+  ref: FontRef,
+  alias: string,
+  timeoutMs: number,
+): Promise<{ css: string; ok: boolean }> {
   const rules: string[] = []
   for (const face of ref.faces) {
     const data = await fetchFace(face.src, timeoutMs)
@@ -126,7 +164,11 @@ async function embedFont(ref: FontRef, alias: string, timeoutMs: number): Promis
   return { css: rules.join('\n'), ok: rules.length > 0 }
 }
 
-export async function buildTheme(kit: BrandKit, profile: Profile, opts: { fontTimeoutMs?: number } = {}): Promise<FilmTheme> {
+export async function buildTheme(
+  kit: BrandKit,
+  profile: Profile,
+  opts: { fontTimeoutMs?: number } = {},
+): Promise<FilmTheme> {
   const timeout = opts.fontTimeoutMs ?? 8000
   const fields = deriveFields(kit, profile)
   const displayFallback = FALLBACK[kit.fonts.display.category === 'serif' ? 'serif' : 'sans']

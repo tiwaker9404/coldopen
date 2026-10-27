@@ -89,3 +89,51 @@ export async function waitUntil(cond: () => boolean, timeoutMs = 5000): Promise<
     await sleep(10)
   }
 }
+
+/* ------------------------------------------------------------ coldopen helpers */
+
+import { mkdtempSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { serveFixtures } from '../../fixtures/serve.ts'
+import { extractBrand } from '../../src/brand/extract.ts'
+import type { BrandKit } from '../../src/brand/types.ts'
+import { type Profile, ProfileSchema } from '../../src/script/types.ts'
+
+export const SITES = ['northwind', 'lumen', 'parcelpine'] as const
+export type Site = (typeof SITES)[number]
+
+export function tmp(prefix = 'coldopen-'): string {
+  return mkdtempSync(join(tmpdir(), prefix))
+}
+
+export function profile(name: 'sales' | 'candidate'): Profile {
+  return ProfileSchema.parse(
+    JSON.parse(
+      readFileSync(join(import.meta.dirname, `../../profiles/${name}.example.json`), 'utf8'),
+    ),
+  )
+}
+
+let fixtures: Promise<{ url: string; close: () => void }> | null = null
+export function fixtureServer() {
+  if (!fixtures) {
+    fixtures = serveFixtures().then(({ server, url }) => ({ url, close: () => server.close() }))
+  }
+  return fixtures
+}
+
+const kits = new Map<string, Promise<{ kit: BrandKit; dir: string }>>()
+/** Extract each fixture site once per test file. */
+export function kitFor(site: Site) {
+  if (!kits.has(site)) {
+    kits.set(
+      site,
+      fixtureServer().then(async ({ url }) => {
+        const dir = tmp(`kit-${site}-`)
+        return { kit: await extractBrand(`${url}/${site}/`, { outDir: dir }), dir }
+      }),
+    )
+  }
+  return kits.get(site)!
+}

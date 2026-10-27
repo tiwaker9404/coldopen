@@ -20,7 +20,10 @@ const PRESETS: Record<Profile['preset'], string> = {
 }
 
 export function buildMessages(kit: BrandKit, profile: Profile): ChatMessage[] {
-  const facts = kit.facts.slice(0, 30).map((f) => `${f.id} [${f.kind}] ${f.text}`).join('\n')
+  const facts = kit.facts
+    .slice(0, 30)
+    .map((f) => `${f.id} [${f.kind}] ${f.text}`)
+    .join('\n')
   const proof = profile.proof.map((p, i) => `${i}: ${p.value} ${p.label}`).join('\n')
   const user = `${PRESETS[profile.preset]}
 
@@ -71,7 +74,11 @@ export async function writeScript(opts: {
     script = await opts.complete(`script-${round}`, messages)
     const v = checkScript(script, kit, profile)
     history.push(v)
-    if (v.length === 0) return { script, meta: { model: opts.model, rounds: round, violations: history, usedFallback: false } }
+    if (v.length === 0)
+      return {
+        script,
+        meta: { model: opts.model, rounds: round, violations: history, usedFallback: false },
+      }
     messages.push(
       { role: 'assistant', content: JSON.stringify(script) },
       {
@@ -84,17 +91,31 @@ export async function writeScript(opts: {
   const clamped = clampScript(script!, profile)
   const remaining = checkScript(clamped, kit, profile)
   if (remaining.length === 0) {
-    return { script: clamped, meta: { model: opts.model, rounds: max, violations: history, usedFallback: false } }
+    return {
+      script: clamped,
+      meta: { model: opts.model, rounds: max, violations: history, usedFallback: false },
+    }
   }
   return {
     script: deterministicScript(kit, profile),
-    meta: { model: opts.model, rounds: max, violations: [...history, remaining], usedFallback: true },
+    meta: {
+      model: opts.model,
+      rounds: max,
+      violations: [...history, remaining],
+      usedFallback: true,
+    },
   }
 }
 
 /* ------------------------------------------------- deterministic writer */
 
-const clip = (s: string, n: number) => s.trim().split(/\s+/).slice(0, n).join(' ').replace(/[.,;:]$/, '')
+const clip = (s: string, n: number) =>
+  s
+    .trim()
+    .split(/\s+/)
+    .slice(0, n)
+    .join(' ')
+    .replace(/[.,;:]$/, '')
 
 function bestFact(kit: BrandKit, profile: Profile): Fact {
   const vocab = new Set(
@@ -105,9 +126,15 @@ function bestFact(kit: BrandKit, profile: Profile): Fact {
   )
   const score = (f: Fact) =>
     (f.kind === 'stat' ? 3 : f.kind === 'quote' ? 2 : 0) +
-    f.text.toLowerCase().split(/\W+/).filter((w) => vocab.has(w)).length -
+    f.text
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((w) => vocab.has(w)).length -
     (f.text.length > 120 ? 2 : 0)
-  return [...kit.facts].filter((f) => f.kind !== 'headline').sort((a, b) => score(b) - score(a))[0] ?? kit.facts[0]!
+  return (
+    [...kit.facts].filter((f) => f.kind !== 'headline').sort((a, b) => score(b) - score(a))[0] ??
+    kit.facts[0]!
+  )
 }
 
 /**

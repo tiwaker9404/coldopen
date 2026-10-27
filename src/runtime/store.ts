@@ -69,7 +69,10 @@ export type CreateRunResult =
 
 /** Run fn in a transaction, or a savepoint when already inside one (e.g. batch creation). */
 function atomically<T>(sql: Sql, fn: (tx: Sql) => Promise<T>): Promise<T> {
-  const s = sql as unknown as { begin?: unknown; savepoint: (f: (tx: Sql) => Promise<T>) => Promise<T> }
+  const s = sql as unknown as {
+    begin?: unknown
+    savepoint: (f: (tx: Sql) => Promise<T>) => Promise<T>
+  }
   return typeof s.begin === 'function'
     ? (sql.begin((tx) => fn(tx as unknown as Sql)) as Promise<T>)
     : s.savepoint(fn)
@@ -581,7 +584,11 @@ export async function getStats(sql: Sql): Promise<Stats> {
 }
 
 /** Best-effort progress write, fenced so a zombie can't scribble over the new owner's status. */
-export async function setProgress(sql: Sql, lease: Lease, data: Record<string, unknown>): Promise<void> {
+export async function setProgress(
+  sql: Sql,
+  lease: Lease,
+  data: Record<string, unknown>,
+): Promise<void> {
   await sql`update runs set progress = ${sql.json(data as never)}
             where id = ${lease.runId} and lease_token = ${lease.token}`
 }

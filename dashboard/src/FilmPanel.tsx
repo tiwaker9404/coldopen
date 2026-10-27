@@ -38,7 +38,8 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
   const q = useQuery({
     queryKey: ['film', id],
     queryFn: () => api<FilmDetail>(`/v1/films/${id}`),
-    refetchInterval: (s) => (s.state.data && ['queued', 'running'].includes(s.state.data.status) ? 1000 : false),
+    refetchInterval: (s) =>
+      s.state.data && ['queued', 'running'].includes(s.state.data.status) ? 1000 : false,
   })
   const retry = useMutation({
     mutationFn: () => send('POST', `/v1/films/${id}/retry`),
@@ -55,8 +56,17 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
   const f = q.data
   const live = f && (f.status === 'queued' || f.status === 'running')
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop closes; Escape and the Close button do the same
+    // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users close with Escape or the Close button
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <aside className="panel" role="dialog" aria-modal="true" aria-label="Film" tabIndex={-1} ref={ref}>
+      <aside
+        className="panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Film"
+        tabIndex={-1}
+        ref={ref}
+      >
         <div className="panel-head">
           <div>
             <h2>{f?.company ?? f?.url ?? 'Loading…'}</h2>
@@ -81,7 +91,9 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
             />
             <div className="actions">
               {f.share && <Copy text={f.share} label="Copy share link" />}
-              {f.embed && <Copy text={f.embed} label="Copy email GIF" done="Paste into your email" />}
+              {f.embed && (
+                <Copy text={f.embed} label="Copy email GIF" done="Paste into your email" />
+              )}
               <a className="button" href={media(f, 'film')} download={`${f.company}.mp4`}>
                 Download MP4
               </a>
@@ -102,8 +114,16 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
             <span className="tally" aria-hidden="true" />
             <div>
               <p className="live-label">{f.progress?.label ?? 'Waiting for a renderer'}</p>
-              <div className="bar" role="progressbar" aria-valuenow={f.progress?.percent ?? 0} aria-valuemin={0} aria-valuemax={100}>
-                <b style={{ width: `${f.progress?.percent ?? (f.status === 'queued' ? 0 : 4)}%` }} />
+              <div
+                className="bar"
+                role="progressbar"
+                aria-valuenow={f.progress?.percent ?? 0}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <b
+                  style={{ width: `${f.progress?.percent ?? (f.status === 'queued' ? 0 : 4)}%` }}
+                />
               </div>
             </div>
           </div>
@@ -164,14 +184,19 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
                 <li key={s.key} className={s.status}>
                   <span>{stepLabel(s.key)}</span>
                   <span className="muted">
-                    {s.replays > 0 ? 'kept after restart' : s.durationMs != null ? `${(s.durationMs / 1000).toFixed(1)}s` : s.status}
+                    {s.replays > 0
+                      ? 'kept after restart'
+                      : s.durationMs != null
+                        ? `${(s.durationMs / 1000).toFixed(1)}s`
+                        : s.status}
                   </span>
                 </li>
               ))}
             </ol>
             {f.attempts > 1 && (
               <p className="muted small">
-                A renderer restarted during this film. Finished work was kept, and only the remaining scenes were rendered.
+                A renderer restarted during this film. Finished work was kept, and only the
+                remaining scenes were rendered.
               </p>
             )}
           </section>

@@ -13,7 +13,8 @@ export function parseColor(input: string): (Rgb & { a: number }) | null {
   const s = input.trim().toLowerCase()
   let m = s.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+%?))?\s*\)$/)
   if (m) {
-    const a = m[4] === undefined ? 1 : m[4].endsWith('%') ? Number.parseFloat(m[4]) / 100 : Number(m[4])
+    const a =
+      m[4] === undefined ? 1 : m[4].endsWith('%') ? Number.parseFloat(m[4]) / 100 : Number(m[4])
     return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]), a }
   }
   m = s.match(/^#([0-9a-f]{3,8})$/)
@@ -27,7 +28,10 @@ export function parseColor(input: string): (Rgb & { a: number }) | null {
 }
 
 export function toHex({ r, g, b }: Rgb): string {
-  const h = (v: number) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')
+  const h = (v: number) =>
+    Math.round(Math.max(0, Math.min(255, v)))
+      .toString(16)
+      .padStart(2, '0')
   return `#${h(r)}${h(g)}${h(b)}`
 }
 
@@ -76,6 +80,7 @@ export function distance(a: Rgb, b: Rgb): number {
 
 const WHITE: Rgb = { r: 255, g: 255, b: 255 }
 const BLACK: Rgb = { r: 17, g: 17, b: 17 }
+const PURE_BLACK: Rgb = { r: 0, g: 0, b: 0 }
 
 /**
  * The most on-brand text color that is still readable on `bg`:
@@ -83,7 +88,10 @@ const BLACK: Rgb = { r: 17, g: 17, b: 17 }
  */
 export function readableOn(bg: Rgb, candidates: Rgb[], min = 4.5): Rgb {
   for (const c of candidates) if (contrast(c, bg) >= min) return c
-  return contrast(WHITE, bg) >= contrast(BLACK, bg) ? WHITE : BLACK
+  if (contrast(WHITE, bg) >= min) return WHITE
+  if (contrast(BLACK, bg) >= min) return BLACK
+  // on mid-tones only pure black or white can pass; one of the two always reaches 4.58:1
+  return contrast(WHITE, bg) >= contrast(PURE_BLACK, bg) ? WHITE : PURE_BLACK
 }
 
 /** Mix toward white (t>0) or black (t<0). */
@@ -168,6 +176,9 @@ export function derivePalette(input: {
     .sort((a, b) => b[1] - a[1])
   const dark = darkCandidates[0]?.[0] ?? (luminance(textRgb) < 0.06 ? text : '#111418')
 
-  const swatches = byWeight([...merged.entries()].map(([hex, weight]) => ({ hex, weight }))).slice(0, 8)
+  const swatches = byWeight([...merged.entries()].map(([hex, weight]) => ({ hex, weight }))).slice(
+    0,
+    8,
+  )
   return { background, text, primary, accent, dark, swatches }
 }

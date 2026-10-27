@@ -25,11 +25,18 @@ export function serveFixtures(port = 0): Promise<{ server: Server; url: string }
     let file: string
     if (path.startsWith('/fonts/')) file = normalize(join(MODULES, path.slice(7)))
     else file = normalize(join(SITES, path.endsWith('/') ? `${path}index.html` : path))
-    if (!(file.startsWith(SITES) || file.startsWith(MODULES)) || !existsSync(file) || statSync(file).isDirectory()) {
+    if (
+      !(file.startsWith(SITES) || file.startsWith(MODULES)) ||
+      !existsSync(file) ||
+      statSync(file).isDirectory()
+    ) {
       res.writeHead(404).end('not found')
       return
     }
-    res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'access-control-allow-origin': '*' })
+    res.writeHead(200, {
+      'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
+      'access-control-allow-origin': '*',
+    })
     createReadStream(file).pipe(res)
   })
   return new Promise((resolve) =>

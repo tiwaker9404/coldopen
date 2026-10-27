@@ -49,7 +49,10 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
     await page.setUserAgent(
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36 coldopen/1.0',
     )
-    const res = await page.goto(url, { waitUntil: 'networkidle2', timeout: opts.timeoutMs ?? 30_000 })
+    const res = await page.goto(url, {
+      waitUntil: 'networkidle2',
+      timeout: opts.timeoutMs ?? 30_000,
+    })
     if (!res) throw new Error(`no response from ${url}`)
     if (res.status() >= 400) throw new Error(`${url} returned HTTP ${res.status()}`)
     await page.evaluate(() => document.fonts.ready.then(() => undefined))
@@ -68,14 +71,22 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
 
     await mkdir(opts.outDir, { recursive: true })
     const shotFile = join(opts.outDir, 'site.jpg')
-    await page.screenshot({ path: shotFile, type: 'jpeg', quality: 88, clip: { x: 0, y: 0, ...VIEWPORT } })
+    await page.screenshot({
+      path: shotFile,
+      type: 'jpeg',
+      quality: 88,
+      clip: { x: 0, y: 0, ...VIEWPORT },
+    })
     const logo = await captureLogo(page)
 
     const name = cleanName(raw.siteName || raw.title.split(/\s[|–—:-]\s|:\s/)[0] || host)
     const colors = derivePalette({
       backgrounds: toWeighted(raw.backgrounds),
       texts: toWeighted(raw.texts),
-      brand: toWeighted([...raw.brand, ...(raw.themeColor ? [[raw.themeColor, 40_000] as [string, number]] : [])]),
+      brand: toWeighted([
+        ...raw.brand,
+        ...(raw.themeColor ? [[raw.themeColor, 40_000] as [string, number]] : []),
+      ]),
     })
 
     const kit: BrandKit = {
@@ -124,13 +135,22 @@ function toWeighted(list: [string, number][]): WeightedColor[] {
 }
 
 function cleanName(s: string): string {
-  return s.replace(/\s+/g, ' ').replace(/^(home|welcome)\s*[|:-]\s*/i, '').trim().slice(0, 60)
+  return s
+    .replace(/\s+/g, ' ')
+    .replace(/^(home|welcome)\s*[|:-]\s*/i, '')
+    .trim()
+    .slice(0, 60)
 }
 
-const SERIF = /serif|fraunces|playfair|georgia|times|garamond|merriweather|lora|tiempos|canela|freight|caslon|baskerville|didot|bodoni|newsreader|instrument serif|dm serif|recoleta|gt super|editorial/i
+const SERIF =
+  /serif|fraunces|playfair|georgia|times|garamond|merriweather|lora|tiempos|canela|freight|caslon|baskerville|didot|bodoni|newsreader|instrument serif|dm serif|recoleta|gt super|editorial/i
 const MONO = /mono|courier|consolas|menlo|code/i
 
-function fontRef(f: { family: string; weight: number }, faces: RawPage['faces'], base: string): FontRef {
+function fontRef(
+  f: { family: string; weight: number },
+  faces: RawPage['faces'],
+  base: string,
+): FontRef {
   const stack = f.family.split(',').map((s) => s.trim().replace(/^["']|["']$/g, ''))
   const family = stack[0] || 'sans-serif'
   const generic = stack.find((s) => ['serif', 'sans-serif', 'monospace'].includes(s))
@@ -145,7 +165,9 @@ function fontRef(f: { family: string; weight: number }, faces: RawPage['faces'],
     .map((x) => ({ ...x, src: absolutize(x.src, base) }))
     .filter((x) => /\.woff2?(\?|$)|format\(["']?woff/i.test(x.src))
   // prefer latin subsets: no unicode-range, or one that covers basic Latin
-  const latin = mine.filter((x) => !x.unicodeRange || /U\+0000-00FF|U\+0-FF|U\+0020/i.test(x.unicodeRange))
+  const latin = mine.filter(
+    (x) => !x.unicodeRange || /U\+0000-00FF|U\+0-FF|U\+0020/i.test(x.unicodeRange),
+  )
   return {
     family,
     category,
@@ -198,15 +220,27 @@ function buildFacts(raw: RawPage): Fact[] {
 
 async function dismissOverlays(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const words = /^(accept( all)?|agree|i agree|got it|allow all|ok(ay)?|close|dismiss|no thanks)$/i
+    const words =
+      /^(accept( all)?|agree|i agree|got it|allow all|ok(ay)?|close|dismiss|no thanks)$/i
     for (const b of document.querySelectorAll<HTMLElement>('button, [role=button], a')) {
-      if (words.test(b.innerText?.trim() ?? '') && b.closest('[class*=cookie i], [id*=cookie i], [class*=consent i], [id*=consent i], [role=dialog], [class*=banner i]')) {
+      if (
+        // biome-ignore lint/performance/useDomNodeTextContent: innerText is what a visitor reads
+        words.test(b.innerText?.trim() ?? '') &&
+        b.closest(
+          '[class*=cookie i], [id*=cookie i], [class*=consent i], [id*=consent i], [role=dialog], [class*=banner i]',
+        )
+      ) {
         b.click()
       }
     }
     for (const el of document.querySelectorAll<HTMLElement>('body *')) {
       const s = getComputedStyle(el)
-      if ((s.position === 'fixed' || s.position === 'sticky') && /cookie|consent|modal|popup|newsletter|chat|intercom|drift/i.test(`${el.id} ${el.className}`)) {
+      if (
+        (s.position === 'fixed' || s.position === 'sticky') &&
+        /cookie|consent|modal|popup|newsletter|chat|intercom|drift/i.test(
+          `${el.id} ${el.className}`,
+        )
+      ) {
         el.style.setProperty('display', 'none', 'important')
       }
     }
@@ -217,12 +251,17 @@ async function captureLogo(page: Page): Promise<BrandKit['logo']> {
   const handle = await page.evaluateHandle(() => {
     const scope = document.querySelector('header, [role=banner], nav') ?? document.body
     const candidates = [
-      ...scope.querySelectorAll<HTMLElement>('[class*=logo i], [id*=logo i], img[alt*=logo i], a[aria-label*=home i]'),
-      ...scope.querySelectorAll<HTMLElement>(`a[href="/"], a[href="${location.pathname}"], a[href="${location.origin}/"]`),
+      ...scope.querySelectorAll<HTMLElement>(
+        '[class*=logo i], [id*=logo i], img[alt*=logo i], a[aria-label*=home i]',
+      ),
+      ...scope.querySelectorAll<HTMLElement>(
+        `a[href="/"], a[href="${location.pathname}"], a[href="${location.origin}/"]`,
+      ),
     ]
     for (const el of candidates) {
       const r = el.getBoundingClientRect()
-      if (r.width >= 16 && r.width <= 420 && r.height >= 12 && r.height <= 160 && r.top < 200) return el
+      if (r.width >= 16 && r.width <= 420 && r.height >= 12 && r.height <= 160 && r.top < 200)
+        return el
     }
     return null
   })
@@ -252,19 +291,37 @@ function readPage(): RawPage {
   const visible = (el: Element) => {
     const r = el.getBoundingClientRect()
     const s = getComputedStyle(el)
-    return r.width > 2 && r.height > 2 && s.visibility !== 'hidden' && s.display !== 'none' && Number(s.opacity) > 0.1
+    return (
+      r.width > 2 &&
+      r.height > 2 &&
+      s.visibility !== 'hidden' &&
+      s.display !== 'none' &&
+      Number(s.opacity) > 0.1
+    )
   }
-  const text = (el: Element | null) => ((el as HTMLElement | null)?.innerText ?? '').replace(/\s+/g, ' ').trim()
+  const text = (el: Element | null) =>
+    // biome-ignore lint/performance/useDomNodeTextContent: innerText keeps block breaks ("1,400+\nshippers")
+    ((el as HTMLElement | null)?.innerText ?? '').replace(/\s+/g, ' ').trim()
   const meta = (sel: string) => document.querySelector<HTMLMetaElement>(sel)?.content?.trim() ?? ''
 
   // -- copy
   const h1 = [...document.querySelectorAll('h1')].find(visible) ?? null
   const hr = h1?.getBoundingClientRect()
-  const subheads = [...document.querySelectorAll('h2, h3')].filter(visible).map(text).filter((t) => t.length > 3).slice(0, 10)
-  const nav = [...document.querySelectorAll('header a, nav a')].filter(visible).map(text).filter((t) => t.length > 1 && t.length < 30).slice(0, 12)
+  const subheads = [...document.querySelectorAll('h2, h3')]
+    .filter(visible)
+    .map(text)
+    .filter((t) => t.length > 3)
+    .slice(0, 10)
+  const nav = [...document.querySelectorAll('header a, nav a')]
+    .filter(visible)
+    .map(text)
+    .filter((t) => t.length > 1 && t.length < 30)
+    .slice(0, 12)
   const blocks: { text: string; tag: string }[] = []
   const seenBlocks = new Set<Element>()
-  for (const el of document.querySelectorAll('main p, main li, main blockquote, p, li, blockquote, h2, h3, [class*=stat i], [class*=metric i], footer')) {
+  for (const el of document.querySelectorAll(
+    'main p, main li, main blockquote, p, li, blockquote, h2, h3, [class*=stat i], [class*=metric i], footer',
+  )) {
     if (!visible(el) || seenBlocks.has(el)) continue
     // ignore containers whose children are also candidates
     if (el.querySelector('p, li, blockquote, h2, h3')) continue
@@ -279,7 +336,13 @@ function readPage(): RawPage {
     // a tile, not a row of tiles: no block-level children
     if (el.children.length > 3 || !visible(el) || el.querySelector('div, p, li, section')) continue
     const t = text(el)
-    if (/\d/.test(t) && t.length >= 12 && t.length <= 120 && el.querySelector('b, strong, em, [class*=num i]') && !blocks.some((b) => b.text === t)) {
+    if (
+      /\d/.test(t) &&
+      t.length >= 12 &&
+      t.length <= 120 &&
+      el.querySelector('b, strong, em, [class*=num i]') &&
+      !blocks.some((b) => b.text === t)
+    ) {
       blocks.push({ text: t, tag: 'stat' })
     }
   }
@@ -291,28 +354,46 @@ function readPage(): RawPage {
   const bodyBg = getComputedStyle(document.body).backgroundColor
   const htmlBg = getComputedStyle(document.documentElement).backgroundColor
   const pageBg = /rgba\(0, 0, 0, 0\)|transparent/.test(bodyBg) ? htmlBg : bodyBg
-  backgrounds.push([/rgba\(0, 0, 0, 0\)|transparent/.test(pageBg) ? 'rgb(255, 255, 255)' : pageBg, vw * vh * 0.6])
+  backgrounds.push([
+    /rgba\(0, 0, 0, 0\)|transparent/.test(pageBg) ? 'rgb(255, 255, 255)' : pageBg,
+    vw * vh * 0.6,
+  ])
   const all = [...document.querySelectorAll('body *')].slice(0, 4000)
   for (const el of all) {
     const r = el.getBoundingClientRect()
     if (r.bottom < 0 || r.top > vh * 2.5 || r.width < 2 || r.height < 2) continue
     const s = getComputedStyle(el)
     if (s.visibility === 'hidden' || s.display === 'none') continue
-    const area = Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, vh * 2.5) - Math.max(r.top, 0))
+    const area =
+      Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0)) *
+      Math.max(0, Math.min(r.bottom, vh * 2.5) - Math.max(r.top, 0))
     // above the fold counts double
     const fold = r.top < vh ? 2 : 1
-    if (!/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor)) backgrounds.push([s.backgroundColor, area * fold])
-    const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent ?? '').join('').trim()
+    if (!/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor))
+      backgrounds.push([s.backgroundColor, area * fold])
+    const own = [...el.childNodes]
+      .filter((n) => n.nodeType === 3)
+      .map((n) => n.textContent ?? '')
+      .join('')
+      .trim()
     if (own.length) texts.push([s.color, own.length * fold])
-    const interactive = el.matches('a, button, [role=button], [class*=btn i], [class*=button i], [class*=cta i]')
+    const interactive = el.matches(
+      'a, button, [role=button], [class*=btn i], [class*=button i], [class*=cta i]',
+    )
     if (interactive) {
-      if (!/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor)) brand.push([s.backgroundColor, 6000 * fold])
+      if (!/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor))
+        brand.push([s.backgroundColor, 6000 * fold])
       else if (own.length) brand.push([s.color, 800])
     }
     if (el.matches('h1, h2') && own.length) brand.push([s.color, 1500])
-    if (el instanceof SVGElement || el.tagName === 'path' || el.tagName === 'rect' || el.tagName === 'circle') {
+    if (
+      el instanceof SVGElement ||
+      el.tagName === 'path' ||
+      el.tagName === 'rect' ||
+      el.tagName === 'circle'
+    ) {
       const fill = s.fill
-      if (fill && fill.startsWith('rgb') && r.top < 160) brand.push([fill, 4000])
+      if (fill?.startsWith('rgb') && r.top < 160) brand.push([fill, 4000])
     }
   }
 

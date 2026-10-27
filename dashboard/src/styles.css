@@ -7,13 +7,13 @@
   --tally: #e5322d;
   --ok: #157a52;
   --focus: #2f5fd0;
-  --display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
-  --body: 'Instrument Sans Variable', system-ui, sans-serif;
+  --display: "Bricolage Grotesque Variable", system-ui, sans-serif;
+  --body: "Instrument Sans Variable", system-ui, sans-serif;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root:not([data-theme="light"]) {
     --paper: #111317;
     --surface: #1a1d23;
     --ink: #eceef2;
@@ -143,7 +143,7 @@ button.text:hover {
 }
 
 .lens::after {
-  content: '';
+  content: "";
   position: absolute;
   right: 5px;
   top: 5px;
@@ -602,7 +602,7 @@ main {
   margin-bottom: 14px;
 }
 
-.editor input:not([type='radio']) {
+.editor input:not([type="radio"]) {
   border: 1px solid var(--rule);
   border-radius: 8px;
   padding: 9px 11px;

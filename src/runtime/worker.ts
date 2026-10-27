@@ -303,12 +303,15 @@ function throttle<T>(fn: (v: T) => void, ms: number): (v: T) => void {
       fn(v)
       pending = undefined
     } else if (!timer) {
-      timer = setTimeout(() => {
-        timer = undefined
-        last = Date.now()
-        if (pending !== undefined) fn(pending)
-        pending = undefined
-      }, ms - (now - last))
+      timer = setTimeout(
+        () => {
+          timer = undefined
+          last = Date.now()
+          if (pending !== undefined) fn(pending)
+          pending = undefined
+        },
+        ms - (now - last),
+      )
     }
   }
 }

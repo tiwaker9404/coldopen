@@ -30,10 +30,23 @@ export interface FilmDetail extends Film {
     proof: number[]
     cta: string
   } | null
-  scriptMeta: { model: string; rounds: number; violations: string[][]; usedFallback: boolean } | null
+  scriptMeta: {
+    model: string
+    rounds: number
+    violations: string[][]
+    usedFallback: boolean
+  } | null
   qa: { issues: { kind: string; text?: string }[]; fonts: string[] } | null
   render: { frames: number; ms: number } | null
-  steps: { key: string; kind: string; status: string; durationMs: number | null; replays: number; attempts: number; error: string | null }[]
+  steps: {
+    key: string
+    kind: string
+    status: string
+    durationMs: number | null
+    replays: number
+    attempts: number
+    error: string | null
+  }[]
   timeline: { id: string; at: string; kind: string; message: string }[]
   embed: string | null
 }
@@ -80,7 +93,10 @@ export function setApiKey(v: string) {
 }
 
 /** finished films are public at /f/:id (that's the share page), so media needs no key */
-export function media(film: Film, name: 'poster.jpg' | 'preview.gif' | 'contact-sheet.jpg' | 'film'): string {
+export function media(
+  film: Film,
+  name: 'poster.jpg' | 'preview.gif' | 'contact-sheet.jpg' | 'film',
+): string {
   const file = name === 'film' ? (film.files?.film.split('/').pop() ?? '') : name
   return `/f/${film.id}/${file}`
 }

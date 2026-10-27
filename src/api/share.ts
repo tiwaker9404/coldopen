@@ -13,8 +13,18 @@ export function sharePage(input: FilmInput, out: FilmResult, url: string): strin
   const title = `A 30-second film for ${out.company}`
   const film = out.files.film.split('/').pop()!
   const contact = p.cta.contact
-  const href = contact.includes('@') && !contact.startsWith('http') ? `mailto:${contact}` : contact.startsWith('http') ? contact : `https://${contact}`
-  const [w, h] = out.format === 'landscape' ? [1920, 1080] : out.format === 'portrait' ? [1080, 1920] : [1080, 1080]
+  const href =
+    contact.includes('@') && !contact.startsWith('http')
+      ? `mailto:${contact}`
+      : contact.startsWith('http')
+        ? contact
+        : `https://${contact}`
+  const [w, h] =
+    out.format === 'landscape'
+      ? [1920, 1080]
+      : out.format === 'portrait'
+        ? [1080, 1920]
+        : [1080, 1080]
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>

@@ -49,7 +49,9 @@ export class SlackClient {
       method: 'POST',
       headers: {
         authorization: `Bearer ${this.#token}`,
-        'content-type': form ? 'application/x-www-form-urlencoded' : 'application/json; charset=utf-8',
+        'content-type': form
+          ? 'application/x-www-form-urlencoded'
+          : 'application/json; charset=utf-8',
       },
       body: form
         ? new URLSearchParams(Object.entries(body).map(([k, v]) => [k, String(v)]))
@@ -71,7 +73,13 @@ export class SlackClient {
   }
 
   /** files.uploadV2 flow: reserve an upload URL, send the bytes, then share into the thread. */
-  async uploadFile(opts: { channel: string; threadTs?: string; file: string; title: string; comment?: string }) {
+  async uploadFile(opts: {
+    channel: string
+    threadTs?: string
+    file: string
+    title: string
+    comment?: string
+  }) {
     const size = (await stat(opts.file)).size
     const filename = basename(opts.file)
     const reserved = await this.#call<{ upload_url: string; file_id: string }>(

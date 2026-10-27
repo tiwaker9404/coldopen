@@ -4,7 +4,14 @@ import type { Profile, Script } from './types.ts'
 export type Scene =
   | { kind: 'hook'; dur: number; text: string; sub: string }
   | { kind: 'site'; dur: number; caption: string; host: string }
-  | { kind: 'insight'; dur: number; value: string | null; text: string; source: string; why: string }
+  | {
+      kind: 'insight'
+      dur: number
+      value: string | null
+      text: string
+      source: string
+      why: string
+    }
   | { kind: 'pitch'; dur: number; from: string; headline: string; points: string[] }
   | { kind: 'proof'; dur: number; stats: { value: string; label: string }[] }
   | { kind: 'cta'; dur: number; line: string; contact: string; signoff: string }
@@ -34,7 +41,12 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
     ? `${profile.sender.name}, ${profile.sender.company}`
     : profile.sender.name
   const scenes: Scene[] = [
-    { kind: 'hook', dur: 3.2, text: script.hook.replace(/[.,]$/, ''), sub: `A 30-second film for ${kit.name}` },
+    {
+      kind: 'hook',
+      dur: 3.2,
+      text: script.hook.replace(/[.,]$/, ''),
+      sub: `A 30-second film for ${kit.name}`,
+    },
     { kind: 'site', dur: 5.2, caption: script.noticed, host: kit.host },
     {
       kind: 'insight',
@@ -50,7 +62,13 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
       dur: 4.8,
       stats: script.proof.map((i) => profile.proof[i]!).filter(Boolean),
     },
-    { kind: 'cta', dur: 4.6, line: script.cta, contact: profile.cta.contact, signoff: `Made by ${from} for ${kit.name}` },
+    {
+      kind: 'cta',
+      dur: 4.6,
+      line: script.cta,
+      contact: profile.cta.contact,
+      signoff: `Made by ${from} for ${kit.name}`,
+    },
   ]
   return {
     company: kit.name,

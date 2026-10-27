@@ -40,7 +40,10 @@ const { values, positionals } = parseArgs({
     id: { type: 'string' },
     concurrency: { type: 'string', short: 'c', default: '2' },
     model: { type: 'string', default: process.env.LLM_MODEL },
-    'base-url': { type: 'string', default: process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1' },
+    'base-url': {
+      type: 'string',
+      default: process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1',
+    },
     'api-key': { type: 'string', default: process.env.LLM_API_KEY ?? 'ollama' },
     help: { type: 'boolean', short: 'h' },
   },
@@ -60,11 +63,15 @@ function slugFor(url: string, format: string): string {
 
 async function loadProfile(file: string) {
   if (!existsSync(file)) {
-    throw new Error(`no profile at ${file}. Create one with "coldopen init" or pass --profile <file>.`)
+    throw new Error(
+      `no profile at ${file}. Create one with "coldopen init" or pass --profile <file>.`,
+    )
   }
   const parsed = ProfileSchema.safeParse(JSON.parse(await readFile(file, 'utf8')))
   if (!parsed.success) {
-    throw new Error(`invalid profile ${file}: ${parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`)
+    throw new Error(
+      `invalid profile ${file}: ${parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`,
+    )
   }
   return parsed.data
 }
@@ -72,20 +79,27 @@ async function loadProfile(file: string) {
 async function makeFilm(url: string, opts: { id?: string; quiet?: boolean }): Promise<FilmResult> {
   const profile = await loadProfile(values.profile!)
   const format = values.format as 'square' | 'landscape' | 'portrait'
-  if (!['square', 'landscape', 'portrait'].includes(format)) throw new Error(`unknown format "${format}"`)
+  if (!['square', 'landscape', 'portrait'].includes(format))
+    throw new Error(`unknown format "${format}"`)
   const filmsDir = resolve(values.out!)
   const id = opts.id ?? slugFor(url, format)
   await mkdir(join(filmsDir, id), { recursive: true })
 
   const llm = values.model
-    ? new OpenAICompatibleProvider({ baseUrl: values['base-url']!, model: values.model, apiKey: values['api-key']!, timeoutMs: 180_000 })
+    ? new OpenAICompatibleProvider({
+        baseUrl: values['base-url']!,
+        model: values.model,
+        apiKey: values['api-key']!,
+        timeoutMs: 180_000,
+      })
     : null
   const ctx = new LocalContext({
     runId: id,
     journalFile: join(filmsDir, id, '.journal.json'),
     llm,
     onLog: (m) => opts.quiet || done(`  ${m}`),
-    onProgress: (p) => opts.quiet || status(`  ${p.label}${p.percent !== undefined ? `  ${p.percent}%` : ''}`),
+    onProgress: (p) =>
+      opts.quiet || status(`  ${p.label}${p.percent !== undefined ? `  ${p.percent}%` : ''}`),
   })
   const resumed = await ctx.load()
   if (resumed && !opts.quiet) done(`  resuming ${id}: ${resumed} finished steps in the journal`)
@@ -104,7 +118,10 @@ function summary(r: FilmResult, filmsDir: string) {
     `  script   ${r.scriptMeta.model}, ${r.scriptMeta.rounds} round(s)${r.scriptMeta.usedFallback ? ', fell back to deterministic writer' : ''}`,
     `  render   ${r.render.frames} frames in ${(r.render.ms / 1000).toFixed(1)}s`,
   ]
-  if (r.qa.issues.length) lines.push(`  qa       ${r.qa.issues.map((i) => `${i.kind}${i.text ? ` "${i.text}"` : ''}`).join(', ')}`)
+  if (r.qa.issues.length)
+    lines.push(
+      `  qa       ${r.qa.issues.map((i) => `${i.kind}${i.text ? ` "${i.text}"` : ''}`).join(', ')}`,
+    )
   return lines.join('\n')
 }
 
@@ -159,18 +176,36 @@ async function batch(file: string) {
       const url = /^https?:\/\//.test(row.url!) ? row.url! : `https://${row.url}`
       try {
         const r = await makeFilm(url, { quiet: true })
-        results.push({ ...row, status: 'ok', company: r.company, film: join(filmsDir, r.files.film), gif: join(filmsDir, r.files.gif), poster: join(filmsDir, r.files.poster) })
+        results.push({
+          ...row,
+          status: 'ok',
+          company: r.company,
+          film: join(filmsDir, r.files.film),
+          gif: join(filmsDir, r.files.gif),
+          poster: join(filmsDir, r.files.poster),
+        })
         done(`  [${++finished}/${withUrl.length}] ${r.company}`)
       } catch (err) {
-        results.push({ ...row, status: 'error', error: err instanceof Error ? err.message : String(err) })
-        done(`  [${++finished}/${withUrl.length}] ${url} failed: ${err instanceof Error ? err.message : err}`)
+        results.push({
+          ...row,
+          status: 'error',
+          error: err instanceof Error ? err.message : String(err),
+        })
+        done(
+          `  [${++finished}/${withUrl.length}] ${url} failed: ${err instanceof Error ? err.message : err}`,
+        )
       }
     }
   })
   await Promise.all(workers)
   const cols = [...new Set(results.flatMap((r) => Object.keys(r)))]
   const out = join(filmsDir, 'results.csv')
-  await writeFile(out, [cols.join(','), ...results.map((r) => cols.map((c) => csvCell(r[c] ?? '')).join(','))].join('\n'))
+  await writeFile(
+    out,
+    [cols.join(','), ...results.map((r) => cols.map((c) => csvCell(r[c] ?? '')).join(','))].join(
+      '\n',
+    ),
+  )
   done(`\nwrote ${out}`)
 }
 
@@ -208,7 +243,9 @@ async function main() {
   const started = Date.now()
   done(`coldopen ${url}`)
   const r = await makeFilm(url, { ...(values.id ? { id: values.id } : {}) })
-  done(`${summary(r, resolve(values.out!))}\n  total    ${((Date.now() - started) / 1000).toFixed(1)}s`)
+  done(
+    `${summary(r, resolve(values.out!))}\n  total    ${((Date.now() - started) / 1000).toFixed(1)}s`,
+  )
 }
 
 main()

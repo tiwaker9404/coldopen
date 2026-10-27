@@ -7,7 +7,9 @@ export const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length
 const NUMBER = /\d[\d,.]*\s?(%|x|k|m|min|minutes|hours|days)?/gi
 
 function numbersIn(s: string): string[] {
-  return (s.match(NUMBER) ?? []).map((n) => n.replace(/[,\s]/g, '').toLowerCase().replace(/\.$/, ''))
+  return (s.match(NUMBER) ?? []).map((n) =>
+    n.replace(/[,\s]/g, '').toLowerCase().replace(/\.$/, ''),
+  )
 }
 
 /**
@@ -21,7 +23,9 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
     ['noticed', script.noticed, LIMITS.noticed],
     ['insight.why', script.insight.why, LIMITS.why],
     ['pitch.headline', script.pitch.headline, LIMITS.headline],
-    ...script.pitch.points.map((p, i) => [`pitch.points[${i}]`, p, LIMITS.point] as [string, string, number]),
+    ...script.pitch.points.map(
+      (p, i) => [`pitch.points[${i}]`, p, LIMITS.point] as [string, string, number],
+    ),
     ['cta', script.cta, LIMITS.cta],
   ]
 
@@ -34,7 +38,11 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
     if (text.includes('!')) v.push(`${field} uses an exclamation mark`)
     if (/\p{Extended_Pictographic}/u.test(text)) v.push(`${field} uses an emoji`)
     if (/#\w/.test(text)) v.push(`${field} uses a hashtag`)
-    const shouty = text.match(/\b[A-Z]{5,}\b/g)?.filter((w) => !kit.name.toUpperCase().includes(w) && !allSourceText(kit, profile).includes(w))
+    const shouty = text
+      .match(/\b[A-Z]{5,}\b/g)
+      ?.filter(
+        (w) => !kit.name.toUpperCase().includes(w) && !allSourceText(kit, profile).includes(w),
+      )
     if (shouty?.length) v.push(`${field} uses ALL CAPS ("${shouty[0]}")`)
   }
 
@@ -49,10 +57,16 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
   }
 
   if (!kit.facts.some((f) => f.id === script.insight.factId)) {
-    v.push(`insight.factId "${script.insight.factId}" is not one of the fact ids (${kit.facts.slice(0, 12).map((f) => f.id).join(', ')}, ...)`)
+    v.push(
+      `insight.factId "${script.insight.factId}" is not one of the fact ids (${kit.facts
+        .slice(0, 12)
+        .map((f) => f.id)
+        .join(', ')}, ...)`,
+    )
   }
   for (const i of script.proof) {
-    if (i >= profile.proof.length) v.push(`proof index ${i} is out of range (0-${profile.proof.length - 1})`)
+    if (i >= profile.proof.length)
+      v.push(`proof index ${i} is out of range (0-${profile.proof.length - 1})`)
   }
   if (new Set(script.proof).size !== script.proof.length) v.push('proof indices repeat')
 
@@ -83,7 +97,12 @@ function allSourceText(kit: BrandKit, profile: Profile): string {
 export function clampScript(script: Script, profile: Profile): Script {
   const cut = (s: string, n: number) => {
     const w = s.replace(/!/g, '.').trim().split(/\s+/)
-    return w.length <= n ? w.join(' ') : `${w.slice(0, n).join(' ').replace(/[,;:]$/, '')}`
+    return w.length <= n
+      ? w.join(' ')
+      : `${w
+          .slice(0, n)
+          .join(' ')
+          .replace(/[,;:]$/, '')}`
   }
   return {
     hook: cut(script.hook, LIMITS.hook),
