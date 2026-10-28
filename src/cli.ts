@@ -25,7 +25,8 @@ Options
   -c, --concurrency <n>   films rendered in parallel in batch mode (default: 2)
       --model <name>      use an OpenAI-compatible model to write the script
       --base-url <url>    model endpoint (default: http://localhost:11434/v1, Ollama)
-      --api-key <key>     model API key (default: $LLM_API_KEY or "ollama")
+      --api-key <key>     model API key. Prefer setting $LLM_API_KEY: a key on the
+                          command line is echoed by pnpm and saved in shell history
 
 Without --model the script is written by the deterministic writer: free, offline, reproducible.
 With Ollama:  coldopen https://acme.com --model qwen2.5:7b

@@ -86,7 +86,14 @@ ollama pull qwen2.5:7b
 pnpm film https://acme.com --model qwen2.5:7b
 ```
 
-Groq, OpenAI, Together and vLLM work the same way, using `--base-url` and `--api-key`, or `LLM_PROVIDER=openai` for the server.
+Groq, OpenAI, Together and vLLM work the same way. Put the key in the environment, not on the command line, so it never shows up in your terminal output or shell history:
+
+```bash
+export LLM_BASE_URL=https://api.groq.com/openai/v1 LLM_API_KEY=gsk_...   # Groq's free tier
+pnpm film https://acme.com --model llama-3.3-70b-versatile
+```
+
+The server reads the same variables, plus `LLM_PROVIDER=openai`.
 
 ## Two presets
 
