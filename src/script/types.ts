@@ -14,7 +14,14 @@ export const ProfileSchema = z.object({
   points: z.array(z.string().min(3).max(120)).min(2).max(6),
   /** hard evidence; the film shows these verbatim, the model only picks which */
   proof: z
-    .array(z.object({ value: z.string().min(1).max(12), label: z.string().min(3).max(60) }))
+    .array(
+      z.object({
+        value: z.string().min(1).max(12),
+        label: z.string().min(3).max(60),
+        /** where it happened ("Rail Inc.", "Deloitte"); context is what makes a number credible */
+        where: z.string().min(2).max(40).optional(),
+      }),
+    )
     .min(1)
     .max(5),
   cta: z.object({ line: z.string().min(3).max(60), contact: z.string().min(3).max(80) }),

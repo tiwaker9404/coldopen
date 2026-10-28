@@ -1,6 +1,18 @@
 [
-  { "dir": "retellai.com-v2", "from": 4.0, "caption": "Their homepage, with what they lead with highlighted." },
-  { "dir": "deel.com-v2", "from": 8.8, "caption": "A number quoted from their site, in their own font and colors." },
-  { "dir": "langchain.com-68106d", "from": 14.4, "caption": "What you offer, tailored to them. Never more than your profile says." },
+  {
+    "dir": "retellai.com-v2",
+    "from": 4.0,
+    "caption": "Their homepage, with what they lead with highlighted."
+  },
+  {
+    "dir": "deel.com-v2",
+    "from": 8.8,
+    "caption": "A number quoted from their site, in their own font and colors."
+  },
+  {
+    "dir": "langchain.com-68106d",
+    "from": 14.4,
+    "caption": "What you offer, tailored to them. Never more than your profile says."
+  },
   { "dir": "linear.app-55a3ef", "from": 24.9, "caption": "One clear ask, signed by you." }
 ]

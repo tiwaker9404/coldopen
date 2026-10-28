@@ -13,7 +13,7 @@ export type Scene =
       why: string
     }
   | { kind: 'pitch'; dur: number; from: string; headline: string; points: string[] }
-  | { kind: 'proof'; dur: number; stats: { value: string; label: string }[] }
+  | { kind: 'proof'; dur: number; stats: { value: string; label: string; where?: string }[] }
   | { kind: 'cta'; dur: number; line: string; contact: string; signoff: string }
 
 export interface Storyboard {

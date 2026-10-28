@@ -104,6 +104,7 @@ function sceneHtml(s: Scene, i: number, start: number, c: SceneCtx): string {
               (st, j) => `<div class="stat in-up" style="animation-delay:${200 + j * 380}ms">
                 <div class="display value" data-fit data-lines="1"><span class="count" data-count="${esc(st.value)}" data-delay="${300 + j * 380}" data-ms="1100">${esc(st.value)}</span></div>
                 <div class="label">${esc(st.label)}</div>
+                ${st.where ? `<div class="where">${esc(st.where)}</div>` : ''}
               </div>`,
             )
             .join('')}
@@ -223,6 +224,7 @@ html,body{width:${width}px;height:${height}px;overflow:hidden;background:#000}
 .stat .value{font-size:calc(var(--u)*13);line-height:1;color:var(--accent);letter-spacing:-0.04em;white-space:nowrap}
 .stat{min-width:0}
 .stat .label{font-size:calc(var(--u)*2.9);margin-top:calc(var(--u)*1.6);line-height:1.3;max-width:24ch}
+.stat .where{font-size:calc(var(--u)*2.2);margin-top:calc(var(--u)*1.4);color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
 
 /* cta */
 .cta-wrap{margin-top:auto;margin-bottom:auto;padding-top:calc(var(--u)*6)}
@@ -285,6 +287,12 @@ function fit() {
     let guard = 0;
     while (over() && size > min && guard++ < 40) { size *= 0.95; el.style.fontSize = size + 'px'; }
     if (over()) issues.push({ kind: 'overflow', text: el.textContent.trim().slice(0, 60) });
+  }
+  // one size for the whole row of numbers, so one long value doesn't leave the others mismatched
+  const values = [...document.querySelectorAll('.stat .value')];
+  if (values.length > 1) {
+    const smallest = Math.min(...values.map((v) => parseFloat(getComputedStyle(v).fontSize)));
+    for (const v of values) v.style.fontSize = smallest + 'px';
   }
   for (const s of document.querySelectorAll('.scene')) {
     if (s.scrollHeight > s.clientHeight + 2) issues.push({ kind: 'scene-overflow', scene: s.className });
