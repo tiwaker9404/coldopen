@@ -102,7 +102,7 @@ function sceneHtml(s: Scene, i: number, start: number, c: SceneCtx): string {
           ${s.stats
             .map(
               (st, j) => `<div class="stat in-up" style="animation-delay:${200 + j * 380}ms">
-                <div class="display value" data-fit data-lines="1"><span class="count" data-count="${esc(st.value)}" data-delay="${300 + j * 380}" data-ms="1100">${esc(st.value)}</span></div>
+                <div class="display value" data-fit data-lines="1" data-min="0.4"><span class="count" data-count="${esc(st.value)}" data-delay="${300 + j * 380}" data-ms="1100">${esc(st.value)}</span></div>
                 <div class="label">${esc(st.label)}</div>
                 ${st.where ? `<div class="where">${esc(st.where)}</div>` : ''}
               </div>`,
@@ -278,7 +278,7 @@ function fit() {
   for (const el of document.querySelectorAll('[data-fit]')) {
     const maxLines = +(el.dataset.lines || 3);
     let size = parseFloat(getComputedStyle(el).fontSize);
-    const min = size * 0.55;
+    const min = size * (+(el.dataset.min || 0.55));
     const over = () => {
       const lh = parseFloat(getComputedStyle(el).lineHeight) || size * 1.1;
       const lines = Math.round(el.scrollHeight / lh);

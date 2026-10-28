@@ -1,17 +1,21 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto'
-import { existsSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { existsSync, readdirSync, statSync } from 'node:fs'
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { basename, join, resolve } from 'node:path'
+import { createInterface } from 'node:readline/promises'
 import { parseArgs } from 'node:util'
+import { extractBrand } from './brand/extract.ts'
+import type { BrandKit } from './brand/types.ts'
 import { closeBrowser } from './browser.ts'
 import { createFilmAgent, type FilmResult } from './film.ts'
 import { buildLlm } from './llm/chain.ts'
 import { draftProfile } from './profile/draft.ts'
+import { rankProfiles } from './profile/match.ts'
 import { parseResume } from './profile/parse.ts'
 import { resumeText } from './profile/read.ts'
 import { LocalContext } from './runtime/local.ts'
-import { ProfileSchema } from './script/types.ts'
+import { type Profile, ProfileSchema } from './script/types.ts'
 
 const HELP = `coldopen: turn a company's website into a 30-second personalized film
 
@@ -22,7 +26,11 @@ Usage
   coldopen profile <resume> [file]       draft a profile from a résumé (PDF, .docx, .md, .txt)
 
 Options
-  -p, --profile <file>    who is sending and what they offer (default: profile.json)
+  -p, --profile <path>    who is sending and what they offer (default: profile.json). A folder of
+                          profiles (one per résumé) makes coldopen rank them for each company
+                          and ask which to use
+      --use <name>        with a profile folder: use this profile (file name without .json)
+  -y, --yes               with a profile folder: take the best match without asking
   -f, --format <name>     square | landscape | portrait (default: square)
   -o, --out <dir>         output directory (default: ./films)
       --id <slug>         film id; re-running the same id resumes where it stopped
@@ -49,6 +57,8 @@ const { values, positionals } = parseArgs({
     id: { type: 'string' },
     proof: { type: 'string' },
     role: { type: 'string' },
+    use: { type: 'string' },
+    yes: { type: 'boolean', short: 'y' },
     exclude: { type: 'string' },
     contact: { type: 'string' },
     concurrency: { type: 'string', short: 'c', default: '2' },
@@ -73,6 +83,59 @@ function slugFor(url: string, format: string): string {
   const host = new URL(url).hostname.replace(/^www\./, '').replace(/[^a-z0-9.-]/gi, '')
   const h = createHash('sha1').update(`${url}|${format}`).digest('hex').slice(0, 6)
   return `${host}-${h}`
+}
+
+/** One profile file, or every *.json in a folder (one per résumé), named by file. */
+async function loadProfiles(path: string): Promise<{ id: string; profile: Profile }[]> {
+  if (existsSync(path) && statSync(path).isDirectory()) {
+    const files = readdirSync(path)
+      .filter((f) => f.endsWith('.json'))
+      .sort()
+    if (!files.length) throw new Error(`no .json profiles in ${path}`)
+    return Promise.all(
+      files.map(async (f) => ({
+        id: basename(f, '.json').replace(/\.local$/, ''),
+        profile: await loadProfile(join(path, f)),
+      })),
+    )
+  }
+  return [{ id: basename(path, '.json'), profile: await loadProfile(path) }]
+}
+
+/** Rank the profiles against the company's site, then confirm with the person (or not). */
+async function chooseProfile(
+  kit: BrandKit,
+  profiles: { id: string; profile: Profile }[],
+  opts: { use?: string; quiet?: boolean },
+): Promise<{ id: string; profile: Profile }> {
+  const ranked = rankProfiles(kit, profiles)
+  const named = opts.use ?? values.use
+  if (named) {
+    const hit = profiles.find((p) => p.id === named)
+    if (!hit)
+      throw new Error(`no profile named "${named}"; have: ${profiles.map((p) => p.id).join(', ')}`)
+    return hit
+  }
+  const best = ranked[0]!
+  const why = (m: (typeof ranked)[number]) =>
+    m.score < 3
+      ? `weak match${m.reasons.length ? `: ${m.reasons.slice(0, 3).join(', ')}` : ''}`
+      : `their site mentions ${m.reasons.slice(0, 4).join(', ')}`
+  if (opts.quiet || values.yes || !process.stdin.isTTY) {
+    if (!opts.quiet) done(`  profile  ${best.id} (best match: ${why(best)})`)
+    return best
+  }
+  done(`\n  Which profile for ${kit.name}?`)
+  for (const [i, m] of ranked.entries())
+    done(
+      `  ${String(i + 1).padStart(2)}. ${m.id.padEnd(10)} ${(m.profile.sender.role ?? '').padEnd(28).slice(0, 28)} ${i === 0 ? '<- best: ' : ''}${why(m)}`,
+    )
+  const rl = createInterface({ input: process.stdin, output: process.stderr })
+  const answer = (await rl.question(`  Choose 1-${ranked.length} [1]: `)).trim()
+  rl.close()
+  const pick = ranked[(Number.parseInt(answer, 10) || 1) - 1] ?? best
+  done(`  profile  ${pick.id}`)
+  return pick
 }
 
 async function loadProfile(file: string) {
@@ -106,19 +169,47 @@ function modelFromFlags() {
     : null
 }
 
-async function makeFilm(url: string, opts: { id?: string; quiet?: boolean }): Promise<FilmResult> {
-  const profile = await loadProfile(values.profile!)
+async function makeFilm(
+  url: string,
+  opts: { id?: string; quiet?: boolean; use?: string },
+): Promise<FilmResult> {
+  const profiles = await loadProfiles(values.profile!)
   const format = values.format as 'square' | 'landscape' | 'portrait'
   if (!['square', 'landscape', 'portrait'].includes(format))
     throw new Error(`unknown format "${format}"`)
   const filmsDir = resolve(values.out!)
-  const id = opts.id ?? slugFor(url, format)
+
+  // several profiles: read the site once, pick the profile that fits, and seed the film's
+  // journal with that research so the film doesn't load the site again
+  let chosen = profiles[0]!
+  let seed: BrandKit | null = null
+  if (profiles.length > 1) {
+    const researchDir = join(filmsDir, '.research', slugFor(url, 'site'))
+    const cached = join(researchDir, 'kit.json')
+    if (!opts.quiet) status(`  reading ${new URL(url).hostname} to match a profile`)
+    seed = existsSync(cached)
+      ? (JSON.parse(await readFile(cached, 'utf8')) as BrandKit)
+      : await extractBrand(url, { outDir: researchDir, allowPrivateNetworks: true })
+    chosen = await chooseProfile(seed, profiles, opts)
+  }
+  const profile = chosen.profile
+  // the profile is part of a film's identity: the same company with another profile is another film
+  const id = opts.id ?? `${slugFor(url, format)}${profiles.length > 1 ? `-${chosen.id}` : ''}`
   await mkdir(join(filmsDir, id), { recursive: true })
+  const journal = join(filmsDir, id, '.journal.json')
+  if (seed && !existsSync(journal)) {
+    await copyFile(
+      join(filmsDir, '.research', slugFor(url, 'site'), seed.screenshot.file),
+      join(filmsDir, id, seed.screenshot.file),
+    )
+    await writeFile(join(filmsDir, id, 'kit.json'), JSON.stringify(seed, null, 2))
+    await writeFile(journal, JSON.stringify({ research: seed }))
+  }
 
   const llm = modelFromFlags()
   const ctx = new LocalContext({
     runId: id,
-    journalFile: join(filmsDir, id, '.journal.json'),
+    journalFile: journal,
     llm,
     onLog: (m) => opts.quiet || done(`  ${m}`),
     onProgress: (p) =>
@@ -214,7 +305,7 @@ async function batch(file: string) {
       const row = withUrl[next++]!
       const url = /^https?:\/\//.test(row.url!) ? row.url! : `https://${row.url}`
       try {
-        const r = await makeFilm(url, { quiet: true })
+        const r = await makeFilm(url, { quiet: true, ...(row.profile ? { use: row.profile } : {}) })
         results.push({
           ...row,
           status: 'ok',

@@ -6,3 +6,4 @@ films
 *.log
 .env
 profiles/*.local.json
+profiles/*.local/

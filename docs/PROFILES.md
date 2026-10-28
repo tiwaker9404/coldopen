@@ -69,6 +69,34 @@ coldopen https://deel.com -p me.json --proof 3,2,7     # positions in your proof
 
 In the web app, the **Proof to show** chips under the composer do the same. The API takes `"proof": [2, 1, 6]` (zero-based) on `POST /v1/films` and `POST /v1/batches`.
 
+## Several résumés: one profile each
+
+If you apply to different kinds of roles, keep one profile per résumé in a folder and point coldopen at the folder:
+
+```bash
+coldopen profile analyst-resume.pdf me/analyst.json --role "Financial data analyst"
+coldopen profile swe-resume.pdf me/engineer.json --role "Software engineer"
+
+coldopen https://deel.com -p me/
+```
+
+coldopen reads the company's site once, ranks your profiles by what the site talks about, and asks which to use:
+
+```
+  Which profile for Deel?
+   1. fde        Forward deployed engineer    <- best: their site mentions platform, ai, customers, enterprise
+   2. product    Product manager              their site mentions product, teams
+   3. analyst    Financial data analyst       weak match: payroll
+  Choose 1-3 [1]:
+```
+
+- `--use analyst` skips the question and uses that profile.
+- `--yes` takes the best match without asking. This is also what happens when coldopen isn't run in a terminal.
+- In a CSV batch, add a `profile` column to choose per row. Rows without one get the best match.
+- Each profile makes its own film, so trying a company with two profiles never overwrites the first.
+
+The ranking only counts words that are actually on the company's site, and it shows you which ones, so you can always see why it suggested what it did.
+
 ## Keep it private
 
-Profiles you make for yourself can hold your real email and employers. Name them `*.local.json`; the repository's `.gitignore` keeps them out of git.
+Profiles you make for yourself can hold your real email and employers. Name them `*.local.json`, or keep them in a folder named `*.local/`; the repository's `.gitignore` and `.dockerignore` keep both out of git and out of images.

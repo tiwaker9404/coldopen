@@ -115,12 +115,14 @@ coldopen profile resume.pdf me.json --role "Senior data analyst" --exclude "Curr
 
 It reads a PDF, Word, Markdown or text résumé and picks the bullets that fit the role, turning them into proof: **45 minutes**, _report prep, down from 6 hours_, at **Harbor Grocers**. Every number is checked against the résumé, so a draft can't inflate it. `--exclude` keeps an employer out entirely. The web app does the same from **New profile → Start from your résumé**, and there are [starter profiles](profiles/examples) for seven roles. See [docs/PROFILES.md](docs/PROFILES.md).
 
+Applying to different kinds of roles? Keep one profile per résumé in a folder and pass the folder (`-p me/`). coldopen reads each company's site, suggests the profile that fits, and asks before it renders.
+
 Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show** chips in the web app. Otherwise the writer picks the three that fit each company.
 
 ## Quality, measured
 
 ```bash
-pnpm test         # 114 tests: runtime, extraction, render QA, résumé drafts, pipeline resume, API, Slack, model path
+pnpm test         # 118 tests: runtime, extraction, render QA, résumé drafts, pipeline resume, API, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
 ```

@@ -7,3 +7,4 @@ bench/results/*.tmp.json
 films
 .scratch
 profiles/*.local.json
+profiles/*.local/
