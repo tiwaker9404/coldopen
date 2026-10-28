@@ -29,6 +29,8 @@ export function App() {
   const [format, setFormat] = useState<Format>('square')
   const [profileId, setProfileId] = useState<string>('')
   const [lastBatch, setLastBatch] = useState<{ id: string; count: number } | null>(null)
+  // which proof items to show; empty lets the writer pick the 3 that fit each company
+  const [picks, setPicks] = useState<number[]>([])
 
   const profiles = useQuery({
     queryKey: ['profiles'],
@@ -54,13 +56,19 @@ export function App() {
     mutationFn: async () => {
       if (urls.length === 0) throw new Error('Paste a company website, like acme.com')
       if (urls.length === 1) {
-        const f = await send<Film>('POST', '/v1/films', { url: urls[0], profileId, format })
+        const f = await send<Film>('POST', '/v1/films', {
+          url: urls[0],
+          profileId,
+          format,
+          ...(picks.length ? { proof: picks } : {}),
+        })
         return { film: f, batch: null as null | { id: string; count: number } }
       }
       const b = await send<{ batch: string; films: number }>('POST', '/v1/batches', {
         urls,
         profileId,
         format,
+        ...(picks.length ? { proof: picks } : {}),
       })
       return { film: null, batch: { id: b.batch, count: b.films } }
     },
@@ -76,6 +84,7 @@ export function App() {
     (e) => e instanceof ApiError && e.status === 401,
   )
   const noProfiles = profiles.data && profiles.data.data.length === 0
+  const selected = profiles.data?.data.find((p) => p.id === profileId)
   const list = films.data?.data ?? []
 
   return (
@@ -136,7 +145,10 @@ export function App() {
               <span>From</span>
               <select
                 value={profileId}
-                onChange={(e) => setProfileId(e.target.value)}
+                onChange={(e) => {
+                  setProfileId(e.target.value)
+                  setPicks([])
+                }}
                 disabled={!profiles.data?.data.length}
               >
                 {profiles.data?.data.map((p) => (
@@ -177,6 +189,28 @@ export function App() {
               ))}
             </div>
           </div>
+          {selected && selected.data.proof.length > 3 && (
+            <fieldset className="picks">
+              <legend>Proof to show:</legend>
+              {selected.data.proof.map((p, i) => {
+                const on = picks.includes(i)
+                return (
+                  <button
+                    // biome-ignore lint/suspicious/noArrayIndexKey: proof items are positional
+                    key={i}
+                    type="button"
+                    aria-pressed={on}
+                    disabled={!on && picks.length >= 3}
+                    title={`${p.value} ${p.label}${p.where ? ` (${p.where})` : ''}`}
+                    onClick={() => setPicks(on ? picks.filter((x) => x !== i) : [...picks, i])}
+                  >
+                    {p.value}
+                  </button>
+                )
+              })}
+              <span>{picks.length ? `${picks.length} of 3` : 'or let the writer pick'}</span>
+            </fieldset>
+          )}
           {make.error && <p className="error">{make.error.message}</p>}
           {noProfiles && (
             <p className="hint">

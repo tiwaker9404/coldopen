@@ -646,10 +646,111 @@ main {
   gap: 12px;
 }
 
-.proof-row {
+.proof-row,
+.proof-head {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: 96px 1fr 150px;
   gap: 8px;
+}
+
+.proof-head {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: -2px;
+}
+
+.start {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.start-card {
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--surface);
+  display: grid;
+  gap: 10px;
+}
+
+.start-card h3 {
+  font-family: var(--display);
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.start-card p {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.start-card .two label {
+  margin-bottom: 0;
+}
+
+.start-card .primary {
+  justify-self: start;
+}
+
+.editor .start-example select {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.notice {
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--surface);
+  border-left: 3px solid var(--tally);
+  padding: 10px 12px;
+  border-radius: 4px;
+  margin: 0 0 16px;
+}
+
+.picks {
+  border: 0;
+  padding: 0;
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.picks legend {
+  float: left;
+  margin-right: 4px;
+}
+
+.picks button {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.picks button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.picks button:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .editor-actions {
@@ -677,5 +778,13 @@ main {
   }
   .editor .two {
     grid-template-columns: 1fr;
+  }
+  .proof-row,
+  .proof-head {
+    grid-template-columns: 80px 1fr;
+  }
+  .proof-row input:last-child,
+  .proof-head span:last-child {
+    grid-column: 1 / -1;
   }
 }

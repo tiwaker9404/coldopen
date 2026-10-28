@@ -5,3 +5,4 @@ dashboard/dist
 films
 *.log
 .env
+profiles/*.local.json

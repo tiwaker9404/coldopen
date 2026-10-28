@@ -1,0 +1,40 @@
+{
+  "preset": "candidate",
+  "sender": {
+    "name": "Marco Ruiz",
+    "role": "Lifecycle marketing manager"
+  },
+  "offer": "A growth marketer who makes subscriptions stick with lifecycle email",
+  "points": [
+    "Builds lifecycle programs that lift retention",
+    "Rebuilds paid social creative testing",
+    "Runs A/B tests every week",
+    "Writes copy people actually read"
+  ],
+  "proof": [
+    {
+      "value": "14%",
+      "label": "more 90-day retention for new subscribers",
+      "where": "Fernleaf Tea Co."
+    },
+    {
+      "value": "$31",
+      "label": "customer acquisition cost, down from $48",
+      "where": "Fernleaf Tea Co."
+    },
+    {
+      "value": "$2.4M",
+      "label": "annual paid media budget managed",
+      "where": "Fernleaf Tea Co."
+    },
+    {
+      "value": "250,000",
+      "label": "members reached with weekly newsletters",
+      "where": "Brightside Fitness"
+    }
+  ],
+  "cta": {
+    "line": "Could we talk this week?",
+    "contact": "marco.ruiz@example.com"
+  }
+}

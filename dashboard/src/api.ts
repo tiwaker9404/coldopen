@@ -56,7 +56,7 @@ export interface ProfileData {
   sender: { name: string; company?: string; role?: string }
   offer: string
   points: string[]
-  proof: { value: string; label: string }[]
+  proof: { value: string; label: string; where?: string }[]
   cta: { line: string; contact: string }
   color?: string
 }
@@ -118,3 +118,26 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const send = <T>(method: string, path: string, body?: unknown) =>
   api<T>(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
+
+export interface ProfileDraft {
+  profile: ProfileData
+  meta: { model: string; rounds: number; dropped: string[] }
+}
+
+/** Upload a résumé; the server drafts a profile (nothing is saved until you save it). */
+export async function draftFromResume(
+  file: File,
+  role: string,
+  exclude: string[],
+): Promise<ProfileDraft> {
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  let bin = ''
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return send<ProfileDraft>('POST', '/v1/profiles/draft', {
+    filename: file.name,
+    data: btoa(bin),
+    role,
+    exclude,
+  })
+}

@@ -1,0 +1,35 @@
+{
+  "preset": "candidate",
+  "sender": {
+    "name": "Mei Chen",
+    "role": "Data scientist"
+  },
+  "offer": "A data scientist who puts models into production, not notebooks",
+  "points": [
+    "Ships models with monitoring from day one",
+    "Designs experiments the business trusts",
+    "Explains model trade-offs to non-experts",
+    "Writes production Python, not just notebooks"
+  ],
+  "proof": [
+    {
+      "value": "$4M",
+      "label": "fraud losses prevented in the first year",
+      "where": "Clearwater Bank"
+    },
+    {
+      "value": "0.91",
+      "label": "AUC on a churn model now in production",
+      "where": "Clearwater Bank"
+    },
+    {
+      "value": "15",
+      "label": "A/B tests designed and analyzed a quarter",
+      "where": "Kite Mobile"
+    }
+  ],
+  "cta": {
+    "line": "Could we talk this week?",
+    "contact": "mei.chen@example.com"
+  }
+}

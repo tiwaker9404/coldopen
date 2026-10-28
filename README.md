@@ -98,19 +98,27 @@ Keep keys in the environment, not on the command line, so they never show up in 
 - **Structured outputs.** The script's schema is sent as a strict JSON Schema (`response_format: json_schema`), so models that support constrained decoding (gpt-oss on Groq, recent Ollama) can only return the right shape. Endpoints without it are detected on the first call and get plain JSON mode instead.
 - **Fallback chain.** A rate limit, outage or timeout moves to `LLM_FALLBACK_MODEL` instead of failing the film, so a 500-prospect batch survives a free tier's daily cap. A wrong model name or key fails once with a hint, rather than being retried.
 
-## Two presets
+## Who it's for
 
-Each sender profile is a small JSON file you write once ([examples](profiles/)):
+| Preset      | Who it's for                                                                            | The film says                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `sales`     | Founders, SDRs, account executives                                                      | "Here's what I noticed about your business, and why what I sell fits it."                                   |
+| `candidate` | Job seekers in **any** role: engineers, analysts, PMs, designers, marketers, recruiters | "Here's what you build and who it serves, and how my strengths help." The ask is a conversation, not a job. |
 
-| Preset      | Who it's for                       | The film says                                                                                               |
-| ----------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `sales`     | Founders, SDRs, account executives | "Here's what I noticed about your business, and why what I sell fits it."                                   |
-| `candidate` | Job seekers                        | "Here's what you build and who it serves, and how my strengths help." The ask is a conversation, not a job. |
+**Start from your résumé.** You don't write the profile by hand:
+
+```bash
+coldopen profile resume.pdf me.json --role "Senior data analyst" --exclude "Current Co"
+```
+
+It reads a PDF, Word, Markdown or text résumé and picks the bullets that fit the role, turning them into proof: **45 minutes**, _report prep, down from 6 hours_, at **Harbor Grocers**. Every number is checked against the résumé, so a draft can't inflate it. `--exclude` keeps an employer out entirely. The web app does the same from **New profile → Start from your résumé**, and there are [starter profiles](profiles/examples) for seven roles. See [docs/PROFILES.md](docs/PROFILES.md).
+
+Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show** chips in the web app. Otherwise the writer picks the three that fit each company.
 
 ## Quality, measured
 
 ```bash
-pnpm test         # 98 tests: runtime, extraction, render QA, pipeline resume, API, Slack, model path
+pnpm test         # 114 tests: runtime, extraction, render QA, résumé drafts, pipeline resume, API, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
 ```
@@ -150,6 +158,7 @@ The fixture companies in [fixtures/sites](fixtures/sites) (a freight platform, a
 
 ```
 src/brand/     research: extraction, color science, network guard
+src/profile/   résumé to profile: reading, parsing, grounded drafting
 src/script/    taste rules, checks, writer, storyboard
 src/render/    composition (HTML timeline), theme, frame renderer
 src/runtime/   durable execution (from unkillable)

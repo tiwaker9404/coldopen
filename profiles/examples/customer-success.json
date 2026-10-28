@@ -1,0 +1,35 @@
+{
+  "preset": "candidate",
+  "sender": {
+    "name": "Diego Alvarez",
+    "role": "Customer success manager"
+  },
+  "offer": "A customer success manager who turns at-risk accounts into renewals",
+  "points": [
+    "Spots churn risk before the renewal call",
+    "Runs onboarding that gets teams live fast",
+    "Brings customer feedback to product with evidence",
+    "Expands accounts by solving real problems"
+  ],
+  "proof": [
+    {
+      "value": "97%",
+      "label": "gross retention across a $6M book",
+      "where": "Relay HR"
+    },
+    {
+      "value": "14 days",
+      "label": "median time to go live, down from 45",
+      "where": "Relay HR"
+    },
+    {
+      "value": "$900K",
+      "label": "expansion revenue in one year",
+      "where": "Relay HR"
+    }
+  ],
+  "cta": {
+    "line": "Could we talk this week?",
+    "contact": "diego.alvarez@example.com"
+  }
+}

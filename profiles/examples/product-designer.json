@@ -1,0 +1,35 @@
+{
+  "preset": "candidate",
+  "sender": {
+    "name": "Sam Okafor",
+    "role": "Product designer"
+  },
+  "offer": "A product designer who makes complex workflows feel obvious",
+  "points": [
+    "Designs from research, not taste alone",
+    "Builds design systems engineers adopt",
+    "Prototypes in code when Figma isn't enough",
+    "Tests with real users before launch"
+  ],
+  "proof": [
+    {
+      "value": "31%",
+      "label": "fewer support tickets after a checkout redesign",
+      "where": "Lumen Pay"
+    },
+    {
+      "value": "120+",
+      "label": "components in a design system used by 6 teams",
+      "where": "Lumen Pay"
+    },
+    {
+      "value": "4.6/5",
+      "label": "usability score, up from 3.2",
+      "where": "Fieldnote"
+    }
+  ],
+  "cta": {
+    "line": "Could we talk this week?",
+    "contact": "sam.okafor@example.com"
+  }
+}

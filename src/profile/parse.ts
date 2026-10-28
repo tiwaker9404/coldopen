@@ -238,7 +238,9 @@ export function clipWords(s: string, max: number): string {
 /** The start of a bullet, as a short strength: "Engineered a Python data migration script". */
 function pointOf(text: string): string {
   const sentence = text.split(/(?<=\.)\s|;\s|\s[-–—]\s/)[0]!.replace(/\.$/, '')
-  const w = sentence.split(' ').slice(0, 11)
+  // stop where the bullet turns into detail: "...in Snowflake that consolidated 9 sources"
+  const core = sentence.split(/\s(?:that|which|to|reducing|resulting|by|across|while)\s/)[0]!
+  const w = (core.split(' ').length >= 4 ? core : sentence).split(' ').slice(0, 9)
   while (
     w.length > 3 &&
     /^(to|a|an|the|and|or|for|with|of|in|into|from|by|on|that|which)$/i.test(

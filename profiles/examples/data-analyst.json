@@ -1,0 +1,45 @@
+{
+  "preset": "candidate",
+  "sender": {
+    "name": "Priya Shah",
+    "role": "Senior data analyst"
+  },
+  "offer": "An analyst who turns messy operational data into dashboards leaders use",
+  "points": [
+    "Builds forecasting models in Python and SQL",
+    "Rebuilds dashboards people actually open",
+    "Defines KPIs with business leads, not for them",
+    "Explains the numbers in plain words"
+  ],
+  "proof": [
+    {
+      "value": "18%",
+      "label": "less fresh-produce waste across 42 stores",
+      "where": "Harbor Grocers"
+    },
+    {
+      "value": "20 minutes",
+      "label": "weekly report prep, down from 6 hours",
+      "where": "Harbor Grocers"
+    },
+    {
+      "value": "$1.2M",
+      "label": "saved a year by a carrier change",
+      "where": "Northwind Logistics"
+    },
+    {
+      "value": "3M+",
+      "label": "shipment records analyzed for late deliveries",
+      "where": "Northwind Logistics"
+    },
+    {
+      "value": "12",
+      "label": "core KPIs in every Monday business review",
+      "where": "Harbor Grocers"
+    }
+  ],
+  "cta": {
+    "line": "Could we talk this week?",
+    "contact": "priya.shah@example.com"
+  }
+}

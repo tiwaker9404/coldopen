@@ -1,0 +1,40 @@
+{
+  "preset": "candidate",
+  "sender": {
+    "name": "Jordan Lee",
+    "role": "Product manager"
+  },
+  "offer": "A product manager who ships the small changes that move retention",
+  "points": [
+    "Runs discovery with customers every week",
+    "Writes specs engineers can build from",
+    "Kills features that don't earn their keep",
+    "Turns support tickets into roadmap evidence"
+  ],
+  "proof": [
+    {
+      "value": "+9 pts",
+      "label": "week-4 retention after an onboarding redesign",
+      "where": "Pathwise"
+    },
+    {
+      "value": "40+",
+      "label": "customer interviews a quarter",
+      "where": "Pathwise"
+    },
+    {
+      "value": "3",
+      "label": "features retired, cutting support load 22%",
+      "where": "Pathwise"
+    },
+    {
+      "value": "2x",
+      "label": "activation on the mobile app",
+      "where": "Tandem Labs"
+    }
+  ],
+  "cta": {
+    "line": "Could we talk this week?",
+    "contact": "jordan.lee@example.com"
+  }
+}

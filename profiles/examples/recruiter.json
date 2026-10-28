@@ -1,0 +1,35 @@
+{
+  "preset": "candidate",
+  "sender": {
+    "name": "Hannah Brooks",
+    "role": "Technical recruiter"
+  },
+  "offer": "A technical recruiter who fills hard engineering roles without lowering the bar",
+  "points": [
+    "Sources engineers who aren't looking yet",
+    "Partners with hiring managers on what good looks like",
+    "Keeps candidates informed at every step",
+    "Builds pipelines with diverse slates"
+  ],
+  "proof": [
+    {
+      "value": "48",
+      "label": "engineers hired in 12 months",
+      "where": "Northbeam"
+    },
+    {
+      "value": "21 days",
+      "label": "median time to offer, down from 39",
+      "where": "Northbeam"
+    },
+    {
+      "value": "92%",
+      "label": "offer acceptance rate",
+      "where": "Northbeam"
+    }
+  ],
+  "cta": {
+    "line": "Could we talk this week?",
+    "contact": "hannah.brooks@example.com"
+  }
+}

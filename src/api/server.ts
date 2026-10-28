@@ -333,6 +333,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
           profileId: z.string().optional(),
           profile: ProfileSchema.optional(),
           format: z.enum(['square', 'landscape', 'portrait']).default('square'),
+          proof: z.array(z.number().int().min(0)).min(1).max(3).optional(),
         }),
       },
     },
@@ -347,6 +348,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
             url,
             profile,
             format: req.body.format,
+            ...(req.body.proof ? { proof: req.body.proof } : {}),
             batch,
             ref: String(i + 1),
           })
