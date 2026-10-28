@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>coldopen: a 30-second film for any company</title>
+<meta name="description" content="Paste a company's website. Get a 30-second film made for them, in their brand, quoting their own site. Open source, runs free.">
+<meta property="og:title" content="coldopen">
+<meta property="og:description" content="Paste a company's website. Get a 30-second film made for them. Open source, runs free.">
+<meta property="og:image" content="media/og.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 22'%3E%3Crect width='32' height='22' rx='5' fill='%2314161b'/%3E%3Ccircle cx='25' cy='6' r='3.2' fill='%23e5322d'/%3E%3C/svg%3E">
+<style>
+@font-face{font-family:"Bricolage";src:url(fonts/bricolage.woff2) format("woff2");font-weight:200 800;font-display:swap}
+@font-face{font-family:"Instrument";src:url(fonts/instrument-sans.woff2) format("woff2");font-weight:400 700;font-display:swap}
+:root{--paper:#ecedf0;--surface:#fff;--ink:#14161b;--muted:#5e6370;--rule:#d5d8de;--tally:#e5322d;--code:#14161b;--code-ink:#ecedf0;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#111317;--surface:#1a1d23;--ink:#eceef2;--muted:#9aa0ab;--rule:#2b2f37;--tally:#ff5a4f;--code:#0b0c0f;--code-ink:#eceef2;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font:400 17px/1.55 "Instrument",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+.display{font-family:"Bricolage",system-ui,sans-serif;font-weight:760;letter-spacing:-.035em;line-height:1}
+.lens{display:inline-block;width:30px;height:21px;border-radius:5px;background:var(--ink);position:relative;flex:none}
+.lens::after{content:"";position:absolute;right:4px;top:4px;width:6px;height:6px;border-radius:50%;background:var(--tally)}
+
+/* top */
+.top{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand b{font-family:"Bricolage",sans-serif;font-weight:760;font-size:22px;letter-spacing:-.03em}
+.top nav{display:flex;gap:22px;font-size:15px}
+.top nav a{text-decoration:none;color:var(--muted)}
+.top nav a:hover{color:var(--ink)}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1.2fr .8fr;gap:56px;align-items:center;padding:36px 0 72px}
+.hero h1{font-size:clamp(40px,5.2vw,64px)}
+.hero h1 em{font-style:normal;color:var(--tally)}
+.lede{font-size:20px;color:var(--muted);margin:22px 0 30px;max-width:30ch}
+.ctas{display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 20px;border-radius:10px;font-weight:600;font-size:16px;text-decoration:none;border:1px solid var(--ink)}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.btn.ghost{background:transparent}
+.btn:focus-visible,.film button:focus-visible{outline:3px solid var(--tally);outline-offset:3px}
+.small{font-size:14px;color:var(--muted);margin-top:16px}
+.reel{border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.18);aspect-ratio:4/5;background:#000}
+.reel video{width:100%;height:100%;display:block;object-fit:cover}
+
+/* sections */
+section{padding:72px 0;border-top:1px solid var(--rule)}
+.kicker{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--tally);margin-bottom:12px}
+h2.display{font-size:clamp(32px,4.2vw,48px);max-width:20ch}
+.intro{color:var(--muted);max-width:56ch;margin-top:16px;font-size:18px}
+
+/* films */
+.films{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:36px}
+.film button{all:unset;cursor:pointer;display:block;width:100%;aspect-ratio:1;border-radius:12px;overflow:hidden;position:relative;background:#000;box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.film img{width:100%;height:100%;display:block;object-fit:cover}
+.film video{width:100%;aspect-ratio:1;display:block;border-radius:12px;background:#000}
+.film .play{position:absolute;left:12px;bottom:12px;background:rgba(20,22,27,.82);color:#fff;font-size:13px;font-weight:600;padding:6px 10px;border-radius:999px;display:flex;gap:6px;align-items:center}
+.film .play::before{content:"";border-left:8px solid #fff;border-top:5px solid transparent;border-bottom:5px solid transparent}
+.film p{margin-top:10px;font-weight:600}
+.film p span{display:block;font-weight:400;font-size:14px;color:var(--muted)}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:36px;counter-reset:s}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:24px}
+.steps .card::before{counter-increment:s;content:counter(s);display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--paper);font-weight:700;font-size:14px;margin-bottom:14px}
+.card h3{font-family:"Bricolage",sans-serif;font-size:22px;letter-spacing:-.02em;margin-bottom:8px}
+.card p{color:var(--muted);font-size:16px}
+
+/* rules */
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start}
+.rules ul{list-style:none;display:grid;gap:14px;margin-top:6px}
+.rules li{padding-left:28px;position:relative}
+.rules li::before{content:"";position:absolute;left:0;top:.55em;width:14px;height:3px;border-radius:2px;background:var(--tally)}
+.rules li b{display:block}
+.rules li span{color:var(--muted);font-size:16px}
+
+/* audiences */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:36px}
+.two .card h3{font-size:26px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.tags span{font-size:13px;border:1px solid var(--rule);border-radius:999px;padding:4px 10px;color:var(--muted)}
+
+/* crash */
+.bench{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:36px;max-width:640px}
+.bench .card b{font-family:"Bricolage",sans-serif;font-size:56px;letter-spacing:-.04em;line-height:1;display:block}
+.bench .card.good b{color:var(--tally)}
+.bench .card span{color:var(--muted);font-size:15px}
+
+/* install */
+pre{background:var(--code);color:var(--code-ink);border-radius:14px;padding:22px 24px;overflow-x:auto;font:500 15px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:28px;max-width:760px}
+pre .c{color:#8a909c}
+
+footer{border-top:1px solid var(--rule);padding:32px 0 48px;color:var(--muted);font-size:14px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+@media (max-width:860px){
+  .hero,.rules,.two{grid-template-columns:1fr;gap:32px}
+  .hero{padding-top:12px}
+  .reel{max-width:420px}
+  .films{grid-template-columns:repeat(2,1fr)}
+  .steps{grid-template-columns:1fr}
+  .top nav a.hide-sm{display:none}
+  section{padding:56px 0}
+}
+@media (max-width:420px){.wrap{padding:0 16px}.bench{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top" id="top">
+    <a class="brand" href="#top"><span class="lens" aria-hidden="true"></span><b>coldopen</b></a>
+    <nav aria-label="Sections">
+      <a class="hide-sm" href="#films">Films</a>
+      <a class="hide-sm" href="#how">How it works</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/tiwaker9404/coldopen">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div>
+        <h1 class="display">Paste a company’s website. Get a <em>30&#8209;second film</em> made for them.</h1>
+        <p class="lede">In their fonts, their colors and their logo, quoting their own homepage. Then your proof, and one clear ask.</p>
+        <div class="ctas">
+          <a class="btn primary" href="https://github.com/tiwaker9404/coldopen">Get it on GitHub</a>
+          <a class="btn ghost" href="#films">Watch the films</a>
+        </div>
+        <p class="small">Open source (MIT). Runs free on your own laptop. About 50 seconds per film.</p>
+      </div>
+      <div class="reel">
+        <video src="media/reel.mp4" poster="media/reel.jpg" autoplay muted loop playsinline aria-label="The coldopen launch reel"></video>
+      </div>
+    </div>
+
+    <section id="films" aria-labelledby="films-h">
+      <p class="kicker">Real films, real companies</p>
+      <h2 class="display" id="films-h">Every film looks like the company it’s for.</h2>
+      <p class="intro">Each was made from nothing but the company’s URL and a profile. No editing. Click one to play it.</p>
+      <div class="films">
+        <div class="film"><button type="button" data-src="media/linear.mp4" aria-label="Play the film for Linear"><img src="media/linear.jpg" alt="" loading="lazy"><span class="play">Play</span></button><p>Linear<span>Their homepage headline, highlighted</span></p></div>
+        <div class="film"><button type="button" data-src="media/langchain.mp4" aria-label="Play the film for LangChain"><img src="media/langchain.jpg" alt="" loading="lazy"><span class="play">Play</span></button><p>LangChain<span>Opens on LangSmith Engine</span></p></div>
+        <div class="film"><button type="button" data-src="media/deel.mp4" aria-label="Play the film for Deel"><img src="media/deel.jpg" alt="" loading="lazy"><span class="play">Play</span></button><p>Deel<span>“150+ currencies”, from their site</span></p></div>
+        <div class="film"><button type="button" data-src="media/retell.mp4" aria-label="Play the film for Retell AI"><img src="media/retell.jpg" alt="" loading="lazy"><span class="play">Play</span></button><p>Retell AI<span>In their own serif typeface</span></p></div>
+      </div>
+    </section>
+
+    <section id="how" aria-labelledby="how-h">
+      <p class="kicker">How it works</p>
+      <h2 class="display" id="how-h">Three steps, about a minute.</h2>
+      <div class="steps">
+        <div class="card"><h3>Read their site</h3><p>A headless browser opens the homepage and reads what’s actually on screen: brand colors, the real font files, the logo, the headline and the numbers they lead with.</p></div>
+        <div class="card"><h3>Write the script</h3><p>A model writes six short lines and picks which fact and which proof to show. Code checks every line against written rules and sends it back until it passes.</p></div>
+        <div class="card"><h3>Render the film</h3><p>Each scene is a web page on a timeline, filmed frame by frame and encoded with ffmpeg. You get an MP4, a GIF for email and a share page.</p></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="rules-h">
+      <div class="rules">
+        <div>
+          <p class="kicker">It can’t make things up</p>
+          <h2 class="display" id="rules-h">The model points. The sources speak.</h2>
+          <p class="intro">Personalized outreach only works if every word is true. These rules are enforced in code, not just asked for in a prompt.</p>
+        </div>
+        <ul>
+          <li><b>Their facts are quoted, never paraphrased</b><span>The model picks a fact by id. The words on screen are copied from their homepage.</span></li>
+          <li><b>Your proof is shown word for word</b><span>Numbers come from your profile or résumé, exactly as written.</span></li>
+          <li><b>No invented numbers</b><span>Any number the model writes must exist in their site or your profile, or the line is rejected.</span></li>
+          <li><b>No AI slop</b><span>Word limits per line and 56 banned phrases: “unlock”, “seamless”, “revolutionize”, flattery.</span></li>
+          <li><b>Readable by construction</b><span>Every color is solved for WCAG contrast, and text is fitted so nothing overflows.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section aria-labelledby="who-h">
+      <p class="kicker">Who it’s for</p>
+      <h2 class="display" id="who-h">For job seekers in any role, and for sales teams.</h2>
+      <div class="two">
+        <div class="card">
+          <h3>Applying for a job</h3>
+          <p>Upload your résumé and say which role you want. coldopen drafts your profile from your strongest numbers, checks each one against the résumé, and can leave an employer out entirely.</p>
+          <div class="tags"><span>Engineers</span><span>Data analysts</span><span>Data scientists</span><span>PMs</span><span>Designers</span><span>Marketers</span><span>Customer success</span><span>Recruiters</span></div>
+        </div>
+        <div class="card">
+          <h3>Selling a product</h3>
+          <p>Paste one URL or a list of hundreds. Watch films render in the web app, export a CSV of share links for your CRM or sequencer, or mention <b>@coldopen</b> in Slack.</p>
+          <div class="tags"><span>Web app</span><span>CLI</span><span>REST API</span><span>CSV batches</span><span>Slack bot</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="crash-h">
+      <p class="kicker">Crash-proof</p>
+      <h2 class="display" id="crash-h">Kill the renderer halfway. It finishes anyway.</h2>
+      <p class="intro">Every step is checkpointed in Postgres by <a href="https://github.com/tiwaker9404/unkillable">unkillable</a>, a durable-execution engine built for this. A new worker replays finished work and renders only what’s left. A test kills a real worker on every commit. In its chaos benchmark of 200 refund tickets with workers killed at random:</p>
+      <div class="bench">
+        <div class="card"><b>83</b><span>customers refunded twice by a plain retry loop</span></div>
+        <div class="card good"><b>0</b><span>refunded twice with unkillable</span></div>
+      </div>
+    </section>
+
+    <section id="install" aria-labelledby="install-h">
+      <p class="kicker">Install</p>
+      <h2 class="display" id="install-h">Free, on your own machine.</h2>
+      <p class="intro">You need Node 24 and ffmpeg. For natural copy, add Groq’s free tier or a local model through Ollama; without one, a built-in writer makes plain but always-correct scripts.</p>
+<pre><code>git clone https://github.com/tiwaker9404/coldopen && cd coldopen && pnpm install
+<span class="c"># draft your profile from your résumé</span>
+pnpm coldopen profile resume.pdf me.json --role "Data analyst"
+<span class="c"># make a film</span>
+pnpm film https://acme.com -p me.json</code></pre>
+      <p class="small">Teams: <code>docker compose up</code> runs the web app, API, renderer and Postgres. See the <a href="https://github.com/tiwaker9404/coldopen#readme">README</a>.</p>
+    </section>
+  </main>
+
+  <footer>
+    <span>coldopen is open source under the MIT license. Built by <a href="https://github.com/tiwaker9404">Ashwin Tiwari</a>.</span>
+    <span><a href="https://github.com/tiwaker9404/coldopen">coldopen</a> · <a href="https://github.com/tiwaker9404/unkillable">unkillable</a></span>
+  </footer>
+</div>
+<script>
+// swap a poster for its film on click; one film plays at a time
+document.querySelectorAll('.film button').forEach((b) => {
+  b.addEventListener('click', () => {
+    for (const v of document.querySelectorAll('.film video')) v.pause()
+    const v = document.createElement('video')
+    v.src = b.dataset.src
+    v.controls = true
+    v.playsInline = true
+    v.setAttribute('aria-label', b.getAttribute('aria-label').replace('Play the ', 'The '))
+    b.replaceWith(v)
+    v.play().catch(() => {})
+  })
+})
+</script>
+</body>
+</html>

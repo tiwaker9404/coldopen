@@ -2,6 +2,8 @@
 
 **Paste a company's website. Get a 30-second film made for them.**
 
+[See the films →](https://tiwaker9404.github.io/coldopen/)
+
 coldopen is an open-source agent for personalized video outreach. Give it a prospect's URL and it reads their homepage, matches their brand (fonts, colors, logo), writes a short script grounded in what's actually on their site, and renders an on-brand MP4. It also produces the GIF an outreach email embeds and a share page to link to. It runs free on your own machine.
 
 ![Three films for three companies, each in that company's own brand](docs/media/three-films.gif)

@@ -32,7 +32,8 @@
     "test": "vitest run test/unit test/integration test/runtime",
     "evals": "node evals/run.ts",
     "test:chaos": "vitest run test/chaos",
-    "db:test": "docker run -d --rm --name coldopen-test-pg -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17-alpine"
+    "db:test": "docker run -d --rm --name coldopen-test-pg -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17-alpine",
+    "coldopen": "node src/cli.ts"
   },
   "dependencies": {
     "@fastify/static": "^10.1.8",
