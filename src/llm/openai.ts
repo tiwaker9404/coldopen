@@ -1,3 +1,4 @@
+import { NonRetryableError } from '../runtime/errors.ts'
 import { estimateTokens, type LlmProvider, type LlmRequest, type LlmResponse } from './types.ts'
 
 /**
@@ -40,7 +41,16 @@ export class OpenAICompatibleProvider implements LlmProvider {
     })
     if (!res.ok) {
       const body = await res.text().catch(() => '')
-      throw new LlmHttpError(res.status, body.slice(0, 500))
+      const err = new LlmHttpError(res.status, body.slice(0, 500))
+      if (err.retryable) throw err
+      // a wrong model name or key fails the same way every time: stop, and say what to fix
+      const hint =
+        res.status === 404
+          ? ` (check the model name; list what this endpoint serves with: curl ${this.#baseUrl}/models -H "Authorization: Bearer $LLM_API_KEY")`
+          : res.status === 401 || res.status === 403
+            ? ' (check LLM_API_KEY)'
+            : ''
+      throw new NonRetryableError(`${err.message}${hint}`)
     }
     const data = (await res.json()) as {
       model?: string

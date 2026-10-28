@@ -22,6 +22,12 @@ beforeAll(async () => {
     let body = ''
     for await (const c of req) body += c
     const parsed = JSON.parse(body)
+    if (parsed.model === 'retired-model') {
+      missingCalls++
+      res.statusCode = 404
+      res.end(JSON.stringify({ error: { code: 'model_not_found' } }))
+      return
+    }
     requests.push(parsed)
     const user = parsed.messages.find((m: { role: string }) => m.role === 'user').content as string
     const factId = user.match(/^(f\d+) \[stat\]/m)?.[1] ?? 'f1'
@@ -63,7 +69,23 @@ afterAll(async () => {
   ;(await fixtureServer()).close()
 })
 
+let missingCalls = 0
+
 describe('model-written scripts', () => {
+  it('stops at once, with a hint, when the model name is wrong', async () => {
+    const llm = new OpenAICompatibleProvider({
+      baseUrl: base,
+      model: 'retired-model',
+      apiKey: 'k',
+      timeoutMs: 5000,
+    })
+    const ctx = new LocalContext({ runId: 'run_missing_model', llm })
+    await expect(
+      ctx.llm('script-1', { schema: ScriptSchema, messages: [{ role: 'user', content: 'hi' }] }),
+    ).rejects.toThrow(/check the model name/)
+    expect(missingCalls).toBe(1)
+  })
+
   it('critiques, revises and journals every draft', async () => {
     const { kit } = await kitFor('northwind')
     const p = profile('sales')

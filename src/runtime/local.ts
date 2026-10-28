@@ -3,6 +3,7 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import type { ZodType } from 'zod'
 import type { LlmProvider } from '../llm/types.ts'
 import { callModel } from './context.ts'
+import { NonRetryableError } from './errors.ts'
 import type { AgentContext, EventResult, LlmOptions, StepOptions, ToolOptions } from './types.ts'
 
 /**
@@ -71,7 +72,7 @@ export class LocalContext implements AgentContext {
       try {
         return (await this.#save(key, await fn())) as T
       } catch (err) {
-        if (attempt > retries) throw err
+        if (attempt > retries || err instanceof NonRetryableError) throw err
         this.log(`step "${key}" failed (try ${attempt}): ${String(err)}`)
         await sleep(300 * attempt)
       }
