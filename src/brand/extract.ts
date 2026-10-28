@@ -515,22 +515,24 @@ function readPage(): RawPage {
   const meta = (sel: string) => document.querySelector<HTMLMetaElement>(sel)?.content?.trim() ?? ''
 
   // -- copy
-  // the headline: a visible h1, else the largest text above the fold (many sites style a div)
-  let h1: Element | null =
-    [...document.querySelectorAll('h1')].find((e) => visible(e) && text(e).length > 3) ?? null
-  if (!h1) {
-    let best = 0
-    for (const el of document.querySelectorAll('h2, p, div, span')) {
-      if (el.children.length > 2 || !visible(el)) continue
-      const r = el.getBoundingClientRect()
-      const size = Number.parseFloat(getComputedStyle(el).fontSize)
-      const t = text(el)
-      if (r.top < vh && size > best && t.length > 8 && t.length < 140) {
-        best = size
-        h1 = el
-      }
+  // the headline: the biggest text above the fold. A visible h1 wins unless it's clearly
+  // smaller, because some sites mark up an eyebrow label as the h1 (retellai.com).
+  const sizeOf = (el: Element) => Number.parseFloat(getComputedStyle(el).fontSize) || 0
+  let largest: Element | null = null
+  let best = 0
+  for (const el of document.querySelectorAll('h1, h2, p, div, span')) {
+    if (el.children.length > 2 || !visible(el)) continue
+    const r = el.getBoundingClientRect()
+    const size = sizeOf(el)
+    const t = text(el)
+    if (r.top < vh && r.bottom > 0 && size > best && t.length > 8 && t.length < 140) {
+      best = size
+      largest = el
     }
   }
+  let h1: Element | null =
+    [...document.querySelectorAll('h1')].find((e) => visible(e) && text(e).length > 3) ?? null
+  if (!h1 || (largest && sizeOf(h1) < best * 0.6)) h1 = largest
   // the box around the words a visitor sees: union of visible text runs inside the h1's own box.
   // Screen-reader copies and offscreen animation clones are excluded, so the zoom lands on the text.
   let hr: { left: number; top: number; width: number; height: number } | undefined =

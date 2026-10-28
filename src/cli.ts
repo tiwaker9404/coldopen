@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { closeBrowser } from './browser.ts'
 import { createFilmAgent, type FilmResult } from './film.ts'
-import { OpenAICompatibleProvider } from './llm/openai.ts'
+import { buildLlm } from './llm/chain.ts'
 import { LocalContext } from './runtime/local.ts'
 import { ProfileSchema } from './script/types.ts'
 
@@ -46,6 +46,7 @@ const { values, positionals } = parseArgs({
       default: process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1',
     },
     'api-key': { type: 'string', default: process.env.LLM_API_KEY ?? 'ollama' },
+    'fallback-model': { type: 'string', default: process.env.LLM_FALLBACK_MODEL },
     help: { type: 'boolean', short: 'h' },
   },
 })
@@ -87,12 +88,17 @@ async function makeFilm(url: string, opts: { id?: string; quiet?: boolean }): Pr
   await mkdir(join(filmsDir, id), { recursive: true })
 
   const llm = values.model
-    ? new OpenAICompatibleProvider({
-        baseUrl: values['base-url']!,
-        model: values.model,
-        apiKey: values['api-key']!,
-        timeoutMs: 180_000,
-      })
+    ? buildLlm(
+        { baseUrl: values['base-url']!, model: values.model, apiKey: values['api-key']! },
+        values['fallback-model']
+          ? {
+              model: values['fallback-model'],
+              baseUrl: process.env.LLM_FALLBACK_BASE_URL,
+              apiKey: process.env.LLM_FALLBACK_API_KEY,
+            }
+          : null,
+        180_000,
+      )
     : null
   const ctx = new LocalContext({
     runId: id,

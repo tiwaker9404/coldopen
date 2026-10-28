@@ -20,7 +20,24 @@ export class OpenAICompatibleProvider implements LlmProvider {
     this.name = `openai-compatible:${opts.model}`
   }
 
-  async complete(req: LlmRequest): Promise<LlmResponse> {
+  /** set after the endpoint rejects a json_schema response_format once */
+  #schemaUnsupported = false
+
+  #format(req: LlmRequest, strict: boolean): Record<string, unknown> {
+    if (req.schema && strict)
+      return {
+        response_format: {
+          type: 'json_schema',
+          json_schema: { name: 'reply', strict: true, schema: req.schema },
+        },
+      }
+    return req.json ? { response_format: { type: 'json_object' } } : {}
+  }
+
+  async complete(
+    req: LlmRequest,
+    strict = Boolean(req.schema) && !this.#schemaUnsupported,
+  ): Promise<LlmResponse> {
     const started = performance.now()
     const signal = req.signal
       ? AbortSignal.any([req.signal, AbortSignal.timeout(this.#timeoutMs)])
@@ -35,12 +52,19 @@ export class OpenAICompatibleProvider implements LlmProvider {
         model: this.#model,
         messages: req.messages,
         temperature: req.temperature ?? 0,
-        ...(req.json ? { response_format: { type: 'json_object' } } : {}),
+        ...this.#format(req, strict),
       }),
       signal,
     })
     if (!res.ok) {
       const body = await res.text().catch(() => '')
+      if (res.status === 400 && strict) {
+        // Groq: the constrained decode occasionally fails validation; retry once as plain JSON.
+        // Anything else at 400 with a schema attached means this endpoint doesn't support
+        // structured outputs: remember that and stop sending them.
+        if (!/json_validate_failed/.test(body)) this.#schemaUnsupported = true
+        return this.complete(req, false)
+      }
       const err = new LlmHttpError(res.status, body.slice(0, 500))
       if (err.retryable) throw err
       // a wrong model name or key fails the same way every time: stop, and say what to fix

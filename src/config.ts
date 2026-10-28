@@ -39,6 +39,10 @@ const schema = z.object({
   LLM_BASE_URL: z.string().default('http://localhost:11434/v1'),
   LLM_MODEL: z.string().default('qwen2.5:7b'),
   LLM_API_KEY: z.string().default('ollama'),
+  // optional second model, tried when the first is rate limited or down (e.g. Groq -> local Ollama)
+  LLM_FALLBACK_MODEL: z.string().optional(),
+  LLM_FALLBACK_BASE_URL: z.string().default('http://localhost:11434/v1'),
+  LLM_FALLBACK_API_KEY: z.string().default('ollama'),
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
 
   /** Slack app (optional): mention the bot with a URL, the film comes back in the thread */

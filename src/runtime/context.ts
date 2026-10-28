@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { setTimeout as sleep } from 'node:timers/promises'
-import type { ZodType } from 'zod'
+import { type ZodType, z } from 'zod'
 import type { Sql } from '../db/index.ts'
 import type { ChatMessage, LlmProvider } from '../llm/types.ts'
 import { backoffMs } from './backoff.ts'
@@ -418,6 +418,18 @@ export class NaiveContext implements AgentContext {
 
 /* --------------------------------------------------------- LLM w/ repair loop */
 
+const schemaCache = new WeakMap<object, Record<string, unknown>>()
+/** Zod 4 emits strict-mode-ready JSON Schema: every property required, no extra properties. */
+function jsonSchemaFor(schema: ZodType): Record<string, unknown> {
+  let js = schemaCache.get(schema)
+  if (!js) {
+    const { $schema: _drop, ...rest } = z.toJSONSchema(schema) as Record<string, unknown>
+    js = rest
+    schemaCache.set(schema, js)
+  }
+  return js
+}
+
 export async function callModel<T>(
   provider: LlmProvider,
   opts: LlmOptions<T>,
@@ -429,6 +441,7 @@ export async function callModel<T>(
     const res = await provider.complete({
       messages,
       json: Boolean(opts.schema),
+      ...(opts.schema ? { schema: jsonSchemaFor(opts.schema) } : {}),
       temperature: opts.temperature ?? 0,
       signal,
     })

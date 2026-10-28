@@ -17,7 +17,7 @@ import { contrast, distance, parseColor } from '../src/brand/color.ts'
 import { extractBrand } from '../src/brand/extract.ts'
 import type { BrandKit } from '../src/brand/types.ts'
 import { closeBrowser } from '../src/browser.ts'
-import { OpenAICompatibleProvider } from '../src/llm/openai.ts'
+import { buildLlm } from '../src/llm/chain.ts'
 import { compose, type Format } from '../src/render/composition.ts'
 import { openComposition, seek } from '../src/render/render.ts'
 import { buildTheme } from '../src/render/theme.ts'
@@ -35,6 +35,7 @@ const { values } = parseArgs({
       default: process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1',
     },
     'api-key': { type: 'string', default: process.env.LLM_API_KEY ?? 'ollama' },
+    'fallback-model': { type: 'string', default: process.env.LLM_FALLBACK_MODEL },
     out: { type: 'string', default: join(import.meta.dirname, 'results.md') },
   },
 })
@@ -85,12 +86,17 @@ const record = (r: Result) => {
 }
 
 const llm = values.model
-  ? new OpenAICompatibleProvider({
-      baseUrl: values['base-url']!,
-      model: values.model,
-      apiKey: values['api-key']!,
-      timeoutMs: 180_000,
-    })
+  ? buildLlm(
+      { baseUrl: values['base-url']!, model: values.model, apiKey: values['api-key']! },
+      values['fallback-model']
+        ? {
+            model: values['fallback-model'],
+            baseUrl: process.env.LLM_FALLBACK_BASE_URL,
+            apiKey: process.env.LLM_FALLBACK_API_KEY,
+          }
+        : null,
+      180_000,
+    )
   : null
 
 async function script(

@@ -4,7 +4,7 @@ import { closeBrowser } from './browser.ts'
 import { loadConfig } from './config.ts'
 import { connect, migrate } from './db/index.ts'
 import { createFilmAgent } from './film.ts'
-import { OpenAICompatibleProvider } from './llm/openai.ts'
+import { buildLlm } from './llm/chain.ts'
 import type { LlmProvider } from './llm/types.ts'
 import { createLogger } from './logger.ts'
 import { registry, Worker } from './runtime/worker.ts'
@@ -24,12 +24,17 @@ const stoppers: (() => Promise<void>)[] = []
 
 const llm: LlmProvider =
   cfg.LLM_PROVIDER === 'openai'
-    ? new OpenAICompatibleProvider({
-        baseUrl: cfg.LLM_BASE_URL,
-        model: cfg.LLM_MODEL,
-        apiKey: cfg.LLM_API_KEY,
-        timeoutMs: cfg.LLM_TIMEOUT_MS,
-      })
+    ? buildLlm(
+        { baseUrl: cfg.LLM_BASE_URL, model: cfg.LLM_MODEL, apiKey: cfg.LLM_API_KEY },
+        cfg.LLM_FALLBACK_MODEL
+          ? {
+              model: cfg.LLM_FALLBACK_MODEL,
+              baseUrl: cfg.LLM_FALLBACK_BASE_URL,
+              apiKey: cfg.LLM_FALLBACK_API_KEY,
+            }
+          : null,
+        cfg.LLM_TIMEOUT_MS,
+      )
     : {
         name: 'none',
         complete: () => Promise.reject(new Error('no LLM configured (set LLM_PROVIDER=openai)')),

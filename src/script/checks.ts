@@ -134,6 +134,20 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
         ? 'insight.why must connect the fact to you (use "I" or "my"); a compliment alone is filler'
         : `insight.why must connect the fact to what ${profile.sender.company ?? 'the sender'} offers (name it, or the problem it solves); a compliment alone is filler`,
     )
+  // the pitch may be tailored to them, but it can't claim things the profile doesn't say
+  // (deel.com: a job seeker's film pitched "AI agent platform for global payroll")
+  // naming the company you're writing to is tailoring, not a claim
+  const own = `${profile.offer} ${profile.points.join(' ')} ${profile.sender.role ?? ''} ${kit.name}`
+  if (overlap(script.pitch.headline, own) < 0.3)
+    v.push(
+      `pitch.headline "${script.pitch.headline}" claims things the profile doesn't say; build it from the offer: "${profile.offer}"`,
+    )
+  script.pitch.points.forEach((p, i) => {
+    if (overlap(p, own) < 0.5)
+      v.push(
+        `pitch.points[${i}] "${p}" adds claims the profile doesn't make; reword one of the profile's points instead`,
+      )
+  })
   if (words(script.pitch.headline) < 4)
     v.push(
       `pitch.headline "${script.pitch.headline}" is too generic; say what you offer in 4 to ${LIMITS.headline} words`,

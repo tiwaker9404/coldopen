@@ -116,6 +116,22 @@ describe('taste checks', () => {
     expect(checkScript(quoted, kit, sales)).toEqual([])
   })
 
+  it('rejects a pitch that claims what the profile never says (deel.com)', () => {
+    const cand = profile('candidate')
+    const base = deterministicScript(kit, cand)
+    const invented = {
+      ...base,
+      pitch: {
+        headline: 'AI agent platform for global payroll',
+        points: [cand.points[0]!, 'Runs payroll compliance for every country'],
+      },
+    }
+    const v = checkScript(invented, kit, cand).join('\n')
+    expect(v).toContain("claims things the profile doesn't say")
+    expect(v).toContain('pitch.points[1]')
+    expect(v).not.toContain('pitch.points[0]')
+  })
+
   it('accepts numbers that exist in sources', () => {
     expect(
       checkScript(

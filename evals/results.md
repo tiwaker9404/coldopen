@@ -1,6 +1,6 @@
 # coldopen evals
 
-72/72 checks passed across 12 evals, 3 sites and 2 presets, using the deterministic writer. Ran in 9s.
+72/72 checks passed across 12 evals, 3 sites and 2 presets, using the deterministic writer. Ran in 10s.
 
 | Eval | Passed | What it checks |
 |---|---:|---|

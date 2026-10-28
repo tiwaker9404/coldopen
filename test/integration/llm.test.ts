@@ -116,6 +116,13 @@ describe('model-written scripts', () => {
     const revision = requests[1]!.messages.at(-1)!.content
     expect(revision).toContain('Fix every problem below')
     expect(revision).toContain('"52%"')
-    expect(requests[0]!.response_format).toEqual({ type: 'json_object' })
+    // structured outputs: the script's JSON Schema is sent in strict mode
+    const format = requests[0]!.response_format as {
+      type: string
+      json_schema: { strict: boolean; schema: { required: string[] } }
+    }
+    expect(format.type).toBe('json_schema')
+    expect(format.json_schema.strict).toBe(true)
+    expect(format.json_schema.schema.required).toContain('insight')
   })
 })

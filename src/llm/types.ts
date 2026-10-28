@@ -7,6 +7,8 @@ export interface LlmRequest {
   messages: ChatMessage[]
   /** ask the model for a JSON object (OpenAI `response_format: json_object`) */
   json?: boolean
+  /** a JSON Schema the reply must match; providers that support structured outputs enforce it */
+  schema?: Record<string, unknown>
   temperature?: number
   signal?: AbortSignal
 }

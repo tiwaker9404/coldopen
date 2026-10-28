@@ -79,21 +79,24 @@ docker compose up --build       # web app, API, renderer and Postgres on http://
 
 ## Writing scripts with a model (free)
 
-Without a model, the built-in writer makes plain but always-correct scripts. For natural copy, point coldopen at any OpenAI-compatible API. Local [Ollama](https://ollama.com) costs nothing:
+Without a model, the built-in writer makes plain but always-correct scripts. For natural copy, point coldopen at any OpenAI-compatible API. Two free options work well:
+
+| Setup                            | Model                 | Quality                                        | Notes                                |
+| -------------------------------- | --------------------- | ---------------------------------------------- | ------------------------------------ |
+| **Groq free tier** (recommended) | `openai/gpt-oss-120b` | Best: passes the taste checks in 1 to 2 drafts | No card. About 1,000 requests a day. |
+| **Ollama on your laptop**        | `qwen2.5:7b`          | Good: occasionally needs a built-in line       | Private, offline, unlimited          |
 
 ```bash
-ollama pull qwen2.5:7b
-pnpm film https://acme.com --model qwen2.5:7b
+# Groq, with local Ollama as the fallback when Groq's daily limit runs out
+export LLM_BASE_URL=https://api.groq.com/openai/v1 LLM_API_KEY=gsk_...   # key from console.groq.com
+export LLM_FALLBACK_MODEL=qwen2.5:7b                                    # Ollama, used on 429s and outages
+pnpm film https://acme.com --model openai/gpt-oss-120b
 ```
 
-Groq, OpenAI, Together and vLLM work the same way. Put the key in the environment, not on the command line, so it never shows up in your terminal output or shell history:
+Keep keys in the environment, not on the command line, so they never show up in terminal output or shell history. The server reads the same variables, plus `LLM_PROVIDER=openai`.
 
-```bash
-export LLM_BASE_URL=https://api.groq.com/openai/v1 LLM_API_KEY=gsk_...   # Groq's free tier
-pnpm film https://acme.com --model llama-3.3-70b-versatile
-```
-
-The server reads the same variables, plus `LLM_PROVIDER=openai`.
+- **Structured outputs.** The script's schema is sent as a strict JSON Schema (`response_format: json_schema`), so models that support constrained decoding (gpt-oss on Groq, recent Ollama) can only return the right shape. Endpoints without it are detected on the first call and get plain JSON mode instead.
+- **Fallback chain.** A rate limit, outage or timeout moves to `LLM_FALLBACK_MODEL` instead of failing the film, so a 500-prospect batch survives a free tier's daily cap. A wrong model name or key fails once with a hint, rather than being retried.
 
 ## Two presets
 
@@ -107,7 +110,7 @@ Each sender profile is a small JSON file you write once ([examples](profiles/)):
 ## Quality, measured
 
 ```bash
-pnpm test         # 94 tests: runtime, extraction, render QA, pipeline resume, API, Slack, model path
+pnpm test         # 98 tests: runtime, extraction, render QA, pipeline resume, API, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
 ```
