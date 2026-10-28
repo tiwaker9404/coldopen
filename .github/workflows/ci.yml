@@ -41,7 +41,10 @@ jobs:
       - uses: actions/setup-node@v5
         with: { node-version: 24, cache: pnpm }
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: pnpm install --frozen-lockfile # downloads Puppeteer's Chrome
+      - run: pnpm install --frozen-lockfile
+      # pnpm's side-effects cache can skip Puppeteer's postinstall (the lint job installs with
+      # downloads off), so fetch the matching Chrome explicitly
+      - run: pnpm exec puppeteer browsers install chrome
       - run: pnpm test
       - name: Chaos test (SIGKILL a renderer mid-film)
         run: pnpm test:chaos
