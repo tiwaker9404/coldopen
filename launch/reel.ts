@@ -2,53 +2,58 @@
  * The launch reel, rendered by coldopen's own engine: an HTML timeline with paused
  * animations, seeked frame by frame and encoded with ffmpeg, the same way every film is.
  *
- *   node launch/reel.ts <films-dir> <out.mp4>
+ *   node launch/reel.ts <films-dir> <out.mp4> [clips.json]
  *
- * <films-dir> must contain northwind/, lumen/ and parcelpine/ made with the CLI:
- *   node src/cli.ts <url> --id northwind -o <films-dir>
+ * clips.json lists which moment of which film to show (default: launch/clips.json):
+ *   [{ "dir": "linear.app-55a3ef", "from": 24.9, "caption": "One clear ask." }, ...]
+ * Each dir is a film folder made by the CLI. The company name comes from its kit.json.
  */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { closeBrowser, getBrowser } from '../src/browser.ts'
 import { renderSegment, seek } from '../src/render/render.ts'
 
-const [filmsDir = '.scratch/reel/films', out = '.scratch/reel/coldopen-launch.mp4'] =
-  process.argv.slice(2)
+const [
+  filmsDir = '.scratch/reel/films',
+  out = '.scratch/reel/coldopen-launch.mp4',
+  clipsFile = join(import.meta.dirname, 'clips.json'),
+] = process.argv.slice(2)
 const W = 1080
 const H = 1350
 const work = resolve(dirname(out), 'reel-build')
 rmSync(work, { recursive: true, force: true })
 mkdirSync(join(work, 'frames'), { recursive: true })
 
-const CLIPS = [
-  {
-    id: 'northwind',
-    company: 'Northwind Freight',
-    from: 3.7,
-    caption: 'Their own homepage, with the promise they lead with highlighted.',
-  },
-  {
-    id: 'lumen',
-    company: 'Lumen Health',
-    from: 8.7,
-    caption: 'A number from their site, set in their font and colors.',
-  },
-  {
-    id: 'parcelpine',
-    company: 'Parcelpine',
-    from: 24.9,
-    caption: 'One clear ask, signed by the sender.',
-  },
-] as const
+type ClipSpec = { dir: string; from: number; caption: string }
+const specs: ClipSpec[] = existsSync(clipsFile)
+  ? JSON.parse(readFileSync(clipsFile, 'utf8'))
+  : [
+      {
+        dir: 'northwind',
+        from: 3.7,
+        caption: 'Their homepage, with the promise they lead with highlighted.',
+      },
+      {
+        dir: 'lumen',
+        from: 8.7,
+        caption: 'A number from their site, set in their font and colors.',
+      },
+      { dir: 'parcelpine', from: 24.9, caption: 'One clear ask, signed by the sender.' },
+    ]
+const CLIPS = specs.map((c, i) => ({
+  ...c,
+  id: `clip${i}`,
+  company: JSON.parse(readFileSync(join(filmsDir, c.dir, 'kit.json'), 'utf8')).name as string,
+}))
 const CLIP_DUR = 3.8
 const FPS = 30
 
 // 1. pull the clip frames out of the real films
 for (const c of CLIPS) {
-  const film = readdirSync(join(filmsDir, c.id)).find((f) => /^film-.*\.mp4$/.test(f))!
+  const film = readdirSync(join(filmsDir, c.dir)).find((f) => /^film-.*\.mp4$/.test(f))!
   mkdirSync(join(work, 'frames', c.id), { recursive: true })
   execFileSync('ffmpeg', [
     '-loglevel',
@@ -59,7 +64,7 @@ for (const c of CLIPS) {
     '-t',
     String(CLIP_DUR),
     '-i',
-    join(filmsDir, c.id, film),
+    join(filmsDir, c.dir, film),
     '-vf',
     `fps=${FPS},scale=860:-1`,
     '-q:v',
@@ -73,7 +78,7 @@ for (const c of CLIPS) {
     '-ss',
     '2.6',
     '-i',
-    join(filmsDir, c.id, film),
+    join(filmsDir, c.dir, film),
     '-frames:v',
     '1',
     '-vf',
@@ -95,9 +100,9 @@ const T = {
   title: 0,
   composer: 3.6,
   clips: 9.0,
-  grid: 9.0 + CLIP_DUR * 3,
-  crash: 9.0 + CLIP_DUR * 3 + 5.0,
-  outro: 9.0 + CLIP_DUR * 3 + 9.4,
+  grid: 9.0 + CLIP_DUR * CLIPS.length,
+  crash: 9.0 + CLIP_DUR * CLIPS.length + 5.0,
+  outro: 9.0 + CLIP_DUR * CLIPS.length + 9.4,
 }
 const END = T.outro + 4.6
 const scenes = [
@@ -161,7 +166,7 @@ body{font-family:Body;color:var(--ink);-webkit-font-smoothing:antialiased}
 .cap{align-self:flex-start;margin-top:calc(var(--u)*3.4);font-size:calc(var(--u)*3.6);line-height:1.3;max-width:34ch;color:var(--muted)}
 /* grid */
 .posters{display:flex;gap:calc(var(--u)*2.4);margin-top:calc(var(--u)*4)}
-.posters img{width:calc(var(--u)*27.6);height:calc(var(--u)*27.6);border-radius:calc(var(--u)*1.4);display:block}
+.posters img{flex:1;min-width:0;aspect-ratio:1;border-radius:calc(var(--u)*1.4);display:block;object-fit:cover}
 .big{font-size:calc(var(--u)*7.4);margin-bottom:calc(var(--u)*5)}
 .small{font-size:calc(var(--u)*3.8);line-height:1.35;color:var(--muted);margin-top:calc(var(--u)*5);max-width:36ch}
 /* crash */
@@ -202,7 +207,7 @@ body{font-family:Body;color:var(--ink);-webkit-font-smoothing:antialiased}
 </section>
 <script>
 const SC = ${JSON.stringify(scenes)};
-const URLTEXT = 'northwindfreight.example';
+const URLTEXT = ${JSON.stringify(process.env.REEL_URL ?? 'northwindfreight.example')};
 const STAGES = [['Reading the site', 2.0], ['Writing the script', 2.6], ['Matching their brand', 3.2], ['Rendering scene 1 of 6', 3.8], ['Rendering scene 4 of 6', 4.6]];
 const clips = [...document.querySelectorAll('.clip')];
 const CLIP = ${CLIP_DUR};
