@@ -27,6 +27,16 @@ The model writes six short lines and makes two choices: which fact from the comp
 - The featured fact must be a real fact ID from the extracted list, and a stat whenever the site has one. A number on screen lands harder than a sentence.
 - The hook or the observation must name the company.
 
+## Every line has a job
+
+Checked in code, because a model that obeys word limits can still write empty lines:
+
+- **Hook:** greets them in at least 3 words, not just their name.
+- **What we noticed:** says something about their homepage. Restating their headline doesn't count, unless it's quoted as a quote.
+- **Why it matters:** connects the fact to what you offer. Repeating the fact, which is already on screen, doesn't count.
+- **Pitch headline:** at least 4 words that name what you offer, not a slogan.
+- **Proof:** at least 2 items, so the scene never looks empty.
+
 ## Tone
 
 - Specific beats general: mention one concrete thing that's on their homepage.
@@ -37,7 +47,7 @@ The model writes six short lines and makes two choices: which fact from the comp
 
 Matched case-insensitively anywhere in a line:
 
-> revolutionize, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy, leverage, empower, elevate, in today's, fast-paced, look no further, take it to the next, harness the power, delve, tapestry, landscape, world-class, best-in-class, robust, holistic, transformative, innovative, amazing, incredible, impressive, love what you, huge fan, i hope this, just wanted to, reach out, touch base, circle back, quick question, excited to, thrilled, passionate
+> revolutionize, drive growth, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy, leverage, empower, elevate, in today's, fast-paced, look no further, take it to the next, harness the power, delve, tapestry, landscape, world-class, best-in-class, robust, holistic, transformative, innovative, amazing, incredible, impressive, love what you, huge fan, i hope this, just wanted to, reach out, touch base, circle back, quick question, excited to, thrilled, passionate
 
 To add your own house rules, edit [src/script/taste.ts](../src/script/taste.ts). The prompt and the checks both read from it, so the model is told about a rule the moment it's enforced.
 

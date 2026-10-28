@@ -91,6 +91,31 @@ describe('taste checks', () => {
     expect(checkScript(quoted, noStats, sales)).toEqual([])
   })
 
+  // the shape of what qwen2.5:7b wrote for linear.app, cal.com and ramp.com before these rules
+  it('rejects lines that restate what is already on screen', () => {
+    const lazy: Script = {
+      ...good,
+      hook: 'Northwind Freight',
+      noticed: "Every pallet, visible before it's late",
+      insight: { factId: 'f2', why: '38% fewer late deliveries in the first quarter' },
+      pitch: { ...good.pitch, headline: 'Drive growth' },
+      proof: [0],
+    }
+    const v = checkScript(lazy, kit, sales).join('\n')
+    expect(v).toContain('hook "Northwind Freight" is too bare')
+    expect(v).toContain('noticed repeats their headline')
+    expect(v).toContain('insight.why repeats the fact')
+    expect(v).toContain('pitch.headline "Drive growth" is too generic')
+    expect(v).toContain('banned phrase "drive growth"')
+    expect(v).toContain('proof needs at least 2 items')
+    // quoting their headline, framed as a quote, is fine
+    const quoted = {
+      ...good,
+      noticed: 'Northwind leads with “Every pallet, visible before it’s late”',
+    }
+    expect(checkScript(quoted, kit, sales)).toEqual([])
+  })
+
   it('accepts numbers that exist in sources', () => {
     expect(
       checkScript(

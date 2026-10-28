@@ -12,6 +12,29 @@ function numbersIn(s: string): string[] {
   )
 }
 
+const STOP = new Set(
+  'the and for with that this your you our are was from into have has its their they them than what when which who will just about over more most only also like'.split(
+    ' ',
+  ),
+)
+const content = (s: string) =>
+  new Set(
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !STOP.has(w)),
+  )
+/** Share of a line's content words that also appear in a source: 1 means a pure restatement. */
+export function overlap(line: string, source: string): number {
+  const a = content(line)
+  if (a.size === 0) return 0
+  const b = content(source)
+  let n = 0
+  for (const w of a) if (b.has(w)) n++
+  return n / a.size
+}
+
 /**
  * Every rule from the taste list, as code. Returns human-readable violations that are fed
  * back to the model verbatim, so they double as revision instructions.
@@ -80,6 +103,25 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
       v.push(`proof index ${i} is out of range (0-${profile.proof.length - 1})`)
   }
   if (new Set(script.proof).size !== script.proof.length) v.push('proof indices repeat')
+
+  // the lines have jobs; restating what's already on screen does none of them
+  if (words(script.hook) < 3)
+    v.push(`hook "${script.hook}" is too bare; greet them in 3 to ${LIMITS.hook} words`)
+  if (kit.headline && overlap(script.noticed, kit.headline) > 0.8 && !/["“”]/.test(script.noticed))
+    v.push(
+      'noticed repeats their headline; say what you noticed about it, or quote it inside quotation marks',
+    )
+  if (chosen && overlap(script.insight.why, chosen.text) > 0.6)
+    v.push(
+      `insight.why repeats the fact, which is already on screen; say why it matters to them given what ${profile.sender.company ?? 'you'} offer${profile.sender.company ? 's' : ''}`,
+    )
+  if (words(script.pitch.headline) < 4)
+    v.push(
+      `pitch.headline "${script.pitch.headline}" is too generic; say what you offer in 4 to ${LIMITS.headline} words`,
+    )
+  const minProof = Math.min(2, profile.proof.length)
+  if (script.proof.length < minProof)
+    v.push(`proof needs at least ${minProof} items from the profile; one stat alone looks empty`)
 
   const nameWord = kit.name.split(/\s+/)[0]!.toLowerCase()
   if (!`${script.hook} ${script.noticed}`.toLowerCase().includes(nameWord)) {
