@@ -240,6 +240,10 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
           req.body.filename,
         )
         const resume = parseResume(text, req.body.exclude)
+        if (resume.unmatchedExcludes.length)
+          throw new Error(
+            `"${resume.unmatchedExcludes.join('", "')}" doesn't appear in your résumé, so nothing would be left out. Use the name exactly as the résumé writes it`,
+          )
         return await draftProfile({
           resume,
           role: req.body.role,

@@ -284,7 +284,13 @@ async function main() {
       .map((x) => x.trim())
       .filter(Boolean)
     const resume = parseResume(await resumeText(new Uint8Array(await readFile(arg)), arg), exclude)
-    status(`  reading ${resume.entries.length} résumé bullets`)
+    if (resume.unmatchedExcludes.length)
+      throw new Error(
+        `--exclude "${resume.unmatchedExcludes.join('", "')}" doesn't appear anywhere in ${arg}, so nothing would be left out. Use the name exactly as the résumé writes it`,
+      )
+    done(
+      `  reading ${resume.entries.length} résumé bullets${exclude.length ? `, leaving out ${exclude.join(', ')}` : ''}`,
+    )
     const { profile, meta } = await draftProfile({
       resume,
       role,

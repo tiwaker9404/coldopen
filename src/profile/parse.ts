@@ -17,6 +17,8 @@ export interface ParsedResume {
   entries: Entry[]
   /** the whole résumé, whitespace collapsed: the only source a draft may quote */
   text: string
+  /** exclude terms that matched nothing, usually a typo or a placeholder left in */
+  unmatchedExcludes: string[]
 }
 
 const BULLET = /^\s*[•●▪◦‣∙·\-–*]\s+/
@@ -81,7 +83,11 @@ export function parseResume(raw: string, exclude: string[] = []): ParsedResume {
   const kept = entries.filter(
     (e) => !banned.some((b) => e.org.toLowerCase().includes(b) || e.text.toLowerCase().includes(b)),
   )
-  return { name, email, summary, entries: kept, text: collapse(raw) }
+  const lower = raw.toLowerCase()
+  const unmatchedExcludes = exclude.filter(
+    (x) => x.trim() && !lower.includes(x.trim().toLowerCase()),
+  )
+  return { name, email, summary, entries: kept, text: collapse(raw), unmatchedExcludes }
 }
 
 /** "Rail Inc. Mar 2026 - May 2026" -> "Rail Inc." */

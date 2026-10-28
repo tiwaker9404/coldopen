@@ -31,6 +31,10 @@ describe('reading a résumé', () => {
     expect(r.entries.every((e) => e.org === 'Northwind Logistics')).toBe(true)
     const draft = deterministicDraft(r, { role: 'Data analyst' })
     expect(JSON.stringify(draft)).not.toMatch(/harbor/i)
+    // a placeholder or typo is reported, not silently ignored
+    expect(parseResume(fixture('priya-analyst.md'), ['Your Employer']).unmatchedExcludes).toEqual([
+      'Your Employer',
+    ])
   })
 
   it('reads text files and refuses empty or unsupported ones', async () => {
