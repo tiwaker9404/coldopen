@@ -137,6 +137,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
               rounds: 1,
               violations: [[]],
               usedFallback: false,
+              replaced: [],
             } as ScriptMeta,
           }))
 

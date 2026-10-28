@@ -16,6 +16,9 @@ export const LIMITS = {
 export const BANNED = [
   'revolutionize',
   'drive growth',
+  'deeper insights',
+  'made easy',
+  'shows the impact',
   'boost your',
   'revolutionizing',
   'game-changer',
@@ -75,7 +78,7 @@ Taste rules (these are checked in code; a violation means a rewrite):
 - Never use these words: ${BANNED.slice(0, 24).join(', ')}.
 - Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.
 - The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.
-- Every line has a job. The hook greets them (3+ words, not just their name). "noticed" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). "why" says why the fact matters to them given what the sender offers; it never repeats the fact, which is already on screen.
+- Every line has a job. The hook greets them (3+ words, not just their name). "noticed" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). "why" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: "I…"). It never repeats the fact, which is already on screen, and is never a compliment.
 - The pitch headline names what the sender offers in 4+ words, not a slogan like "drive growth". Show 2 or 3 proof items.
 - The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.
 `.trim()

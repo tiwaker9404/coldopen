@@ -17,6 +17,12 @@ const STOP = new Set(
     ' ',
   ),
 )
+// words that appear in any pitch and so can't show a real connection to the sender
+const GENERIC = new Set(
+  'show shows help helps team teams make makes give gives work works better faster every real using user users people companies company business growth grow'.split(
+    ' ',
+  ),
+)
 const content = (s: string) =>
   new Set(
     s
@@ -114,6 +120,19 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
   if (chosen && overlap(script.insight.why, chosen.text) > 0.6)
     v.push(
       `insight.why repeats the fact, which is already on screen; say why it matters to them given what ${profile.sender.company ?? 'you'} offer${profile.sender.company ? 's' : ''}`,
+    )
+  // the reason it matters has to point at the sender, or it's just a compliment
+  const sender = `${profile.sender.company ?? ''} ${profile.offer} ${profile.points.join(' ')}`
+  const connects =
+    profile.preset === 'candidate'
+      ? /\b(i|i'm|i've|my|me)\b/i.test(script.insight.why)
+      : /\b(we|our|us)\b/i.test(script.insight.why) ||
+        [...content(script.insight.why)].some((w) => !GENERIC.has(w) && content(sender).has(w))
+  if (!connects)
+    v.push(
+      profile.preset === 'candidate'
+        ? 'insight.why must connect the fact to you (use "I" or "my"); a compliment alone is filler'
+        : `insight.why must connect the fact to what ${profile.sender.company ?? 'the sender'} offers (name it, or the problem it solves); a compliment alone is filler`,
     )
   if (words(script.pitch.headline) < 4)
     v.push(

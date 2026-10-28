@@ -9,7 +9,7 @@
 | `brand.name` | 6/6 | Company name read correctly |
 | `brand.logo` | 6/6 | Logo captured from the header |
 | `copy.taste-rules` | 6/6 | Word limits, no banned phrases, no invented numbers, names the company |
-| `copy.no-fallback` | 6/6 | The writer complied without the deterministic safety net |
+| `copy.no-fallback` | 6/6 | The model wrote every line itself; no built-in line was swapped in |
 | `copy.quote-on-their-site` | 6/6 | The fact shown on screen appears verbatim on their homepage |
 | `copy.uses-a-stat` | 6/6 | The featured fact is a number, which reads strongest on screen |
 | `design.text-contrast` | 6/6 | Every text color meets WCAG AA (4.5:1) on its background |

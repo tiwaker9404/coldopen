@@ -55,5 +55,8 @@ export interface ScriptMeta {
   model: string
   rounds: number
   violations: string[][]
+  /** every line came from the deterministic writer */
   usedFallback: boolean
+  /** lines the model couldn't get right, swapped for the deterministic writer's version */
+  replaced: string[]
 }

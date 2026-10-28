@@ -28,7 +28,7 @@ beforeAll(async () => {
     const draft = {
       hook: 'Hey Northwind!!',
       noticed: 'Your innovative platform cut late deliveries 52% this year.',
-      insight: { factId, why: 'That is the number your board watches.' },
+      insight: { factId, why: 'Tessellate shows which shippers stay after that drop.' },
       pitch: {
         headline: 'Revolutionize retention',
         points: ['See which features keep shippers', 'Ask in plain English'],

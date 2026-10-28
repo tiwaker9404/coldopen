@@ -166,7 +166,7 @@ describe('writer', () => {
     expect(r.script).toEqual(good)
   })
 
-  it('falls back to the deterministic writer when the model never complies', async () => {
+  it('swaps in built-in lines only where the model never complied, keeping its good lines', async () => {
     const r = await writeScript({
       kit,
       profile: profile('sales'),
@@ -174,8 +174,32 @@ describe('writer', () => {
       maxRounds: 2,
       complete: async () => ({ ...good, insight: { factId: 'nope', why: 'x' } }),
     })
-    expect(r.meta.usedFallback).toBe(true)
+    expect(r.meta.usedFallback).toBe(false)
+    expect(r.meta.replaced).toEqual(['insight'])
+    expect(r.script.noticed).toBe(good.noticed)
+    expect(r.script.pitch).toEqual(good.pitch)
     expect(checkScript(r.script, kit, profile('sales'))).toEqual([])
+  })
+
+  it('requires the reason to point at the sender, not compliment the company', () => {
+    const compliment = {
+      ...good,
+      insight: { factId: 'f2', why: 'That shows the real reach of your platform.' },
+    }
+    expect(checkScript(compliment, kit, profile('sales')).join(' ')).toContain(
+      'insight.why must connect',
+    )
+    // a sender with no company name still passes with the built-in writer ("We help teams…")
+    const solo = { ...profile('sales'), sender: { name: 'Sam' }, offer: 'Bookkeeping for clinics' }
+    expect(checkScript(deterministicScript(kit, solo), kit, solo)).toEqual([])
+    const cand = profile('candidate')
+    const candGood = { ...deterministicScript(kit, cand) }
+    expect(checkScript(candGood, kit, cand)).toEqual([])
+    const candBad = {
+      ...candGood,
+      insight: { ...candGood.insight, why: 'A strong result for any team' },
+    }
+    expect(checkScript(candBad, kit, cand).join(' ')).toContain('use "I" or "my"')
   })
 
   it('deterministic scripts always pass the checks, in both presets', () => {

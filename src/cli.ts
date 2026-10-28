@@ -120,7 +120,7 @@ function summary(r: FilmResult, filmsDir: string) {
     `  gif      ${p(r.files.gif)}`,
     `  poster   ${p(r.files.poster)}`,
     `  sheet    ${p(r.files.sheet)}`,
-    `  script   ${r.scriptMeta.model}, ${r.scriptMeta.rounds} round(s)${r.scriptMeta.usedFallback ? ', fell back to deterministic writer' : ''}`,
+    `  script   ${r.scriptMeta.model}, ${r.scriptMeta.rounds} round(s)${r.scriptMeta.usedFallback ? ', fell back to deterministic writer' : r.scriptMeta.replaced?.length ? `, built-in lines for ${r.scriptMeta.replaced.join(', ')}` : ''}`,
     `  render   ${r.render.frames} frames in ${(r.render.ms / 1000).toFixed(1)}s`,
   ]
   if (r.qa.issues.length)

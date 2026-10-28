@@ -45,7 +45,7 @@ const DESCRIPTIONS: Record<string, string> = {
   'brand.name': 'Company name read correctly',
   'brand.logo': 'Logo captured from the header',
   'copy.taste-rules': 'Word limits, no banned phrases, no invented numbers, names the company',
-  'copy.no-fallback': 'The writer complied without the deterministic safety net',
+  'copy.no-fallback': 'The model wrote every line itself; no built-in line was swapped in',
   'copy.quote-on-their-site': 'The fact shown on screen appears verbatim on their homepage',
   'copy.uses-a-stat': 'The featured fact is a number, which reads strongest on screen',
   'design.text-contrast': 'Every text color meets WCAG AA (4.5:1) on its background',
@@ -97,8 +97,9 @@ async function script(
   kit: BrandKit,
   profile: Profile,
   id: string,
-): Promise<{ script: Script; rounds: number; fallback: boolean }> {
-  if (!llm) return { script: deterministicScript(kit, profile), rounds: 1, fallback: false }
+): Promise<{ script: Script; rounds: number; fallback: boolean; replaced: string[] }> {
+  if (!llm)
+    return { script: deterministicScript(kit, profile), rounds: 1, fallback: false, replaced: [] }
   const ctx = new LocalContext({ runId: id, llm })
   const r = await writeScript({
     kit,
@@ -106,7 +107,12 @@ async function script(
     model: values.model!,
     complete: (key, messages) => ctx.llm(key, { schema: ScriptSchema, messages }),
   })
-  return { script: r.script, rounds: r.meta.rounds, fallback: r.meta.usedFallback }
+  return {
+    script: r.script,
+    rounds: r.meta.rounds,
+    fallback: r.meta.usedFallback,
+    replaced: r.meta.replaced,
+  }
 }
 
 const { server, url } = await serveFixtures()
@@ -158,8 +164,10 @@ try {
       record({
         ...base,
         eval: 'copy.no-fallback',
-        pass: !s.fallback,
-        detail: 'model never complied; deterministic fallback used',
+        pass: !s.fallback && s.replaced.length === 0,
+        detail: s.fallback
+          ? 'model never complied; deterministic fallback used'
+          : `built-in lines swapped in for: ${s.replaced.join(', ')}`,
       })
       const fact = kit.facts.find((f) => f.id === s.script.insight.factId)
       const norm = (x: string) => x.replace(/[“”"]/g, '').replace(/\s+/g, ' ').toLowerCase()

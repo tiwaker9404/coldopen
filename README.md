@@ -42,7 +42,7 @@ Each film is six scenes:
   - the logo from the header
   - the hero screenshot, plus the exact position of the headline on it
 - **It can't invent facts.** The model writes short lines and picks pointers: which fact from the site to feature, and which of your proof points to show. The fact and the proof are then rendered from their sources, so a hallucinated statistic has nowhere to appear. Any number in the model's own lines must exist in the site or your profile, or the line is rejected.
-- **Taste is written down and enforced in code.** Word limits per line, a banned list of AI-slop phrases ("unlock", "seamless", "revolutionize"…), no flattery, no exclamation marks, and the company must be named. Violations are sent back to the model verbatim for a rewrite, up to three drafts. If it still can't comply, limits are enforced mechanically, and failing that a deterministic writer takes over. A film never ships with a violation. See [docs/TASTE.md](docs/TASTE.md).
+- **Taste is written down and enforced in code.** Word limits per line, a banned list of AI-slop phrases ("unlock", "seamless", "revolutionize"…), no flattery, no exclamation marks, and the company must be named. Violations are sent back to the model verbatim for a rewrite, up to four drafts. Any line it still gets wrong is swapped for the built-in writer's version of that line, and its good lines are kept. A film never ships with a violation. See [docs/TASTE.md](docs/TASTE.md).
 - **Readable by construction.** Every foreground color is solved against its background to meet WCAG AA (4.5:1 for text, 3:1 for accents). The brand's own colors are tried first, then the same hue shaded until it passes. A property test checks this against 500 random brand palettes on every run.
 - **Nothing overflows.** Text is measured after the brand fonts load and shrunk to fit its line budget, in square, wide and tall formats. Any line that still doesn't fit is reported by the QA pass.
 
@@ -100,7 +100,7 @@ Each sender profile is a small JSON file you write once ([examples](profiles/)):
 ## Quality, measured
 
 ```bash
-pnpm test         # 92 tests: runtime, extraction, render QA, pipeline resume, API, Slack, model path
+pnpm test         # 93 tests: runtime, extraction, render QA, pipeline resume, API, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
 ```

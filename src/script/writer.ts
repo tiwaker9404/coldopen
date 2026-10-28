@@ -65,7 +65,7 @@ export async function writeScript(opts: {
   maxRounds?: number
 }): Promise<{ script: Script; meta: ScriptMeta }> {
   const { kit, profile } = opts
-  const max = opts.maxRounds ?? 3
+  const max = opts.maxRounds ?? 4
   const messages = buildMessages(kit, profile)
   const history: string[][] = []
   let script: Script | null = null
@@ -77,7 +77,13 @@ export async function writeScript(opts: {
     if (v.length === 0)
       return {
         script,
-        meta: { model: opts.model, rounds: round, violations: history, usedFallback: false },
+        meta: {
+          model: opts.model,
+          rounds: round,
+          violations: history,
+          usedFallback: false,
+          replaced: [],
+        },
       }
     messages.push(
       { role: 'assistant', content: JSON.stringify(script) },
@@ -88,12 +94,19 @@ export async function writeScript(opts: {
     )
   }
 
+  // keep every line the model got right; swap only the lines it couldn't fix
   const clamped = clampScript(script!, profile)
-  const remaining = checkScript(clamped, kit, profile)
+  const { script: repaired, replaced } = repair(
+    clamped,
+    deterministicScript(kit, profile),
+    kit,
+    profile,
+  )
+  const remaining = checkScript(repaired, kit, profile)
   if (remaining.length === 0) {
     return {
-      script: clamped,
-      meta: { model: opts.model, rounds: max, violations: history, usedFallback: false },
+      script: repaired,
+      meta: { model: opts.model, rounds: max, violations: history, usedFallback: false, replaced },
     }
   }
   return {
@@ -103,8 +116,48 @@ export async function writeScript(opts: {
       rounds: max,
       violations: [...history, remaining],
       usedFallback: true,
+      replaced: [...FIELDS],
     },
   }
+}
+
+const FIELDS = [
+  'hook',
+  'noticed',
+  'insight',
+  'pitch.headline',
+  'pitch.points',
+  'proof',
+  'cta',
+] as const
+
+function withField(s: Script, from: Script, f: (typeof FIELDS)[number]): Script {
+  if (f === 'pitch.headline') return { ...s, pitch: { ...s.pitch, headline: from.pitch.headline } }
+  if (f === 'pitch.points') return { ...s, pitch: { ...s.pitch, points: from.pitch.points } }
+  return { ...s, [f]: from[f] }
+}
+
+/** Greedily swap in deterministic lines, keeping a swap only when it removes violations. */
+function repair(
+  script: Script,
+  fallback: Script,
+  kit: BrandKit,
+  profile: Profile,
+): { script: Script; replaced: string[] } {
+  let current = script
+  let count = checkScript(current, kit, profile).length
+  const replaced: string[] = []
+  for (const f of FIELDS) {
+    if (count === 0) break
+    const next = withField(current, fallback, f)
+    const n = checkScript(next, kit, profile).length
+    if (n < count) {
+      current = next
+      count = n
+      replaced.push(f)
+    }
+  }
+  return { script: current, replaced }
 }
 
 /* ------------------------------------------------- deterministic writer */
@@ -187,7 +240,14 @@ export function deterministicScript(kit: BrandKit, profile: Profile): Script {
       why: clip(whyLine(fact, candidate, profile.sender.company), LIMITS.why),
     },
     pitch: {
-      headline: clip(candidate ? `What I would bring to ${name}` : profile.offer, LIMITS.headline),
+      headline: clip(
+        candidate
+          ? `What I would bring to ${name}`
+          : words(profile.offer) >= 4
+            ? profile.offer
+            : `${profile.offer.replace(/[.]$/, '')}, made for ${first}`,
+        LIMITS.headline,
+      ),
       // prefer points that already fit, so nothing is cut mid-phrase
       points: [...profile.points]
         .sort((a, b) => Number(words(a) > LIMITS.point) - Number(words(b) > LIMITS.point))
