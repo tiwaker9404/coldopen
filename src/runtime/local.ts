@@ -48,6 +48,11 @@ export class LocalContext implements AgentContext {
     return Object.keys(this.#journal).length
   }
 
+  /** keys of the steps already in the journal */
+  get journaled(): string[] {
+    return Object.keys(this.#journal)
+  }
+
   async #save(key: string, value: unknown) {
     this.#journal[key] = value === undefined ? null : JSON.parse(JSON.stringify(value))
     if (this.#file) await writeFile(this.#file, JSON.stringify(this.#journal, null, 1))

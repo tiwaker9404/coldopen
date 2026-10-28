@@ -112,6 +112,13 @@ async function makeFilm(url: string, opts: { id?: string; quiet?: boolean }): Pr
   })
   const resumed = await ctx.load()
   if (resumed && !opts.quiet) done(`  resuming ${id}: ${resumed} finished steps in the journal`)
+  // a film first written by a model must be resumed with a model, or its script would be
+  // silently replaced by the built-in writer's
+  if (!llm && ctx.journaled.some((k) => /^script-\d+$/.test(k))) {
+    throw new Error(
+      `${id} was written by a model. Re-run with --model (and the same LLM_BASE_URL) to keep its script; the saved drafts are reused, not regenerated`,
+    )
+  }
   // a local tool: researching localhost or an intranet site is the user's own business
   const agent = createFilmAgent({
     filmsDir,
