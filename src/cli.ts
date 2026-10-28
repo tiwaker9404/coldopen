@@ -22,6 +22,7 @@ Options
   -f, --format <name>     square | landscape | portrait (default: square)
   -o, --out <dir>         output directory (default: ./films)
       --id <slug>         film id; re-running the same id resumes where it stopped
+      --proof <list>      which proof items to show, by position in the profile, e.g. 2,4,6
   -c, --concurrency <n>   films rendered in parallel in batch mode (default: 2)
       --model <name>      use an OpenAI-compatible model to write the script
       --base-url <url>    model endpoint (default: http://localhost:11434/v1, Ollama)
@@ -39,6 +40,7 @@ const { values, positionals } = parseArgs({
     format: { type: 'string', short: 'f', default: 'square' },
     out: { type: 'string', short: 'o', default: './films' },
     id: { type: 'string' },
+    proof: { type: 'string' },
     concurrency: { type: 'string', short: 'c', default: '2' },
     model: { type: 'string', default: process.env.LLM_MODEL },
     'base-url': {
@@ -116,7 +118,11 @@ async function makeFilm(url: string, opts: { id?: string; quiet?: boolean }): Pr
     llmModel: llm ? values.model! : null,
     allowPrivateNetworks: true,
   })
-  return agent.run(ctx, { url, profile, format })
+  const proof = values.proof
+    ?.split(',')
+    .map((x) => Number.parseInt(x.trim(), 10) - 1)
+    .filter((x) => x >= 0)
+  return agent.run(ctx, { url, profile, format, ...(proof?.length ? { proof } : {}) })
 }
 
 function summary(r: FilmResult, filmsDir: string) {

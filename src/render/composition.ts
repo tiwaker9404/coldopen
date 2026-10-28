@@ -224,7 +224,7 @@ html,body{width:${width}px;height:${height}px;overflow:hidden;background:#000}
 .stat .value{font-size:calc(var(--u)*13);line-height:1;color:var(--accent);letter-spacing:-0.04em;white-space:nowrap}
 .stat{min-width:0}
 .stat .label{font-size:calc(var(--u)*2.9);margin-top:calc(var(--u)*1.6);line-height:1.3;max-width:24ch}
-.stat .where{font-size:calc(var(--u)*2.2);margin-top:calc(var(--u)*1.4);color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.stat .where{font-size:calc(var(--u)*2.2);margin-top:calc(var(--u)*1.4);color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;overflow-wrap:anywhere}
 
 /* cta */
 .cta-wrap{margin-top:auto;margin-bottom:auto;padding-top:calc(var(--u)*6)}

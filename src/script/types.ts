@@ -23,7 +23,7 @@ export const ProfileSchema = z.object({
       }),
     )
     .min(1)
-    .max(5),
+    .max(8),
   cta: z.object({ line: z.string().min(3).max(60), contact: z.string().min(3).max(80) }),
   /** optional sender brand for the end card */
   color: z

@@ -29,6 +29,8 @@ export const FilmInputSchema = z.object({
   ref: z.string().max(200).optional(),
   /** batch this film belongs to */
   batch: z.string().max(64).optional(),
+  /** show exactly these proof items (indices into profile.proof) instead of the writer's pick */
+  proof: z.array(z.number().int().min(0)).min(1).max(3).optional(),
   /** reply in this Slack thread when the film is ready */
   slack: z.object({ channel: z.string(), threadTs: z.string() }).optional(),
 })
@@ -141,7 +143,12 @@ export function createFilmAgent(opts: FilmAgentOptions) {
             } as ScriptMeta,
           }))
 
-      const board: Storyboard = buildStoryboard(kit, profile, script)
+      const picked = input.proof?.filter((i) => i < profile.proof.length)
+      const board: Storyboard = buildStoryboard(
+        kit,
+        profile,
+        picked?.length ? { ...script, proof: picked } : script,
+      )
       const storyboardFile = join(dir, 'storyboard.json')
 
       ctx.progress({ stage: 'design', label: `Matching ${kit.name}'s brand` })
