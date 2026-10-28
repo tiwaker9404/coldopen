@@ -94,14 +94,15 @@ export async function writeScript(opts: {
     )
   }
 
-  // keep every line the model got right; swap only the lines it couldn't fix
-  const clamped = clampScript(script!, profile)
-  const { script: repaired, replaced } = repair(
-    clamped,
-    deterministicScript(kit, profile),
-    kit,
-    profile,
-  )
+  // keep every line the model got right; swap only the lines it couldn't fix. Swapping comes
+  // before clamping, so a line is never shipped cut off mid-sentence.
+  const fallback = deterministicScript(kit, profile)
+  const fixed = repair(script!, fallback, kit, profile)
+  const second = checkScript(fixed.script, kit, profile).length
+    ? repair(clampScript(fixed.script, profile), fallback, kit, profile)
+    : fixed
+  const repaired = second.script
+  const replaced = [...new Set([...fixed.replaced, ...second.replaced])]
   const remaining = checkScript(repaired, kit, profile)
   if (remaining.length === 0) {
     return {

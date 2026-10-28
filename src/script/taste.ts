@@ -16,6 +16,10 @@ export const LIMITS = {
 export const BANNED = [
   'revolutionize',
   'drive growth',
+  'great work',
+  'great job',
+  'kudos',
+  'congrats',
   'deeper insights',
   'made easy',
   'shows the impact',

@@ -1,6 +1,6 @@
 # Taste rules
 
-Personalized video only works if it doesn't read like a mail merge. These rules are given to the model in its prompt and also enforced in code ([src/script/checks.ts](../src/script/checks.ts)). A violation sends the script back to the model with the exact problem quoted, up to four drafts. After that, limits are enforced mechanically, and any line that still breaks a rule is swapped for the deterministic writer's version of that line. The model's good lines are kept. A film never ships with a violation.
+Personalized video only works if it doesn't read like a mail merge. These rules are given to the model in its prompt and also enforced in code ([src/script/checks.ts](../src/script/checks.ts)). A violation sends the script back to the model with the exact problem quoted, up to four drafts. After that, any line that still breaks a rule is swapped for the deterministic writer's version of that line, rather than cut short to fit. The model's good lines are kept. A film never ships with a violation.
 
 ## Structure: the model points, sources speak
 
@@ -47,7 +47,7 @@ Checked in code, because a model that obeys word limits can still write empty li
 
 Matched case-insensitively anywhere in a line:
 
-> revolutionize, drive growth, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy, leverage, empower, elevate, in today's, fast-paced, look no further, take it to the next, harness the power, delve, tapestry, landscape, world-class, best-in-class, robust, holistic, transformative, innovative, amazing, incredible, impressive, love what you, huge fan, i hope this, just wanted to, reach out, touch base, circle back, quick question, excited to, thrilled, passionate
+> revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy, leverage, empower, elevate, in today's, fast-paced, look no further, take it to the next, harness the power, delve, tapestry, landscape, world-class, best-in-class, robust, holistic, transformative, innovative, amazing, incredible, impressive, love what you, huge fan, i hope this, just wanted to, reach out, touch base, circle back, quick question, excited to, thrilled, passionate
 
 To add your own house rules, edit [src/script/taste.ts](../src/script/taste.ts). The prompt and the checks both read from it, so the model is told about a rule the moment it's enforced.
 
