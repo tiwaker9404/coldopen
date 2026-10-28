@@ -68,7 +68,13 @@ async function main() {
     stoppers.push(closeBrowser)
   }
   if (role === 'api' || role === 'all') {
-    const app = await buildApi({ sql, cfg, log, slack })
+    const app = await buildApi({
+      sql,
+      cfg,
+      log,
+      slack,
+      llm: cfg.LLM_PROVIDER === 'openai' ? llm : null,
+    })
     await app.listen({ port: cfg.PORT, host: cfg.HOST })
     stoppers.unshift(() => app.close())
   }

@@ -43,9 +43,11 @@
     "@prometheus-io/client": "^0.16.1",
     "fastify": "^5.12.7",
     "fastify-type-provider-zod": "^7.0.0",
+    "mammoth": "1.13.0",
     "pino": "^10.4.0",
     "postgres": "^3.4.9",
     "puppeteer": "^25.16.0",
+    "unpdf": "1.9.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

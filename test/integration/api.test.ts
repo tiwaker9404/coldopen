@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:http'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -114,6 +114,42 @@ describe('auth and profiles', () => {
       payload: { name: 'x', data: { offer: '' } },
     })
     expect(bad.statusCode).toBe(400)
+  })
+
+  it('drafts a profile from an uploaded résumé, leaving excluded employers out', async () => {
+    const resume = readFileSync(
+      join(import.meta.dirname, '../../fixtures/resumes/marco-marketer.md'),
+    )
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/profiles/draft',
+      headers: auth,
+      payload: {
+        filename: 'marco.md',
+        data: resume.toString('base64'),
+        role: 'Lifecycle marketing manager',
+        exclude: ['Brightside'],
+      },
+    })
+    expect(res.statusCode).toBe(200)
+    const { profile, meta } = res.json()
+    expect(meta.model).toBe('deterministic')
+    expect(profile.sender).toEqual({ name: 'Marco Ruiz', role: 'Lifecycle marketing manager' })
+    expect(profile.proof.map((p: { value: string }) => p.value)).toContain('$31')
+    expect(JSON.stringify(profile)).not.toMatch(/brightside/i)
+
+    const junk = await app.inject({
+      method: 'POST',
+      url: '/v1/profiles/draft',
+      headers: auth,
+      payload: {
+        filename: 'cv.txt',
+        data: Buffer.from('too short').toString('base64'),
+        role: 'PM',
+      },
+    })
+    expect(junk.statusCode).toBe(422)
+    expect(junk.json().error.message).toMatch(/almost no text/)
   })
 })
 

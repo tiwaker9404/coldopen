@@ -16,8 +16,12 @@ import type { Config } from '../config.ts'
 import type { Sql } from '../db/index.ts'
 import { FilmInputSchema, type FilmResult } from '../film.ts'
 import { newId } from '../ids.ts'
+import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
+import { draftProfile } from '../profile/draft.ts'
+import { parseResume } from '../profile/parse.ts'
+import { resumeText } from '../profile/read.ts'
 import {
   cancelRun,
   createRun,
@@ -83,9 +87,11 @@ export interface ApiDeps {
   cfg: Config
   log: Logger
   slack: SlackClient | null
+  /** writes résumé-based profile drafts; null uses the deterministic drafter */
+  llm?: LlmProvider | null
 }
 
-export async function buildApi({ sql, cfg, log, slack }: ApiDeps) {
+export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
   const filmsDir = resolve(cfg.FILMS_DIR)
   const publicUrl = cfg.PUBLIC_URL
   const app = Fastify({
@@ -209,6 +215,46 @@ export async function buildApi({ sql, cfg, log, slack }: ApiDeps) {
     },
   )
 
+  app.post(
+    '/v1/profiles/draft',
+    {
+      bodyLimit: 12 * 1024 * 1024,
+      schema: {
+        tags: ['profiles'],
+        summary: 'Draft a candidate profile from a résumé (not saved)',
+        description:
+          'Send the résumé as base64. Every proof number in the draft is checked against the résumé; anything the model cannot ground is dropped.',
+        body: z.object({
+          filename: z.string().min(1).max(200),
+          data: z.string().min(10).describe('the résumé file, base64'),
+          role: z.string().min(2).max(80),
+          exclude: z.array(z.string().max(80)).max(10).default([]),
+          contact: z.string().max(80).optional(),
+        }),
+      },
+    },
+    async (req, reply) => {
+      try {
+        const text = await resumeText(
+          new Uint8Array(Buffer.from(req.body.data, 'base64')),
+          req.body.filename,
+        )
+        const resume = parseResume(text, req.body.exclude)
+        return await draftProfile({
+          resume,
+          role: req.body.role,
+          exclude: req.body.exclude,
+          llm,
+          ...(req.body.contact ? { contact: req.body.contact } : {}),
+        })
+      } catch (err) {
+        return reply
+          .status(422)
+          .send({ error: { code: 'unreadable_resume', message: (err as Error).message } })
+      }
+    },
+  )
+
   async function resolveProfile(body: { profile?: unknown; profileId?: string | undefined }) {
     if (body.profile) return ProfileSchema.parse(body.profile)
     if (body.profileId) {
@@ -238,6 +284,8 @@ export async function buildApi({ sql, cfg, log, slack }: ApiDeps) {
     profile: ProfileSchema.optional(),
     format: z.enum(['square', 'landscape', 'portrait']).default('square'),
     ref: z.string().max(200).optional(),
+    /** which proof items to show (indices into the profile's proof list) */
+    proof: z.array(z.number().int().min(0)).min(1).max(3).optional(),
   })
 
   app.post(

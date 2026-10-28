@@ -7,6 +7,9 @@ import { parseArgs } from 'node:util'
 import { closeBrowser } from './browser.ts'
 import { createFilmAgent, type FilmResult } from './film.ts'
 import { buildLlm } from './llm/chain.ts'
+import { draftProfile } from './profile/draft.ts'
+import { parseResume } from './profile/parse.ts'
+import { resumeText } from './profile/read.ts'
 import { LocalContext } from './runtime/local.ts'
 import { ProfileSchema } from './script/types.ts'
 
@@ -16,6 +19,7 @@ Usage
   coldopen <url> [options]               make one film
   coldopen batch <prospects.csv> [opts]  one film per row (needs a "url" column)
   coldopen init [file]                   write a profile template to edit
+  coldopen profile <resume> [file]       draft a profile from a résumé (PDF, .docx, .md, .txt)
 
 Options
   -p, --profile <file>    who is sending and what they offer (default: profile.json)
@@ -23,6 +27,9 @@ Options
   -o, --out <dir>         output directory (default: ./films)
       --id <slug>         film id; re-running the same id resumes where it stopped
       --proof <list>      which proof items to show, by position in the profile, e.g. 2,4,6
+      --role <title>      profile: the role you're applying for; picks the résumé points that fit
+      --exclude <names>   profile: comma-separated employers or words to leave out entirely
+      --contact <email>   profile: the contact line for the film (default: the résumé's email)
   -c, --concurrency <n>   films rendered in parallel in batch mode (default: 2)
       --model <name>      use an OpenAI-compatible model to write the script
       --base-url <url>    model endpoint (default: http://localhost:11434/v1, Ollama)
@@ -41,6 +48,9 @@ const { values, positionals } = parseArgs({
     out: { type: 'string', short: 'o', default: './films' },
     id: { type: 'string' },
     proof: { type: 'string' },
+    role: { type: 'string' },
+    exclude: { type: 'string' },
+    contact: { type: 'string' },
     concurrency: { type: 'string', short: 'c', default: '2' },
     model: { type: 'string', default: process.env.LLM_MODEL },
     'base-url': {
@@ -80,16 +90,8 @@ async function loadProfile(file: string) {
   return parsed.data
 }
 
-async function makeFilm(url: string, opts: { id?: string; quiet?: boolean }): Promise<FilmResult> {
-  const profile = await loadProfile(values.profile!)
-  const format = values.format as 'square' | 'landscape' | 'portrait'
-  if (!['square', 'landscape', 'portrait'].includes(format))
-    throw new Error(`unknown format "${format}"`)
-  const filmsDir = resolve(values.out!)
-  const id = opts.id ?? slugFor(url, format)
-  await mkdir(join(filmsDir, id), { recursive: true })
-
-  const llm = values.model
+function modelFromFlags() {
+  return values.model
     ? buildLlm(
         { baseUrl: values['base-url']!, model: values.model, apiKey: values['api-key']! },
         values['fallback-model']
@@ -102,6 +104,18 @@ async function makeFilm(url: string, opts: { id?: string; quiet?: boolean }): Pr
         180_000,
       )
     : null
+}
+
+async function makeFilm(url: string, opts: { id?: string; quiet?: boolean }): Promise<FilmResult> {
+  const profile = await loadProfile(values.profile!)
+  const format = values.format as 'square' | 'landscape' | 'portrait'
+  if (!['square', 'landscape', 'portrait'].includes(format))
+    throw new Error(`unknown format "${format}"`)
+  const filmsDir = resolve(values.out!)
+  const id = opts.id ?? slugFor(url, format)
+  await mkdir(join(filmsDir, id), { recursive: true })
+
+  const llm = modelFromFlags()
   const ctx = new LocalContext({
     runId: id,
     journalFile: join(filmsDir, id, '.journal.json'),
@@ -257,6 +271,39 @@ async function main() {
     if (existsSync(file)) throw new Error(`${file} already exists`)
     await writeFile(file, `${JSON.stringify(TEMPLATE, null, 2)}\n`)
     done(`wrote ${file}. Edit it, then: coldopen https://their-company.com`)
+    return
+  }
+  if (cmd === 'profile') {
+    if (!arg)
+      throw new Error('usage: coldopen profile resume.pdf [profile.json] --role "Data analyst"')
+    const out = positionals[2] ?? 'profile.json'
+    if (existsSync(out)) throw new Error(`${out} already exists; pass another file name`)
+    const role = values.role ?? 'the role I want'
+    const exclude = (values.exclude ?? '')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
+    const resume = parseResume(await resumeText(new Uint8Array(await readFile(arg)), arg), exclude)
+    status(`  reading ${resume.entries.length} résumé bullets`)
+    const { profile, meta } = await draftProfile({
+      resume,
+      role,
+      exclude,
+      llm: modelFromFlags(),
+      ...(values.contact ? { contact: values.contact } : {}),
+    })
+    await writeFile(out, `${JSON.stringify(profile, null, 2)}\n`)
+    done(`wrote ${out} for ${profile.sender.role ?? role}`)
+    done(
+      `  ${profile.proof.length} proof points, ${profile.points.length} strengths (${meta.model}${meta.rounds > 1 ? `, ${meta.rounds} rounds` : ''})`,
+    )
+    for (const [i, p] of profile.proof.entries())
+      done(
+        `  ${String(i + 1).padStart(2)}. ${p.value.padEnd(12)} ${p.label}${p.where ? `  (${p.where})` : ''}`,
+      )
+    if (meta.dropped.length)
+      done(`  left out, not grounded in the résumé: ${meta.dropped.join(', ')}`)
+    done(`Check every line, then: coldopen https://their-company.com -p ${out} --proof 1,2,3`)
     return
   }
   if (cmd === 'batch') {
