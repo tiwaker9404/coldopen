@@ -44,7 +44,8 @@ const llm: LlmProvider =
 const slack = cfg.SLACK_BOT_TOKEN ? new SlackClient(cfg.SLACK_BOT_TOKEN) : null
 
 async function main() {
-  if (role === 'migrate' || role === 'all') {
+  // a renderer may start before the web app ever has, on an empty database
+  if (role === 'migrate' || role === 'all' || role === 'drain') {
     const applied = await migrate(sql, (m) => log.info(m))
     if (role === 'migrate') {
       log.info({ applied }, 'migrations complete')
