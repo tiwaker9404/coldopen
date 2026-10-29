@@ -7,6 +7,8 @@ import { tidy } from '../brand/text.ts'
  */
 export const JobPostSchema = z.object({
   url: z.string().optional(),
+  /** the company's own website, when the post links to it (job boards usually do) */
+  companyUrl: z.string().optional(),
   title: z.string().min(2).max(80),
   requirements: z.array(z.string().min(10).max(400)).min(1).max(12),
 })
@@ -132,4 +134,35 @@ export function jobFromText(text: string, title?: string, url?: string): JobPost
     title: cleanTitle(title ?? firstLine ?? 'this role'),
     requirements,
   })
+}
+
+/** Job boards that host many companies' posts on their own domain. */
+const BOARDS =
+  /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com|smartrecruiters\.com|bamboohr\.com|recruitee\.com|workdayjobs\.com|myworkdayjobs\.com|jobvite\.com|breezy\.hr|teamtailor\.com|rippling-ats\.com|wellfound\.com)$/i
+
+export function isBoardHost(host: string): boolean {
+  return BOARDS.test(host)
+}
+
+/**
+ * True for a link to one job post: on a job board, or a company's own careers page with a
+ * specific opening ("/careers/123", "/jobs/forward-deployed-engineer"). A homepage is not.
+ */
+export function isJobPage(url: string): boolean {
+  let u: URL
+  try {
+    u = new URL(url)
+  } catch {
+    return false
+  }
+  if (/linkedin\.com$/i.test(u.hostname) && /^\/jobs\//.test(u.pathname)) return true
+  if (isBoardHost(u.hostname)) return u.pathname.split('/').filter(Boolean).length >= 2
+  return /\/(careers?|jobs?|positions?|openings?|roles?)\/[^/]+/i.test(u.pathname)
+}
+
+/** A careers page on the company's own site: its homepage is the same origin. */
+export function homepageFor(url: string): string | null {
+  const u = new URL(url)
+  if (isBoardHost(u.hostname) || /linkedin\.com$/i.test(u.hostname)) return null
+  return `${u.protocol}//${u.host.replace(/^(careers|jobs)\./i, '')}/`
 }

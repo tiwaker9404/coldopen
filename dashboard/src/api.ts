@@ -46,6 +46,12 @@ export interface ViewSession {
   country: string | null
 }
 
+export interface Messages {
+  email: { subject: string; body: string }
+  linkedin: string
+  followUp: string
+}
+
 /** "3 min ago", "yesterday", "Oct 12" */
 export function ago(iso: string, now = Date.now()): string {
   const s = Math.max(0, (now - new Date(iso).getTime()) / 1000)

@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { extractBrand } from './brand/extract.ts'
 import type { BrandKit } from './brand/types.ts'
 import { withJob } from './job/kit.ts'
-import { JobPostSchema, jobFromText } from './job/post.ts'
+import { isJobPage, JobPostSchema, jobFromText } from './job/post.ts'
 import { fetchJob } from './job/read.ts'
 import { LlmHttpError } from './llm/openai.ts'
 import { compose, FORMATS, type Format } from './render/composition.ts'
@@ -79,6 +79,12 @@ export interface FilmResult {
   job?: { title: string; url?: string }
   /** where the film is published, when a share worker is configured (the hosted app) */
   shared?: { id: string; link: string }
+  /** what the film says, for writing the message that goes with it */
+  highlights?: {
+    /** the line quoted from their site or job post, and where it's from */
+    quote: { text: string; source: string }
+    proof: { value: string; label: string; where?: string }[]
+  }
 }
 
 export interface FilmAgentOptions {
@@ -117,45 +123,13 @@ export function createFilmAgent(opts: FilmAgentOptions) {
       const rel = (p: string) => relative(opts.filmsDir, p)
       await mkdir(dir, { recursive: true })
 
-      ctx.progress({ stage: 'research', label: `Reading ${new URL(input.url).hostname}` })
-      let kit: BrandKit
-      try {
-        kit = await ctx.step(
-          'research',
-          () =>
-            extractBrand(input.url, {
-              outDir: dir,
-              allowPrivateNetworks: opts.allowPrivateNetworks ?? false,
-            }),
-          {
-            retries: 1,
-          },
-        )
-      } catch (err) {
-        const reason = err instanceof Error ? err.message.split('\n')[0]! : String(err)
-        if (input.slack && opts.slack) {
-          const slack = opts.slack
-          const thread = input.slack
-          await ctx.tool(
-            'slack-error',
-            () =>
-              slack.postMessage(
-                thread.channel,
-                `I couldn't open ${input.url}: ${reason}`,
-                thread.threadTs,
-              ),
-            { mode: 'at-most-once' },
-          )
-        }
-        // a site that won't load after retries won't load on the next execution either
-        throw new NonRetryableError(`could not read ${input.url}: ${reason}`)
-      }
-
-      // a job post: read once (journaled), then its requirements join the company's facts
-      if (input.job) {
-        const j = input.job
+      // a job post: read once (journaled). A job link pasted as the website is the post itself,
+      // and the film is about the company it links to.
+      const jobLink = !input.job && isJobPage(input.url)
+      const j = input.job ?? (jobLink ? { url: input.url } : undefined)
+      let post: z.infer<typeof JobPostSchema> | undefined
+      if (j) {
         ctx.progress({ stage: 'research', label: 'Reading the job post' })
-        let post: z.infer<typeof JobPostSchema>
         try {
           post = await ctx.step(
             'job',
@@ -174,8 +148,48 @@ export function createFilmAgent(opts: FilmAgentOptions) {
             `could not read the job post: ${err instanceof Error ? err.message.split('\n')[0] : err}`,
           )
         }
-        kit = withJob(kit, post)
       }
+      if (jobLink && !post?.companyUrl)
+        throw new NonRetryableError(
+          "couldn't find the company's website from that job post. Paste the company's website, and the job link under 'Answer a job post'",
+        )
+      const site = jobLink ? post!.companyUrl! : input.url
+
+      ctx.progress({ stage: 'research', label: `Reading ${new URL(site).hostname}` })
+      let kit: BrandKit
+      try {
+        kit = await ctx.step(
+          'research',
+          () =>
+            extractBrand(site, {
+              outDir: dir,
+              allowPrivateNetworks: opts.allowPrivateNetworks ?? false,
+            }),
+          {
+            retries: 1,
+          },
+        )
+      } catch (err) {
+        const reason = err instanceof Error ? err.message.split('\n')[0]! : String(err)
+        if (input.slack && opts.slack) {
+          const slack = opts.slack
+          const thread = input.slack
+          await ctx.tool(
+            'slack-error',
+            () =>
+              slack.postMessage(
+                thread.channel,
+                `I couldn't open ${site}: ${reason}`,
+                thread.threadTs,
+              ),
+            { mode: 'at-most-once' },
+          )
+        }
+        // a site that won't load after retries won't load on the next execution either
+        throw new NonRetryableError(`could not read ${site}: ${reason}`)
+      }
+
+      if (post) kit = withJob(kit, post)
 
       ctx.progress({ stage: 'script', label: `Writing the script for ${kit.name}` })
       const builtIn = (usedFallback: boolean) =>
@@ -378,6 +392,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           render: { frames, ms },
           ...(kit.job ? { job: kit.job } : {}),
           ...(shared ? { shared } : {}),
+          highlights: highlightsOf(board),
         }
       } finally {
         if (comp) await (comp as OpenComposition).close()
@@ -387,3 +402,18 @@ export function createFilmAgent(opts: FilmAgentOptions) {
 }
 
 export const FORMAT_SIZES = FORMATS
+
+function highlightsOf(board: Storyboard): FilmResult['highlights'] {
+  const insight = board.scenes.find((s) => s.kind === 'insight')
+  const proof = board.scenes.find((s) => s.kind === 'proof')
+  return {
+    quote:
+      insight?.kind === 'insight'
+        ? {
+            text: insight.value ? `${insight.value} ${insight.text}` : insight.text,
+            source: insight.source,
+          }
+        : { text: '', source: '' },
+    proof: proof?.kind === 'proof' ? proof.stats : [],
+  }
+}

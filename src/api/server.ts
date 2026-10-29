@@ -19,6 +19,7 @@ import { newId } from '../ids.ts'
 import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
+import { draftMessages } from '../outreach/messages.ts'
 import { draftProfile } from '../profile/draft.ts'
 import { parseResume } from '../profile/parse.ts'
 import { resumeText } from '../profile/read.ts'
@@ -852,6 +853,25 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
         })
       }
       return reply.status(204).send()
+    },
+  )
+
+  app.get(
+    '/v1/films/:id/messages',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Draft the email, LinkedIn note and follow-up that go with a film',
+        description:
+          'Written from what the film says, with a [First name] placeholder. Nothing is sent.',
+        params: z.object({ id: RunId }),
+      },
+    },
+    async (req, reply) => {
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run?.output) return notFound(reply)
+      const link = filmDto(run, publicUrl).share!
+      return draftMessages(run.output, run.input.profile, link)
     },
   )
 

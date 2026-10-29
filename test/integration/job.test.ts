@@ -41,3 +41,18 @@ describe('reading job posts from their pages', () => {
     )
   })
 })
+
+describe('finding the company behind a job link', () => {
+  it('follows the logo on a job board, past social links', async () => {
+    const { url } = await fixtureServer()
+    const job = await fetchJob(`${url}/board/post.html`, { allowPrivateNetworks: true })
+    expect(job.companyUrl).toBe('https://northwind.example/')
+    expect(job.title).toBe('Forward Deployed Engineer')
+  })
+
+  it('uses the same site for a careers page on the company domain', async () => {
+    const { url } = await fixtureServer()
+    const job = await fetchJob(`${url}/jobs/greenhouse.html`, { allowPrivateNetworks: true })
+    expect(job.companyUrl).toBe(`${url}/`)
+  })
+})

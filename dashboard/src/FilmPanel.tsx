@@ -4,6 +4,7 @@ import {
   ago,
   api,
   type FilmDetail,
+  type Messages,
   media,
   send,
   type ViewSession,
@@ -138,6 +139,7 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
           </div>
         )}
 
+        {f?.status === 'succeeded' && <SendIt id={f.id} />}
         {f?.status === 'succeeded' && <Views id={f.id} />}
 
         {f?.status === 'failed' && (
@@ -274,6 +276,59 @@ function Views({ id }: { id: string }) {
           </ol>
         </>
       )}
+    </section>
+  )
+}
+
+/** The messages that go with the film, ready to copy. */
+function SendIt({ id }: { id: string }) {
+  const q = useQuery({
+    queryKey: ['messages', id],
+    queryFn: () => api<Messages>(`/v1/films/${id}/messages`),
+    staleTime: Number.POSITIVE_INFINITY,
+  })
+  const [tab, setTab] = useState<'email' | 'linkedin' | 'followUp'>('email')
+  const m = q.data
+  if (!m) return null
+  const text =
+    tab === 'email'
+      ? `${m.email.subject}\n\n${m.email.body}`
+      : tab === 'linkedin'
+        ? m.linkedin
+        : m.followUp
+  return (
+    <section>
+      <h3>Send it</h3>
+      <div className="segmented msg-tabs" role="tablist" aria-label="Message">
+        {(
+          [
+            ['email', 'Email'],
+            ['linkedin', 'LinkedIn note'],
+            ['followUp', 'Follow-up'],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={tab === k}
+            className={tab === k ? 'on' : ''}
+            onClick={() => setTab(k)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'email' && <p className="msg-subject">{m.email.subject}</p>}
+      <pre className="msg">{tab === 'email' ? m.email.body : text}</pre>
+      <div className="actions">
+        <Copy text={tab === 'email' ? m.email.body : text} label="Copy message" />
+        {tab === 'email' && <Copy text={m.email.subject} label="Copy subject" />}
+        {tab === 'linkedin' && (
+          <span className="muted small">{m.linkedin.length} of 300 characters</span>
+        )}
+      </div>
+      <p className="muted small">Replace [First name], read it once, and it's ready to send.</p>
     </section>
   )
 }

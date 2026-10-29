@@ -3,6 +3,8 @@ import { assertPublicUrl, guardPage } from '../brand/guard.ts'
 import { getBrowser } from '../browser.ts'
 import {
   cleanTitle,
+  homepageFor,
+  isJobPage,
   type JobItem,
   type JobPost,
   JobPostSchema,
@@ -77,6 +79,26 @@ export async function fetchJob(
         const text = (li as HTMLElement).innerText.trim()
         if (text) items.push({ heading: headingFor(li), text })
       }
+      // the company's own site: job boards link to it from the logo or a "website" link
+      const here = location.hostname
+      const social =
+        /(^|\.)(linkedin|twitter|x|facebook|instagram|youtube|github|glassdoor|crunchbase|tiktok)\.com$|greenhouse\.io$|lever\.co$|ashbyhq\.com$|workable\.com$|google\.com$|apple\.com$/i
+      const outward = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="http"]')]
+        .map((a) => {
+          let host = ''
+          try {
+            host = new URL(a.href).hostname
+          } catch {}
+          const label = `${a.innerText} ${a.getAttribute('aria-label') ?? ''}`.toLowerCase()
+          const score =
+            (a.querySelector('img, svg') ? 3 : 0) +
+            (/website|homepage|visit|about us/.test(label) ? 3 : 0) +
+            (a.closest('header, nav') ? 2 : 0) +
+            (a.closest('footer') ? -1 : 0)
+          return { href: a.href, host, score }
+        })
+        .filter((l) => l.host && l.host !== here && !social.test(l.host))
+        .sort((a, b) => b.score - a.score)
       const h1 = document.querySelector('h1') as HTMLElement | null
       const og = document.querySelector<HTMLMetaElement>('meta[property="og:title"]')?.content
       const site = document.querySelector<HTMLMetaElement>('meta[property="og:site_name"]')?.content
@@ -85,14 +107,19 @@ export async function fetchJob(
         site: site ?? '',
         items,
         text: document.body.innerText.slice(0, 30000),
+        company: outward[0] ? new URL(outward[0].href).origin : '',
       }
-    })) as { title: string; site: string; items: JobItem[]; text: string }
+    })) as { title: string; site: string; items: JobItem[]; text: string; company: string }
 
     const title = cleanTitle(raw.title, raw.site || undefined)
     const requirements = pickRequirements(raw.items)
+    // a careers page on the company's own site: its homepage. A job board: the site it links to.
+    const own = isJobPage(url) ? homepageFor(url) : null
+    const companyUrl = own ?? (raw.company ? `${raw.company}/` : undefined)
+    const extra = companyUrl ? { companyUrl } : {}
     // no lists on the page: read the text the way a pasted post is read
-    if (requirements.length === 0) return jobFromText(raw.text, title, url)
-    return JobPostSchema.parse({ url, title, requirements })
+    if (requirements.length === 0) return { ...jobFromText(raw.text, title, url), ...extra }
+    return JobPostSchema.parse({ url, title, requirements, ...extra })
   } finally {
     await context.close().catch(() => {})
   }

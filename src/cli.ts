@@ -10,6 +10,7 @@ import type { BrandKit } from './brand/types.ts'
 import { closeBrowser } from './browser.ts'
 import { createFilmAgent, type FilmResult } from './film.ts'
 import type { JobPost } from './job/post.ts'
+import { isJobPage } from './job/post.ts'
 import { readJob } from './job/read.ts'
 import { buildLlm } from './llm/chain.ts'
 import { draftProfile } from './profile/draft.ts'
@@ -208,7 +209,7 @@ async function loadJob(source: string, filmsDir: string, quiet?: boolean): Promi
 }
 
 async function makeFilm(
-  url: string,
+  link: string,
   opts: { id?: string; quiet?: boolean; use?: string; job?: string },
 ): Promise<FilmResult> {
   const profiles = await loadProfiles(values.profile!)
@@ -216,8 +217,16 @@ async function makeFilm(
   if (!['square', 'landscape', 'portrait'].includes(format))
     throw new Error(`unknown format "${format}"`)
   const filmsDir = resolve(values.out!)
-  const jobSource = opts.job ?? values.job
+  // a job link given as the website: the post is the job, and the film is about the company
+  const jobLink = !opts.job && !values.job && isJobPage(link)
+  const jobSource = jobLink ? link : (opts.job ?? values.job)
   const job = jobSource ? await loadJob(jobSource, filmsDir, opts.quiet) : undefined
+  if (jobLink && !job?.companyUrl)
+    throw new Error(
+      `couldn't find the company's website from ${link}; give the website and pass the post with --job`,
+    )
+  const url = jobLink ? job!.companyUrl! : link
+  if (jobLink && !opts.quiet) done(`  company  ${new URL(url).hostname}`)
 
   // several profiles: read the site once, pick the profile that fits, and seed the film's
   // journal with that research so the film doesn't load the site again

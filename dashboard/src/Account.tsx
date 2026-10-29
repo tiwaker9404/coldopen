@@ -100,8 +100,8 @@ export function FirstRun({ onStart, hasProfile }: { onStart: () => void; hasProf
           )}
         </li>
         <li className={hasProfile ? 'now' : ''}>
-          <b>Paste a company's website.</b> Add the job post too, and the film answers one of its
-          requirements with your proof.
+          <b>Paste a job link, or a company's website.</b> From a job post, the film answers one of
+          its requirements with your proof.
         </li>
         <li>
           <b>Send the link.</b> You'll see when they open it, press play and watch to the end.

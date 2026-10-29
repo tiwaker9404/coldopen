@@ -110,7 +110,9 @@ export function App() {
           <span className="lens" aria-hidden="true" />
           <span className="wordmark">coldopen</span>
         </div>
-        <p className="tagline">Paste a company's website. Get a 30-second film made for them.</p>
+        <p className="tagline">
+          Paste a company's website or a job link. Get a 30-second film made for them.
+        </p>
         {hosted && me.data && <AccountBar me={me.data} />}
       </header>
 
@@ -139,8 +141,8 @@ export function App() {
               />
             ) : (
               <input
-                aria-label="Company website"
-                placeholder="acme.com"
+                aria-label="Company website or job link"
+                placeholder="acme.com, or a link to a job post"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 autoComplete="off"
