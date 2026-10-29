@@ -8,69 +8,101 @@ The hosted app is the same coldopen, with `HOSTED=true`:
 - **Limits protect the free tiers:** films per person, per network and for the whole app, and résumé drafts per person. When every model is rate limited, a film is written by the built-in writer instead of failing.
 - **People can delete everything** they made, share links included.
 
-It runs entirely on free plans, with no card on any of them:
+It runs on free plans:
 
-| Piece                        | Free service                                       | What it holds                              |
-| ---------------------------- | -------------------------------------------------- | ------------------------------------------ |
-| The app (web, API, renderer) | Hugging Face Spaces, Docker                        | Nothing permanent; its disk is temporary   |
-| Database                     | Supabase                                           | Accounts, profiles, films, limits          |
-| Films and their views        | Cloudflare Workers, KV and D1 ([share/](../share)) | The video, poster and GIF, and who watched |
-| Script writing               | Groq                                               | Nothing                                    |
+| Piece                        | Free service                                       | Notes                                                                                                                   |
+| ---------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| The app, its database, HTTPS | Oracle Cloud Always Free                           | An always-on server with 4 cores and 24 GB. A card is asked for to verify you; Always Free resources are never charged. |
+| Share links and their views  | Cloudflare Workers, KV and D1 ([share/](../share)) | No card. Set up with `pnpm share:setup` ([SHARING.md](SHARING.md)).                                                     |
+| Script writing               | Groq                                               | No card.                                                                                                                |
+| Sign-in                      | A GitHub App                                       | Free.                                                                                                                   |
 
-## 1. The database (Supabase, 5 minutes)
+Allow about 45 minutes the first time.
 
-1. Create a project at [supabase.com](https://supabase.com). Pick a region near you and save the database password.
-2. Click **Connect**, then **Session pooler**, and copy the connection string. It looks like `postgresql://postgres.abcd:[YOUR-PASSWORD]@aws-0-us-west-1.pooler.supabase.com:5432/postgres`.
-3. Put your password in it and add `?sslmode=require` at the end. That's your `DATABASE_URL`.
+## 1. The server (Oracle Cloud, 15 minutes)
 
-Use the session pooler, not the direct connection: the direct one is IPv6 only, and Spaces can't reach it. coldopen creates its tables on first start.
+1. Sign up at [oracle.com/cloud/free](https://www.oracle.com/cloud/free/).
+   - **Home region:** pick one near you (for example US West, San Jose or Phoenix). It can't be changed later, and free servers only run in your home region.
+   - The card is for identity verification. Stay on the Always Free resources below and nothing is charged.
+2. In the console: **☰ → Compute → Instances → Create instance**.
+   - **Name:** `coldopen`
+   - **Image:** click **Edit → Change image → Ubuntu → Canonical Ubuntu 24.04**.
+   - **Shape:** **Change shape → Ampere → VM.Standard.A1.Flex**, **4 OCPUs**, **24 GB** memory. It's labeled "Always Free-eligible".
+   - **SSH keys:** **Generate a key pair for me → Save private key**. Keep the downloaded `.key` file.
+   - Click **Create**. If it says **Out of capacity**, try again later or switch to another availability domain; Ampere capacity frees up through the day.
+3. When it's **Running**, copy its **Public IP address**.
+4. Open the web ports: on the instance page, click the **Subnet** link → **Security Lists** → the default list → **Add Ingress Rules**:
+   - Source CIDR `0.0.0.0/0`, IP Protocol **TCP**, Destination Port Range `80,443` → **Add Ingress Rules**.
 
-## 2. GitHub sign-in (3 minutes)
+## 2. Log in to the server
 
-1. Go to GitHub **Settings → Developer settings → OAuth Apps → New OAuth App**.
-2. **Homepage URL:** `https://<your-username>-coldopen.hf.space`
-3. **Authorization callback URL:** `https://<your-username>-coldopen.hf.space/auth/github/callback`
-4. Create it, then **Generate a new client secret**. Keep the client ID and secret for step 4.
+On your Mac, in Terminal (use your key's file name and your IP):
 
-## 3. The Space (5 minutes)
+```bash
+chmod 600 ~/Downloads/ssh-key-*.key
+ssh -i ~/Downloads/ssh-key-*.key ubuntu@<PUBLIC-IP>
+```
 
-1. Create a token at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) with **Write** access.
-2. Create a Space at [huggingface.co/new-space](https://huggingface.co/new-space): name `coldopen`, SDK **Docker**, blank template, hardware **CPU basic (free)**, public.
-3. In the GitHub repo: **Settings → Secrets and variables → Actions**.
-   - Add the secret `HF_TOKEN` (the token from step 1).
-   - Add the variable `HF_SPACE` = `<your-username>/coldopen`.
-4. Run **Actions → Deploy the hosted demo → Run workflow**. From then on, every push to `main` redeploys.
+Type `yes` the first time. You're now on the server; the prompt changes to `ubuntu@coldopen`.
 
-## 4. The Space's settings
+## 3. Install coldopen (first run of the script)
 
-In the Space: **Settings → Variables and secrets**. Add these as **secrets**:
+```bash
+curl -fsSL https://raw.githubusercontent.com/tiwaker9404/coldopen/main/deploy/oracle/setup.sh | bash
+```
 
-| Name                                       | Value                                                                                               |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                             | from step 1                                                                                         |
-| `SESSION_SECRET`                           | a long random string: `openssl rand -hex 32`                                                        |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | from step 2                                                                                         |
-| `LLM_API_KEY`                              | your Groq key                                                                                       |
-| `SHARE_URL`                                | your share worker, e.g. `https://coldopen-share.<you>.workers.dev`                                  |
-| `SHARE_TOKEN`                              | its upload token (on a Mac: `security find-generic-password -a "$USER" -s coldopen-share-token -w`) |
+It installs Docker, opens the firewall, downloads coldopen and writes a settings file with the secrets it can make itself. At the end it prints your address, for example `https://129-146-12-34.sslip.io`. [sslip.io](https://sslip.io) is a free name that points at your IP, so the app gets a real HTTPS certificate with no domain to buy.
 
-And these as **variables**:
+## 4. Point GitHub sign-in at it
 
-| Name                 | Value                                       |
-| -------------------- | ------------------------------------------- |
-| `PUBLIC_URL`         | `https://<your-username>-coldopen.hf.space` |
-| `LLM_PROVIDER`       | `openai`                                    |
-| `LLM_BASE_URL`       | `https://api.groq.com/openai/v1`            |
-| `LLM_MODEL`          | `openai/gpt-oss-120b`                       |
-| `LLM_FALLBACK_MODEL` | `openai/gpt-oss-20b`                        |
+In your GitHub App's settings, set the **Callback URL** (or Redirect URI) to the address the script printed, plus `/auth/github/callback`:
 
-The Space restarts with each change. When it says **Running**, open `https://<your-username>-coldopen.hf.space` (the direct address, not the huggingface.co page around it, where sign-in can't work).
+```
+https://129-146-12-34.sslip.io/auth/github/callback
+```
 
-**Limits** have defaults you can change with variables: `ANON_DAILY_FILMS` (1), `USER_DAILY_FILMS` (5), `IP_DAILY_FILMS` (8), `GLOBAL_DAILY_FILMS` (80), `DAILY_DRAFTS` (6). The global cap keeps the app inside Groq's free daily tokens and Cloudflare's 1,000 free writes a day.
+Keep the App's **Client ID** and a **client secret** for the next step.
 
-## What to expect from free plans
+## 5. Fill in the five blanks
 
-- **The Space sleeps** after 48 hours without visitors. The next visit wakes it in about a minute.
-- **A film takes 1 to 2 minutes** on the free 2-CPU machine, one at a time. Others wait in line and the page shows where they are.
-- **Supabase pauses** a project that's idle for a week. Open its dashboard to wake it.
-- **The Space's disk is temporary.** That's why films are published to the share worker as soon as they're made, and why `SHARE_URL` is required for the hosted app.
+```bash
+nano ~/coldopen/deploy/oracle/.env
+```
+
+| Line                   | Value                                                                                                                                         |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GITHUB_CLIENT_ID`     | the GitHub App's Client ID (starts with `Iv`)                                                                                                 |
+| `GITHUB_CLIENT_SECRET` | its client secret                                                                                                                             |
+| `LLM_API_KEY`          | your Groq key                                                                                                                                 |
+| `SHARE_URL`            | your share worker, e.g. `https://coldopen-share.<you>.workers.dev`                                                                            |
+| `SHARE_TOKEN`          | its upload token. On your Mac: `security find-generic-password -a "$USER" -s coldopen-share-token -w \| pbcopy` copies it without printing it |
+
+Save with **Ctrl+O, Enter**, quit with **Ctrl+X**. The file is readable only by you.
+
+## 6. Start it (second run of the script)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tiwaker9404/coldopen/main/deploy/oracle/setup.sh | bash
+```
+
+The first build takes about 10 minutes (it installs Chromium). Then open the address. You should see the three steps and "1 film left today".
+
+**Updating later:** `~/coldopen/deploy/oracle/update.sh` pulls the latest code from GitHub and restarts. Films, accounts and settings are kept.
+
+**Logs:** `cd ~/coldopen/deploy/oracle && sudo docker compose logs -f app`
+
+**A database elsewhere:** the database runs on the server by default. To use Supabase or Neon instead, add `DATABASE_URL=...?sslmode=require` to `.env` and run `update.sh`.
+
+## Limits
+
+Defaults you can change in `.env`: `ANON_DAILY_FILMS` (1), `USER_DAILY_FILMS` (5), `IP_DAILY_FILMS` (8), `GLOBAL_DAILY_FILMS` (80), `DAILY_DRAFTS` (6). The global cap keeps the app inside Groq's free daily tokens and Cloudflare's 1,000 free writes a day.
+
+## What to expect
+
+- **A film takes about a minute,** two at a time. Others wait in line and the page shows where they are.
+- **Oracle may reclaim an idle free server:** one that uses almost no CPU for a week. Regular visitors keep it busy; if it's stopped, start it again from the console.
+- **Your own films** keep working on your laptop as before. The hosted app is separate, with its own accounts.
+
+## On Hugging Face Spaces (paid)
+
+Docker Spaces now need a paid Hugging Face plan. If you have one, [deploy/huggingface](../deploy/huggingface) and the **Deploy the hosted demo** workflow push the app to a Space on every change to `main`. Use a Supabase database (session pooler, `?sslmode=require`), since a Space's disk is temporary.

@@ -67,7 +67,7 @@ flowchart LR
 
 ## Try it, or host your own demo
 
-The hosted app lets anyone try coldopen in the browser: upload a résumé, paste a company (and a job post), and get a tracked share link. Visitors get one free film a day; signing in with GitHub keeps their work and allows five. It runs on free plans only (Hugging Face Spaces, Supabase, Cloudflare, Groq), and [docs/HOSTING.md](docs/HOSTING.md) sets it up in about 20 minutes.
+The hosted app lets anyone try coldopen in the browser: upload a résumé, paste a company (and a job post), and get a tracked share link. Visitors get one free film a day; signing in with GitHub keeps their work and allows five. It runs on free plans (an Oracle Cloud Always Free server, Cloudflare, Groq), and [docs/HOSTING.md](docs/HOSTING.md) sets it up with one script.
 
 ## Run it for your team
 

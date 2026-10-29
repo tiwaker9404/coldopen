@@ -1,6 +1,7 @@
 name: Deploy the hosted demo
 
-# Pushes the app to the Hugging Face Space on every change to main. Needs one repository
+# Pushes the app to a Hugging Face Space on every change to main (Docker Spaces need a paid
+# Hugging Face plan; the free route is Oracle Cloud, see docs/HOSTING.md). Needs one repository
 # secret, HF_TOKEN (a Hugging Face token with write access), and the repository variable
 # HF_SPACE, e.g. "tiwaker9404/coldopen". Without them this workflow does nothing.
 on:
