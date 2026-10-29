@@ -350,20 +350,19 @@ function Replied({ id, status }: { id: string; status: OutreachStatus | null }) 
   return (
     <section>
       <h3>Did they reply?</h3>
-      <div className="segmented outreach" role="radiogroup" aria-label="What happened">
+      <fieldset className="segmented outreach" aria-label="What happened">
         {(Object.keys(OUTREACH_LABEL) as OutreachStatus[]).map((k) => (
           <button
             key={k}
             type="button"
-            role="radio"
-            aria-checked={shown === k}
+            aria-pressed={shown === k}
             className={shown === k ? 'on' : ''}
             onClick={() => mark.mutate(shown === k ? null : k)}
           >
             {OUTREACH_LABEL[k]}
           </button>
         ))}
-      </div>
+      </fieldset>
       <p className="muted small">
         {shown
           ? 'Click it again to clear.'

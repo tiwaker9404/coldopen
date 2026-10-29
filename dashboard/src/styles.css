@@ -1046,3 +1046,7 @@ main {
   cursor: pointer;
   display: inline-block;
 }
+fieldset.segmented {
+  padding: 0;
+  min-inline-size: 0;
+}
