@@ -994,3 +994,30 @@ main {
     grid-column: 1 / -1;
   }
 }
+
+/* ---------------------------------------------------------------- replies */
+.replyrate {
+  margin: 0 0 14px;
+  font-size: 14px;
+}
+.segmented.outreach {
+  margin-left: 0;
+  width: fit-content;
+  margin-bottom: 8px;
+}
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 99px;
+  margin-right: 6px;
+  border: 1px solid var(--rule);
+  color: var(--muted);
+}
+.badge.replied,
+.badge.interview {
+  border-color: currentColor;
+  color: var(--ink);
+  background: var(--surface);
+}

@@ -8,6 +8,7 @@ import {
   type Film,
   type Format,
   type Me,
+  type OutreachSummary,
   type Profile,
   send,
   setApiKey,
@@ -287,6 +288,7 @@ export function App() {
       </section>
 
       <main>
+        <ReplyRate />
         {list.length === 0 && !films.isLoading && hosted ? null : list.length === 0 &&
           !films.isLoading ? (
           <div className="empty">
@@ -354,5 +356,28 @@ function KeyForm() {
       <input id="key" type="password" value={k} onChange={(e) => setK(e.target.value)} />
       <button type="submit">Use key</button>
     </form>
+  )
+}
+
+/** "8 sent · 2 replied (25%) · 1 interview": the number that says whether it's working */
+function ReplyRate() {
+  const q = useQuery({
+    queryKey: ['outreach'],
+    queryFn: () => api<OutreachSummary>('/v1/outreach'),
+  })
+  const o = q.data
+  if (!o || o.sent === 0) return null
+  return (
+    <p className="replyrate" aria-live="polite">
+      <b>{o.sent}</b> sent · <b>{o.replied}</b> replied
+      {o.replyRate !== null && <span className="muted"> ({Math.round(o.replyRate * 100)}%)</span>}
+      {o.interviews > 0 && (
+        <>
+          {' '}
+          · <b>{o.interviews}</b> interview{o.interviews === 1 ? '' : 's'}
+        </>
+      )}
+      {o.waiting > 0 && <span className="muted"> · {o.waiting} waiting</span>}
+    </p>
   )
 }

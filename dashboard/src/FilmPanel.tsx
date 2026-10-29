@@ -6,6 +6,8 @@ import {
   type FilmDetail,
   type Messages,
   media,
+  OUTREACH_LABEL,
+  type OutreachStatus,
   send,
   type ViewSession,
   type ViewSummary,
@@ -140,6 +142,7 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
         )}
 
         {f?.status === 'succeeded' && <SendIt id={f.id} />}
+        {f?.status === 'succeeded' && <Replied id={f.id} status={f.outreach?.status ?? null} />}
         {f?.status === 'succeeded' && <Views id={f.id} />}
 
         {f?.status === 'failed' && (
@@ -329,6 +332,41 @@ function SendIt({ id }: { id: string }) {
         )}
       </div>
       <p className="muted small">Replace [First name], read it once, and it's ready to send.</p>
+    </section>
+  )
+}
+
+/** What happened after sending it. Counted into the reply rate at the top of the page. */
+function Replied({ id, status }: { id: string; status: OutreachStatus | null }) {
+  const qc = useQueryClient()
+  const mark = useMutation({
+    mutationFn: (s: OutreachStatus | null) =>
+      send('PUT', `/v1/films/${id}/outreach`, { status: s }),
+    onSuccess: () => void qc.invalidateQueries(),
+  })
+  const shown = mark.isPending ? (mark.variables ?? null) : status
+  return (
+    <section>
+      <h3>Did they reply?</h3>
+      <div className="segmented outreach" role="radiogroup" aria-label="What happened">
+        {(Object.keys(OUTREACH_LABEL) as OutreachStatus[]).map((k) => (
+          <button
+            key={k}
+            type="button"
+            role="radio"
+            aria-checked={shown === k}
+            className={shown === k ? 'on' : ''}
+            onClick={() => mark.mutate(shown === k ? null : k)}
+          >
+            {OUTREACH_LABEL[k]}
+          </button>
+        ))}
+      </div>
+      <p className="muted small">
+        {shown
+          ? 'Click it again to clear.'
+          : 'Mark it sent once it’s out, and come back when they answer. Your reply rate shows at the top.'}
+      </p>
     </section>
   )
 }

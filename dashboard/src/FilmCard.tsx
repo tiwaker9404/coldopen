@@ -1,4 +1,4 @@
-import { ago, type Film, media } from './api.ts'
+import { ago, type Film, media, OUTREACH_LABEL } from './api.ts'
 
 const STAGES = ['research', 'script', 'design', 'render', 'encode'] as const
 const STAGE_LABEL: Record<string, string> = {
@@ -80,6 +80,11 @@ export function FilmCard({
           {film.job?.title ? ` \u00b7 ${film.job.title}` : ''}
         </span>
         <span className="meta">
+          {film.outreach && (
+            <b className={`badge ${film.outreach.status}`}>
+              {OUTREACH_LABEL[film.outreach.status]}
+            </b>
+          )}
           {film.status === 'succeeded'
             ? watched(film)
             : film.status === 'failed'

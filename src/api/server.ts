@@ -59,9 +59,19 @@ const PUBLIC_FILES =
   /^(film-(square|landscape|portrait)\.mp4|poster\.jpg|preview\.gif|contact-sheet\.jpg)$/
 const RunId = z.string().regex(/^run_[0-9A-Z]{26}$/, 'not a film id')
 
+export const OUTREACH = ['sent', 'replied', 'interview', 'no_reply'] as const
+export type OutreachStatus = (typeof OUTREACH)[number]
+interface Outreach {
+  status: OutreachStatus
+  at: string
+  /** when it was first marked sent: reply rates are counted from here */
+  sentAt: string
+}
+
 interface FilmRow extends Run {
   input: z.infer<typeof FilmInputSchema>
   output: FilmResult | null
+  outreach?: Outreach | null
 }
 
 function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
@@ -100,6 +110,8 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
       (r.input.job ? { title: r.input.job.title ?? null, url: r.input.job.url ?? null } : null),
     /** what people did on the share page; null until the film is finished */
     views: out ? (views ?? NO_VIEWS) : null,
+    /** what happened after it was sent, as the sender marked it */
+    outreach: r.outreach ?? null,
   }
 }
 
@@ -712,6 +724,62 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
               message: 'only failed or cancelled films can be retried',
             },
           })
+    },
+  )
+
+  app.put(
+    '/v1/films/:id/outreach',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Mark what happened after sending a film: sent, replied, interview, no reply',
+        params: z.object({ id: RunId }),
+        body: z.object({ status: z.enum(OUTREACH).nullable() }),
+      },
+    },
+    async (req, reply) => {
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run) return notFound(reply)
+      if (run.status !== 'succeeded')
+        return reply
+          .status(409)
+          .send({ error: { code: 'not_finished', message: 'only a finished film can be sent' } })
+      const now = new Date().toISOString()
+      const prev = (run as FilmRow).outreach
+      const next: Outreach | null = req.body.status
+        ? { status: req.body.status, at: now, sentAt: prev?.sentAt ?? now }
+        : null
+      const [r] = await sql<FilmRow[]>`
+        update runs set outreach = ${next ? sql.json(next as never) : null}
+        where id = ${req.params.id} returning *`
+      return filmDto(r!, publicUrl)
+    },
+  )
+
+  app.get(
+    '/v1/outreach',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Films sent and how many got a reply',
+      },
+    },
+    async (req) => {
+      const rows = await sql<{ status: OutreachStatus; n: number }[]>`
+        select outreach->>'status' as status, count(*)::int as n from runs
+        where agent = 'film' and owner = ${req.owner} and outreach is not null
+        group by 1`
+      const n = (s: OutreachStatus) => rows.find((r) => r.status === s)?.n ?? 0
+      const sent = rows.reduce((a, r) => a + r.n, 0)
+      const replied = n('replied') + n('interview')
+      return {
+        sent,
+        replied,
+        interviews: n('interview'),
+        noReply: n('no_reply'),
+        waiting: n('sent'),
+        replyRate: sent ? replied / sent : null,
+      }
     },
   )
 

@@ -322,6 +322,61 @@ describe('films', () => {
     )
     expect(lines[2]).toMatch(/^https:\/\/umbrella\.com,,queued,/)
   })
+
+  it('drafts the messages to send with a film, and tracks whether they replied', async () => {
+    const create = (url: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/v1/films',
+        headers: auth,
+        payload: { url, profileId: 'maya' },
+      })
+    const a = (await create('replyco.example')).json().id
+    const b = (await create('quietco.example')).json().id
+
+    // not finished: nothing to send yet
+    const early = await app.inject({
+      method: 'PUT',
+      url: `/v1/films/${a}/outreach`,
+      headers: auth,
+      payload: { status: 'sent' },
+    })
+    expect(early.statusCode).toBe(409)
+    await finish(a, 'ReplyCo')
+    await finish(b, 'QuietCo')
+
+    const m = (await app.inject({ url: `/v1/films/${a}/messages`, headers: auth })).json()
+    expect(m.email.subject).toBeTruthy()
+    expect(m.email.body).toContain('https://films.example.com/f/')
+    expect(m.linkedin.length).toBeLessThanOrEqual(300)
+
+    const mark = (id: string, status: string | null) =>
+      app.inject({
+        method: 'PUT',
+        url: `/v1/films/${id}/outreach`,
+        headers: auth,
+        payload: { status },
+      })
+    const sent = (await mark(a, 'sent')).json().outreach
+    expect(sent.status).toBe('sent')
+    const replied = (await mark(a, 'interview')).json().outreach
+    expect(replied).toMatchObject({ status: 'interview', sentAt: sent.sentAt })
+    await mark(b, 'no_reply')
+    expect((await mark(b, 'bogus')).statusCode).toBe(400)
+
+    const sum = (await app.inject({ url: '/v1/outreach', headers: auth })).json()
+    expect(sum).toEqual({
+      sent: 2,
+      replied: 1,
+      interviews: 1,
+      noReply: 1,
+      waiting: 0,
+      replyRate: 0.5,
+    })
+
+    expect((await mark(b, null)).json().outreach).toBeNull()
+    expect((await app.inject({ url: '/v1/outreach', headers: auth })).json().sent).toBe(1)
+  })
 })
 
 describe('slack', () => {

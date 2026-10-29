@@ -21,6 +21,25 @@ export interface Film {
   share: string | null
   job: { title: string | null; url: string | null } | null
   views: ViewSummary | null
+  outreach: { status: OutreachStatus; at: string; sentAt: string } | null
+}
+
+export type OutreachStatus = 'sent' | 'replied' | 'interview' | 'no_reply'
+export const OUTREACH_LABEL: Record<OutreachStatus, string> = {
+  sent: 'Sent',
+  replied: 'Replied',
+  interview: 'Interview',
+  no_reply: 'No reply',
+}
+
+/** films sent and how many got a reply */
+export interface OutreachSummary {
+  sent: number
+  replied: number
+  interviews: number
+  noReply: number
+  waiting: number
+  replyRate: number | null
 }
 
 /** what people did on a film's share page (bots and link scanners not counted) */
