@@ -274,3 +274,13 @@ describe('storyboard', () => {
     expect(b.duration).toBeLessThan(32)
   })
 })
+
+describe('the ask on the end card', () => {
+  it('keeps a question a question', async () => {
+    const { asked } = await import('../../src/script/storyboard.ts')
+    expect(asked('Could we talk this week')).toBe('Could we talk this week?')
+    expect(asked('Open to a 15-minute call.')).toBe('Open to a 15-minute call?')
+    expect(asked('Could we talk this week?')).toBe('Could we talk this week?')
+    expect(asked('Let’s talk this week')).toBe('Let’s talk this week')
+  })
+})

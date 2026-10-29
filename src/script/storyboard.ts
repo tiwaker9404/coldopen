@@ -76,6 +76,16 @@ export function noticedFact(kit: BrandKit, noticed: string) {
   return best?.fact ?? null
 }
 
+/** "Could we talk this week" is a question; the end card shouldn't lose its question mark */
+export function asked(line: string): string {
+  const t = line.trim().replace(/[.!]+$/, '')
+  return /^(could|can|would|will|shall|should|do|does|did|are|is|may|might|want|open to|free)\b/i.test(
+    t,
+  ) && !t.endsWith('?')
+    ? `${t}?`
+    : line.trim()
+}
+
 /**
  * Deterministic assembly. The model's lines go where they belong, and everything factual
  * comes straight from its source: the quote from the site, the proof from the profile.
@@ -128,7 +138,7 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
     {
       kind: 'cta',
       dur: 4.6,
-      line: script.cta,
+      line: asked(script.cta),
       contact: profile.cta.contact,
       signoff: `Made for ${kit.name} by ${profile.sender.name}${profile.sender.company ? ` at ${profile.sender.company}` : ''}`,
     },
