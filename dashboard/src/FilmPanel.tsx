@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { api, type FilmDetail, media, send } from './api.ts'
+import {
+  ago,
+  api,
+  type FilmDetail,
+  media,
+  send,
+  type ViewSession,
+  type ViewSummary,
+} from './api.ts'
 
 const STEP_LABEL: Record<string, string> = {
   research: 'Read the homepage',
@@ -101,7 +109,8 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
                 GIF
               </a>
               {f.share && (
-                <a className="button" href={f.share} target="_blank" rel="noreferrer">
+                // ?preview: your own visits aren't counted as views
+                <a className="button" href={`${f.share}?preview`} target="_blank" rel="noreferrer">
                   Open share page
                 </a>
               )}
@@ -128,6 +137,8 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
             </div>
           </div>
         )}
+
+        {f?.status === 'succeeded' && <Views id={f.id} />}
 
         {f?.status === 'failed' && (
           <div className="failure">
@@ -203,5 +214,66 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
         )}
       </aside>
     </div>
+  )
+}
+
+function Views({ id }: { id: string }) {
+  const q = useQuery({
+    queryKey: ['views', id],
+    queryFn: () => api<{ summary: ViewSummary; sessions: ViewSession[] }>(`/v1/films/${id}/views`),
+    refetchInterval: 15_000,
+  })
+  const v = q.data
+  if (!v) return null
+  const s = v.summary
+  return (
+    <section>
+      <h3>Who watched</h3>
+      {s.opens === 0 ? (
+        <p className="muted small">
+          Nobody has opened the share page yet. Link previews and email scanners aren't counted, and
+          neither are your own visits from this page.
+        </p>
+      ) : (
+        <>
+          <dl className="views-sum">
+            <div>
+              <dt>Opened</dt>
+              <dd>{s.opens}</dd>
+            </div>
+            <div>
+              <dt>Played</dt>
+              <dd>{s.plays}</dd>
+            </div>
+            <div>
+              <dt>Finished</dt>
+              <dd>{s.finishes}</dd>
+            </div>
+            <div>
+              <dt>People</dt>
+              <dd>{s.viewers}</dd>
+            </div>
+          </dl>
+          <ol className="views-list">
+            {v.sessions.slice(0, 12).map((x) => (
+              <li key={x.session}>
+                <span>
+                  {x.finished
+                    ? 'Watched to the end'
+                    : x.played
+                      ? `Watched ${Math.round(x.seconds)}s`
+                      : 'Opened, didn’t play'}
+                </span>
+                <span className="muted">
+                  {[x.device, x.referrer ? `via ${x.referrer}` : null, x.country, ago(x.lastSeen)]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+    </section>
   )
 }

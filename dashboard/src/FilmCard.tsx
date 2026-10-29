@@ -1,4 +1,4 @@
-import { type Film, media } from './api.ts'
+import { ago, type Film, media } from './api.ts'
 
 const STAGES = ['research', 'script', 'design', 'render', 'encode'] as const
 const STAGE_LABEL: Record<string, string> = {
@@ -78,7 +78,7 @@ export function FilmCard({
         <span className="who">{film.company ?? host(film.url)}</span>
         <span className="meta">
           {film.status === 'succeeded'
-            ? `${Math.round(film.durationSec ?? 0)}s, from ${film.sender}`
+            ? watched(film)
             : film.status === 'failed'
               ? 'Failed'
               : film.attempts > 1
@@ -88,4 +88,13 @@ export function FilmCard({
       </div>
     </button>
   )
+}
+
+/** the card's one line about the share page: has anyone watched it yet? */
+function watched(film: Film): string {
+  const v = film.views
+  if (!v || v.opens === 0) return `${Math.round(film.durationSec ?? 0)}s, not opened yet`
+  if (v.plays === 0) return `Opened ${v.opens === 1 ? 'once' : `${v.opens} times`}, not played`
+  const times = v.plays === 1 ? 'once' : `${v.plays} times`
+  return `Watched ${times}${v.lastSeen ? `, ${ago(v.lastSeen)}` : ''}`
 }

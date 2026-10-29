@@ -207,6 +207,67 @@ describe('films', () => {
     ).toBe(404)
   })
 
+  it('counts who watched the share page, not bots, and reports it', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/v1/films',
+      headers: auth,
+      payload: { url: 'globex.com' },
+    })
+    const id = created.json().id as string
+    await finish(id, 'Globex')
+    const page = await app.inject({ url: `/f/${id}` })
+    expect(page.body).toContain(`https://films.example.com/f/${id}/v`) // the page reports views
+
+    const chrome =
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+    const beacon = (body: unknown, ua = chrome) =>
+      app.inject({
+        method: 'POST',
+        url: `/f/${id}/v`,
+        headers: { 'content-type': 'text/plain', 'user-agent': ua },
+        payload: JSON.stringify(body),
+      })
+    const s = 'session-aaaaaaaa'
+    expect(
+      (await beacon({ s, e: 'open', t: 0, d: 30, r: 'https://www.linkedin.com/feed/' })).statusCode,
+    ).toBe(204)
+    await beacon({ s, e: 'play', t: 0, d: 30 })
+    await beacon({ s, e: 'progress', t: 12.4, d: 30 })
+    await beacon({ s: 'session-bbbbbbbb', e: 'open', t: 0, d: 30 })
+    // a link unfurler and garbage are ignored, quietly
+    await beacon({ s: 'session-cccccccc', e: 'play', t: 9, d: 30 }, 'Slackbot-LinkExpanding 1.0')
+    expect((await beacon('not json')).statusCode).toBe(204)
+    // a film that doesn't exist answers the same
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/f/run_00000000000000000000000000/v',
+          payload: '{}',
+          headers: { 'content-type': 'text/plain', 'user-agent': chrome },
+        })
+      ).statusCode,
+    ).toBe(204)
+
+    const v = (await app.inject({ url: `/v1/films/${id}/views`, headers: auth })).json()
+    expect(v.summary).toMatchObject({
+      opens: 2,
+      viewers: 1,
+      plays: 1,
+      finishes: 0,
+      bestSeconds: 12.4,
+    })
+    expect(v.sessions[0].referrer ?? v.sessions[1].referrer).toBe('linkedin.com')
+    expect(JSON.stringify(v)).not.toContain('127.0.0.1') // no IP address is kept
+
+    const listed = (await app.inject({ url: '/v1/films', headers: auth }))
+      .json()
+      .data.find((f: { id: string }) => f.id === id)
+    expect(listed.views.plays).toBe(1)
+    expect((await app.inject({ url: `/v1/films/${id}/views` })).statusCode).toBe(401)
+  })
+
   it('batches a prospect list and exports CRM-ready CSV', async () => {
     const res = await app.inject({
       method: 'POST',
@@ -223,7 +284,9 @@ describe('films', () => {
     const csv = await app.inject({ url: `/v1/batches/${batch}/results.csv`, headers: auth })
     expect(csv.headers['content-type']).toContain('text/csv')
     const lines = csv.body.trim().split('\n')
-    expect(lines[0]).toBe('url,company,status,share_url,gif_url,video_url,email_snippet')
+    expect(lines[0]).toBe(
+      'url,company,status,share_url,gif_url,video_url,email_snippet,plays,finishes,best_seconds,last_viewed',
+    )
     expect(lines[1]).toMatch(
       /^https:\/\/initech\.com,Initech,succeeded,https:\/\/films\.example\.com\/f\/run_/,
     )

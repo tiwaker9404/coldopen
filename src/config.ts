@@ -15,6 +15,10 @@ const schema = z.object({
   HOST: z.string().default('0.0.0.0'),
   /** public base URL used in share links (e.g. https://films.example.com) */
   PUBLIC_URL: z.string().default('http://localhost:8080'),
+  /** Slack or Discord incoming webhook: posted to when someone starts watching a film */
+  NOTIFY_WEBHOOK_URL: z.string().url().optional(),
+  /** secret mixed into viewer hashes; set it so they can't be recomputed from public data */
+  VIEW_SALT: z.string().default('coldopen-views'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DB_POOL_SIZE: z.coerce.number().int().positive().default(10),
 

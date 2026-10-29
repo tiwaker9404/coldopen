@@ -19,6 +19,40 @@ export interface Film {
   durationSec: number | null
   files: { film: string; poster: string; gif: string; sheet: string } | null
   share: string | null
+  views: ViewSummary | null
+}
+
+/** what people did on a film's share page (bots and link scanners not counted) */
+export interface ViewSummary {
+  opens: number
+  viewers: number
+  plays: number
+  finishes: number
+  bestSeconds: number
+  firstPlayAt: string | null
+  lastSeen: string | null
+}
+
+export interface ViewSession {
+  session: string
+  firstSeen: string
+  lastSeen: string
+  played: boolean
+  seconds: number
+  finished: boolean
+  device: 'mobile' | 'desktop'
+  referrer: string | null
+  country: string | null
+}
+
+/** "3 min ago", "yesterday", "Oct 12" */
+export function ago(iso: string, now = Date.now()): string {
+  const s = Math.max(0, (now - new Date(iso).getTime()) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`
+  if (s < 86400) return `${Math.floor(s / 3600)} h ago`
+  if (s < 172800) return 'yesterday'
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 export interface FilmDetail extends Film {

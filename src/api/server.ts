@@ -32,8 +32,10 @@ import {
   retryRun,
 } from '../runtime/store.ts'
 import { ProfileSchema } from '../script/types.ts'
+import { sharePage, viewFromRun } from '../share/page.ts'
+import { filmViews, NO_VIEWS, pgViewStore, viewSummaries } from '../share/pg.ts'
+import { recordBeacon, type ViewSummary } from '../share/views.ts'
 import { type SlackClient, urlFromMention, verifySlackSignature } from '../slack.ts'
-import { sharePage } from './share.ts'
 
 const FILE_NAMES =
   /^(film-(square|landscape|portrait)\.mp4|poster\.jpg|preview\.gif|contact-sheet\.jpg|site\.jpg|kit\.json|storyboard\.json)$/
@@ -46,7 +48,7 @@ interface FilmRow extends Run {
   output: FilmResult | null
 }
 
-function filmDto(r: FilmRow, publicUrl: string) {
+function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
   const out = r.output
   const base = `/v1/films/${r.id}/files`
   return {
@@ -75,6 +77,8 @@ function filmDto(r: FilmRow, publicUrl: string) {
         }
       : null,
     share: out ? `${publicUrl.replace(/\/$/, '')}/f/${r.id}` : null,
+    /** what people did on the share page; null until the film is finished */
+    views: out ? (views ?? NO_VIEWS) : null,
   }
 }
 
@@ -385,8 +389,12 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
           ${req.query.before ? sql`and id < ${req.query.before}` : sql``}
           ${req.query.batch ? sql`and input->>'batch' = ${req.query.batch}` : sql``}
         order by id desc limit ${req.query.limit}`
+      const views = await viewSummaries(
+        sql,
+        rows.filter((r) => r.status === 'succeeded').map((r) => r.id),
+      )
       return {
-        data: rows.map((r) => filmDto(r, publicUrl)),
+        data: rows.map((r) => filmDto(r, publicUrl, views.get(r.id))),
         nextCursor: rows.length === req.query.limit ? rows.at(-1)!.id : null,
       }
     },
@@ -405,9 +413,13 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       const run = (await getRun(sql, req.params.id)) as FilmRow | undefined
       if (run?.agent !== 'film')
         return reply.status(404).send({ error: { code: 'not_found', message: 'film not found' } })
-      const [steps, timeline] = await Promise.all([getSteps(sql, run.id), getLog(sql, run.id)])
+      const [steps, timeline, views] = await Promise.all([
+        getSteps(sql, run.id),
+        getLog(sql, run.id),
+        viewSummaries(sql, [run.id]),
+      ])
       return {
-        ...filmDto(run, publicUrl),
+        ...filmDto(run, publicUrl, views.get(run.id)),
         script: run.output?.script ?? null,
         scriptMeta: run.output?.scriptMeta ?? null,
         qa: run.output?.qa ?? null,
@@ -497,15 +509,19 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     async (req, reply) => {
       const rows = await sql<FilmRow[]>`
         select * from runs where agent = 'film' and input->>'batch' = ${req.params.id} order by (input->>'ref')::int`
+      const views = await viewSummaries(
+        sql,
+        rows.map((r) => r.id),
+      )
       const base = publicUrl.replace(/\/$/, '')
       const cell = (s: unknown) => {
         const v = s == null ? '' : String(s)
         return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
       }
       const lines = [
-        'url,company,status,share_url,gif_url,video_url,email_snippet',
+        'url,company,status,share_url,gif_url,video_url,email_snippet,plays,finishes,best_seconds,last_viewed',
         ...rows.map((r) => {
-          const d = filmDto(r, publicUrl)
+          const d = filmDto(r, publicUrl, views.get(r.id))
           const share = d.share ?? ''
           const gif = d.share ? `${share}/preview.gif` : ''
           const video =
@@ -513,7 +529,22 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
           const snippet = d.share
             ? `<a href="${share}"><img src="${gif}" width="480" alt="A video made for ${d.company}"></a>`
             : ''
-          return [r.input.url, d.company, d.status, share, gif, video, snippet].map(cell).join(',')
+          const v = d.views
+          return [
+            r.input.url,
+            d.company,
+            d.status,
+            share,
+            gif,
+            video,
+            snippet,
+            v?.plays,
+            v?.finishes,
+            v?.bestSeconds,
+            v?.lastSeen,
+          ]
+            .map(cell)
+            .join(',')
         }),
       ]
       void base
@@ -560,7 +591,58 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
           )
       }
       reply.type('text/html; charset=utf-8')
-      return sharePage(run.input, run.output, `${publicUrl.replace(/\/$/, '')}/f/${run.id}`)
+      const link = `${publicUrl.replace(/\/$/, '')}/f/${run.id}`
+      return sharePage(viewFromRun(run.input, run.output), link, `${link}/v`)
+    },
+  )
+
+  // reports from the share page: open, play, progress, end. Always 204, so a page never
+  // learns anything from the response and a bad report can't break it.
+  const viewStore = pgViewStore(sql)
+  app.post(
+    '/f/:id/v',
+    { schema: { hide: true, params: z.object({ id: RunId }) } },
+    async (req, reply) => {
+      const [film] = await sql<{ company: string }[]>`
+        select output->>'company' as company from runs
+        where id = ${req.params.id} and agent = 'film' and status = 'succeeded'`
+      if (film) {
+        await recordBeacon({
+          store: viewStore,
+          filmId: req.params.id,
+          company: film.company,
+          body: req.body,
+          userAgent: req.headers['user-agent'],
+          ip: req.ip,
+          ownHost: new URL(publicUrl).host,
+          salt: cfg.VIEW_SALT,
+          webhook: cfg.NOTIFY_WEBHOOK_URL,
+          link: `${publicUrl.replace(/\/$/, '')}/f/${req.params.id}`,
+          defer: (p) => {
+            p.catch(() => {})
+          },
+        })
+      }
+      return reply.status(204).send()
+    },
+  )
+
+  app.get(
+    '/v1/films/:id/views',
+    {
+      schema: {
+        tags: ['films'],
+        summary: "Who watched a film's share page",
+        description:
+          'A summary (opens, distinct viewers, plays, finishes, furthest point) and the 100 most recent viewing sessions. Bots and link scanners are not counted, and no IP address is stored.',
+        params: z.object({ id: RunId }),
+      },
+    },
+    async (req, reply) => {
+      const run = (await getRun(sql, req.params.id)) as FilmRow | undefined
+      if (run?.agent !== 'film')
+        return reply.status(404).send({ error: { code: 'not_found', message: 'film not found' } })
+      return filmViews(sql, req.params.id)
     },
   )
 

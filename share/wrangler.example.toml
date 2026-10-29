@@ -1,0 +1,13 @@
+# Copied to wrangler.toml and filled in by `pnpm share:setup`. Edit by hand if you prefer.
+name = "coldopen-share"
+main = "worker.ts"
+compatibility_date = "2026-09-01"
+
+[[kv_namespaces]]
+binding = "FILMS"
+id = "KV_NAMESPACE_ID"
+
+[[d1_databases]]
+binding = "VIEWS"
+database_name = "coldopen-views"
+database_id = "D1_DATABASE_ID"

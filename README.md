@@ -74,6 +74,7 @@ docker compose up --build       # web app, API, renderer and Postgres on http://
 ![The coldopen web app](docs/media/dashboard.png)
 
 - **Web app.** Paste one URL or a list of hundreds, pick who it's from, and watch films render live. Each film has a share link and a copy button for the email GIF (`<a><img></a>` pointing at the share page).
+- **Know who watched.** Share pages report opens, plays, how far people got and who finished, with bots, link previews and email scanners left out. Get a Slack or Discord ping when someone starts watching. Using the CLI? `pnpm share:setup` puts your share links on Cloudflare's free plan, then `coldopen share films` and `coldopen views`. See [docs/SHARING.md](docs/SHARING.md).
 - **Batches.** `POST /v1/batches` with a list of URLs, then download `results.csv` with share, GIF and video links per prospect, ready for a CRM or a sequencer like Apollo, Outreach or HubSpot.
 - **Slack.** Mention `@coldopen acme.com` in any channel and the finished film is posted back into the thread. Requests are signature-verified, and Slack's retries never start a second film. See [docs/SLACK.md](docs/SLACK.md).
 - **API.** Everything above is a REST call. OpenAPI docs are served at `/docs`; set `API_KEYS` to require a bearer key.
@@ -122,7 +123,7 @@ Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show*
 ## Quality, measured
 
 ```bash
-pnpm test         # 118 tests: runtime, extraction, render QA, résumé drafts, pipeline resume, API, Slack, model path
+pnpm test         # 136 tests: runtime, extraction, render QA, résumé drafts, share links and views, pipeline resume, API, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
 ```
@@ -166,7 +167,9 @@ src/profile/   résumé to profile: reading, parsing, grounded drafting
 src/script/    taste rules, checks, writer, storyboard
 src/render/    composition (HTML timeline), theme, frame renderer
 src/runtime/   durable execution (from unkillable)
-src/api/       REST API, share pages, Slack events
+src/api/       REST API, Slack events
+src/share/     share pages and view tracking (used by the API and the share worker)
+share/         free share links on Cloudflare Workers, KV and D1
 src/cli.ts     one-command films and CSV batches
 dashboard/     web app
 evals/         quality evals

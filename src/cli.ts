@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
-import { basename, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import { parseArgs } from 'node:util'
 import { extractBrand } from './brand/extract.ts'
@@ -16,6 +16,16 @@ import { parseResume } from './profile/parse.ts'
 import { resumeText } from './profile/read.ts'
 import { LocalContext } from './runtime/local.ts'
 import { type Profile, ProfileSchema } from './script/types.ts'
+import {
+  allViews,
+  findFilmFolders,
+  oneFilmViews,
+  readShareRecord,
+  type ShareConfig,
+  shareConfig,
+  shareFolder,
+  unshare,
+} from './share/client.ts'
 
 const HELP = `coldopen: turn a company's website into a 30-second personalized film
 
@@ -24,6 +34,9 @@ Usage
   coldopen batch <prospects.csv> [opts]  one film per row (needs a "url" column)
   coldopen init [file]                   write a profile template to edit
   coldopen profile <resume> [file]       draft a profile from a résumé (PDF, .docx, .md, .txt)
+  coldopen share <folder | results.csv>  upload films and get share links that track views
+  coldopen views [folder]                who opened, played and finished your shared films
+  coldopen unshare <folder>              take a share link down
 
 Options
   -p, --profile <path>    who is sending and what they offer (default: profile.json). A folder of
@@ -39,6 +52,7 @@ Options
       --exclude <names>   profile: comma-separated employers or words to leave out entirely
       --contact <email>   profile: the contact line for the film (default: the résumé's email)
   -c, --concurrency <n>   films rendered in parallel in batch mode (default: 2)
+      --share             batch: upload each film as it finishes and add its link to results.csv
       --model <name>      use an OpenAI-compatible model to write the script
       --base-url <url>    model endpoint (default: http://localhost:11434/v1, Ollama)
       --api-key <key>     model API key. Prefer setting $LLM_API_KEY: a key on the
@@ -62,6 +76,7 @@ const { values, positionals } = parseArgs({
     exclude: { type: 'string' },
     contact: { type: 'string' },
     concurrency: { type: 'string', short: 'c', default: '2' },
+    share: { type: 'boolean' },
     model: { type: 'string', default: process.env.LLM_MODEL },
     'base-url': {
       type: 'string',
@@ -290,13 +305,115 @@ function parseCsv(text: string): Record<string, string>[] {
 
 const csvCell = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s)
 
+const toCsv = (rows: Record<string, string>[]) => {
+  const cols = [...new Set(rows.flatMap((r) => Object.keys(r)))]
+  return [cols.join(','), ...rows.map((r) => cols.map((c) => csvCell(r[c] ?? '')).join(','))].join(
+    '\n',
+  )
+}
+
+/* ------------------------------------------------------------------ sharing */
+
+/** "3 min ago", "yesterday", "Oct 12" */
+function ago(iso: string | null): string {
+  if (!iso) return ''
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`
+  if (s < 86400) return `${Math.floor(s / 3600)} h ago`
+  if (s < 172800) return 'yesterday'
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+async function shareCmd(target: string, cfg: ShareConfig) {
+  // a batch's results.csv: share every film in it and add a share_url column
+  if (target.endsWith('.csv')) {
+    const rows = parseCsv(await readFile(target, 'utf8'))
+    let n = 0
+    for (const row of rows) {
+      if (row.status !== 'ok' || !row.film) continue
+      try {
+        const rec = await shareFolder(dirname(row.film), cfg)
+        row.share_url = rec.link
+        done(`  ${rec.company.padEnd(24)} ${rec.link}`)
+        n++
+      } catch (err) {
+        done(`  ${row.company || row.url}: ${err instanceof Error ? err.message : err}`)
+      }
+    }
+    await writeFile(target, toCsv(rows))
+    done(`\nshared ${n} film${n === 1 ? '' : 's'}; links are in the share_url column of ${target}`)
+    return
+  }
+  const folders = findFilmFolders(target)
+  if (!folders.length)
+    throw new Error(
+      `${target} isn't a film folder, or a folder of them (looked for storyboard.json and film-*.mp4)`,
+    )
+  for (const dir of folders) {
+    try {
+      const rec = await shareFolder(dir, cfg)
+      done(`  ${rec.company.padEnd(24)} ${rec.link}`)
+    } catch (err) {
+      done(`  ${basename(dir)}: ${err instanceof Error ? err.message : err}`)
+    }
+  }
+  done('\nAdd ?preview to a link to watch it yourself without counting as a view.')
+}
+
+async function viewsCmd(target: string | undefined, cfg: ShareConfig) {
+  if (target) {
+    const rec = existsSync(target) ? await readShareRecord(target) : null
+    const id = rec?.id ?? basename(target)
+    const v = await oneFilmViews(cfg, id)
+    const s = v.summary
+    done(
+      `${rec?.company ?? id}: opened ${s.opens}, played ${s.plays}, to the end ${s.finishes}, ${s.viewers} ${s.viewers === 1 ? 'person' : 'people'}`,
+    )
+    for (const x of v.sessions)
+      done(
+        `  ${ago(x.lastSeen).padEnd(12)} ${(x.finished ? 'watched to the end' : x.played ? `watched ${Math.round(x.seconds)}s` : 'opened, no play').padEnd(20)} ${[x.device, x.referrer && `via ${x.referrer}`, x.country].filter(Boolean).join(', ')}`,
+      )
+    return
+  }
+  // name each link by the local folder that was shared, when we have it
+  const names = new Map<string, string>()
+  for (const dir of findFilmFolders(resolve(values.out!))) {
+    const rec = await readShareRecord(dir)
+    if (rec) names.set(rec.id, rec.company)
+  }
+  const { films } = await allViews(cfg)
+  if (!films.length) {
+    done('No shared films yet. Share some with: coldopen share films')
+    return
+  }
+  films.sort(
+    (a, b) =>
+      b.views.plays - a.views.plays ||
+      (b.views.lastSeen ?? '').localeCompare(a.views.lastSeen ?? ''),
+  )
+  done(
+    `${'Company'.padEnd(24)} ${'Played'.padStart(6)} ${'To end'.padStart(6)} ${'Furthest'.padStart(8)}  ${'Last seen'.padEnd(12)} Link`,
+  )
+  for (const f of films) {
+    const v = f.views
+    done(
+      `${(names.get(f.id) ?? f.id).slice(0, 24).padEnd(24)} ${String(v.plays).padStart(6)} ${String(v.finishes).padStart(6)} ${`${Math.round(v.bestSeconds)}s`.padStart(8)}  ${(v.opens ? ago(v.lastSeen) : 'not opened').padEnd(12)} ${f.link}`,
+    )
+  }
+  const watched = films.filter((f) => f.views.plays > 0).length
+  done(`\n${watched} of ${films.length} watched. Follow up with the ones that played first.`)
+}
+
 async function batch(file: string) {
   const rows = parseCsv(await readFile(file, 'utf8'))
   const withUrl = rows.filter((r) => r.url)
   if (withUrl.length === 0) throw new Error(`${file} has no rows with a "url" column`)
   const filmsDir = resolve(values.out!)
   const conc = Math.max(1, Number(values.concurrency))
-  done(`${withUrl.length} prospects, ${conc} at a time`)
+  // check the share settings before spending an hour rendering
+  const share = values.share ? shareConfig() : null
+  done(`${withUrl.length} prospects, ${conc} at a time${share ? ', sharing each film' : ''}`)
   const results: Record<string, string>[] = []
   let next = 0
   let finished = 0
@@ -306,6 +423,14 @@ async function batch(file: string) {
       const url = /^https?:\/\//.test(row.url!) ? row.url! : `https://${row.url}`
       try {
         const r = await makeFilm(url, { quiet: true, ...(row.profile ? { use: row.profile } : {}) })
+        let link = ''
+        if (share) {
+          try {
+            link = (await shareFolder(dirname(join(filmsDir, r.files.film)), share)).link
+          } catch (err) {
+            done(`  sharing ${r.company} failed: ${err instanceof Error ? err.message : err}`)
+          }
+        }
         results.push({
           ...row,
           status: 'ok',
@@ -313,8 +438,9 @@ async function batch(file: string) {
           film: join(filmsDir, r.files.film),
           gif: join(filmsDir, r.files.gif),
           poster: join(filmsDir, r.files.poster),
+          ...(share ? { share_url: link } : {}),
         })
-        done(`  [${++finished}/${withUrl.length}] ${r.company}`)
+        done(`  [${++finished}/${withUrl.length}] ${r.company}${link ? `  ${link}` : ''}`)
       } catch (err) {
         results.push({
           ...row,
@@ -328,14 +454,8 @@ async function batch(file: string) {
     }
   })
   await Promise.all(workers)
-  const cols = [...new Set(results.flatMap((r) => Object.keys(r)))]
   const out = join(filmsDir, 'results.csv')
-  await writeFile(
-    out,
-    [cols.join(','), ...results.map((r) => cols.map((c) => csvCell(r[c] ?? '')).join(','))].join(
-      '\n',
-    ),
-  )
+  await writeFile(out, toCsv(results))
   done(`\nwrote ${out}`)
 }
 
@@ -401,6 +521,23 @@ async function main() {
     if (meta.dropped.length)
       done(`  left out, not grounded in the résumé: ${meta.dropped.join(', ')}`)
     done(`Check every line, then: coldopen https://their-company.com -p ${out} --proof 1,2,3`)
+    return
+  }
+  if (cmd === 'share') {
+    if (!arg)
+      throw new Error('usage: coldopen share films   (or a film folder, or films/results.csv)')
+    await shareCmd(arg, shareConfig())
+    return
+  }
+  if (cmd === 'views') {
+    await viewsCmd(arg, shareConfig())
+    return
+  }
+  if (cmd === 'unshare') {
+    if (!arg) throw new Error('usage: coldopen unshare films/<film folder>')
+    const rec = existsSync(arg) ? await readShareRecord(arg) : null
+    await unshare(shareConfig(), rec?.id ?? basename(arg))
+    done(`took down ${rec?.link ?? arg}`)
     return
   }
   if (cmd === 'batch') {

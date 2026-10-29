@@ -33,7 +33,9 @@
     "evals": "node evals/run.ts",
     "test:chaos": "vitest run test/chaos",
     "db:test": "docker run -d --rm --name coldopen-test-pg -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17-alpine",
-    "coldopen": "node src/cli.ts"
+    "coldopen": "node src/cli.ts",
+    "share:setup": "node share/setup.ts",
+    "share:deploy": "cd share && npx --yes wrangler@4.149.0 deploy"
   },
   "dependencies": {
     "@fastify/static": "^10.1.8",

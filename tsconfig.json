@@ -17,5 +17,5 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "include": ["src", "test", "evals", "fixtures", "vitest.config.ts"]
+  "include": ["src", "share", "test", "evals", "fixtures", "launch", "vitest.config.ts"]
 }
