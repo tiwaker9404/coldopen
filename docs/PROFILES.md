@@ -69,6 +69,26 @@ coldopen https://deel.com -p me.json --proof 3,2,7     # positions in your proof
 
 In the web app, the **Proof to show** chips under the composer do the same. The API takes `"proof": [2, 1, 6]` (zero-based) on `POST /v1/films` and `POST /v1/batches`.
 
+## Answer a job post
+
+Give coldopen the job you're applying for and the film answers it:
+
+```bash
+coldopen https://deel.com -p me/ --job https://job-boards.greenhouse.io/deel/jobs/123
+coldopen https://deel.com -p me/ --job deel-fde.txt      # the description, pasted into a file
+```
+
+- **The hook** says which role: _"For your Forward Deployed Engineer role"_.
+- **The middle scene** quotes one requirement from the post, word for word, and answers it with your record. _"Turn messy customer data into reliable pipelines"_ is answered with _"I did this at Rail Inc.: 50 GB of supply-chain data a day"_.
+- **The pitch and proof** lead with what fits the role.
+- **With a profile folder,** the job's title and requirements decide which profile fits, not just the homepage.
+
+**What it reads.** Company careers pages and the common job boards (Greenhouse, Lever, Ashby, Workable). It takes the requirements and the "what you'll do" lists, and leaves out benefits, pay and legal text. LinkedIn job pages need a login, so paste the description into a `.txt` file instead.
+
+**What it won't do.** The answer has to come from your profile. The job's numbers are what they want, not what you've done: if the post says "3+ years", the film can't say you have 3 years unless your profile does. When nothing on your record plainly matches, the film says _"My closest match"_ instead of _"I did this"_.
+
+In the web app, choose **Answer a job post** under the website box and paste the link or the description. In a CSV batch, add a `job` column. The API takes `"job": {"url": "..."}` or `"job": {"text": "..."}` on `POST /v1/films`.
+
 ## Several résumés: one profile each
 
 If you apply to different kinds of roles, keep one profile per résumé in a folder and point coldopen at the folder:

@@ -19,6 +19,7 @@ export interface Film {
   durationSec: number | null
   files: { film: string; poster: string; gif: string; sheet: string } | null
   share: string | null
+  job: { title: string | null; url: string | null } | null
   views: ViewSummary | null
 }
 

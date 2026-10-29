@@ -31,6 +31,9 @@ export function App() {
   const [lastBatch, setLastBatch] = useState<{ id: string; count: number } | null>(null)
   // which proof items to show; empty lets the writer pick the 3 that fit each company
   const [picks, setPicks] = useState<number[]>([])
+  // a job post to answer: its URL or its pasted description (one company at a time)
+  const [jobOn, setJobOn] = useState(false)
+  const [job, setJob] = useState('')
 
   const profiles = useQuery({
     queryKey: ['profiles'],
@@ -56,11 +59,15 @@ export function App() {
     mutationFn: async () => {
       if (urls.length === 0) throw new Error('Paste a company website, like acme.com')
       if (urls.length === 1) {
+        const j = job.trim()
+        if (jobOn && j && !/^https?:\/\/\S+$/.test(j) && j.length < 40)
+          throw new Error('Paste the job post’s link, or its whole description')
         const f = await send<Film>('POST', '/v1/films', {
           url: urls[0],
           profileId,
           format,
           ...(picks.length ? { proof: picks } : {}),
+          ...(jobOn && j ? { job: /^https?:\/\/\S+$/.test(j) ? { url: j } : { text: j } } : {}),
         })
         return { film: f, batch: null as null | { id: string; count: number } }
       }
@@ -74,6 +81,7 @@ export function App() {
     },
     onSuccess: (r) => {
       setText('')
+      setJob('')
       if (r.film) setOpen(r.film.id)
       if (r.batch) setLastBatch(r.batch)
       void qc.invalidateQueries({ queryKey: ['films'] })
@@ -141,6 +149,16 @@ export function App() {
             <button type="button" className="text" onClick={() => setMany(!many)}>
               {many ? 'One company' : 'A list of companies'}
             </button>
+            {!many && (
+              <button
+                type="button"
+                className="text"
+                aria-expanded={jobOn}
+                onClick={() => setJobOn(!jobOn)}
+              >
+                {jobOn ? 'No job post' : 'Answer a job post'}
+              </button>
+            )}
             <label className="select">
               <span>From</span>
               <select
@@ -189,6 +207,21 @@ export function App() {
               ))}
             </div>
           </div>
+          {jobOn && !many && (
+            <label className="job">
+              <span>
+                The job post: its link (careers page, Greenhouse, Lever, Ashby) or the whole
+                description. The film quotes one requirement and answers it with your proof.
+              </span>
+              <textarea
+                id="job-post"
+                value={job}
+                onChange={(e) => setJob(e.target.value)}
+                rows={3}
+                placeholder="https://job-boards.greenhouse.io/acme/jobs/123, or paste the description"
+              />
+            </label>
+          )}
           {selected && selected.data.proof.length > 3 && (
             <fieldset className="picks">
               <legend>Proof to show:</legend>

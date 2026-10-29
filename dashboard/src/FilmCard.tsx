@@ -75,7 +75,10 @@ export function FilmCard({
         )}
       </div>
       <div className="caption">
-        <span className="who">{film.company ?? host(film.url)}</span>
+        <span className="who">
+          {film.company ?? host(film.url)}
+          {film.job?.title ? ` \u00b7 ${film.job.title}` : ''}
+        </span>
         <span className="meta">
           {film.status === 'succeeded'
             ? watched(film)

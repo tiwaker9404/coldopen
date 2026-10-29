@@ -3,6 +3,9 @@ import { join, relative } from 'node:path'
 import { z } from 'zod'
 import { extractBrand } from './brand/extract.ts'
 import type { BrandKit } from './brand/types.ts'
+import { withJob } from './job/kit.ts'
+import { JobPostSchema, jobFromText } from './job/post.ts'
+import { fetchJob } from './job/read.ts'
 import { compose, FORMATS, type Format } from './render/composition.ts'
 import {
   concatSegments,
@@ -33,6 +36,19 @@ export const FilmInputSchema = z.object({
   proof: z.array(z.number().int().min(0)).min(1).max(3).optional(),
   /** reply in this Slack thread when the film is ready */
   slack: z.object({ channel: z.string(), threadTs: z.string() }).optional(),
+  /**
+   * answer a job post: its URL, its pasted text, or (from the CLI) the post already read.
+   * The film then quotes one of its requirements and answers it with the sender's proof.
+   */
+  job: z
+    .object({
+      url: z.string().url().optional(),
+      text: z.string().min(40).max(30_000).optional(),
+      title: z.string().max(120).optional(),
+      post: JobPostSchema.optional(),
+    })
+    .refine((j) => j.url || j.text || j.post, 'job needs a url, text, or post')
+    .optional(),
 })
 export type FilmInput = z.infer<typeof FilmInputSchema>
 
@@ -54,6 +70,8 @@ export interface FilmResult {
   scriptMeta: ScriptMeta
   qa: QaReport
   render: { frames: number; ms: number }
+  /** the role this film answers, when made from a job post */
+  job?: { title: string; url?: string }
 }
 
 export interface FilmAgentOptions {
@@ -122,6 +140,32 @@ export function createFilmAgent(opts: FilmAgentOptions) {
         }
         // a site that won't load after retries won't load on the next execution either
         throw new NonRetryableError(`could not read ${input.url}: ${reason}`)
+      }
+
+      // a job post: read once (journaled), then its requirements join the company's facts
+      if (input.job) {
+        const j = input.job
+        ctx.progress({ stage: 'research', label: 'Reading the job post' })
+        let post: z.infer<typeof JobPostSchema>
+        try {
+          post = await ctx.step(
+            'job',
+            async () =>
+              j.post ??
+              (j.text
+                ? jobFromText(j.text, j.title, j.url)
+                : await fetchJob(j.url!, {
+                    allowPrivateNetworks: opts.allowPrivateNetworks ?? false,
+                  })),
+            { retries: 1 },
+          )
+        } catch (err) {
+          // an unreadable post won't read on the next attempt either
+          throw new NonRetryableError(
+            `could not read the job post: ${err instanceof Error ? err.message.split('\n')[0] : err}`,
+          )
+        }
+        kit = withJob(kit, post)
       }
 
       ctx.progress({ stage: 'script', label: `Writing the script for ${kit.name}` })
@@ -279,6 +323,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           scriptMeta: meta,
           qa: out.qa,
           render: { frames, ms },
+          ...(kit.job ? { job: kit.job } : {}),
         }
       } finally {
         if (comp) await (comp as OpenComposition).close()

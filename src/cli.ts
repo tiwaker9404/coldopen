@@ -9,6 +9,8 @@ import { extractBrand } from './brand/extract.ts'
 import type { BrandKit } from './brand/types.ts'
 import { closeBrowser } from './browser.ts'
 import { createFilmAgent, type FilmResult } from './film.ts'
+import type { JobPost } from './job/post.ts'
+import { readJob } from './job/read.ts'
 import { buildLlm } from './llm/chain.ts'
 import { draftProfile } from './profile/draft.ts'
 import { rankProfiles } from './profile/match.ts'
@@ -31,7 +33,8 @@ const HELP = `coldopen: turn a company's website into a 30-second personalized f
 
 Usage
   coldopen <url> [options]               make one film
-  coldopen batch <prospects.csv> [opts]  one film per row (needs a "url" column)
+  coldopen batch <prospects.csv> [opts]  one film per row (needs a "url" column; optional
+                                         "profile" and "job" columns)
   coldopen init [file]                   write a profile template to edit
   coldopen profile <resume> [file]       draft a profile from a résumé (PDF, .docx, .md, .txt)
   coldopen share <folder | results.csv>  upload films and get share links that track views
@@ -48,6 +51,9 @@ Options
   -o, --out <dir>         output directory (default: ./films)
       --id <slug>         film id; re-running the same id resumes where it stopped
       --proof <list>      which proof items to show, by position in the profile, e.g. 2,4,6
+      --job <url|file>    answer a job post: the film quotes a requirement and answers it with
+                          your proof. A careers or Greenhouse/Lever/Ashby page, or a .txt file
+                          with the pasted description (LinkedIn needs a login: paste it)
       --role <title>      profile: the role you're applying for; picks the résumé points that fit
       --exclude <names>   profile: comma-separated employers or words to leave out entirely
       --contact <email>   profile: the contact line for the film (default: the résumé's email)
@@ -70,6 +76,7 @@ const { values, positionals } = parseArgs({
     out: { type: 'string', short: 'o', default: './films' },
     id: { type: 'string' },
     proof: { type: 'string' },
+    job: { type: 'string' },
     role: { type: 'string' },
     use: { type: 'string' },
     yes: { type: 'boolean', short: 'y' },
@@ -121,9 +128,9 @@ async function loadProfiles(path: string): Promise<{ id: string; profile: Profil
 async function chooseProfile(
   kit: BrandKit,
   profiles: { id: string; profile: Profile }[],
-  opts: { use?: string; quiet?: boolean },
+  opts: { use?: string; quiet?: boolean; job?: JobPost },
 ): Promise<{ id: string; profile: Profile }> {
-  const ranked = rankProfiles(kit, profiles)
+  const ranked = rankProfiles(kit, profiles, opts.job)
   const named = opts.use ?? values.use
   if (named) {
     const hit = profiles.find((p) => p.id === named)
@@ -135,7 +142,7 @@ async function chooseProfile(
   const why = (m: (typeof ranked)[number]) =>
     m.score < 3
       ? `weak match${m.reasons.length ? `: ${m.reasons.slice(0, 3).join(', ')}` : ''}`
-      : `their site mentions ${m.reasons.slice(0, 4).join(', ')}`
+      : `${opts.job ? 'the job and site mention' : 'their site mentions'} ${m.reasons.slice(0, 4).join(', ')}`
   if (opts.quiet || values.yes || !process.stdin.isTTY) {
     if (!opts.quiet) done(`  profile  ${best.id} (best match: ${why(best)})`)
     return best
@@ -184,15 +191,33 @@ function modelFromFlags() {
     : null
 }
 
+/** Reads --job once; the parsed post is cached so a re-run doesn't fetch the page again. */
+async function loadJob(source: string, filmsDir: string, quiet?: boolean): Promise<JobPost> {
+  const cache = join(
+    filmsDir,
+    '.jobs',
+    `${createHash('sha1').update(source).digest('hex').slice(0, 10)}.json`,
+  )
+  if (existsSync(cache)) return JSON.parse(await readFile(cache, 'utf8')) as JobPost
+  if (!quiet) status(`  reading the job post`)
+  const post = await readJob(source, { allowPrivateNetworks: true })
+  await mkdir(dirname(cache), { recursive: true })
+  await writeFile(cache, JSON.stringify(post, null, 2))
+  if (!quiet) done(`  job      ${post.title}: ${post.requirements.length} requirements read`)
+  return post
+}
+
 async function makeFilm(
   url: string,
-  opts: { id?: string; quiet?: boolean; use?: string },
+  opts: { id?: string; quiet?: boolean; use?: string; job?: string },
 ): Promise<FilmResult> {
   const profiles = await loadProfiles(values.profile!)
   const format = values.format as 'square' | 'landscape' | 'portrait'
   if (!['square', 'landscape', 'portrait'].includes(format))
     throw new Error(`unknown format "${format}"`)
   const filmsDir = resolve(values.out!)
+  const jobSource = opts.job ?? values.job
+  const job = jobSource ? await loadJob(jobSource, filmsDir, opts.quiet) : undefined
 
   // several profiles: read the site once, pick the profile that fits, and seed the film's
   // journal with that research so the film doesn't load the site again
@@ -205,11 +230,18 @@ async function makeFilm(
     seed = existsSync(cached)
       ? (JSON.parse(await readFile(cached, 'utf8')) as BrandKit)
       : await extractBrand(url, { outDir: researchDir, allowPrivateNetworks: true })
-    chosen = await chooseProfile(seed, profiles, opts)
+    chosen = await chooseProfile(seed, profiles, {
+      ...(opts.use ? { use: opts.use } : {}),
+      ...(opts.quiet ? { quiet: true } : {}),
+      ...(job ? { job } : {}),
+    })
   }
   const profile = chosen.profile
   // the profile is part of a film's identity: the same company with another profile is another film
-  const id = opts.id ?? `${slugFor(url, format)}${profiles.length > 1 ? `-${chosen.id}` : ''}`
+  // ...and so is the job it answers
+  const id =
+    opts.id ??
+    `${slugFor(url, format)}${job ? `-${createHash('sha1').update(jobSource!).digest('hex').slice(0, 4)}` : ''}${profiles.length > 1 ? `-${chosen.id}` : ''}`
   await mkdir(join(filmsDir, id), { recursive: true })
   const journal = join(filmsDir, id, '.journal.json')
   if (seed && !existsSync(journal)) {
@@ -249,7 +281,13 @@ async function makeFilm(
     ?.split(',')
     .map((x) => Number.parseInt(x.trim(), 10) - 1)
     .filter((x) => x >= 0)
-  return agent.run(ctx, { url, profile, format, ...(proof?.length ? { proof } : {}) })
+  return agent.run(ctx, {
+    url,
+    profile,
+    format,
+    ...(proof?.length ? { proof } : {}),
+    ...(job ? { job: { post: job, ...(job.url ? { url: job.url } : {}) } } : {}),
+  })
 }
 
 function summary(r: FilmResult, filmsDir: string) {
@@ -422,7 +460,11 @@ async function batch(file: string) {
       const row = withUrl[next++]!
       const url = /^https?:\/\//.test(row.url!) ? row.url! : `https://${row.url}`
       try {
-        const r = await makeFilm(url, { quiet: true, ...(row.profile ? { use: row.profile } : {}) })
+        const r = await makeFilm(url, {
+          quiet: true,
+          ...(row.profile ? { use: row.profile } : {}),
+          ...(row.job ? { job: row.job } : {}),
+        })
         let link = ''
         if (share) {
           try {

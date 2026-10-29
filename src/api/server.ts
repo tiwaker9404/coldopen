@@ -77,6 +77,10 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
         }
       : null,
     share: out ? `${publicUrl.replace(/\/$/, '')}/f/${r.id}` : null,
+    /** the job post this film answers */
+    job:
+      out?.job ??
+      (r.input.job ? { title: r.input.job.title ?? null, url: r.input.job.url ?? null } : null),
     /** what people did on the share page; null until the film is finished */
     views: out ? (views ?? NO_VIEWS) : null,
   }
@@ -294,6 +298,15 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     ref: z.string().max(200).optional(),
     /** which proof items to show (indices into the profile's proof list) */
     proof: z.array(z.number().int().min(0)).min(1).max(3).optional(),
+    /** answer a job post: its page URL, or its pasted text */
+    job: z
+      .object({
+        url: z.string().url().optional(),
+        text: z.string().min(40).max(30_000).optional(),
+        title: z.string().max(120).optional(),
+      })
+      .refine((j) => j.url || j.text, 'job needs a url or the pasted text')
+      .optional(),
   })
 
   app.post(
@@ -303,7 +316,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
         tags: ['films'],
         summary: 'Make a film for one company',
         description:
-          'Queues research, script, render and encode. Poll GET /v1/films/:id for progress. Send an Idempotency-Key header to make retries safe.',
+          "Queues research, script, render and encode. Poll GET /v1/films/:id for progress. Send an Idempotency-Key header to make retries safe. Add `job` (a job post URL or its pasted text) and the film quotes one of its requirements and answers it with the sender's proof.",
         body: FilmBody,
       },
     },

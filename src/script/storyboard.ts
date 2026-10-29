@@ -36,7 +36,8 @@ export function splitStat(text: string): { value: string; rest: string } | null 
  */
 export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script): Storyboard {
   const fact = kit.facts.find((f) => f.id === script.insight.factId) ?? kit.facts[0]!
-  const stat = splitStat(fact.text)
+  // a requirement is their words, shown as a quote even when it has a number in it
+  const stat = fact.kind === 'requirement' ? null : splitStat(fact.text)
   const from = profile.sender.company
     ? `${profile.sender.name}, ${profile.sender.company}`
     : profile.sender.name
@@ -45,7 +46,7 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
       kind: 'hook',
       dur: 3.2,
       text: script.hook.replace(/[.,]$/, ''),
-      sub: `A 30-second film for ${kit.name}`,
+      sub: kit.job ? `For your ${kit.job.title} role` : `A 30-second film for ${kit.name}`,
     },
     { kind: 'site', dur: 5.2, caption: script.noticed.replace(/\.$/, ''), host: kit.host },
     {
@@ -53,7 +54,8 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
       dur: 5.4,
       value: stat?.value ?? null,
       text: stat ? stat.rest : fact.text.replace(/^["“]|["”]$/g, ''),
-      source: kit.host,
+      // a requirement is quoted from the job post, not the homepage
+      source: fact.kind === 'requirement' && kit.job ? `your ${kit.job.title} post` : kit.host,
       why: script.insight.why.replace(/\.$/, ''),
     },
     {

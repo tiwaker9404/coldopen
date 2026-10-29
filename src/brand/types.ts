@@ -18,7 +18,8 @@ export type FontRef = z.infer<typeof FontRefSchema>
 export const FactSchema = z.object({
   id: z.string(),
   text: z.string(),
-  kind: z.enum(['headline', 'description', 'stat', 'quote', 'claim']),
+  /** "requirement": a line from the job post the film answers (only when one is given) */
+  kind: z.enum(['headline', 'description', 'stat', 'quote', 'claim', 'requirement']),
 })
 export type Fact = z.infer<typeof FactSchema>
 
@@ -51,5 +52,7 @@ export const BrandKitSchema = z.object({
       .nullable(),
   }),
   extractedAt: z.string(),
+  /** the role the film answers, when made from a job post; its requirements are in facts */
+  job: z.object({ title: z.string(), url: z.string().optional() }).optional(),
 })
 export type BrandKit = z.infer<typeof BrandKitSchema>

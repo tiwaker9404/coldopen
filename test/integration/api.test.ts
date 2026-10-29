@@ -207,6 +207,36 @@ describe('films', () => {
     ).toBe(404)
   })
 
+  it('takes a job post to answer, as a link or pasted text', async () => {
+    const withText = await app.inject({
+      method: 'POST',
+      url: '/v1/films',
+      headers: auth,
+      payload: {
+        url: 'hiring-a.example',
+        job: {
+          text: 'Solutions Engineer\nRequirements:\n- Five years of customer-facing engineering',
+        },
+      },
+    })
+    expect(withText.statusCode).toBe(202)
+    expect(withText.json().job).toEqual({ title: null, url: null })
+    const withUrl = await app.inject({
+      method: 'POST',
+      url: '/v1/films',
+      headers: auth,
+      payload: { url: 'hiring-b.example', job: { url: 'https://jobs.example.com/se' } },
+    })
+    expect(withUrl.json().job).toEqual({ title: null, url: 'https://jobs.example.com/se' })
+    const empty = await app.inject({
+      method: 'POST',
+      url: '/v1/films',
+      headers: auth,
+      payload: { url: 'hiring-a.example', job: {} },
+    })
+    expect(empty.statusCode).toBe(400)
+  })
+
   it('counts who watched the share page, not bots, and reports it', async () => {
     const created = await app.inject({
       method: 'POST',

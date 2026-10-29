@@ -1,4 +1,5 @@
 import type { BrandKit } from '../brand/types.ts'
+import type { JobPost } from '../job/post.ts'
 import type { Profile } from '../script/types.ts'
 
 /**
@@ -179,11 +180,22 @@ function siteText(kit: BrandKit): string {
 const count = (text: string, word: string) =>
   text.match(new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g'))?.length ?? 0
 
+/**
+ * @param job  when the film answers a job post, its title and requirements say far more about
+ *             fit than the homepage does: they're counted with the site, and a profile whose
+ *             role matches the job title gets a strong boost.
+ */
 export function rankProfiles(
   kit: BrandKit,
   profiles: { id: string; profile: Profile }[],
+  job?: JobPost,
 ): ProfileMatch[] {
-  const text = siteText(kit)
+  const text = `${siteText(kit)}${job ? ` \n ${job.title} \n ${job.requirements.join(' \n ')}`.toLowerCase() : ''}`
+  const titleWords = new Set(
+    (job?.title.toLowerCase().match(/[a-z]{3,}/g) ?? []).filter(
+      (w) => !['senior', 'junior', 'staff', 'lead', 'principal', 'and', 'the'].includes(w),
+    ),
+  )
   return profiles
     .map(({ id, profile }) => {
       const roleText = `${profile.sender.role ?? ''} ${profile.offer} ${id}`
@@ -201,8 +213,12 @@ export function rankProfiles(
         const n = count(text, w)
         if (n && !hits.has(w) && !COMMON.has(w)) hits.set(w, Math.min(n, 2) * 0.5)
       }
+      // the job title names the role: "Forward Deployed Engineer" vs a profile for exactly that
+      const role = `${profile.sender.role ?? ''} ${id}`.toLowerCase().match(/[a-z]{3,}/g) ?? []
+      const titled = [...new Set(role)].filter((w) => titleWords.has(w))
+      for (const w of titled) hits.set(`role: ${w}`, 3)
       // diminishing returns: a site saying "data" 40 times shouldn't drown everything else
-      const score = [...hits.values()].reduce((s, n) => s + Math.log2(1 + n), 0)
+      const score = [...hits.values()].reduce((s, n) => s + Math.log2(1 + n), 0) + titled.length * 2
       const reasons = [...hits.entries()].sort((a, b) => b[1] - a[1]).map(([w]) => w)
       return { id, profile, score: Math.round(score * 10) / 10, reasons }
     })

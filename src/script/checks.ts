@@ -75,12 +75,20 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
     if (shouty?.length) v.push(`${field} uses ALL CAPS ("${shouty[0]}")`)
   }
 
-  // grounding: every number must exist in a source
+  // grounding: every number must exist in a source. With a job post, lines about the sender
+  // may only use the sender's own numbers: "5+ years" in the post is not five years on the résumé.
   const sources = numbersIn(allSourceText(kit, profile))
+  const ownNumbers = numbersIn(profileText(profile))
+  const aboutSender = (field: string) => !!kit.job && !/^(hook|noticed)$/.test(field)
   for (const [field, text] of lines) {
+    const pool = aboutSender(field) ? ownNumbers : sources
     for (const n of numbersIn(text)) {
-      if (!sources.some((s) => s === n || s.startsWith(n) || n.startsWith(s))) {
-        v.push(`${field} mentions "${n}", which is not in the company facts or the sender profile`)
+      if (!pool.some((s) => s === n || s.startsWith(n) || n.startsWith(s))) {
+        v.push(
+          aboutSender(field)
+            ? `${field} mentions "${n}", which is not in your profile; numbers from the job post are what they want, not what you've done`
+            : `${field} mentions "${n}", which is not in the company facts or the sender profile`,
+        )
       }
     }
   }
@@ -94,9 +102,23 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
     )
   }
   const chosen = kit.facts.find((f) => f.id === script.insight.factId)
+  const reqs = kit.facts.filter((f) => f.kind === 'requirement' && f.text.length <= 160)
+  // made from a job post: the featured line is a requirement, answered with the sender's record
+  if (kit.job && chosen && chosen.kind !== 'requirement' && reqs.length) {
+    v.push(
+      `insight.factId "${chosen.id}" is from their homepage; feature one of the job's requirements instead (${reqs
+        .slice(0, 8)
+        .map((f) => f.id)
+        .join(', ')}), the one your proof answers best`,
+    )
+  }
+  if (kit.job && chosen?.kind === 'requirement' && chosen.text.length > 160)
+    v.push(
+      `insight.factId "${chosen.id}" is too long to show on screen; pick a shorter requirement`,
+    )
   // a number lands harder than a sentence; insist on one when the site offers a readable stat
   const stats = kit.facts.filter((f) => f.kind === 'stat' && f.text.length <= 160)
-  if (chosen && chosen.kind !== 'stat' && stats.length) {
+  if (!kit.job && chosen && chosen.kind !== 'stat' && stats.length) {
     v.push(
       `insight.factId "${chosen.id}" is a ${chosen.kind}; pick one of the stats instead (${stats
         .slice(0, 6)
@@ -123,9 +145,18 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
     )
   // the reason it matters has to point at the sender, or it's just a compliment
   const sender = `${profile.sender.company ?? ''} ${profile.offer} ${profile.points.join(' ')}`
+  const firstPerson = /\b(i|i'm|i've|my|me)\b/i.test(script.insight.why)
+  // answering a requirement means pointing at something on the record, not just "I can"
+  const onRecord = [...content(script.insight.why)].some(
+    (w) => !GENERIC.has(w) && content(profileText(profile)).has(w),
+  )
+  if (kit.job && firstPerson && !onRecord)
+    v.push(
+      'insight.why must answer the requirement with something from your profile or proof (a result, a place, a skill it names); "I can do this" is not evidence',
+    )
   const connects =
     profile.preset === 'candidate'
-      ? /\b(i|i'm|i've|my|me)\b/i.test(script.insight.why)
+      ? firstPerson
       : /\b(we|our|us)\b/i.test(script.insight.why) ||
         [...content(script.insight.why)].some((w) => !GENERIC.has(w) && content(sender).has(w))
   if (!connects)
@@ -137,7 +168,7 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
   // the pitch may be tailored to them, but it can't claim things the profile doesn't say
   // (deel.com: a job seeker's film pitched "AI agent platform for global payroll")
   // naming the company you're writing to is tailoring, not a claim
-  const own = `${profile.offer} ${profile.points.join(' ')} ${profile.sender.role ?? ''} ${kit.name}`
+  const own = `${profile.offer} ${profile.points.join(' ')} ${profile.sender.role ?? ''} ${kit.name} ${kit.job?.title ?? ''} role`
   if (overlap(script.pitch.headline, own) < 0.3)
     v.push(
       `pitch.headline "${script.pitch.headline}" claims things the profile doesn't say; build it from the offer: "${profile.offer}"`,
@@ -163,6 +194,17 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
   return v
 }
 
+/** Everything the sender has said about themselves. */
+function profileText(profile: Profile): string {
+  return [
+    profile.offer,
+    ...profile.points,
+    ...profile.proof.map((p) => `${p.value} ${p.label} ${p.where ?? ''}`),
+    profile.sender.role ?? '',
+    profile.sender.company ?? '',
+  ].join(' ')
+}
+
 function allSourceText(kit: BrandKit, profile: Profile): string {
   return [
     kit.name,
@@ -171,7 +213,7 @@ function allSourceText(kit: BrandKit, profile: Profile): string {
     ...kit.facts.map((f) => f.text),
     profile.offer,
     ...profile.points,
-    ...profile.proof.map((p) => `${p.value} ${p.label}`),
+    ...profile.proof.map((p) => `${p.value} ${p.label} ${p.where ?? ''}`),
     profile.cta.line,
     profile.cta.contact,
     profile.sender.name,
