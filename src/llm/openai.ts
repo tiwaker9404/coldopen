@@ -37,6 +37,7 @@ export class OpenAICompatibleProvider implements LlmProvider {
   async complete(
     req: LlmRequest,
     strict = Boolean(req.schema) && !this.#schemaUnsupported,
+    waited = 0,
   ): Promise<LlmResponse> {
     const started = performance.now()
     const signal = req.signal
@@ -63,7 +64,17 @@ export class OpenAICompatibleProvider implements LlmProvider {
         // Anything else at 400 with a schema attached means this endpoint doesn't support
         // structured outputs: remember that and stop sending them.
         if (!/json_validate_failed/.test(body)) this.#schemaUnsupported = true
-        return this.complete(req, false)
+        return this.complete(req, false, waited)
+      }
+      // free tiers cap tokens per minute and say how long to wait ("try again in 10.1s").
+      // Waiting that long beats failing the film; past two minutes in total, give up and let
+      // the fallback model (if any) take over.
+      if (res.status === 429) {
+        const wait = rateLimitWait(res.headers.get('retry-after'), body)
+        if (wait !== null && waited + wait <= 120_000) {
+          await sleep(wait, req.signal)
+          return this.complete(req, strict, waited + wait)
+        }
       }
       const err = new LlmHttpError(res.status, body.slice(0, 500))
       if (err.retryable) throw err
@@ -103,4 +114,30 @@ export class LlmHttpError extends Error {
   get retryable(): boolean {
     return this.status === 429 || this.status >= 500
   }
+}
+
+/** How long a 429 asks us to wait, in ms (plus a little slack), or null if it doesn't say. */
+export function rateLimitWait(retryAfter: string | null, body: string): number | null {
+  const header = retryAfter ? Number.parseFloat(retryAfter) : Number.NaN
+  if (Number.isFinite(header) && header >= 0) return Math.ceil(header * 1000) + 250
+  const m = body.match(/try again in\s+(?:(\d+)m)?\s*([\d.]+)\s*(ms|s)\b/i)
+  if (!m) return null
+  const mins = m[1] ? Number(m[1]) * 60_000 : 0
+  const n = Number.parseFloat(m[2]!)
+  return Math.ceil(mins + (m[3] === 'ms' ? n : n * 1000)) + 250
+}
+
+function sleep(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason)
+    const t = setTimeout(resolve, ms)
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(t)
+        reject(signal.reason)
+      },
+      { once: true },
+    )
+  })
 }

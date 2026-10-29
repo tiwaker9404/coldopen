@@ -124,7 +124,7 @@ Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show*
 ## Quality, measured
 
 ```bash
-pnpm test         # 149 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, pipeline resume, API, Slack, model path
+pnpm test         # 153 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, pipeline resume, API, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
 ```
