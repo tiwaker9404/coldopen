@@ -36,7 +36,8 @@ jobs:
       LLM_MODEL: openai/gpt-oss-120b
       LLM_FALLBACK_MODEL: openai/gpt-oss-20b
       CHROME_PATH: /usr/bin/google-chrome
-      FILMS_DIR: ${{ runner.temp }}/films
+      # (the runner context isn't available at job level, so a fixed path)
+      FILMS_DIR: /tmp/coldopen-films
       WORKER_CONCURRENCY: "2"
       # this repository is public, and so are its logs: keep them to errors, with no film details
       LOG_LEVEL: error
