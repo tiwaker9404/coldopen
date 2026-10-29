@@ -37,7 +37,8 @@ export function draftMessages(
     .slice(0, 2)
     .map((p) => clean(`${p.value} ${p.label}${p.where ? ` at ${p.where}` : ''}`))
   const ask = clean(profile.cta.line).replace(/\?*$/, '?')
-  const forWhat = role ? ` for your ${role} role` : ''
+  // "for your Operations Analyst role at Parcelpine", or just "for Parcelpine"
+  const forWhat = role ? `for your ${role} role at ${company}` : `for ${company}`
 
   const opener = quote
     ? fromPost
@@ -49,14 +50,17 @@ export function draftMessages(
     : candidate
       ? ', and everything about me in it comes from my résumé.'
       : '.'
-  const pitch = out.script?.pitch.headline ? `${clean(out.script.pitch.headline)}.` : ''
+  // the film's headline, unless it only restates the role ("Why I fit your … role")
+  const headline = out.script?.pitch.headline ? clean(out.script.pitch.headline) : ''
+  const pitch =
+    headline && !/^why i fit\b|\brole$/i.test(headline) ? `${headline.replace(/[!?]$/, '')}.` : ''
 
   const email = {
     subject: `A 30-second film I made for ${company}${role ? ` (${role})` : ''}`,
     body: [
       'Hi [First name],',
       '',
-      `I made a 30-second film for ${company}${forWhat}:`,
+      `I made a 30-second film ${forWhat}:`,
       link,
       '',
       `${opener}${evidence}`,
@@ -69,14 +73,14 @@ export function draftMessages(
     ].join('\n'),
   }
 
-  const long = `Hi [First name], I made a 30-second film for ${company}${forWhat}: ${link} ${ask} – ${first}`
+  const long = `Hi [First name], I made a 30-second film ${forWhat}: ${link} ${ask} – ${first}`
   const short = `Hi [First name], I made a short film for ${company}: ${link} ${ask} – ${first}`
   const linkedin = long.length <= LINKEDIN_LIMIT ? long : short.slice(0, LINKEDIN_LIMIT)
 
   const followUp = [
     'Hi [First name],',
     '',
-    `Bumping this in case it got buried: the film I made for ${company}${forWhat} is here, ${link}`,
+    `Bumping this in case it got buried: the film I made ${forWhat} is here, ${link}`,
     '',
     `Happy to walk you through how it was made. ${ask}`,
     '',

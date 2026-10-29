@@ -67,7 +67,9 @@ flowchart LR
 
 ## Try it, or host your own demo
 
-The hosted app lets anyone try coldopen in the browser: upload a résumé, paste a company (and a job post), and get a tracked share link. Visitors get one free film a day; signing in with GitHub keeps their work and allows five. It runs on free plans with no card (Render, GitHub Actions, Supabase, Cloudflare, Groq), and [docs/HOSTING.md](docs/HOSTING.md) sets it up.
+**[Try it free →](https://coldopen-nk8o.onrender.com/?ref=readme)** No account needed.
+
+The hosted app lets anyone try coldopen in the browser: upload a résumé, paste a job link or a company's website, and get a tracked share link. Visitors get one free film a day; signing in with GitHub keeps their work and allows five. It runs on free plans with no card (Render, GitHub Actions, Supabase, Cloudflare, Groq), and [docs/HOSTING.md](docs/HOSTING.md) sets it up.
 
 ## Run it for your team
 
@@ -123,6 +125,14 @@ coldopen profile resume.pdf me.json --role "Senior data analyst" --exclude "Curr
 It reads a PDF, Word, Markdown or text résumé and picks the bullets that fit the role, turning them into proof: **45 minutes**, _report prep, down from 6 hours_, at **Harbor Grocers**. Every number is checked against the résumé, so a draft can't inflate it. `--exclude` keeps an employer out entirely. The web app does the same from **New profile → Start from your résumé**, and there are [starter profiles](profiles/examples) for seven roles. See [docs/PROFILES.md](docs/PROFILES.md).
 
 Applying to different kinds of roles? Keep one profile per résumé in a folder and pass the folder (`-p me/`). coldopen reads each company's site, suggests the profile that fits, and asks before it renders.
+
+**Paste a job link.** Give coldopen a Greenhouse, Lever, Ashby or Workable link (or a careers page on the company's site) in place of the website. It reads the post, finds the company's site from it, and the film answers one of the post's requirements with your proof. From the CLI: `coldopen https://jobs.lever.co/acme/123 -p me.json`. LinkedIn job pages can't be read; paste the text with `--job post.txt`.
+
+**Then send it.** Each finished film comes with:
+
+- **A drafted email, LinkedIn note (under 300 characters) and follow-up**, written from what the film shows, so they can't claim more than it does.
+- **Who to send it to:** LinkedIn searches for the company's recruiters and the role's likely hiring manager, which you run yourself. Upload the Connections.csv LinkedIn lets you download, and it also lists the people you already know there. coldopen never scrapes LinkedIn or messages anyone.
+- **Did they reply?** Mark each film sent, replied, interview or no reply, and the dashboard shows your reply rate.
 
 Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show** chips in the web app. Otherwise the writer picks the three that fit each company.
 

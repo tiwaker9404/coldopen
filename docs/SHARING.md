@@ -70,6 +70,14 @@ NOTIFY_WEBHOOK_URL="https://hooks.slack.com/services/…" pnpm share:setup
 
 You'll get one message per viewing session, when it starts playing: _"Your film for Deel is being watched (mobile, from linkedin.com, in US)."_
 
+**"Made with coldopen" and the public counter.** Share pages end with a small "Made with coldopen" link. It points at the project on GitHub, or at your hosted app if you set it:
+
+```bash
+APP_URL="https://coldopen-nk8o.onrender.com" pnpm share:setup
+```
+
+The worker also answers `GET /stats` for anyone, with the number of films published and how often they were played (`{"films": 120, "plays": 340, "finishes": 95}`). The landing page shows it once there are 10 films. It holds no names or links.
+
 **Free plan limits.** Workers KV stores 1 GB and takes 1,000 writes a day. A film is about 5 MB and 4 writes, so that's roughly 200 shared films, and 250 new ones a day. Take old links down with `coldopen unshare` to make room. D1 and Workers' free limits are far above what share pages use.
 
 ## On the coldopen server
