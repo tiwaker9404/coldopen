@@ -167,7 +167,9 @@ describe('signing in with GitHub', () => {
 
     // a tampered session cookie is just a visitor
     const eve = browser()
-    eve.jar.set('co_session', dana.jar.get('co_session')!.replace(/.$/, 'A'))
+    // change the signature's last character (to a different one, so it's always a change)
+    const real = dana.jar.get('co_session')!
+    eve.jar.set('co_session', real.slice(0, -1) + (real.endsWith('A') ? 'B' : 'A'))
     expect((await eve.req('GET', '/v1/me')).json().user).toBeNull()
 
     const gone = await dana.req('DELETE', '/v1/me')
