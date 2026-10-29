@@ -201,7 +201,7 @@ export function pickName(raw: Pick<RawPage, 'siteName' | 'title'>, host: string)
   const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
   const candidates = [raw.siteName, ...raw.title.split(/\s[|–—·:-]\s|:\s/)]
     .map(cleanName)
-    .filter((c) => c.length > 1)
+    .filter((c) => c.length > 1 && !GENERIC_PAGE.test(c))
   const matching = candidates.find((c) => {
     const q = squash(c)
     return q.length > 1 && (q === label || q.startsWith(label) || label.startsWith(q))
@@ -211,6 +211,10 @@ export function pickName(raw: Pick<RawPage, 'siteName' | 'title'>, host: string)
   if (short) return short
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
+
+// what a page is called, not who it belongs to: "Home | Range" names the company Range
+const GENERIC_PAGE =
+  /^(home|home ?page|welcome|index|main|landing|official (web)?site|start|overview|about( us)?|untitled)$/i
 
 function cleanName(s: string): string {
   return s

@@ -76,6 +76,11 @@ describe('text from real homepages', () => {
         'linear.app',
       ),
     ).toBe('Linear')
+    // a page called "Home" isn't the company (seen on the hosted app: "Hi Home team")
+    expect(pickName({ siteName: 'Home', title: 'Home | Range' }, 'getrange.com')).toBe('Range')
+    expect(pickName({ siteName: '', title: 'Homepage - Acme Robotics' }, 'acmebots.io')).toBe(
+      'Acme Robotics',
+    )
     expect(pickName({ siteName: 'Cal.com', title: 'Cal.com | Open Scheduling' }, 'cal.com')).toBe(
       'Cal.com',
     )
