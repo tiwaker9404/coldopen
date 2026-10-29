@@ -76,6 +76,15 @@ const schema = z.object({
   /** a share worker (share/worker.ts): hosted films are stored there, so they outlive restarts */
   SHARE_URL: z.string().url().optional(),
   SHARE_TOKEN: z.string().optional(),
+  /**
+   * render on GitHub Actions instead of a worker in this process: a token allowed to start
+   * workflows (fine-grained, "Contents: read and write" on the repo) and "owner/repo"
+   */
+  RENDER_DISPATCH_TOKEN: z.string().optional(),
+  RENDER_DISPATCH_REPO: z
+    .string()
+    .regex(/^[\w.-]+\/[\w.-]+$/)
+    .optional(),
   /** daily limits in hosted mode */
   ANON_DAILY_FILMS: z.coerce.number().int().min(0).default(1),
   USER_DAILY_FILMS: z.coerce.number().int().min(0).default(5),

@@ -15,6 +15,8 @@ import { SlackClient } from './slack.ts'
  *   node src/main.ts api       HTTP API, dashboard, share pages, Slack events
  *   node src/main.ts worker    researches, writes and renders films (scale horizontally)
  *   node src/main.ts all       everything in one process
+ *   node src/main.ts drain     render whatever is queued, then exit (a renderer that runs on
+ *                              demand, e.g. a GitHub Actions job started by the hosted app)
  */
 const role = process.argv[2] ?? 'all'
 const cfg = loadConfig()
@@ -50,9 +52,9 @@ async function main() {
       return
     }
   }
-  if (!['api', 'worker', 'all'].includes(role)) throw new Error(`unknown role "${role}"`)
+  if (!['api', 'worker', 'all', 'drain'].includes(role)) throw new Error(`unknown role "${role}"`)
 
-  if (role === 'worker' || role === 'all') {
+  if (role === 'worker' || role === 'all' || role === 'drain') {
     const agents = registry(
       createFilmAgent({
         filmsDir: resolve(cfg.FILMS_DIR),
@@ -70,6 +72,7 @@ async function main() {
     await worker.start()
     stoppers.push(() => worker.stop(60_000))
     stoppers.push(closeBrowser)
+    if (role === 'drain') void drain()
   }
   if (role === 'api' || role === 'all') {
     const app = await buildApi({
@@ -81,6 +84,30 @@ async function main() {
     })
     await app.listen({ port: cfg.PORT, host: cfg.HOST })
     stoppers.unshift(() => app.close())
+  }
+}
+
+/**
+ * On-demand rendering: keep working while anything is queued (or due soon, after a retry's
+ * backoff) or running, then shut down. Two quiet checks in a row, so a film queued between
+ * finishing one and checking isn't missed. A hard cap keeps a stuck queue from burning a
+ * CI runner for hours; whatever is left is picked up by the next run.
+ */
+async function drain() {
+  const started = Date.now()
+  const maxMs = Number(process.env.DRAIN_MAX_MINUTES ?? 50) * 60_000
+  let quiet = 0
+  while (!stopping) {
+    await new Promise((r) => setTimeout(r, 10_000))
+    const [row] = await sql<{ n: number }[]>`
+      select count(*)::int as n from runs
+      where status = 'running'
+         or (status = 'queued' and next_run_at <= now() + interval '5 minutes')`
+    quiet = (row?.n ?? 0) === 0 ? quiet + 1 : 0
+    if (quiet >= 2 || Date.now() - started > maxMs) {
+      log.info({ minutes: Math.round((Date.now() - started) / 60_000) }, 'queue drained')
+      return shutdown('drained')
+    }
   }
 }
 

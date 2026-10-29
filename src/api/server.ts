@@ -50,6 +50,7 @@ import {
   signOut,
   used,
 } from './accounts.ts'
+import { renderDispatcher } from './dispatch.ts'
 
 const FILE_NAMES =
   /^(film-(square|landscape|portrait)\.mp4|poster\.jpg|preview\.gif|contact-sheet\.jpg|site\.jpg|kit\.json|storyboard\.json)$/
@@ -121,6 +122,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     cfg.SHARE_URL && cfg.SHARE_TOKEN
       ? { url: cfg.SHARE_URL.replace(/\/$/, ''), token: cfg.SHARE_TOKEN }
       : null
+  const kick = renderDispatcher(cfg, log)
   const app = Fastify({
     loggerInstance: log,
     logController: new LogController({
@@ -529,6 +531,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
         idempotencyKey: typeof key === 'string' ? key : undefined,
         owner: req.owner,
       })
+      if (r.kind === 'created') kick()
       if (r.kind === 'conflict') {
         return reply.status(409).send({
           error: {
@@ -588,6 +591,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
         }
         return out
       })
+      kick()
       return reply
         .status(202)
         .send({ batch, films: created.length, results: `/v1/batches/${batch}/results.csv` })
@@ -698,6 +702,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     async (req, reply) => {
       if (!(await ownFilm(req.params.id, req.owner))) return notFound(reply)
       const r = await retryRun(sql, req.params.id)
+      if (r) kick()
       return r
         ? filmDto(r as FilmRow, publicUrl)
         : reply.status(409).send({

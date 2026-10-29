@@ -1,0 +1,48 @@
+# Render Blueprint for the hosted app's web server (free plan). Films are rendered by the
+# "Render films for the hosted app" GitHub workflow; see docs/HOSTING.md.
+services:
+  - type: web
+    name: coldopen
+    runtime: node
+    plan: free
+    buildCommand: npx --yes pnpm@10.28.0 install --frozen-lockfile && npx --yes pnpm@10.28.0 dashboard:build
+    startCommand: node src/main.ts migrate && node src/main.ts api
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: PUPPETEER_SKIP_DOWNLOAD
+        value: "1"
+      - key: HOSTED
+        value: "true"
+      - key: LLM_PROVIDER
+        value: openai
+      - key: LLM_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: LLM_MODEL
+        value: openai/gpt-oss-120b
+      - key: LLM_FALLBACK_MODEL
+        value: openai/gpt-oss-20b
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DB_POOL_SIZE
+        value: "4"
+      # set these in the Render dashboard (they are secrets)
+      - key: PUBLIC_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: SHARE_URL
+        sync: false
+      - key: SHARE_TOKEN
+        sync: false
+      - key: RENDER_DISPATCH_TOKEN
+        sync: false
+      - key: RENDER_DISPATCH_REPO
+        value: tiwaker9404/coldopen

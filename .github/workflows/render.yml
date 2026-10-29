@@ -1,0 +1,62 @@
+name: Render films for the hosted app
+
+# The hosted app's web server (on Render's free plan) has no room for Chromium, so films are
+# rendered here: the app starts this workflow when someone makes a film, and the job renders
+# everything queued, then exits. Free for public repositories.
+#
+# Turn it on with the repository variable RENDER_FILMS=true and these secrets:
+#   DATABASE_URL  the same database as the app (Supabase session pooler, ?sslmode=require)
+#   LLM_API_KEY   Groq key
+#   SHARE_URL, SHARE_TOKEN   the share worker films are published to
+on:
+  repository_dispatch:
+    types: [render]
+  workflow_dispatch:
+  # a safety net: picks up films whose start signal was lost, and retries after backoff
+  schedule:
+    - cron: "*/15 * * * *"
+
+# one renderer at a time; a start signal that arrives while one runs waits for it
+concurrency:
+  group: render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    if: vars.RENDER_FILMS == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      SHARE_URL: ${{ secrets.SHARE_URL }}
+      SHARE_TOKEN: ${{ secrets.SHARE_TOKEN }}
+      LLM_PROVIDER: openai
+      LLM_BASE_URL: https://api.groq.com/openai/v1
+      LLM_MODEL: openai/gpt-oss-120b
+      LLM_FALLBACK_MODEL: openai/gpt-oss-20b
+      CHROME_PATH: /usr/bin/google-chrome
+      FILMS_DIR: ${{ runner.temp }}/films
+      WORKER_CONCURRENCY: "2"
+      # this repository is public, and so are its logs: keep them to errors, with no film details
+      LOG_LEVEL: error
+    steps:
+      - name: Anything to render?
+        id: queue
+        run: |
+          n=$(psql "$DATABASE_URL" -tAc "select count(*) from runs where status = 'running' or (status = 'queued' and next_run_at <= now() + interval '5 minutes')" 2>/dev/null || echo 1)
+          echo "pending=$n" >> "$GITHUB_OUTPUT"
+      - if: steps.queue.outputs.pending != '0'
+        uses: actions/checkout@v5
+      - if: steps.queue.outputs.pending != '0'
+        uses: pnpm/action-setup@v4
+      - if: steps.queue.outputs.pending != '0'
+        uses: actions/setup-node@v5
+        with: { node-version: 24, cache: pnpm }
+      - if: steps.queue.outputs.pending != '0'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-noto-core
+      - if: steps.queue.outputs.pending != '0'
+        run: pnpm install --frozen-lockfile --prod
+        env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
+      - if: steps.queue.outputs.pending != '0'
+        run: node src/main.ts drain

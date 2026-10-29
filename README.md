@@ -67,7 +67,7 @@ flowchart LR
 
 ## Try it, or host your own demo
 
-The hosted app lets anyone try coldopen in the browser: upload a résumé, paste a company (and a job post), and get a tracked share link. Visitors get one free film a day; signing in with GitHub keeps their work and allows five. It runs on free plans (an Oracle Cloud Always Free server, Cloudflare, Groq), and [docs/HOSTING.md](docs/HOSTING.md) sets it up with one script.
+The hosted app lets anyone try coldopen in the browser: upload a résumé, paste a company (and a job post), and get a tracked share link. Visitors get one free film a day; signing in with GitHub keeps their work and allows five. It runs on free plans with no card (Render, GitHub Actions, Supabase, Cloudflare, Groq), and [docs/HOSTING.md](docs/HOSTING.md) sets it up.
 
 ## Run it for your team
 
@@ -129,7 +129,7 @@ Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show*
 ## Quality, measured
 
 ```bash
-pnpm test         # 161 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, Slack, model path
+pnpm test         # 163 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
 ```
