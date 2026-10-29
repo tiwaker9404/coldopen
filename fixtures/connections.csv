@@ -1,0 +1,10 @@
+Notes:
+"When exporting your connection data, you may notice that some of the email addresses are missing."
+
+First Name,Last Name,URL,Email Address,Company,Position,Connected On
+Priya,Shah,https://www.linkedin.com/in/priyashah,,"Stripe, Inc.",Technical Recruiter,12 Mar 2025
+Ben,Ortiz,https://www.linkedin.com/in/benortiz,ben@example.com,Stripe,Engineering Manager,02 Jan 2024
+Ana,Lima,https://www.linkedin.com/in/analima,,Stripe,Account Executive,10 Oct 2023
+Sam,Lee,https://www.linkedin.com/in/samlee,,Stripes Media,Editor,01 Jan 2022
+Jo,"O""Neil",javascript:alert(1),,Google DeepMind,Research Scientist,05 May 2024
+,,,,,,

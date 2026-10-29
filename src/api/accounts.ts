@@ -234,6 +234,12 @@ export async function claim(sql: Sql, from: Owner, to: Owner) {
       where p.owner = ${from}
         and not exists (select 1 from profiles q where q.owner = ${to} and q.id = p.id)`
     await tx`delete from profiles where owner = ${from}`
+    // a newer connections upload replaces the account's
+    const [moved] = await tx`select 1 from connections where owner = ${from} limit 1`
+    if (moved) {
+      await tx`delete from connections where owner = ${to}`
+      await tx`update connections set owner = ${to} where owner = ${from}`
+    }
   })
 }
 

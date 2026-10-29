@@ -1021,3 +1021,28 @@ main {
   color: var(--ink);
   background: var(--surface);
 }
+
+/* ----------------------------------------------------------------- people */
+.searches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 6px;
+}
+.people {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+}
+.people li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+}
+.connections .button {
+  cursor: pointer;
+  display: inline-block;
+}

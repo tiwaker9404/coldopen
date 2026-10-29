@@ -8,6 +8,7 @@ import {
   media,
   OUTREACH_LABEL,
   type OutreachStatus,
+  type People,
   send,
   type ViewSession,
   type ViewSummary,
@@ -141,6 +142,7 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
           </div>
         )}
 
+        {f?.status === 'succeeded' && <WhoToSend id={f.id} />}
         {f?.status === 'succeeded' && <SendIt id={f.id} />}
         {f?.status === 'succeeded' && <Replied id={f.id} status={f.outreach?.status ?? null} />}
         {f?.status === 'succeeded' && <Views id={f.id} />}
@@ -367,6 +369,103 @@ function Replied({ id, status }: { id: string; status: OutreachStatus | null }) 
           ? 'Click it again to clear.'
           : 'Mark it sent once it’s out, and come back when they answer. Your reply rate shows at the top.'}
       </p>
+    </section>
+  )
+}
+
+/**
+ * Who to send it to: LinkedIn searches the person runs themselves, and anyone they already
+ * know there, from the connections export they uploaded. Nothing is scraped or sent.
+ */
+function WhoToSend({ id }: { id: string }) {
+  const qc = useQueryClient()
+  const q = useQuery({
+    queryKey: ['people', id],
+    queryFn: () => api<People>(`/v1/films/${id}/people`),
+  })
+  const upload = useMutation({
+    mutationFn: async (file: File) =>
+      send<{ count: number }>('PUT', '/v1/connections', { csv: await file.text() }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['people'] }),
+  })
+  const remove = useMutation({
+    mutationFn: () => send('DELETE', '/v1/connections'),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['people'] }),
+  })
+  const p = q.data
+  if (!p) return null
+  return (
+    <section>
+      <h3>Who to send it to</h3>
+      {p.known.length > 0 && (
+        <>
+          <p className="small">
+            You know {p.known.length === 1 ? 'one person' : `${p.known.length} people`} at{' '}
+            {p.company}. A warm intro beats a cold note.
+          </p>
+          <ul className="people">
+            {p.known.map((c) => (
+              <li key={`${c.name}-${c.url}`}>
+                {c.url ? (
+                  <a href={c.url} target="_blank" rel="noreferrer">
+                    {c.name}
+                  </a>
+                ) : (
+                  <span>{c.name}</span>
+                )}
+                <span className="muted">{c.position ?? c.company}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <div className="searches">
+        {p.searches.map((s) => (
+          <a
+            key={s.url}
+            className="button"
+            href={s.url}
+            target="_blank"
+            rel="noreferrer"
+            title={s.hint}
+          >
+            {s.label}
+          </a>
+        ))}
+      </div>
+      <p className="muted small">
+        Each opens a LinkedIn search for {p.company}. Send to one or two people, not the whole list.
+      </p>
+      {p.connections === 0 ? (
+        <div className="connections">
+          <label className="button">
+            {upload.isPending ? 'Reading…' : 'Upload your LinkedIn connections'}
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) upload.mutate(file)
+                e.target.value = ''
+              }}
+            />
+          </label>
+          <p className="muted small">
+            See who you already know at each company. On LinkedIn: Settings → Data privacy → Get a
+            copy of your data → Connections. It arrives by email in about 10 minutes; upload the
+            Connections.csv. Emails in it aren't kept.
+          </p>
+          {upload.error && <p className="error small">{upload.error.message}</p>}
+        </div>
+      ) : (
+        <p className="muted small">
+          Checked against your {p.connections.toLocaleString()} LinkedIn connections.{' '}
+          <button type="button" className="text" onClick={() => remove.mutate()}>
+            Remove them
+          </button>
+        </p>
+      )}
     </section>
   )
 }

@@ -377,6 +377,52 @@ describe('films', () => {
     expect((await mark(b, null)).json().outreach).toBeNull()
     expect((await app.inject({ url: '/v1/outreach', headers: auth })).json().sent).toBe(1)
   })
+
+  it('suggests who to send it to, and who you already know there', async () => {
+    const id = (
+      await app.inject({
+        method: 'POST',
+        url: '/v1/films',
+        headers: auth,
+        payload: { url: 'stripe.com', profileId: 'maya' },
+      })
+    ).json().id
+    await finish(id, 'Stripe')
+
+    let people = (await app.inject({ url: `/v1/films/${id}/people`, headers: auth })).json()
+    expect(people.searches[0].label).toBe('Recruiters')
+    expect(people.known).toEqual([])
+    expect(people.connections).toBe(0)
+
+    const bad = await app.inject({
+      method: 'PUT',
+      url: '/v1/connections',
+      headers: auth,
+      payload: { csv: 'name,email\nx,y' },
+    })
+    expect(bad.statusCode).toBe(400)
+    const up = await app.inject({
+      method: 'PUT',
+      url: '/v1/connections',
+      headers: auth,
+      payload: { csv: readFileSync('fixtures/connections.csv', 'utf8') },
+    })
+    expect(up.json()).toEqual({ count: 5 })
+
+    people = (await app.inject({ url: `/v1/films/${id}/people`, headers: auth })).json()
+    expect(people.known.map((c: { name: string }) => c.name)).toEqual([
+      'Priya Shah',
+      'Ben Ortiz',
+      'Ana Lima',
+    ])
+    expect(people.connections).toBe(5)
+    expect((await app.inject({ url: '/v1/connections', headers: auth })).json().count).toBe(5)
+
+    const gone = await app.inject({ method: 'DELETE', url: '/v1/connections', headers: auth })
+    expect(gone.json()).toEqual({ deleted: 5 })
+    people = (await app.inject({ url: `/v1/films/${id}/people`, headers: auth })).json()
+    expect(people.known).toEqual([])
+  })
 })
 
 describe('slack', () => {

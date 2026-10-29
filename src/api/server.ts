@@ -20,6 +20,13 @@ import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
 import { draftMessages } from '../outreach/messages.ts'
+import {
+  type Connection,
+  companyKey,
+  knownAt,
+  parseConnections,
+  peopleSearches,
+} from '../outreach/people.ts'
 import { draftProfile } from '../profile/draft.ts'
 import { parseResume } from '../profile/parse.ts'
 import { resumeText } from '../profile/read.ts'
@@ -374,6 +381,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       )
       await sql`delete from runs where owner = ${req.owner}`
       await sql`delete from profiles where owner = ${req.owner}`
+      await sql`delete from connections where owner = ${req.owner}`
       if (req.owner.startsWith('u:')) await sql`delete from users where id = ${req.owner.slice(2)}`
       signOut(cfg, reply)
       return { deleted: { films: films.length } }
@@ -940,6 +948,106 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       if (!run?.output) return notFound(reply)
       const link = filmDto(run, publicUrl).share!
       return draftMessages(run.output, run.input.profile, link)
+    },
+  )
+
+  app.get(
+    '/v1/films/:id/people',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Who to send a film to: LinkedIn searches, and people you already know there',
+        description:
+          'Searches open on LinkedIn for you to run yourself; nothing is scraped or sent. Known people come from the connections export you uploaded.',
+        params: z.object({ id: RunId }),
+      },
+    },
+    async (req, reply) => {
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run?.output) return notFound(reply)
+      const out = run.output
+      const title = out.job?.title
+      const keys = [...new Set([companyKey(out.company), companyKey(out.host)].filter(Boolean))]
+      // a rough cut in SQL (same key, or one key starting the other), then the exact match
+      const rows = await sql<Connection[]>`
+        select name, url, company, position, connected_on from connections
+        where owner = ${req.owner} and (
+          company_key = any(${keys})
+          or split_part(company_key, ' ', 1) = any(${keys.map((k) => k.split(' ')[0]!)})
+        )
+        limit 500`
+      const [{ n } = { n: 0 }] = await sql<{ n: number }[]>`
+        select count(*)::int as n from connections where owner = ${req.owner}`
+      return {
+        company: out.company,
+        searches: peopleSearches(out.company, { jobTitle: title, profile: run.input.profile }),
+        known: knownAt(rows, out.company, out.host, title).slice(0, 25),
+        connections: n,
+      }
+    },
+  )
+
+  app.get(
+    '/v1/connections',
+    { schema: { tags: ['people'], summary: 'How many LinkedIn connections you uploaded' } },
+    async (req) => {
+      const [r] = await sql<{ n: number; addedAt: Date | null }[]>`
+        select count(*)::int as n, max(added_at) as added_at from connections where owner = ${req.owner}`
+      return { count: r?.n ?? 0, addedAt: r?.addedAt ?? null }
+    },
+  )
+
+  app.put(
+    '/v1/connections',
+    {
+      bodyLimit: 12 * 1024 * 1024,
+      schema: {
+        tags: ['people'],
+        summary: "Upload LinkedIn's Connections.csv, replacing the last one",
+        description:
+          'Keeps name, profile link, company, position and date connected; emails are dropped. Used only to show who you know at a company.',
+        body: z.object({
+          csv: z
+            .string()
+            .min(10)
+            .max(10 * 1024 * 1024),
+        }),
+      },
+    },
+    async (req, reply) => {
+      let list: Connection[]
+      try {
+        list = parseConnections(req.body.csv)
+      } catch (err) {
+        return reply
+          .status(400)
+          .send({ error: { code: 'bad_csv', message: (err as Error).message } })
+      }
+      await sql.begin(async (tx) => {
+        await tx`delete from connections where owner = ${req.owner}`
+        for (let i = 0; i < list.length; i += 1000) {
+          const chunk = list.slice(i, i + 1000).map((c) => ({
+            owner: req.owner,
+            name: c.name,
+            url: c.url,
+            company: c.company,
+            companyKey: companyKey(c.company),
+            position: c.position,
+            connectedOn: c.connectedOn,
+          }))
+          await tx`insert into connections ${tx(chunk)}`
+        }
+      })
+      return { count: list.length }
+    },
+  )
+
+  app.delete(
+    '/v1/connections',
+    { schema: { tags: ['people'], summary: 'Delete your uploaded connections' } },
+    async (req) => {
+      const gone = await sql`delete from connections where owner = ${req.owner}`
+      return { deleted: gone.count }
     },
   )
 

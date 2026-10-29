@@ -32,6 +32,21 @@ export const OUTREACH_LABEL: Record<OutreachStatus, string> = {
   no_reply: 'No reply',
 }
 
+/** who to send a film to */
+export interface People {
+  company: string
+  searches: { label: string; hint: string; url: string }[]
+  known: {
+    name: string
+    url: string | null
+    company: string
+    position: string | null
+    connectedOn: string | null
+  }[]
+  /** how many connections you uploaded; 0 means none yet */
+  connections: number
+}
+
 /** films sent and how many got a reply */
 export interface OutreachSummary {
   sent: number
