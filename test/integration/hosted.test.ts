@@ -27,6 +27,7 @@ beforeAll(async () => {
       GLOBAL_DAILY_FILMS: '100',
       DAILY_DRAFTS: '1',
       API_KEYS: 'operator-key',
+      UNLIMITED_GITHUB_USERS: 'Boss',
     }),
     log,
     slack: null,
@@ -179,5 +180,36 @@ describe('signing in with GitHub', () => {
       { n: number }[]
     >`select count(*)::int as n from runs where owner like ${'u:gh:4242'}`
     expect(left!.n).toBe(0)
+  })
+})
+
+describe('the owner', () => {
+  it('has no daily limits once signed in with a listed GitHub account', async () => {
+    const boss = browser()
+    const start = await boss.req('GET', '/auth/github')
+    const state = new URL(start.headers.location as string).searchParams.get('state')!
+    vi.stubGlobal('fetch', async (url: string) =>
+      Response.json(
+        String(url).includes('access_token')
+          ? { access_token: 'gho_boss' }
+          : { id: 7, login: 'boss', name: 'Boss', avatar_url: null },
+      ),
+    )
+    await boss.req('GET', `/auth/github/callback?code=c&state=${state}`)
+    const me = (await boss.req('GET', '/v1/me')).json()
+    expect(me.films).toBeNull()
+    expect(me.keepsDays).toBeNull()
+
+    await saveProfile(boss)
+    // past the per-user limit of 2, one at a time and as a batch
+    for (const u of ['a1.example', 'a2.example', 'a3.example'])
+      expect((await boss.req('POST', '/v1/films', { url: u, profileId: 'me' })).statusCode).toBe(
+        202,
+      )
+    const batch = await boss.req('POST', '/v1/batches', {
+      urls: ['b1.example', 'b2.example', 'b3.example'],
+      profileId: 'me',
+    })
+    expect(batch.statusCode).toBe(202)
   })
 })

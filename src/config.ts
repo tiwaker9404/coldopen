@@ -87,6 +87,16 @@ const schema = z.object({
     .optional(),
   /** daily limits in hosted mode */
   ANON_DAILY_FILMS: z.coerce.number().int().min(0).default(1),
+  /** GitHub logins with no daily limits on the hosted app (the owner), comma-separated */
+  UNLIMITED_GITHUB_USERS: z
+    .string()
+    .default('')
+    .transform((s) =>
+      s
+        .split(',')
+        .map((u) => u.trim().toLowerCase())
+        .filter(Boolean),
+    ),
   USER_DAILY_FILMS: z.coerce.number().int().min(0).default(5),
   IP_DAILY_FILMS: z.coerce.number().int().min(0).default(8),
   GLOBAL_DAILY_FILMS: z.coerce.number().int().min(0).default(80),

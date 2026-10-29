@@ -150,6 +150,8 @@ The first build takes about 10 minutes (it installs Chromium). Then open the add
 
 Defaults you can change (in Render's **Environment**, or the server's `.env`): `ANON_DAILY_FILMS` (1), `USER_DAILY_FILMS` (5), `IP_DAILY_FILMS` (8), `GLOBAL_DAILY_FILMS` (80), `DAILY_DRAFTS` (6). The global cap keeps the app inside Groq's free daily tokens and Cloudflare's 1,000 free writes a day.
 
+**No limits for you.** Set `UNLIMITED_GITHUB_USERS` to your GitHub username (several, comma-separated). Signed in as that account, you skip every daily limit, can make batches of any size, and your films are kept until you delete them. Groq's own rate limits still apply; when they're hit, films are written by the built-in writer.
+
 ## What to expect
 
 - **On Render and GitHub Actions,** a film takes 2 to 3 minutes, two at a time. The site sleeps after 15 quiet minutes and takes about a minute to wake. Supabase pauses a project idle for a week; open its dashboard to wake it.

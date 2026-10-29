@@ -248,6 +248,13 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
    * doesn't reset it) and the whole app's (which keeps the free model tier from running dry).
    * Returns why not, or null; nothing is taken when the answer is no.
    */
+  /** no daily limits: a private install, an API key, or a GitHub user listed in UNLIMITED_GITHUB_USERS */
+  const unlimited = (req: FastifyRequest) => {
+    if (!cfg.HOSTED || req.owner === 'team') return true
+    const login = readSession(cfg, req)?.login.toLowerCase()
+    return !!login && cfg.UNLIMITED_GITHUB_USERS.includes(login)
+  }
+
   async function takeFilms(req: FastifyRequest, n: number): Promise<string | null> {
     const checks: [string, number, string][] = [
       [
@@ -305,8 +312,9 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     return out
   }
   /** on the hosted app, a visitor's share links last 7 days and an account's 30 */
-  const keep = (owner: Owner) =>
-    cfg.HOSTED && owner !== 'team' ? { keepDays: owner.startsWith('u:') ? 30 : 7 } : {}
+  // visitors' films are kept 7 days and accounts' 30; unlimited users' until they delete them
+  const keep = (req: FastifyRequest) =>
+    unlimited(req) ? {} : { keepDays: req.owner.startsWith('u:') ? 30 : 7 }
   const unshareFilm = (id: string) => (share ? unshare(share, id) : Promise.resolve())
 
   /* --------------------------------------------------------------- accounts */
@@ -347,14 +355,15 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     { schema: { tags: ['account'], summary: 'Who you are, and what you have left today' } },
     async (req) => {
       const s = cfg.HOSTED ? readSession(cfg, req) : null
-      const limit = cfg.HOSTED ? filmLimit(cfg, req.owner) : null
+      const free = unlimited(req)
+      const limit = free ? null : filmLimit(cfg, req.owner)
       return {
         hosted: cfg.HOSTED,
         signIn: cfg.HOSTED && !!cfg.GITHUB_CLIENT_ID,
         user: s ? { login: s.login, name: s.name, avatar: s.avatar } : null,
         films: limit === null ? null : { used: await used(sql, `films:${req.owner}`), limit },
-        // a visitor's work is kept 7 days; an account's, 30
-        keepsDays: cfg.HOSTED ? (s ? 30 : 7) : null,
+        // a visitor's work is kept 7 days; an account's, 30; an unlimited user's, until deleted
+        keepsDays: free ? null : s ? 30 : 7,
       }
     },
   )
@@ -449,7 +458,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       },
     },
     async (req, reply) => {
-      if (cfg.HOSTED && !(await consume(sql, `drafts:${req.owner}`, cfg.DAILY_DRAFTS)))
+      if (!unlimited(req) && !(await consume(sql, `drafts:${req.owner}`, cfg.DAILY_DRAFTS)))
         return limited(
           reply,
           `That's ${cfg.DAILY_DRAFTS} résumé drafts today. Edit the profile by hand, or come back tomorrow.`,
@@ -541,10 +550,10 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
         ...req.body,
         url: normalizeUrl(req.body.url),
         profile,
-        ...keep(req.owner),
+        ...keep(req),
       })
       const key = req.headers['idempotency-key']
-      const quota = cfg.HOSTED && req.owner !== 'team' ? await takeFilms(req, 1) : null
+      const quota = unlimited(req) ? null : await takeFilms(req, 1)
       if (quota) return limited(reply, quota)
       const r = await createRun(sql, {
         agent: 'film',
@@ -586,7 +595,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       const profile = await resolveProfile(req.body, req.owner)
       const batch = newId('bat')
       const urls = [...new Set(req.body.urls.map(normalizeUrl))]
-      if (cfg.HOSTED && req.owner !== 'team') {
+      if (!unlimited(req)) {
         if (!req.owner.startsWith('u:'))
           return reply
             .status(403)
@@ -604,7 +613,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
             ...(req.body.proof ? { proof: req.body.proof } : {}),
             batch,
             ref: String(i + 1),
-            ...keep(req.owner),
+            ...keep(req),
           })
           out.push(
             (await createRun(tx as unknown as Sql, { agent: 'film', input, owner: req.owner })).run,

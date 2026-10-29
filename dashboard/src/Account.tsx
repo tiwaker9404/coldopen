@@ -116,8 +116,10 @@ export function PrivacyNote({ me }: { me: Me }) {
   return (
     <p className="privacy">
       Your résumé is read to draft your profile and isn't kept. Films and profiles are kept{' '}
-      {me.keepsDays} days{me.user ? '' : ' (30 if you sign in)'}, and you can delete them any time.
-      Share pages count views without storing anyone's IP address. LinkedIn connections you upload
+      {me.keepsDays === null
+        ? 'until you delete them'
+        : `${me.keepsDays} days${me.user ? '' : ' (30 if you sign in)'}, and you can delete them any time`}
+      . Share pages count views without storing anyone's IP address. LinkedIn connections you upload
       are only used to show who you know at a company, and are deleted with your data.
     </p>
   )
