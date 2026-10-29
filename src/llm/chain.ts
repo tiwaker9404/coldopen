@@ -50,19 +50,44 @@ export interface ModelEndpoint {
   apiKey: string
 }
 
-/** One model, or a primary with a fallback when LLM_FALLBACK_MODEL is set. */
+/**
+ * One model, or a primary with fallbacks. LLM_FALLBACK_MODEL may list several, comma
+ * separated, tried in order. A name with a slash ("openai/gpt-oss-20b") is served by the
+ * primary's endpoint, so a second Groq model with its own rate limit needs no extra setup; a
+ * name without one ("qwen2.5:7b") is a local Ollama model, unless LLM_FALLBACK_BASE_URL says
+ * otherwise.
+ */
 export function buildLlm(
   primary: ModelEndpoint,
   fallback: Partial<ModelEndpoint> | null,
   timeoutMs: number,
 ): LlmProvider {
-  const first = new OpenAICompatibleProvider({ ...primary, timeoutMs })
-  if (!fallback?.model) return first
-  const second = new OpenAICompatibleProvider({
-    baseUrl: fallback.baseUrl ?? 'http://localhost:11434/v1',
-    model: fallback.model,
-    apiKey: fallback.apiKey ?? 'ollama',
-    timeoutMs,
-  })
-  return new ChainProvider([first, second])
+  const names = (fallback?.model ?? '')
+    .split(',')
+    .map((m) => m.trim())
+    .filter(Boolean)
+  const endpoints: ModelEndpoint[] = [
+    primary,
+    ...names.map((model) => {
+      const local = !model.includes('/')
+      const customUrl = fallback?.baseUrl && fallback.baseUrl !== OLLAMA
+      return {
+        model,
+        baseUrl: customUrl ? fallback.baseUrl! : local ? OLLAMA : primary.baseUrl,
+        apiKey: customUrl || local ? (fallback?.apiKey ?? 'ollama') : primary.apiKey,
+      }
+    }),
+  ]
+  const providers = endpoints.map(
+    (e, i) =>
+      new OpenAICompatibleProvider({
+        ...e,
+        timeoutMs,
+        // with somewhere to go next, move on quickly; the last option waits as long as it takes
+        maxRateWaitMs: i < endpoints.length - 1 ? 20_000 : 300_000,
+      }),
+  )
+  return providers.length === 1 ? providers[0]! : new ChainProvider(providers)
 }
+
+const OLLAMA = 'http://localhost:11434/v1'

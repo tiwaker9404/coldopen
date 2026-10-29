@@ -182,6 +182,21 @@ describe('writer', () => {
     expect(r.script).toEqual(good)
   })
 
+  it('sends only the latest draft back, so requests stay the same size round after round', async () => {
+    const sizes: number[] = []
+    await writeScript({
+      kit,
+      profile: profile('sales'),
+      model: 'fake',
+      maxRounds: 4,
+      complete: async (_key, messages) => {
+        sizes.push(messages.length)
+        return { ...good, hook: 'We revolutionize Northwind!' }
+      },
+    })
+    expect(sizes).toEqual([2, 4, 4, 4])
+  })
+
   it('swaps in built-in lines only where the model never complied, keeping its good lines', async () => {
     const r = await writeScript({
       kit,

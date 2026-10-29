@@ -9,20 +9,20 @@ import { callModel } from '../../src/runtime/context.ts'
 /** A fake OpenAI-compatible endpoint whose behaviour is picked by the model name. */
 let server: Server
 let base = ''
-const calls: { model: string; format?: string }[] = []
+const calls: { model: string; format?: string; body: Record<string, unknown> }[] = []
 
 beforeAll(async () => {
   server = createServer(async (req, res) => {
     let body = ''
     for await (const c of req) body += c
     const r = JSON.parse(body)
-    calls.push({ model: r.model, format: r.response_format?.type })
+    calls.push({ model: r.model, format: r.response_format?.type, body: r })
     res.setHeader('content-type', 'application/json')
     if (r.model === 'missing') {
       res.statusCode = 404
       return res.end('{"error":{"message":"model not found"}}')
     }
-    if (r.model === 'limited') {
+    if (r.model === 'limited' || r.model === 'openai/gpt-oss-limited') {
       res.statusCode = 429
       return res.end('{"error":{"message":"rate limit"}}')
     }
@@ -49,6 +49,31 @@ const provider = (model: string, baseUrl = base) =>
   new OpenAICompatibleProvider({ baseUrl, model, apiKey: 'k', timeoutMs: 5000 })
 
 describe('model providers', () => {
+  it('lists several fallbacks; Groq-style names reuse the primary endpoint', async () => {
+    calls.length = 0
+    const llm = buildLlm(
+      { baseUrl: base, model: 'openai/gpt-oss-limited', apiKey: 'k' },
+      // "missing" has no slash: a local Ollama model, which isn't running here, so it's skipped
+      { model: 'openai/gpt-oss-20b, missing-local' },
+      5000,
+    )
+    expect((await ask(llm)).value).toEqual({ answer: 'from openai/gpt-oss-20b' })
+    expect(calls.map((c) => c.model)).toEqual(['openai/gpt-oss-limited', 'openai/gpt-oss-20b'])
+  })
+
+  it('keeps gpt-oss requests small enough for a free tier', async () => {
+    calls.length = 0
+    await ask(provider('openai/gpt-oss-120b'))
+    expect(calls[0]!.body).toMatchObject({
+      reasoning_effort: 'low',
+      include_reasoning: false,
+      max_completion_tokens: 1500,
+    })
+    calls.length = 0
+    await ask(provider('qwen2.5:7b'))
+    expect(calls[0]!.body.reasoning_effort).toBeUndefined()
+  })
+
   it('moves to the fallback when the first provider is rate limited', async () => {
     const llm = buildLlm(
       { baseUrl: base, model: 'limited', apiKey: 'k' },

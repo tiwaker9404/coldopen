@@ -93,14 +93,15 @@ Without a model, the built-in writer makes plain but always-correct scripts. For
 ```bash
 # Groq, with local Ollama as the fallback when Groq's daily limit runs out
 export LLM_BASE_URL=https://api.groq.com/openai/v1 LLM_API_KEY=gsk_...   # key from console.groq.com
-export LLM_FALLBACK_MODEL=qwen2.5:7b                                    # Ollama, used on 429s and outages
+export LLM_FALLBACK_MODEL=openai/gpt-oss-20b,qwen2.5:7b                 # tried in order on rate limits and outages
 pnpm film https://acme.com --model openai/gpt-oss-120b
 ```
 
 Keep keys in the environment, not on the command line, so they never show up in terminal output or shell history. The server reads the same variables, plus `LLM_PROVIDER=openai`.
 
 - **Structured outputs.** The script's schema is sent as a strict JSON Schema (`response_format: json_schema`), so models that support constrained decoding (gpt-oss on Groq, recent Ollama) can only return the right shape. Endpoints without it are detected on the first call and get plain JSON mode instead.
-- **Fallback chain.** A rate limit, outage or timeout moves to `LLM_FALLBACK_MODEL` instead of failing the film, so a 500-prospect batch survives a free tier's daily cap. A wrong model name or key fails once with a hint, rather than being retried.
+- **Fallback chain.** A rate limit, outage or timeout moves to the next model in `LLM_FALLBACK_MODEL` instead of failing the film, so a 500-prospect batch survives a free tier's limits. A name with a slash (`openai/gpt-oss-20b`) uses the same endpoint and key as the main model, with its own rate limit on Groq; a name without one (`qwen2.5:7b`) is a local Ollama model. A wrong model name or key fails once with a hint, rather than being retried.
+- **Small requests.** Groq's free tier allows 8,000 tokens a minute per model. coldopen asks gpt-oss for low reasoning effort, caps each reply, and sends only the latest draft back when it asks for a revision, so a film fits in that budget.
 
 ## Who it's for
 

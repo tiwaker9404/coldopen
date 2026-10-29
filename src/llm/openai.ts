@@ -11,13 +11,35 @@ export class OpenAICompatibleProvider implements LlmProvider {
   readonly #model: string
   readonly #apiKey: string
   readonly #timeoutMs: number
+  readonly #maxRateWaitMs: number
 
-  constructor(opts: { baseUrl: string; model: string; apiKey: string; timeoutMs: number }) {
+  constructor(opts: {
+    baseUrl: string
+    model: string
+    apiKey: string
+    timeoutMs: number
+    /**
+     * how long to wait out rate limits before giving up on this model. Short when there's a
+     * fallback to move to, long when this is the last option.
+     */
+    maxRateWaitMs?: number
+  }) {
     this.#baseUrl = opts.baseUrl.replace(/\/$/, '')
     this.#model = opts.model
     this.#apiKey = opts.apiKey
     this.#timeoutMs = opts.timeoutMs
+    this.#maxRateWaitMs = opts.maxRateWaitMs ?? 120_000
     this.name = `openai-compatible:${opts.model}`
+  }
+
+  /**
+   * Keeps each request small. Free tiers meter tokens per minute, and a reasoning model's
+   * thinking counts: gpt-oss at "low" effort writes a script in a fraction of the tokens,
+   * and a cap on the reply stops one request from reserving the whole minute.
+   */
+  #budget(): Record<string, unknown> {
+    if (!/^openai\/gpt-oss/i.test(this.#model)) return {}
+    return { reasoning_effort: 'low', include_reasoning: false, max_completion_tokens: 1500 }
   }
 
   /** set after the endpoint rejects a json_schema response_format once */
@@ -53,6 +75,7 @@ export class OpenAICompatibleProvider implements LlmProvider {
         model: this.#model,
         messages: req.messages,
         temperature: req.temperature ?? 0,
+        ...this.#budget(),
         ...this.#format(req, strict),
       }),
       signal,
@@ -67,11 +90,11 @@ export class OpenAICompatibleProvider implements LlmProvider {
         return this.complete(req, false, waited)
       }
       // free tiers cap tokens per minute and say how long to wait ("try again in 10.1s").
-      // Waiting that long beats failing the film; past two minutes in total, give up and let
-      // the fallback model (if any) take over.
+      // Waiting that long beats failing the film; past this model's wait budget, give up and
+      // let the fallback model (if any) take over.
       if (res.status === 429) {
         const wait = rateLimitWait(res.headers.get('retry-after'), body)
-        if (wait !== null && waited + wait <= 120_000) {
+        if (wait !== null && waited + wait <= this.#maxRateWaitMs) {
           await sleep(wait, req.signal)
           return this.complete(req, strict, waited + wait)
         }

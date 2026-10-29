@@ -25,8 +25,8 @@ const JOB_BRIEF = (title: string) =>
 export function buildMessages(kit: BrandKit, profile: Profile): ChatMessage[] {
   const facts = kit.facts
     .filter((f) => f.kind !== 'requirement')
-    .slice(0, 30)
-    .map((f) => `${f.id} [${f.kind}] ${f.text}`)
+    .slice(0, 24)
+    .map((f) => `${f.id} [${f.kind}] ${f.text.length > 220 ? `${f.text.slice(0, 220)}…` : f.text}`)
     .join('\n')
   const reqs = kit.facts.filter((f) => f.kind === 'requirement')
   const job = kit.job
@@ -101,7 +101,11 @@ export async function writeScript(opts: {
           replaced: [],
         },
       }
-    messages.push(
+    // only the latest draft and its problems go back: resending every round would grow each
+    // request past a free tier's tokens-per-minute limit
+    messages.splice(
+      2,
+      messages.length,
       { role: 'assistant', content: JSON.stringify(script) },
       {
         role: 'user',
