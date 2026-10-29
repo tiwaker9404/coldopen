@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { z } from 'zod'
@@ -7,7 +8,7 @@ import { withJob } from './job/kit.ts'
 import { isJobPage, JobPostSchema, jobFromText } from './job/post.ts'
 import { fetchJob } from './job/read.ts'
 import { LlmHttpError } from './llm/openai.ts'
-import { compose, FORMATS, type Format } from './render/composition.ts'
+import { compose, FORMATS, type Format, siteShot } from './render/composition.ts'
 import {
   concatSegments,
   frameRange,
@@ -237,13 +238,17 @@ export function createFilmAgent(opts: FilmAgentOptions) {
       ctx.progress({ stage: 'design', label: `Matching ${kit.name}'s brand` })
       const composed = await ctx.step('compose', async () => {
         const theme = await buildTheme(kit, profile)
-        const shot = await readFile(join(dir, kit.screenshot.file))
+        const site = siteShot(kit, board)
+        const shot = await readFile(join(dir, site.file)).catch(() =>
+          readFile(join(dir, kit.screenshot.file)),
+        )
         const html = compose({
           board,
           kit,
           theme,
           format,
           screenshotDataUrl: `data:image/jpeg;base64,${shot.toString('base64')}`,
+          shotBox: existsSync(join(dir, site.file)) ? site.box : kit.screenshot.headlineBox,
         })
         const file = join(dir, `composition-${format}.html`)
         await writeFile(file, html)

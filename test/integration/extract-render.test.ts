@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { contrast, parseColor } from '../../src/brand/color.ts'
 import { closeBrowser } from '../../src/browser.ts'
-import { compose, type Format } from '../../src/render/composition.ts'
+import { compose, type Format, siteShot } from '../../src/render/composition.ts'
 import {
   concatSegments,
   frameRange,
@@ -12,7 +12,7 @@ import {
   renderSegment,
 } from '../../src/render/render.ts'
 import { buildTheme } from '../../src/render/theme.ts'
-import { buildStoryboard } from '../../src/script/storyboard.ts'
+import { buildStoryboard, noticedFact } from '../../src/script/storyboard.ts'
 import { deterministicScript } from '../../src/script/writer.ts'
 import { fixtureServer, kitFor, profile, SITES, tmp } from '../helpers/index.ts'
 
@@ -67,6 +67,44 @@ describe.each(SITES)('brand extraction: %s', (site) => {
     expect(
       contrast(parseColor(kit.colors.text)!, parseColor(kit.colors.background)!),
     ).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+describe('pointing at what the film talks about', () => {
+  it('knows where each fact is, with a close-up of the ones below the fold', async () => {
+    const { kit, dir } = await kitFor('northwind')
+    const quote = kit.facts.find((f) => f.text.startsWith('"We stopped finding out'))!
+    expect(quote.box!.y).toBeGreaterThan(kit.screenshot.height)
+    expect(existsSync(join(dir, quote.shot!.file))).toBe(true)
+    // its box is where it sits in the close-up, inside the frame
+    expect(quote.shot!.box.y).toBeGreaterThan(0)
+    expect(quote.shot!.box.y + quote.shot!.box.h).toBeLessThan(kit.screenshot.height)
+    // facts from meta tags have no place on the page
+    expect(kit.facts.find((f) => f.kind === 'description')?.box).toBeUndefined()
+  })
+
+  it('shows the line the script mentions, not the headline', async () => {
+    const { kit } = await kitFor('northwind')
+    const script = deterministicScript(kit, profile('sales'))
+    const board = (noticed: string) =>
+      buildStoryboard(kit, profile('sales'), { ...script, noticed })
+
+    // a fact further down: its close-up, and its box there
+    const far = board('Northwind quotes a customer on late trucks')
+    expect(siteShot(kit, far).file).toMatch(/^site-f\d+\.jpg$/)
+    // a number decides it
+    const stat = board('Northwind says 1,400+ shippers track freight')
+    expect(noticedFact(kit, 'Northwind says 1,400+ shippers track freight')?.text).toMatch(
+      /^1,400\+/,
+    )
+    const shown = siteShot(kit, stat)
+    expect(shown.file).toBe('site.jpg')
+    expect(shown.box!.y).toBeGreaterThan(kit.screenshot.headlineBox!.y + 100)
+    // nothing it can point at: the headline
+    expect(siteShot(kit, board('Northwind sounds confident'))).toEqual({
+      file: 'site.jpg',
+      box: kit.screenshot.headlineBox,
+    })
   })
 })
 

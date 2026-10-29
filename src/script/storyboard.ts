@@ -3,7 +3,14 @@ import type { Profile, Script } from './types.ts'
 
 export type Scene =
   | { kind: 'hook'; dur: number; text: string; sub: string }
-  | { kind: 'site'; dur: number; caption: string; host: string }
+  | {
+      kind: 'site'
+      dur: number
+      caption: string
+      host: string
+      /** the fact the caption is about, to point at on the page (the headline when unknown) */
+      focus?: string
+    }
   | {
       kind: 'insight'
       dur: number
@@ -30,6 +37,45 @@ export function splitStat(text: string): { value: string; rest: string } | null 
   return { value: m[1]!, rest: m[2]!.replace(/\.$/, '') }
 }
 
+const SKIP = new Set(
+  'your their the and for with from that this what about homepage site page shows says leads opens'.split(
+    ' ',
+  ),
+)
+/** words that carry meaning, plural or not ("trucks" and "truck" match) */
+const contentWords = (t: string, skip: Set<string> = SKIP) =>
+  (t.toLowerCase().match(/[a-z][a-z'-]{3,}/g) ?? [])
+    .filter((w) => !skip.has(w))
+    .map((w) => w.replace(/(?<=[a-z]{3})s$/, ''))
+const numbers = (t: string) => (t.match(/\d[\d,.]*/g) ?? []).map((n) => n.replace(/[,.]/g, ''))
+
+/**
+ * Which fact on the page the "noticed" line is about, so the homepage scene can point at it.
+ * A number in the line decides it ("93,000 vendors"); otherwise the fact sharing the most
+ * words with it. Only facts the film can show (on the first screen, or with a close-up).
+ */
+export function noticedFact(kit: BrandKit, noticed: string) {
+  const showable = kit.facts.filter(
+    (f) => f.shot || (f.box && f.box.y + f.box.h <= kit.screenshot.height),
+  )
+  const nums = numbers(noticed).filter((n) => n.length > 0 && n !== '0')
+  if (nums.length) {
+    const hit = showable.find((f) => nums.some((n) => numbers(f.text).includes(n)))
+    if (hit) return hit
+  }
+  // their own name is in most lines, so it says nothing about which one
+  const skip = new Set([...SKIP, ...kit.name.toLowerCase().split(/\s+/)])
+  const words = new Set(contentWords(noticed, skip))
+  if (words.size === 0) return null
+  let best: { fact: (typeof showable)[number]; score: number } | null = null
+  for (const f of showable) {
+    const shared = new Set(contentWords(f.text, skip).filter((w) => words.has(w))).size
+    const score = shared / words.size
+    if (score >= 0.5 && (!best || score > best.score)) best = { fact: f, score }
+  }
+  return best?.fact ?? null
+}
+
 /**
  * Deterministic assembly. The model's lines go where they belong, and everything factual
  * comes straight from its source: the quote from the site, the proof from the profile.
@@ -48,7 +94,16 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
       text: script.hook.replace(/[.,]$/, ''),
       sub: kit.job ? `For your ${kit.job.title} role` : `A 30-second film for ${kit.name}`,
     },
-    { kind: 'site', dur: 5.2, caption: script.noticed.replace(/\.$/, ''), host: kit.host },
+    (() => {
+      const focus = noticedFact(kit, script.noticed)
+      return {
+        kind: 'site' as const,
+        dur: 5.2,
+        caption: script.noticed.replace(/\.$/, ''),
+        host: kit.host,
+        ...(focus ? { focus: focus.id } : {}),
+      }
+    })(),
     {
       kind: 'insight',
       dur: 5.4,

@@ -122,12 +122,32 @@ function sceneHtml(s: Scene, i: number, start: number, c: SceneCtx): string {
   }
 }
 
+/**
+ * The screenshot the homepage scene shows, and what it points at: the fact the "noticed"
+ * line is about when the film can show it, otherwise the headline.
+ */
+export function siteShot(
+  kit: BrandKit,
+  board: Storyboard,
+): { file: string; box: BrandKit['screenshot']['headlineBox'] } {
+  const site = board.scenes.find((s) => s.kind === 'site')
+  const fact =
+    site?.kind === 'site' && site.focus ? kit.facts.find((f) => f.id === site.focus) : null
+  if (fact?.box && fact.box.y + fact.box.h <= kit.screenshot.height)
+    return { file: kit.screenshot.file, box: fact.box }
+  if (fact?.shot) return { file: fact.shot.file, box: fact.shot.box }
+  return { file: kit.screenshot.file, box: kit.screenshot.headlineBox }
+}
+
 export function compose(opts: {
   board: Storyboard
   kit: BrandKit
   theme: FilmTheme
   format: Format
+  /** the image from siteShot() */
   screenshotDataUrl: string | null
+  /** what to point at in it; the headline when omitted */
+  shotBox?: BrandKit['screenshot']['headlineBox']
 }): string {
   const { board, kit, theme, format } = opts
   const { width, height } = FORMATS[format]
@@ -143,7 +163,7 @@ export function compose(opts: {
     t += s.dur
     return html
   })
-  const box = kit.screenshot.headlineBox
+  const box = opts.shotBox !== undefined ? opts.shotBox : kit.screenshot.headlineBox
   const timeline = {
     duration: board.duration,
     shot: { w: kit.screenshot.width, h: kit.screenshot.height, box },

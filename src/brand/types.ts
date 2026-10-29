@@ -15,11 +15,18 @@ export const FontRefSchema = z.object({
 })
 export type FontRef = z.infer<typeof FontRefSchema>
 
+const BoxSchema = z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() })
+export type Box = z.infer<typeof BoxSchema>
+
 export const FactSchema = z.object({
   id: z.string(),
   text: z.string(),
   /** "requirement": a line from the job post the film answers (only when one is given) */
   kind: z.enum(['headline', 'description', 'stat', 'quote', 'claim', 'requirement']),
+  /** where it sits on the page, in page pixels from the top (unknown for meta tags and posts) */
+  box: BoxSchema.optional(),
+  /** below the fold: a screenshot of the part of the page it's on, and its box in that image */
+  shot: z.object({ file: z.string(), box: BoxSchema }).optional(),
 })
 export type Fact = z.infer<typeof FactSchema>
 

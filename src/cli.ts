@@ -254,10 +254,14 @@ async function makeFilm(
   await mkdir(join(filmsDir, id), { recursive: true })
   const journal = join(filmsDir, id, '.journal.json')
   if (seed && !existsSync(journal)) {
-    await copyFile(
-      join(filmsDir, '.research', slugFor(url, 'site'), seed.screenshot.file),
-      join(filmsDir, id, seed.screenshot.file),
-    )
+    // the page screenshot, and the close-ups of facts further down
+    for (const file of [
+      seed.screenshot.file,
+      ...seed.facts.flatMap((f) => (f.shot ? [f.shot.file] : [])),
+    ]) {
+      const from = join(filmsDir, '.research', slugFor(url, 'site'), file)
+      if (existsSync(from)) await copyFile(from, join(filmsDir, id, file))
+    }
     await writeFile(join(filmsDir, id, 'kit.json'), JSON.stringify(seed, null, 2))
     await writeFile(journal, JSON.stringify({ research: seed }))
   }

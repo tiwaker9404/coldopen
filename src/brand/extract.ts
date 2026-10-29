@@ -8,7 +8,7 @@ import { isStat, quotable, tidy } from './text.ts'
 
 export { isStat, quotable, tidy }
 
-import type { BrandKit, Fact, FontRef } from './types.ts'
+import type { Box, BrandKit, Fact, FontRef } from './types.ts'
 
 /**
  * Brand + research extraction from a live website.
@@ -38,7 +38,7 @@ interface RawPage {
   headlineBox: { x: number; y: number; w: number; h: number } | null
   subheads: string[]
   nav: string[]
-  blocks: { text: string; tag: string }[]
+  blocks: { text: string; tag: string; ref: number; box: Box | null }[]
   backgrounds: [string, number][]
   texts: [string, number][]
   brand: [string, number][]
@@ -115,6 +115,9 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
       clip: { x: 0, y: 0, ...VIEWPORT },
     })
     const logo = await captureLogo(page)
+    const refs = new Map<string, number>()
+    const facts = buildFacts(raw, refs)
+    await captureCloseUps(page, refs, facts, opts.outDir)
 
     const name = pickName(raw, host)
     const colors = derivePalette({
@@ -135,7 +138,7 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
       headline: raw.headline,
       subheads: raw.subheads,
       nav: raw.nav,
-      facts: buildFacts(raw),
+      facts,
       colors,
       fonts: {
         display: fontRef(raw.headlineFont, raw.faces, finalUrl),
@@ -150,6 +153,69 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
   } finally {
     await context.close().catch(() => {})
   }
+}
+
+/** How many below-the-fold facts get their own screenshot (each takes about half a second). */
+const CLOSE_UPS = 5
+
+/**
+ * The film's homepage scene can only point at what's in a screenshot. The first screenshot
+ * is the top of the page; for the strongest facts further down, take one centered on them,
+ * so "your homepage shows 93,000 vendors" can show exactly that line.
+ */
+async function captureCloseUps(
+  page: Page,
+  refs: Map<string, number>,
+  facts: Fact[],
+  outDir: string,
+) {
+  const below = facts.filter(
+    (f) => f.box && f.box.y + f.box.h > VIEWPORT.height && f.box.h < VIEWPORT.height * 0.6,
+  )
+  // stats first, then claims: the facts a script is most likely to point at. Sentences from
+  // one block share a close-up.
+  const order = (f: Fact) => (f.kind === 'stat' ? 0 : f.kind === 'quote' ? 1 : 2)
+  const blocks = new Map<number, Fact[]>()
+  for (const f of below.sort((a, b) => order(a) - order(b))) {
+    const ref = refs.get(f.id)
+    if (ref === undefined) continue
+    blocks.set(ref, [...(blocks.get(ref) ?? []), f])
+  }
+  for (const [ref, group] of [...blocks].slice(0, CLOSE_UPS)) {
+    try {
+      const at = (await page.evaluate(
+        (ref: number, vh: number) => {
+          const el = document.querySelector(`[data-coldopen-ref="${ref}"]`)
+          if (!el) return null
+          const before = el.getBoundingClientRect()
+          const top = Math.max(0, before.top + window.scrollY - (vh - before.height) / 2)
+          window.scrollTo(0, top)
+          return { top: window.scrollY }
+        },
+        ref,
+        VIEWPORT.height,
+      )) as { top: number } | null
+      if (!at) continue
+      // lazy images and scroll-in animations need a moment
+      await new Promise((r) => setTimeout(r, 650))
+      const box = (await page.evaluate((ref: number) => {
+        const r = document.querySelector(`[data-coldopen-ref="${ref}"]`)!.getBoundingClientRect()
+        return { x: r.left, y: r.top, w: r.width, h: r.height, scrollY: window.scrollY }
+      }, ref)) as Box & { scrollY: number }
+      if (box.y < 0 || box.y + box.h > VIEWPORT.height || box.w < 4) continue
+      const file = `site-${group[0]!.id}.jpg`
+      await page.screenshot({
+        path: join(outDir, file),
+        type: 'jpeg',
+        quality: 85,
+        clip: { x: 0, y: box.scrollY, ...VIEWPORT },
+      })
+      for (const f of group) f.shot = { file, box: { x: box.x, y: box.y, w: box.w, h: box.h } }
+    } catch {
+      // a close-up is a nicety; the film falls back to the top of the page
+    }
+  }
+  await page.evaluate(() => window.scrollTo(0, 0))
 }
 
 /**
@@ -301,10 +367,11 @@ function mergeFaces(
   return out
 }
 
-function buildFacts(raw: RawPage): Fact[] {
+/** @param refs  filled with each fact's page block, to find it again for a close-up */
+function buildFacts(raw: RawPage, refs?: Map<string, number>): Fact[] {
   const facts: Fact[] = []
   const seen = new Set<string>()
-  const push = (text: string, kind: Fact['kind']) => {
+  const push = (text: string, kind: Fact['kind'], box?: Box | null, ref?: number) => {
     const t = tidy(text)
     if (!quotable(t)) return
     if (kind === 'stat' && !isStat(t)) kind = 'claim'
@@ -315,9 +382,11 @@ function buildFacts(raw: RawPage): Fact[] {
     // skip boilerplate
     if (/cookie|privacy policy|all rights reserved|©|subscribe to our newsletter/i.test(t)) return
     seen.add(key)
-    facts.push({ id: `f${facts.length + 1}`, text: t, kind })
+    const id = `f${facts.length + 1}`
+    if (ref !== undefined) refs?.set(id, ref)
+    facts.push({ id, text: t, kind, ...(box ? { box } : {}) })
   }
-  if (raw.headline) push(raw.headline, 'headline')
+  if (raw.headline) push(raw.headline, 'headline', raw.headlineBox)
   if (raw.description) push(raw.description, 'description')
   // stat tiles first: they are the most quotable facts on a page
   const ordered = [
@@ -328,7 +397,7 @@ function buildFacts(raw: RawPage): Fact[] {
     const quote = b.tag === 'blockquote' || /^["“]/.test(b.text)
     const sentences = quote ? [b.text] : b.text.split(/(?<=[.!?])\s+(?=[A-Z0-9])/)
     for (const sentence of sentences) {
-      push(sentence, quote ? 'quote' : isStat(sentence) ? 'stat' : 'claim')
+      push(sentence, quote ? 'quote' : isStat(sentence) ? 'stat' : 'claim', b.box, b.ref)
     }
     if (facts.length >= 40) break
   }
@@ -525,7 +594,18 @@ function readPage(): RawPage {
     .map(text)
     .filter((t) => t.length > 1 && t.length < 30)
     .slice(0, 12)
-  const blocks: { text: string; tag: string }[] = []
+  const blocks: { text: string; tag: string; ref: number; box: Box | null }[] = []
+  // where a block sits on the page, and a mark to find it again for a close-up screenshot
+  const place = (el: Element) => {
+    const ref = blocks.length
+    el.setAttribute('data-coldopen-ref', String(ref))
+    const r = el.getBoundingClientRect()
+    const box =
+      r.width > 4 && r.height > 4
+        ? { x: r.left + window.scrollX, y: r.top + window.scrollY, w: r.width, h: r.height }
+        : null
+    return { ref, box }
+  }
   const seenBlocks = new Set<Element>()
   for (const el of document.querySelectorAll(
     'main p, main li, main blockquote, p, li, blockquote, h2, h3, [class*=stat i], [class*=metric i], footer',
@@ -535,7 +615,8 @@ function readPage(): RawPage {
     if (el.querySelector('p, li, blockquote, h2, h3')) continue
     seenBlocks.add(el)
     const t = text(el)
-    if (t.length >= 12 && t.length <= 600) blocks.push({ text: t, tag: el.tagName.toLowerCase() })
+    if (t.length >= 12 && t.length <= 600)
+      blocks.push({ text: t, tag: el.tagName.toLowerCase(), ...place(el) })
     if (blocks.length > 80) break
   }
   // stat tiles: short blocks containing a number, often divs
@@ -551,7 +632,7 @@ function readPage(): RawPage {
       el.querySelector('b, strong, em, [class*=num i]') &&
       !blocks.some((b) => b.text === t)
     ) {
-      blocks.push({ text: t, tag: 'stat' })
+      blocks.push({ text: t, tag: 'stat', ...place(el) })
     }
   }
 
