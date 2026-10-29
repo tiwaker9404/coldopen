@@ -20,6 +20,7 @@ import { recordBeacon, type ViewRow, type ViewStore, type ViewSummary } from '..
 export interface KV {
   get(key: string, type: 'arrayBuffer'): Promise<ArrayBuffer | null>
   get(key: string, type: 'json'): Promise<unknown>
+  get(key: string, type: 'text'): Promise<string | null>
   put(key: string, value: ArrayBuffer | string, opts?: { expirationTtl?: number }): Promise<void>
   delete(key: string): Promise<void>
   list(opts: {
@@ -42,6 +43,8 @@ export interface Env {
   SHARE_TOKEN: string
   VIEW_SALT?: string
   NOTIFY_WEBHOOK_URL?: string
+  /** where "Made with coldopen" on share pages points, e.g. the hosted app */
+  APP_URL?: string
 }
 interface Ctx {
   waitUntil(p: Promise<unknown>): void
@@ -252,6 +255,29 @@ const EMPTY: ViewSummary = {
   lastSeen: null,
 }
 
+/* ------------------------------------------------------------------------- stats */
+/** films ever published, kept as a running total so expired visitor films still count */
+const MADE = 'stats:made'
+
+async function recount(env: Env): Promise<number> {
+  let n = 0
+  let cursor: string | undefined
+  do {
+    const page = await env.FILMS.list({ prefix: 'meta:', ...(cursor ? { cursor } : {}) })
+    n += page.keys.length
+    cursor = page.list_complete ? undefined : page.cursor
+  } while (cursor)
+  await env.FILMS.put(MADE, String(n))
+  return n
+}
+
+async function countFilm(env: Env): Promise<void> {
+  const saved = await env.FILMS.get(MADE, 'text')
+  // the first count since this was added: start from the films already there
+  if (saved === null) await recount(env)
+  else await env.FILMS.put(MADE, String(Number(saved) + 1))
+}
+
 /* ------------------------------------------------------------------------ router */
 export async function handle(req: Request, env: Env, ctx: Ctx): Promise<Response> {
   const url = new URL(req.url)
@@ -269,7 +295,7 @@ export async function handle(req: Request, env: Env, ctx: Ctx): Promise<Response
           '<!doctype html><title>Not found</title><p>This film does not exist or was taken down.</p>',
           { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } },
         )
-      return new Response(sharePage(view, link, `${link}/v`), {
+      return new Response(sharePage(view, link, `${link}/v`, env.APP_URL || undefined), {
         headers: {
           'content-type': 'text/html; charset=utf-8',
           'cache-control': 'no-store',
@@ -309,6 +335,25 @@ export async function handle(req: Request, env: Env, ctx: Ctx): Promise<Response
       return new Response(null, { status: 204 })
     }
     return err(405, 'method not allowed')
+  }
+
+  // public: totals for the landing page's counter
+  if (url.pathname === '/stats' && req.method === 'GET') {
+    const saved = await env.FILMS.get(MADE, 'text')
+    const made = saved === null ? await recount(env) : Number(saved)
+    const row = await env.VIEWS.prepare(
+      'select coalesce(sum(played), 0) as plays, coalesce(sum(finished), 0) as finishes from film_views',
+    ).first<{ plays: number; finishes: number }>()
+    return new Response(
+      JSON.stringify({ films: made, plays: row?.plays ?? 0, finishes: row?.finishes ?? 0 }),
+      {
+        headers: {
+          'content-type': 'application/json',
+          'access-control-allow-origin': '*',
+          'cache-control': 'public, max-age=300',
+        },
+      },
+    )
   }
 
   // private: uploads and stats
@@ -358,7 +403,9 @@ export async function handle(req: Request, env: Env, ctx: Ctx): Promise<Response
             400,
             'expected the page details: company, from, firstName, ctaLine, contact, film, format',
           )
+        const fresh = (await env.FILMS.get(metaKey(id), 'json')) === null
         await env.FILMS.put(metaKey(id), JSON.stringify(view), ttl)
+        if (fresh) ctx.waitUntil(countFilm(env))
         return json({ id, link: `${origin}/f/${id}` })
       }
       if (parts.length === 4 && parts[3] === 'views' && req.method === 'GET') {

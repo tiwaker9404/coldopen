@@ -897,7 +897,12 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       }
       reply.type('text/html; charset=utf-8')
       const link = `${publicUrl.replace(/\/$/, '')}/f/${run.id}`
-      return sharePage(viewFromRun(run.input, run.output), link, `${link}/v`)
+      return sharePage(
+        viewFromRun(run.input, run.output),
+        link,
+        `${link}/v`,
+        cfg.HOSTED ? publicUrl : undefined,
+      )
     },
   )
 

@@ -122,6 +122,8 @@ if (!hasToken || rotate) {
 }
 if (process.env.NOTIFY_WEBHOOK_URL)
   wrangler(['secret', 'put', 'NOTIFY_WEBHOOK_URL'], process.env.NOTIFY_WEBHOOK_URL)
+// where "Made with coldopen" on share pages points (your hosted app); kept across deploys
+if (process.env.APP_URL) wrangler(['secret', 'put', 'APP_URL'], process.env.APP_URL)
 
 say('Done.')
 const base = url ?? 'https://coldopen-share.<your-subdomain>.workers.dev'

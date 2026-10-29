@@ -9,9 +9,10 @@ const ttls = new Map<string, number>()
 function memoryKv(): KV {
   const m = new Map<string, ArrayBuffer | string>()
   return {
-    get: (async (key: string, type: 'arrayBuffer' | 'json') => {
+    get: (async (key: string, type: 'arrayBuffer' | 'json' | 'text') => {
       const v = m.get(key)
       if (v === undefined) return null
+      if (type === 'text') return typeof v === 'string' ? v : new TextDecoder().decode(v)
       if (type === 'json')
         return JSON.parse(typeof v === 'string' ? v : new TextDecoder().decode(v))
       return typeof v === 'string' ? new TextEncoder().encode(v).buffer : v
@@ -173,6 +174,36 @@ describe('share worker', () => {
     expect(Object.keys(r.views)).toEqual([ID, 'other-film-1'])
     expect(r.views[ID].plays).toBe(1)
     expect(r.views['other-film-1'].plays).toBe(0)
+  })
+
+  it('says "Made with coldopen" and counts films made, publicly', async () => {
+    await upload()
+    const page = await (await call(`/f/${ID}`)).text()
+    expect(page).toContain('href="https://github.com/tiwaker9404/coldopen?ref=share"')
+    env.APP_URL = 'https://coldopen.example'
+    expect(await (await call(`/f/${ID}`)).text()).toContain(
+      'href="https://coldopen.example/?ref=share">Made with coldopen',
+    )
+
+    await call(`/f/${ID}/v`, {
+      method: 'POST',
+      headers: { 'user-agent': CHROME, 'cf-connecting-ip': '198.51.100.7' },
+      body: JSON.stringify({ s: 'sess-aaaaaaaa', e: 'end', t: 30, d: 30 }),
+    })
+    await Promise.all(waits.splice(0))
+    const stats = await call('/stats')
+    expect(stats.headers.get('access-control-allow-origin')).toBe('*')
+    expect(await stats.json()).toEqual({ films: 1, plays: 1, finishes: 1 })
+
+    // publishing the same film again isn't another film; a new one is
+    await upload()
+    await call('/api/films/other-film-1', {
+      method: 'PUT',
+      headers: auth,
+      body: JSON.stringify(view),
+    })
+    await Promise.all(waits.splice(0))
+    expect((await (await call('/stats')).json()).films).toBe(2)
   })
 
   it('takes a link down, views and all', async () => {

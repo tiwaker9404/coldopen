@@ -44,6 +44,7 @@ a{color:inherit}
 .btn.ghost{background:transparent}
 .btn:focus-visible,.film button:focus-visible{outline:3px solid var(--tally);outline-offset:3px}
 .small{font-size:14px;color:var(--muted);margin-top:16px}
+.small.count{margin-top:6px;color:var(--ink);font-weight:600}
 .reel{border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.18);aspect-ratio:4/5;background:#000}
 .reel video{width:100%;height:100%;display:block;object-fit:cover}
 
@@ -125,12 +126,13 @@ footer{border-top:1px solid var(--rule);padding:32px 0 48px;color:var(--muted);f
     <div class="hero">
       <div>
         <h1 class="display">Paste a company’s website. Get a <em>30&#8209;second film</em> made for them.</h1>
-        <p class="lede">In their fonts, their colors and their logo, quoting their own homepage. Then your proof, and one clear ask.</p>
+        <p class="lede">In their fonts, their colors and their logo. Paste a job link and it answers the post with your proof, then drafts the email.</p>
         <div class="ctas">
-          <a class="btn primary" href="https://github.com/tiwaker9404/coldopen">Get it on GitHub</a>
-          <a class="btn ghost" href="#films">Watch the films</a>
+          <a class="btn primary" href="https://coldopen-nk8o.onrender.com/?ref=site">Make one free</a>
+          <a class="btn ghost" href="https://github.com/tiwaker9404/coldopen">Get it on GitHub</a>
         </div>
-        <p class="small">Open source (MIT). Runs free on your own laptop. About 50 seconds per film.</p>
+        <p class="small">Free, no account to try. Open source (MIT), and runs on your own laptop too.</p>
+        <p class="small count" id="count" hidden></p>
       </div>
       <div class="reel">
         <video src="media/reel.mp4" poster="media/reel.jpg" autoplay muted loop playsinline aria-label="The coldopen launch reel"></video>
@@ -222,6 +224,18 @@ pnpm film https://acme.com -p me.json</code></pre>
   </footer>
 </div>
 <script>
+// the live counter: films made with the hosted app and how often they were watched
+fetch('https://coldopen-share.tiwaker9404.workers.dev/stats')
+  .then((r) => (r.ok ? r.json() : null))
+  .then((s) => {
+    if (!s || s.films < 10) return // a counter only helps once there's something to count
+    const n = (x) => x.toLocaleString('en-US')
+    const el = document.getElementById('count')
+    el.textContent = `${n(s.films)} films made so far, watched ${n(s.plays)} times.`
+    el.hidden = false
+  })
+  .catch(() => {})
+
 // swap a poster for its film on click; one film plays at a time
 document.querySelectorAll('.film button').forEach((b) => {
   b.addEventListener('click', () => {

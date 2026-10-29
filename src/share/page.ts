@@ -90,8 +90,16 @@ addEventListener('pagehide',()=>{if(played)send('progress')});})()</script>`
 /**
  * @param url    the page's own public URL; files are served under it
  * @param track  where the page reports views (omit to serve a page without tracking)
+ * @param app    where "Made with coldopen" points: the hosted app, or the project
  */
-export function sharePage(v: ShareView, url: string, track?: string): string {
+export function sharePage(
+  v: ShareView,
+  url: string,
+  track?: string,
+  app = 'https://github.com/tiwaker9404/coldopen',
+): string {
+  const made = new URL(app)
+  made.searchParams.set('ref', 'share')
   const title = `A 30-second film for ${v.company}`
   const [w, h] = FORMAT_SIZE[v.format]
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -116,9 +124,12 @@ h1{font-size:20px;font-weight:650;margin:20px 0 2px}p{margin:0;color:var(--muted
 .row{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:4px}
 a.cta{display:inline-block;background:var(--fg);color:var(--bg);text-decoration:none;font-weight:600;padding:12px 20px;border-radius:10px}
 a.cta:focus-visible{outline:3px solid #3f6fd8;outline-offset:3px}
+footer{margin-top:40px;font-size:13px;color:var(--muted);text-align:center}
+footer a{color:inherit}
 </style></head><body><main>
 <video src="${url}/${v.film}" poster="${url}/poster.jpg" controls playsinline preload="metadata" width="${w}" height="${h}"></video>
 <div class="row"><div><h1>${esc(v.ctaLine)}</h1><p>From ${esc(v.from)}, made for ${esc(v.company)}</p></div>
 <a class="cta" href="${esc(contactHref(v.contact))}">Reply to ${esc(v.firstName)}</a></div>
+<footer><a href="${esc(made.toString())}">Made with coldopen</a>. Make one for a company you'd like to work with.</footer>
 </main>${track ? trackingScript(track) : ''}</body></html>`
 }
