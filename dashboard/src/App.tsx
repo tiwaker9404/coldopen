@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { AccountBar, FirstRun, FramedNotice, PrivacyNote } from './Account.tsx'
 import {
   ApiError,
   api,
   apiKey,
   type Film,
   type Format,
+  type Me,
   type Profile,
   send,
   setApiKey,
@@ -35,6 +37,11 @@ export function App() {
   const [jobOn, setJobOn] = useState(false)
   const [job, setJob] = useState('')
 
+  const me = useQuery({ queryKey: ['me'], queryFn: () => api<Me>('/v1/me') })
+  const hosted = me.data?.hosted ?? false
+  const visitor = hosted && !me.data?.user
+  // a failed GitHub sign-in comes back as ?signin=<why>
+  const [signinError] = useState(() => new URLSearchParams(window.location.search).get('signin'))
   const profiles = useQuery({
     queryKey: ['profiles'],
     queryFn: () => api<{ data: Profile[] }>('/v1/profiles'),
@@ -82,6 +89,7 @@ export function App() {
     onSuccess: (r) => {
       setText('')
       setJob('')
+      void qc.invalidateQueries({ queryKey: ['me'] })
       if (r.film) setOpen(r.film.id)
       if (r.batch) setLastBatch(r.batch)
       void qc.invalidateQueries({ queryKey: ['films'] })
@@ -103,9 +111,15 @@ export function App() {
           <span className="wordmark">coldopen</span>
         </div>
         <p className="tagline">Paste a company's website. Get a 30-second film made for them.</p>
+        {hosted && me.data && <AccountBar me={me.data} />}
       </header>
 
-      {unauthorized && <KeyForm />}
+      {hosted && <FramedNotice />}
+      {signinError && <p className="error">Sign-in didn't work: {signinError}</p>}
+      {unauthorized && !hosted && <KeyForm />}
+      {hosted && list.length === 0 && (
+        <FirstRun hasProfile={!noProfiles} onStart={() => setEditing('new')} />
+      )}
 
       <section className="composer" aria-label="Make a film">
         <form
@@ -146,9 +160,11 @@ export function App() {
             </button>
           </div>
           <div className="options">
-            <button type="button" className="text" onClick={() => setMany(!many)}>
-              {many ? 'One company' : 'A list of companies'}
-            </button>
+            {!visitor && (
+              <button type="button" className="text" onClick={() => setMany(!many)}>
+                {many ? 'One company' : 'A list of companies'}
+              </button>
+            )}
             {!many && (
               <button
                 type="button"
@@ -159,23 +175,25 @@ export function App() {
                 {jobOn ? 'No job post' : 'Answer a job post'}
               </button>
             )}
-            <label className="select">
-              <span>From</span>
-              <select
-                value={profileId}
-                onChange={(e) => {
-                  setProfileId(e.target.value)
-                  setPicks([])
-                }}
-                disabled={!profiles.data?.data.length}
-              >
-                {profiles.data?.data.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!noProfiles && (
+              <label className="select">
+                <span>From</span>
+                <select
+                  value={profileId}
+                  onChange={(e) => {
+                    setProfileId(e.target.value)
+                    setPicks([])
+                  }}
+                  disabled={!profiles.data?.data.length}
+                >
+                  {profiles.data?.data.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <button
               type="button"
               className="text"
@@ -245,11 +263,12 @@ export function App() {
             </fieldset>
           )}
           {make.error && <p className="error">{make.error.message}</p>}
-          {noProfiles && (
+          {noProfiles && !hosted && (
             <p className="hint">
               First, tell coldopen who the films are from and what you offer. It takes a minute.
             </p>
           )}
+          {me.data && <PrivacyNote me={me.data} />}
           {lastBatch && (
             <p className="hint">
               {lastBatch.count} films queued.{' '}
@@ -266,7 +285,8 @@ export function App() {
       </section>
 
       <main>
-        {list.length === 0 && !films.isLoading ? (
+        {list.length === 0 && !films.isLoading && hosted ? null : list.length === 0 &&
+          !films.isLoading ? (
           <div className="empty">
             <h2>No films yet</h2>
             <p>

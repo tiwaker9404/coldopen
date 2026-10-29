@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path'
 import fastifyStatic from '@fastify/static'
 import fastifySwagger from '@fastify/swagger'
 import fastifySwaggerUi from '@fastify/swagger-ui'
-import Fastify, { LogController } from 'fastify'
+import Fastify, { type FastifyReply, type FastifyRequest, LogController } from 'fastify'
 import {
   jsonSchemaTransform,
   serializerCompiler,
@@ -32,10 +32,24 @@ import {
   retryRun,
 } from '../runtime/store.ts'
 import { ProfileSchema } from '../script/types.ts'
+import { oneFilmViews, shareViews, unshare } from '../share/client.ts'
 import { sharePage, viewFromRun } from '../share/page.ts'
 import { filmViews, NO_VIEWS, pgViewStore, viewSummaries } from '../share/pg.ts'
 import { recordBeacon, type ViewSummary } from '../share/views.ts'
 import { type SlackClient, urlFromMention, verifySlackSignature } from '../slack.ts'
+import {
+  consume,
+  filmLimit,
+  githubCallback,
+  githubStart,
+  hostedOwner,
+  networkKey,
+  type Owner,
+  readSession,
+  refund,
+  signOut,
+  used,
+} from './accounts.ts'
 
 const FILE_NAMES =
   /^(film-(square|landscape|portrait)\.mp4|poster\.jpg|preview\.gif|contact-sheet\.jpg|site\.jpg|kit\.json|storyboard\.json)$/
@@ -50,7 +64,8 @@ interface FilmRow extends Run {
 
 function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
   const out = r.output
-  const base = `/v1/films/${r.id}/files`
+  // on the hosted app, finished films live on the share worker and outlive restarts
+  const base = out?.shared ? out.shared.link : `/v1/films/${r.id}/files`
   return {
     id: r.id,
     status: r.status,
@@ -76,7 +91,7 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
           sheet: `${base}/contact-sheet.jpg`,
         }
       : null,
-    share: out ? `${publicUrl.replace(/\/$/, '')}/f/${r.id}` : null,
+    share: out ? (out.shared?.link ?? `${publicUrl.replace(/\/$/, '')}/f/${r.id}`) : null,
     /** the job post this film answers */
     job:
       out?.job ??
@@ -102,6 +117,10 @@ export interface ApiDeps {
 export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
   const filmsDir = resolve(cfg.FILMS_DIR)
   const publicUrl = cfg.PUBLIC_URL
+  const share =
+    cfg.SHARE_URL && cfg.SHARE_TOKEN
+      ? { url: cfg.SHARE_URL.replace(/\/$/, ''), token: cfg.SHARE_TOKEN }
+      : null
   const app = Fastify({
     loggerInstance: log,
     logController: new LogController({
@@ -168,27 +187,191 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
   })
 
   /* ------------------------------------------------------------------ auth */
+  // A private install: API keys (or nothing, locally), one owner. The hosted app: an API key is
+  // the operator; everyone else is a signed-in GitHub user or a visitor trying it out.
   const keys = cfg.API_KEYS.map(digest)
-  if (keys.length === 0) app.log.warn('API_KEYS is empty: the API is UNAUTHENTICATED (local mode)')
+  if (keys.length === 0 && !cfg.HOSTED)
+    app.log.warn('API_KEYS is empty: the API is UNAUTHENTICATED (local mode)')
+  app.decorateRequest('owner', 'team')
   app.addHook('onRequest', async (req, reply) => {
-    if (!req.url.startsWith('/v1/') || keys.length === 0) return
+    if (!req.url.startsWith('/v1/')) return
     const h = req.headers.authorization ?? ''
     const token = h.startsWith('Bearer ') ? h.slice(7) : ''
-    const d = digest(token)
-    if (!token || !keys.some((k) => timingSafeEqual(k, d))) {
-      return reply
-        .status(401)
-        .send({ error: { code: 'unauthorized', message: 'missing or invalid API key' } })
+    const keyOk = !!token && keys.some((k) => timingSafeEqual(k, digest(token)))
+    if (keyOk) {
+      req.owner = 'team'
+      return
     }
+    if (cfg.HOSTED) {
+      req.owner = hostedOwner(cfg, req, reply)
+      return
+    }
+    if (keys.length === 0) return
+    return reply
+      .status(401)
+      .send({ error: { code: 'unauthorized', message: 'missing or invalid API key' } })
   })
+  const notFound = (reply: FastifyReply) =>
+    reply.status(404).send({ error: { code: 'not_found', message: 'film not found' } })
+  /** a film the asker owns, or undefined */
+  const ownFilm = async (id: string, owner: Owner) => {
+    const run = (await getRun(sql, id)) as FilmRow | undefined
+    return run?.agent === 'film' && (run.owner ?? 'team') === owner ? run : undefined
+  }
+  const limited = (reply: FastifyReply, message: string) =>
+    reply.status(429).send({ error: { code: 'daily_limit', message } })
+
+  /**
+   * Takes n films from today's allowances: the person's, their network's (so clearing cookies
+   * doesn't reset it) and the whole app's (which keeps the free model tier from running dry).
+   * Returns why not, or null; nothing is taken when the answer is no.
+   */
+  async function takeFilms(req: FastifyRequest, n: number): Promise<string | null> {
+    const checks: [string, number, string][] = [
+      [
+        `films:${req.owner}`,
+        filmLimit(cfg, req.owner),
+        req.owner.startsWith('u:')
+          ? `That's your ${cfg.USER_DAILY_FILMS} films for today. Come back tomorrow for more.`
+          : `That's your free film for today. Sign in with GitHub to make ${cfg.USER_DAILY_FILMS} a day.`,
+      ],
+      [
+        `net:${networkKey(cfg, req.ip)}`,
+        cfg.IP_DAILY_FILMS,
+        'This network has made a lot of films today. Try again tomorrow.',
+      ],
+      [
+        'global',
+        cfg.GLOBAL_DAILY_FILMS,
+        'coldopen has made all the films it can today. Try again tomorrow, or run it yourself for free (it is open source).',
+      ],
+    ]
+    const taken: string[] = []
+    for (const [key, limit, why] of checks) {
+      let ok = true
+      for (let i = 0; i < n; i++) {
+        taken.push(key)
+        if (!(await consume(sql, key, limit))) ok = false
+      }
+      if (!ok) {
+        for (const k of taken) await refund(sql, k)
+        return why
+      }
+    }
+    return null
+  }
+
+  /** View counts: from the share worker when films are published there, else from Postgres. */
+  async function summariesFor(runs: FilmRow[]): Promise<Map<string, ViewSummary>> {
+    const shared = runs.filter((r) => r.output?.shared)
+    const local = runs.filter((r) => !r.output?.shared).map((r) => r.id)
+    const out = await viewSummaries(sql, local)
+    if (shared.length && share) {
+      try {
+        const remote = await shareViews(
+          share,
+          shared.map((r) => r.output!.shared!.id),
+        )
+        for (const r of shared) {
+          const v = remote.get(r.output!.shared!.id)
+          if (v) out.set(r.id, v)
+        }
+      } catch (err) {
+        app.log.warn({ err }, 'could not read views from the share worker')
+      }
+    }
+    return out
+  }
+  /** on the hosted app, a visitor's share links last 7 days and an account's 30 */
+  const keep = (owner: Owner) =>
+    cfg.HOSTED && owner !== 'team' ? { keepDays: owner.startsWith('u:') ? 30 : 7 } : {}
+  const unshareFilm = (id: string) => (share ? unshare(share, id) : Promise.resolve())
+
+  /* --------------------------------------------------------------- accounts */
+  if (cfg.HOSTED) {
+    app.get('/auth/github', { schema: { hide: true } }, async (_req, reply) => {
+      if (!cfg.GITHUB_CLIENT_ID)
+        return reply
+          .status(404)
+          .send({ error: { code: 'not_configured', message: 'sign-in is off' } })
+      return githubStart(cfg, reply)
+    })
+    app.get(
+      '/auth/github/callback',
+      {
+        schema: {
+          hide: true,
+          querystring: z.object({ code: z.string().optional(), state: z.string().optional() }),
+        },
+      },
+      async (req, reply) => {
+        try {
+          await githubCallback(cfg, sql, req, reply)
+          return reply.redirect('/')
+        } catch (err) {
+          app.log.warn({ err }, 'github sign-in failed')
+          return reply.redirect(`/?signin=${encodeURIComponent((err as Error).message)}`)
+        }
+      },
+    )
+    app.post('/auth/logout', { schema: { hide: true } }, async (_req, reply) => {
+      signOut(cfg, reply)
+      return reply.status(204).send()
+    })
+  }
+
+  app.get(
+    '/v1/me',
+    { schema: { tags: ['account'], summary: 'Who you are, and what you have left today' } },
+    async (req) => {
+      const s = cfg.HOSTED ? readSession(cfg, req) : null
+      const limit = cfg.HOSTED ? filmLimit(cfg, req.owner) : null
+      return {
+        hosted: cfg.HOSTED,
+        signIn: cfg.HOSTED && !!cfg.GITHUB_CLIENT_ID,
+        user: s ? { login: s.login, name: s.name, avatar: s.avatar } : null,
+        films: limit === null ? null : { used: await used(sql, `films:${req.owner}`), limit },
+        // a visitor's work is kept 7 days; an account's, 30
+        keepsDays: cfg.HOSTED ? (s ? 30 : 7) : null,
+      }
+    },
+  )
+
+  app.delete(
+    '/v1/me',
+    {
+      schema: {
+        tags: ['account'],
+        summary: 'Delete everything you made: profiles, films, share links and their views',
+      },
+    },
+    async (req, reply) => {
+      if (req.owner === 'team')
+        return reply
+          .status(400)
+          .send({ error: { code: 'bad_request', message: 'not on a private install' } })
+      const films = await sql<{ id: string; output: FilmResult | null }[]>`
+        select id, output from runs where owner = ${req.owner} and agent = 'film'`
+      await Promise.all(
+        films
+          .filter((f) => f.output?.shared)
+          .map((f) => unshareFilm(f.output!.shared!.id).catch(() => {})),
+      )
+      await sql`delete from runs where owner = ${req.owner}`
+      await sql`delete from profiles where owner = ${req.owner}`
+      if (req.owner.startsWith('u:')) await sql`delete from users where id = ${req.owner.slice(2)}`
+      signOut(cfg, reply)
+      return { deleted: { films: films.length } }
+    },
+  )
 
   /* -------------------------------------------------------------- profiles */
   app.get(
     '/v1/profiles',
     { schema: { tags: ['profiles'], summary: 'List sender profiles' } },
-    async () => {
+    async (req) => {
       const rows = await sql<{ id: string; name: string; data: unknown; updatedAt: Date }[]>`
-      select id, name, data, updated_at from profiles order by updated_at desc`
+      select id, name, data, updated_at from profiles where owner = ${req.owner} order by updated_at desc`
       return { data: rows }
     },
   )
@@ -205,8 +388,8 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     },
     async (req) => {
       const [row] = await sql`
-        insert into profiles (id, name, data) values (${req.params.id}, ${req.body.name}, ${sql.json(req.body.data as never)})
-        on conflict (id) do update set name = excluded.name, data = excluded.data, updated_at = now()
+        insert into profiles (owner, id, name, data) values (${req.owner}, ${req.params.id}, ${req.body.name}, ${sql.json(req.body.data as never)})
+        on conflict (owner, id) do update set name = excluded.name, data = excluded.data, updated_at = now()
         returning id, name, data, updated_at`
       return row
     },
@@ -216,7 +399,8 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     '/v1/profiles/:id',
     { schema: { tags: ['profiles'], params: z.object({ id: z.string() }) } },
     async (req, reply) => {
-      const rows = await sql`delete from profiles where id = ${req.params.id} returning id`
+      const rows =
+        await sql`delete from profiles where owner = ${req.owner} and id = ${req.params.id} returning id`
       return rows.length
         ? { deleted: true }
         : reply.status(404).send({ error: { code: 'not_found', message: 'no such profile' } })
@@ -242,6 +426,11 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       },
     },
     async (req, reply) => {
+      if (cfg.HOSTED && !(await consume(sql, `drafts:${req.owner}`, cfg.DAILY_DRAFTS)))
+        return limited(
+          reply,
+          `That's ${cfg.DAILY_DRAFTS} résumé drafts today. Edit the profile by hand, or come back tomorrow.`,
+        )
       try {
         const text = await resumeText(
           new Uint8Array(Buffer.from(req.body.data, 'base64')),
@@ -267,18 +456,21 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     },
   )
 
-  async function resolveProfile(body: { profile?: unknown; profileId?: string | undefined }) {
+  async function resolveProfile(
+    body: { profile?: unknown; profileId?: string | undefined },
+    owner: Owner,
+  ) {
     if (body.profile) return ProfileSchema.parse(body.profile)
     if (body.profileId) {
       const [p] = await sql<
         { data: unknown }[]
-      >`select data from profiles where id = ${body.profileId}`
+      >`select data from profiles where owner = ${owner} and id = ${body.profileId}`
       if (!p) throw Object.assign(new Error(`no profile "${body.profileId}"`), { statusCode: 404 })
       return ProfileSchema.parse(p.data)
     }
     const [first] = await sql<
       { data: unknown }[]
-    >`select data from profiles order by updated_at desc limit 1`
+    >`select data from profiles where owner = ${owner} order by updated_at desc limit 1`
     if (!first)
       throw Object.assign(new Error('create a profile first (PUT /v1/profiles/:id)'), {
         statusCode: 422,
@@ -321,13 +513,21 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       },
     },
     async (req, reply) => {
-      const profile = await resolveProfile(req.body)
-      const input = FilmInputSchema.parse({ ...req.body, url: normalizeUrl(req.body.url), profile })
+      const profile = await resolveProfile(req.body, req.owner)
+      const input = FilmInputSchema.parse({
+        ...req.body,
+        url: normalizeUrl(req.body.url),
+        profile,
+        ...keep(req.owner),
+      })
       const key = req.headers['idempotency-key']
+      const quota = cfg.HOSTED && req.owner !== 'team' ? await takeFilms(req, 1) : null
+      if (quota) return limited(reply, quota)
       const r = await createRun(sql, {
         agent: 'film',
         input,
         idempotencyKey: typeof key === 'string' ? key : undefined,
+        owner: req.owner,
       })
       if (r.kind === 'conflict') {
         return reply.status(409).send({
@@ -359,9 +559,17 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       },
     },
     async (req, reply) => {
-      const profile = await resolveProfile(req.body)
+      const profile = await resolveProfile(req.body, req.owner)
       const batch = newId('bat')
       const urls = [...new Set(req.body.urls.map(normalizeUrl))]
+      if (cfg.HOSTED && req.owner !== 'team') {
+        if (!req.owner.startsWith('u:'))
+          return reply
+            .status(403)
+            .send({ error: { code: 'sign_in', message: 'Sign in to make several films at once' } })
+        const quota = await takeFilms(req, urls.length)
+        if (quota) return limited(reply, quota)
+      }
       const created = await sql.begin(async (tx) => {
         const out = []
         for (const [i, url] of urls.entries()) {
@@ -372,8 +580,11 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
             ...(req.body.proof ? { proof: req.body.proof } : {}),
             batch,
             ref: String(i + 1),
+            ...keep(req.owner),
           })
-          out.push((await createRun(tx as unknown as Sql, { agent: 'film', input })).run)
+          out.push(
+            (await createRun(tx as unknown as Sql, { agent: 'film', input, owner: req.owner })).run,
+          )
         }
         return out
       })
@@ -398,14 +609,11 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     },
     async (req) => {
       const rows = await sql<FilmRow[]>`
-        select * from runs where agent = 'film'
+        select * from runs where agent = 'film' and owner = ${req.owner}
           ${req.query.before ? sql`and id < ${req.query.before}` : sql``}
           ${req.query.batch ? sql`and input->>'batch' = ${req.query.batch}` : sql``}
         order by id desc limit ${req.query.limit}`
-      const views = await viewSummaries(
-        sql,
-        rows.filter((r) => r.status === 'succeeded').map((r) => r.id),
-      )
+      const views = await summariesFor(rows.filter((r) => r.status === 'succeeded'))
       return {
         data: rows.map((r) => filmDto(r, publicUrl, views.get(r.id))),
         nextCursor: rows.length === req.query.limit ? rows.at(-1)!.id : null,
@@ -423,13 +631,12 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       },
     },
     async (req, reply) => {
-      const run = (await getRun(sql, req.params.id)) as FilmRow | undefined
-      if (run?.agent !== 'film')
-        return reply.status(404).send({ error: { code: 'not_found', message: 'film not found' } })
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run) return notFound(reply)
       const [steps, timeline, views] = await Promise.all([
         getSteps(sql, run.id),
         getLog(sql, run.id),
-        viewSummaries(sql, [run.id]),
+        summariesFor([run]),
       ])
       return {
         ...filmDto(run, publicUrl, views.get(run.id)),
@@ -448,7 +655,10 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
         })),
         timeline,
         embed: run.output
-          ? `<a href="${publicUrl.replace(/\/$/, '')}/f/${run.id}"><img src="${publicUrl.replace(/\/$/, '')}/f/${run.id}/preview.gif" width="480" alt="A 30-second video made for ${run.output.company}"></a>`
+          ? (() => {
+              const link = run.output.shared?.link ?? `${publicUrl.replace(/\/$/, '')}/f/${run.id}`
+              return `<a href="${link}"><img src="${link}/preview.gif" width="480" alt="A 30-second video made for ${run.output.company}"></a>`
+            })()
           : null,
       }
     },
@@ -466,6 +676,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     async (req, reply) => {
       if (!FILE_NAMES.test(req.params.name))
         return reply.status(404).send({ error: { code: 'not_found', message: 'unknown file' } })
+      if (!(await ownFilm(req.params.id, req.owner))) return notFound(reply)
       if (!existsSync(join(filmsDir, req.params.id, req.params.name))) {
         return reply
           .status(404)
@@ -485,6 +696,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       },
     },
     async (req, reply) => {
+      if (!(await ownFilm(req.params.id, req.owner))) return notFound(reply)
       const r = await retryRun(sql, req.params.id)
       return r
         ? filmDto(r as FilmRow, publicUrl)
@@ -501,6 +713,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     '/v1/films/:id/cancel',
     { schema: { tags: ['films'], params: z.object({ id: RunId }) } },
     async (req, reply) => {
+      if (!(await ownFilm(req.params.id, req.owner))) return notFound(reply)
       const r = await cancelRun(sql, req.params.id)
       return r
         ? filmDto(r as FilmRow, publicUrl)
@@ -521,11 +734,8 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     },
     async (req, reply) => {
       const rows = await sql<FilmRow[]>`
-        select * from runs where agent = 'film' and input->>'batch' = ${req.params.id} order by (input->>'ref')::int`
-      const views = await viewSummaries(
-        sql,
-        rows.map((r) => r.id),
-      )
+        select * from runs where agent = 'film' and owner = ${req.owner} and input->>'batch' = ${req.params.id} order by (input->>'ref')::int`
+      const views = await summariesFor(rows)
       const base = publicUrl.replace(/\/$/, '')
       const cell = (s: unknown) => {
         const v = s == null ? '' : String(s)
@@ -652,9 +862,9 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       },
     },
     async (req, reply) => {
-      const run = (await getRun(sql, req.params.id)) as FilmRow | undefined
-      if (run?.agent !== 'film')
-        return reply.status(404).send({ error: { code: 'not_found', message: 'film not found' } })
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run) return notFound(reply)
+      if (run.output?.shared && share) return oneFilmViews(share, run.output.shared.id)
       return filmViews(sql, req.params.id)
     },
   )
@@ -716,7 +926,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       return { ok: true }
     }
     try {
-      const profile = await resolveProfile({})
+      const profile = await resolveProfile({}, 'team')
       const input = FilmInputSchema.parse({ url, profile, format: 'square', slack: thread })
       // Slack retries deliveries; the event id makes the run idempotent
       const r = await createRun(sql, {

@@ -165,6 +165,121 @@ button.text:hover {
   color: var(--muted);
 }
 
+/* ------------------------------------------------------- hosted account */
+
+.account {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.account .left {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.me-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+}
+
+.avatar {
+  border-radius: 50%;
+}
+
+.account .signin {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.account .confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+button.danger {
+  background: var(--tally);
+  border-color: var(--tally);
+  color: #fff;
+}
+
+.notice {
+  margin: 16px 0 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--rule);
+}
+
+.privacy {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 12px 0 0;
+  max-width: 80ch;
+}
+
+/* first visit: three steps, the current one marked */
+.firstrun ol {
+  list-style: none;
+  counter-reset: step;
+  margin: 22px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.firstrun li {
+  counter-increment: step;
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 16px 18px 18px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.firstrun li::before {
+  content: counter(step);
+  font-family: var(--display);
+  font-weight: 750;
+  font-size: 22px;
+  color: var(--rule);
+}
+
+.firstrun li.now::before {
+  color: var(--tally);
+}
+
+.firstrun li.done::before {
+  content: "\2713";
+  color: var(--ok);
+}
+
+.firstrun b {
+  color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .firstrun ol {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .account {
+    margin-left: 0;
+  }
+}
+
 /* ------------------------------------------------------------- composer */
 
 .composer {

@@ -58,6 +58,10 @@ async function main() {
         filmsDir: resolve(cfg.FILMS_DIR),
         llmModel: cfg.LLM_PROVIDER === 'openai' ? cfg.LLM_MODEL : null,
         slack,
+        share:
+          cfg.SHARE_URL && cfg.SHARE_TOKEN
+            ? { url: cfg.SHARE_URL.replace(/\/$/, ''), token: cfg.SHARE_TOKEN }
+            : null,
         publicUrl: cfg.PUBLIC_URL,
         allowPrivateNetworks: cfg.ALLOW_PRIVATE_NETWORKS,
       }) as never,

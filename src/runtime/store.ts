@@ -26,6 +26,8 @@ export interface Run {
   createdAt: Date
   updatedAt: Date
   completedAt: Date | null
+  /** 'team' on a private install; a user or visitor on the hosted app */
+  owner?: string
 }
 
 export interface StepRow {
@@ -80,13 +82,19 @@ function atomically<T>(sql: Sql, fn: (tx: Sql) => Promise<T>): Promise<T> {
 
 export async function createRun(
   sql: Sql,
-  input: { agent: string; input: unknown; idempotencyKey?: string | undefined },
+  input: {
+    agent: string
+    input: unknown
+    idempotencyKey?: string | undefined
+    /** who it belongs to (the hosted app); a private install leaves it 'team' */
+    owner?: string
+  },
 ): Promise<CreateRunResult> {
   return atomically(sql, async (tx) => {
     const id = newId('run')
     const [run] = await tx<Run[]>`
-      insert into runs (id, agent, input, idempotency_key)
-      values (${id}, ${input.agent}, ${tx.json(input.input as never)}, ${input.idempotencyKey ?? null})
+      insert into runs (id, agent, input, idempotency_key, owner)
+      values (${id}, ${input.agent}, ${tx.json(input.input as never)}, ${input.idempotencyKey ?? null}, ${input.owner ?? 'team'})
       on conflict (idempotency_key) do nothing
       returning *`
     if (run) {

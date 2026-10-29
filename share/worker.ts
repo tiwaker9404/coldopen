@@ -20,7 +20,7 @@ import { recordBeacon, type ViewRow, type ViewStore, type ViewSummary } from '..
 export interface KV {
   get(key: string, type: 'arrayBuffer'): Promise<ArrayBuffer | null>
   get(key: string, type: 'json'): Promise<unknown>
-  put(key: string, value: ArrayBuffer | string): Promise<void>
+  put(key: string, value: ArrayBuffer | string, opts?: { expirationTtl?: number }): Promise<void>
   delete(key: string): Promise<void>
   list(opts: {
     prefix: string
@@ -202,7 +202,9 @@ export function d1ViewStore(db: D1): ViewStore {
   }
 }
 
-async function summaries(db: D1, filmId?: string): Promise<Map<string, ViewSummary>> {
+async function summaries(db: D1, filter?: string | string[]): Promise<Map<string, ViewSummary>> {
+  const ids = filter === undefined ? null : Array.isArray(filter) ? filter : [filter]
+  if (ids && ids.length === 0) return new Map()
   const stmt = db.prepare(
     `select film_id,
        count(*) as opens,
@@ -212,9 +214,9 @@ async function summaries(db: D1, filmId?: string): Promise<Map<string, ViewSumma
        max(seconds) as best_seconds,
        min(case when played = 1 then first_seen end) as first_play_at,
        max(last_seen) as last_seen
-     from film_views ${filmId ? 'where film_id = ?' : ''} group by film_id`,
+     from film_views ${ids ? `where film_id in (${ids.map(() => '?').join(',')})` : ''} group by film_id`,
   )
-  const { results } = await (filmId ? stmt.bind(filmId) : stmt).all<{
+  const { results } = await (ids ? stmt.bind(...ids) : stmt).all<{
     film_id: string
     opens: number
     viewers: number
@@ -314,6 +316,16 @@ export async function handle(req: Request, env: Env, ctx: Ctx): Promise<Response
     if (!(await authorized(req, env))) return err(401, 'missing or wrong SHARE_TOKEN')
 
     if (parts[1] === 'views' && parts.length === 2 && req.method === 'GET') {
+      // ?ids=a,b,c: just these films, straight from D1 (no listing, which the free plan meters)
+      const wanted = url.searchParams.get('ids')
+      if (wanted !== null) {
+        const ids = wanted
+          .split(',')
+          .filter((id) => ID.test(id))
+          .slice(0, 100)
+        const sums = await summaries(env.VIEWS, ids)
+        return json({ views: Object.fromEntries(ids.map((id) => [id, sums.get(id) ?? EMPTY])) })
+      }
       const ids: string[] = []
       let cursor: string | undefined
       do {
@@ -333,6 +345,12 @@ export async function handle(req: Request, env: Env, ctx: Ctx): Promise<Response
 
     if (parts[1] === 'films' && parts[2] && ID.test(parts[2])) {
       const id = parts[2]
+      // ?ttl=604800: the link and its files go away on their own (a visitor's film on the hosted app)
+      const ttlParam = Number(url.searchParams.get('ttl'))
+      const ttl =
+        Number.isFinite(ttlParam) && ttlParam >= 60
+          ? { expirationTtl: Math.floor(ttlParam) }
+          : undefined
       if (parts.length === 3 && req.method === 'PUT') {
         const view = parseView(await req.json().catch(() => null))
         if (!view)
@@ -340,7 +358,7 @@ export async function handle(req: Request, env: Env, ctx: Ctx): Promise<Response
             400,
             'expected the page details: company, from, firstName, ctaLine, contact, film, format',
           )
-        await env.FILMS.put(metaKey(id), JSON.stringify(view))
+        await env.FILMS.put(metaKey(id), JSON.stringify(view), ttl)
         return json({ id, link: `${origin}/f/${id}` })
       }
       if (parts.length === 4 && parts[3] === 'views' && req.method === 'GET') {
@@ -358,7 +376,7 @@ export async function handle(req: Request, env: Env, ctx: Ctx): Promise<Response
         const buf = await req.arrayBuffer()
         if (buf.byteLength === 0 || buf.byteLength > MAX_FILE)
           return err(413, `${name} must be between 1 byte and 24 MB`)
-        await env.FILMS.put(fileKey(id, name), buf)
+        await env.FILMS.put(fileKey(id, name), buf, ttl)
         return json({ id, file: name, bytes: buf.byteLength })
       }
       if (parts.length === 3 && req.method === 'DELETE') {

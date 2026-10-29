@@ -103,6 +103,15 @@ export interface Profile {
   updatedAt: string
 }
 
+/** The hosted app's account state (on a private install, hosted is false and the rest null). */
+export interface Me {
+  hosted: boolean
+  signIn: boolean
+  user: { login: string; name: string | null; avatar: string | null } | null
+  films: { used: number; limit: number } | null
+  keepsDays: number | null
+}
+
 export class ApiError extends Error {
   readonly status: number
   constructor(status: number, message: string) {
@@ -127,12 +136,18 @@ export function setApiKey(v: string) {
   }
 }
 
-/** finished films are public at /f/:id (that's the share page), so media needs no key */
+/**
+ * Finished films are public: at /f/:id on this server (that's the share page), or on the
+ * share worker when the hosted app published them there. Either way media needs no key.
+ */
 export function media(
   film: Film,
   name: 'poster.jpg' | 'preview.gif' | 'contact-sheet.jpg' | 'film',
 ): string {
-  const file = name === 'film' ? (film.files?.film.split('/').pop() ?? '') : name
+  const filmFile = film.files?.film.split('/').pop() ?? ''
+  const file = name === 'film' ? filmFile : name
+  if (film.files && /^https?:/.test(film.files.film))
+    return `${film.files.film.slice(0, film.files.film.lastIndexOf('/'))}/${file}`
   return `/f/${film.id}/${file}`
 }
 

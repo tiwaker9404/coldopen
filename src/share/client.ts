@@ -105,6 +105,34 @@ async function call<T>(
   return (text ? JSON.parse(text) : {}) as T
 }
 
+/**
+ * Uploads one film's page and files under an id. Used by `coldopen share` and by the hosted
+ * app, which publishes every film it makes. With ttlSeconds, the link expires on its own.
+ */
+export async function publish(
+  cfg: ShareConfig,
+  opts: { id: string; view: ShareView; dir: string; ttlSeconds?: number },
+): Promise<{ id: string; link: string }> {
+  const q = opts.ttlSeconds ? `?ttl=${opts.ttlSeconds}` : ''
+  await call(cfg, 'PUT', `/api/films/${opts.id}${q}`, JSON.stringify(opts.view), 'application/json')
+  for (const [name, type] of [
+    [opts.view.film, 'video/mp4'],
+    ['poster.jpg', 'image/jpeg'],
+    ['preview.gif', 'image/gif'],
+  ] as const) {
+    const file = join(opts.dir, name)
+    if (!existsSync(file)) continue
+    await call(
+      cfg,
+      'PUT',
+      `/api/films/${opts.id}/${name}${q}`,
+      new Uint8Array(await readFile(file)),
+      type,
+    )
+  }
+  return { id: opts.id, link: `${cfg.url}/f/${opts.id}` }
+}
+
 /** Uploads a film folder and returns its link. Sharing a folder again keeps its link. */
 export async function shareFolder(dir: string, cfg: ShareConfig): Promise<ShareRecord> {
   const board = JSON.parse(await readFile(join(dir, 'storyboard.json'), 'utf8')) as {
@@ -113,24 +141,8 @@ export async function shareFolder(dir: string, cfg: ShareConfig): Promise<ShareR
   const film = readdirSync(dir).find((f) => /^film-(square|landscape|portrait)\.mp4$/.test(f))!
   const view: ShareView = viewFromStoryboard(board.board, film)
   const prev = await readShareRecord(dir)
-  const id = prev?.id ?? newShareId(view.company)
-
-  await call(cfg, 'PUT', `/api/films/${id}`, JSON.stringify(view), 'application/json')
-  for (const [name, type] of [
-    [film, 'video/mp4'],
-    ['poster.jpg', 'image/jpeg'],
-    ['preview.gif', 'image/gif'],
-  ] as const) {
-    const file = join(dir, name)
-    if (!existsSync(file)) continue
-    await call(cfg, 'PUT', `/api/films/${id}/${name}`, new Uint8Array(await readFile(file)), type)
-  }
-  const rec: ShareRecord = {
-    id,
-    link: `${cfg.url}/f/${id}`,
-    company: view.company,
-    sharedAt: new Date().toISOString(),
-  }
+  const { id, link } = await publish(cfg, { id: prev?.id ?? newShareId(view.company), view, dir })
+  const rec: ShareRecord = { id, link, company: view.company, sharedAt: new Date().toISOString() }
   await writeFile(join(dir, SHARE_FILE), `${JSON.stringify(rec, null, 2)}\n`)
   return rec
 }
@@ -149,4 +161,23 @@ export async function oneFilmViews(cfg: ShareConfig, id: string) {
 
 export async function unshare(cfg: ShareConfig, id: string) {
   return call(cfg, 'DELETE', `/api/films/${id}`)
+}
+
+/** Summaries for these films only (no listing of everything stored). */
+export async function shareViews(
+  cfg: ShareConfig,
+  ids: string[],
+): Promise<Map<string, ViewSummary>> {
+  if (!ids.length) return new Map()
+  const out = new Map<string, ViewSummary>()
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50)
+    const r = await call<{ views: Record<string, ViewSummary> }>(
+      cfg,
+      'GET',
+      `/api/views?ids=${chunk.map(encodeURIComponent).join(',')}`,
+    )
+    for (const [id, v] of Object.entries(r.views)) out.set(id, v)
+  }
+  return out
 }

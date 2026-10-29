@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { type D1, type Env, handle, type KV } from '../../share/worker.ts'
 
+const ttls = new Map<string, number>()
 /** Workers KV, in memory. */
 function memoryKv(): KV {
   const m = new Map<string, ArrayBuffer | string>()
@@ -15,7 +16,10 @@ function memoryKv(): KV {
         return JSON.parse(typeof v === 'string' ? v : new TextDecoder().decode(v))
       return typeof v === 'string' ? new TextEncoder().encode(v).buffer : v
     }) as KV['get'],
-    put: async (key, value) => void m.set(key, value),
+    put: async (key, value, opts) => {
+      m.set(key, value)
+      if (opts?.expirationTtl) ttls.set(key, opts.expirationTtl)
+    },
     delete: async (key) => void m.delete(key),
     list: async ({ prefix }) => ({
       keys: [...m.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })),
@@ -149,6 +153,26 @@ describe('share worker', () => {
     const one = await (await call(`/api/films/${ID}/views`, { headers: auth })).json()
     expect(one.sessions).toHaveLength(1)
     expect(JSON.stringify(one)).not.toContain('198.51.100.7')
+  })
+
+  it('reports views for just the films asked about, and can expire uploads', async () => {
+    await call(`/api/films/${ID}?ttl=604800`, {
+      method: 'PUT',
+      headers: auth,
+      body: JSON.stringify(view),
+    })
+    expect(ttls.get(`meta:${ID}`)).toBe(604800)
+    await call(`/f/${ID}/v`, {
+      method: 'POST',
+      headers: { 'user-agent': CHROME },
+      body: JSON.stringify({ s: 'sess-aaaaaaaa', e: 'play', t: 3, d: 30 }),
+    })
+    const r = await (
+      await call(`/api/views?ids=${ID},other-film-1,../bad`, { headers: auth })
+    ).json()
+    expect(Object.keys(r.views)).toEqual([ID, 'other-film-1'])
+    expect(r.views[ID].plays).toBe(1)
+    expect(r.views['other-film-1'].plays).toBe(0)
   })
 
   it('takes a link down, views and all', async () => {

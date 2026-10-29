@@ -60,6 +60,28 @@ const schema = z.object({
     .transform((v) => v === 'true' || v === '1'),
 
   CHAOS_KILL_AFTER_EFFECT: z.coerce.number().min(0).max(1).default(0),
+
+  /**
+   * The public, hosted app: visitors try it without an account, sign in with GitHub to keep
+   * their work, and daily limits apply. Off (the default) is one team's private install.
+   */
+  HOSTED: z
+    .enum(['true', 'false', '1', '0'])
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
+  /** signs session cookies; required when HOSTED. A long random string. */
+  SESSION_SECRET: z.string().optional(),
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+  /** a share worker (share/worker.ts): hosted films are stored there, so they outlive restarts */
+  SHARE_URL: z.string().url().optional(),
+  SHARE_TOKEN: z.string().optional(),
+  /** daily limits in hosted mode */
+  ANON_DAILY_FILMS: z.coerce.number().int().min(0).default(1),
+  USER_DAILY_FILMS: z.coerce.number().int().min(0).default(5),
+  IP_DAILY_FILMS: z.coerce.number().int().min(0).default(8),
+  GLOBAL_DAILY_FILMS: z.coerce.number().int().min(0).default(80),
+  DAILY_DRAFTS: z.coerce.number().int().min(0).default(6),
 })
 
 export type Config = z.infer<typeof schema>
@@ -70,5 +92,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
     throw new Error(`Invalid configuration: ${issues}`)
   }
-  return parsed.data
+  const cfg = parsed.data
+  if (cfg.HOSTED && (!cfg.SESSION_SECRET || cfg.SESSION_SECRET.length < 32))
+    throw new Error('Invalid configuration: HOSTED needs SESSION_SECRET (32+ random characters)')
+  return cfg
 }

@@ -65,6 +65,10 @@ flowchart LR
 
 **Rendering is crash-proof.** Films run on [unkillable](https://github.com/tiwaker9404/unkillable), a durable-execution runtime on Postgres. Each step (research, every script draft, compose, every scene, encode) is checkpointed. If a renderer dies 46% of the way through, the next worker replays research, script and finished scenes from the journal and renders only the rest. [A chaos test](test/chaos/film-crash.test.ts) does exactly that to a real worker process on every CI run, then checks that no finished scene was rendered a second time. Only the scene that was in progress at the kill is redone.
 
+## Try it, or host your own demo
+
+The hosted app lets anyone try coldopen in the browser: upload a résumé, paste a company (and a job post), and get a tracked share link. Visitors get one free film a day; signing in with GitHub keeps their work and allows five. It runs on free plans only (Hugging Face Spaces, Supabase, Cloudflare, Groq), and [docs/HOSTING.md](docs/HOSTING.md) sets it up in about 20 minutes.
+
 ## Run it for your team
 
 ```bash
@@ -125,7 +129,7 @@ Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show*
 ## Quality, measured
 
 ```bash
-pnpm test         # 153 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, pipeline resume, API, Slack, model path
+pnpm test         # 161 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
 ```

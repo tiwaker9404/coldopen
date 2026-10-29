@@ -6,6 +6,7 @@ import type { BrandKit } from './brand/types.ts'
 import { withJob } from './job/kit.ts'
 import { JobPostSchema, jobFromText } from './job/post.ts'
 import { fetchJob } from './job/read.ts'
+import { LlmHttpError } from './llm/openai.ts'
 import { compose, FORMATS, type Format } from './render/composition.ts'
 import {
   concatSegments,
@@ -22,6 +23,8 @@ import { defineAgent } from './runtime/types.ts'
 import { buildStoryboard, type Storyboard } from './script/storyboard.ts'
 import { ProfileSchema, type Script, type ScriptMeta, ScriptSchema } from './script/types.ts'
 import { deterministicScript, writeScript } from './script/writer.ts'
+import { publish, type ShareConfig } from './share/client.ts'
+import { viewFromRun } from './share/page.ts'
 import type { SlackClient } from './slack.ts'
 
 export const FilmInputSchema = z.object({
@@ -49,6 +52,8 @@ export const FilmInputSchema = z.object({
     })
     .refine((j) => j.url || j.text || j.post, 'job needs a url, text, or post')
     .optional(),
+  /** with a share worker: the share link expires after this many days (hosted app visitors) */
+  keepDays: z.number().int().min(1).max(365).optional(),
 })
 export type FilmInput = z.infer<typeof FilmInputSchema>
 
@@ -72,6 +77,8 @@ export interface FilmResult {
   render: { frames: number; ms: number }
   /** the role this film answers, when made from a job post */
   job?: { title: string; url?: string }
+  /** where the film is published, when a share worker is configured (the hosted app) */
+  shared?: { id: string; link: string }
 }
 
 export interface FilmAgentOptions {
@@ -84,6 +91,8 @@ export interface FilmAgentOptions {
   publicUrl?: string
   /** research localhost / private-network sites (local CLI, tests); off for hosted use */
   allowPrivateNetworks?: boolean
+  /** publish each finished film to a share worker, so it outlives this machine's disk */
+  share?: ShareConfig | null
 }
 
 const exists = (p: string) =>
@@ -169,23 +178,39 @@ export function createFilmAgent(opts: FilmAgentOptions) {
       }
 
       ctx.progress({ stage: 'script', label: `Writing the script for ${kit.name}` })
-      const { script, meta } = opts.llmModel
-        ? await writeScript({
+      const builtIn = (usedFallback: boolean) =>
+        ctx.step('script', async () => ({
+          script: deterministicScript(kit, profile),
+          meta: {
+            model: 'deterministic',
+            rounds: 1,
+            violations: [[]],
+            usedFallback,
+            replaced: [],
+          } as ScriptMeta,
+        }))
+      let written: { script: Script; meta: ScriptMeta }
+      if (!opts.llmModel) written = await builtIn(false)
+      else {
+        try {
+          written = await writeScript({
             kit,
             profile,
             model: opts.llmModel,
             complete: (key, messages) => ctx.llm(key, { schema: ScriptSchema, messages }),
           })
-        : await ctx.step('script', async () => ({
-            script: deterministicScript(kit, profile),
-            meta: {
-              model: 'deterministic',
-              rounds: 1,
-              violations: [[]],
-              usedFallback: false,
-              replaced: [],
-            } as ScriptMeta,
-          }))
+        } catch (err) {
+          // every model is rate limited or down: a plain, correct script beats no film
+          if (
+            !(err instanceof LlmHttpError) &&
+            !/HTTP (429|5\d\d)|fetch failed|timeout|ECONN/i.test(String(err))
+          )
+            throw err
+          ctx.progress({ stage: 'script', label: 'Models are busy; using the built-in writer' })
+          written = await builtIn(true)
+        }
+      }
+      const { script, meta } = written
 
       const picked = input.proof?.filter((i) => i < profile.proof.length)
       const board: Storyboard = buildStoryboard(
@@ -283,6 +308,34 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           }
         })
 
+        // the hosted app's disk is temporary: the film lives on the share worker from here on
+        let shared: { id: string; link: string } | undefined
+        if (opts.share) {
+          const cfg = opts.share
+          ctx.progress({ stage: 'deliver', label: 'Publishing the share link', percent: 100 })
+          shared = await ctx.step(
+            'publish',
+            () =>
+              publish(cfg, {
+                id: `${
+                  kit.name
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '')
+                    .slice(0, 40) || 'film'
+                }-${ctx.runId.slice(-10).toLowerCase()}`,
+                view: viewFromRun(input, {
+                  company: kit.name,
+                  format,
+                  files: { film: out.film },
+                } as FilmResult),
+                dir,
+                ...(input.keepDays ? { ttlSeconds: input.keepDays * 86_400 } : {}),
+              }),
+            { retries: 2 },
+          )
+        }
+
         if (input.slack && opts.slack) {
           const slack = opts.slack
           const thread = input.slack
@@ -324,6 +377,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           qa: out.qa,
           render: { frames, ms },
           ...(kit.job ? { job: kit.job } : {}),
+          ...(shared ? { shared } : {}),
         }
       } finally {
         if (comp) await (comp as OpenComposition).close()
