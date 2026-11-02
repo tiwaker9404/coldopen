@@ -178,7 +178,7 @@ describe('interview brief', () => {
     expect(b.facts).toEqual(['Trusted by 4,000 finance teams'])
     expect(b.role?.title).toBe('Solutions Engineer')
     expect(b.questions).toHaveLength(3)
-    expect(b.questions[0]).toContain('4,000 finance teams')
+    expect(b.questions[0]).toContain('4,000 finance teams.”')
     expect(b.questions[1]).toContain('first 90 days')
   })
 })

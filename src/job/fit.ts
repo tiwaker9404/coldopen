@@ -10,7 +10,7 @@ import type { Profile } from '../script/types.ts'
 
 // words every job post and résumé share; matching on them says nothing
 const VAGUE = new Set(
-  'the and for with that this your you our are was from into have has its their they them than what when which who will able strong skills skill experience years year work working build building built end data team teams across using use own owning ensure great good new high help plus etc including such other well'.split(
+  'the and for with that this your you our are was from into have has its their they them than what when which who will able strong skills skill experience years year work working build building built end data team teams across using use own owning ensure great good new high help plus etc including such other well optimize optimizing optimise improve improving workflow workflows outcome outcomes directly understand understanding deliver delivering drive driving support supporting manage managing closely partner partners'.split(
     ' ',
   ),
 )
@@ -101,7 +101,7 @@ export function fitOf(requirements: string[], profile: Profile): Fit | null {
 
 /** Words in requirements that say little about a skill, on top of the vague ones */
 const GENERIC = new Set(
-  'knowledge ability abilitie familiarity familiar proficiency proficient understanding excellent communication written verbal degree bachelor master related field equivalent minimum preferred required requirement environment fast paced startup customer customers stakeholder stakeholders problem problems solving solve technical technology technologie product products company companies role roles candidate candidates opportunity passion passionate demonstrated proven track record ideally comfortable want like love must need needs ownership independently collaborate collaborative collaboration excited interest interested deep hands complex scale scaling various multiple least more most business client clients partner partners self motivated detail oriented attention organizational travel time based us u s english plus bonus similar part full also any all can may one two three four five six seven eight nine ten 1 2 3 4 5 6 7 8 9 10'.split(
+  'ai computer science engineering engineer statistic statistics mathematic mathematics math physics quantitative operation operations research saas b2b b2c enterprise software platform cloud data analytic analytics knowledge ability abilitie familiarity familiar proficiency proficient understanding excellent communication written verbal degree bachelor master related field equivalent minimum preferred required requirement environment fast paced startup customer customers stakeholder stakeholders problem problems solving solve technical technology technologie product products company companies role roles candidate candidates opportunity passion passionate demonstrated proven track record ideally comfortable want like love must need needs ownership independently collaborate collaborative collaboration excited interest interested deep hands complex scale scaling various multiple least more most business client clients partner partners self motivated detail oriented attention organizational travel time based us u s english plus bonus similar part full also any all can may one two three four five six seven eight nine ten 1 2 3 4 5 6 7 8 9 10'.split(
     ' ',
   ),
 )

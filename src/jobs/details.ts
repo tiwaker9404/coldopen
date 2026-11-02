@@ -1,6 +1,6 @@
 import { itemsFromText, pickRequirements } from '../job/post.ts'
-import type { Board, FetchFn } from './boards.ts'
-import { boardKey } from './boards.ts'
+import type { Board, FetchFn, Pay } from './boards.ts'
+import { boardKey, payOf } from './boards.ts'
 
 /**
  * A job's requirements from its board's own description, without opening a browser: the same
@@ -115,9 +115,18 @@ export async function greenhouseRequirements(
   id: string,
   opts: { fetch?: FetchFn; timeoutMs?: number } = {},
 ): Promise<string[]> {
+  return (await greenhouseDetails(token, id, opts)).requirements
+}
+
+/** A Greenhouse post's requirements and the pay range it lists, from the post's own page */
+export async function greenhouseDetails(
+  token: string,
+  id: string,
+  opts: { fetch?: FetchFn; timeoutMs?: number } = {},
+): Promise<{ requirements: string[]; pay: Pay | null }> {
   const f = opts.fetch ?? fetch
   const res = await f(
-    `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(token)}/jobs/${encodeURIComponent(id)}`,
+    `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(token)}/jobs/${encodeURIComponent(id)}?pay_transparency=true`,
     {
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(opts.timeoutMs ?? 10_000),
@@ -125,5 +134,14 @@ export async function greenhouseRequirements(
   )
   if (!res.ok) throw new Error(`greenhouse job ${id}: HTTP ${res.status}`)
   const j = (await res.json()) as Raw
-  return requirementsFromHtml(str(j.content))
+  const range = ((j.pay_input_ranges as Raw[] | undefined) ?? [])[0]
+  const pay = range
+    ? payOf(
+        Number(range.min_cents) / 100,
+        Number(range.max_cents) / 100,
+        range.currency_type,
+        /hour/i.test(str(range.title)) ? 'hour' : 'year',
+      )
+    : null
+  return { requirements: requirementsFromHtml(str(j.content)), pay }
 }

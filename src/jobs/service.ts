@@ -10,10 +10,11 @@ import {
   type FetchFn,
   fetchBoardBody,
   type Job,
+  type Pay,
   readBoard,
 } from './boards.ts'
 import { DEFAULT_BOARDS, visaOf, ycOf } from './companies.ts'
-import { detailsFromBoard, greenhouseRequirements } from './details.ts'
+import { detailsFromBoard, greenhouseDetails } from './details.ts'
 import { defaultSearch, rank, type Search, SearchSchema, type Suggestion, spread } from './rank.ts'
 
 /**
@@ -174,6 +175,31 @@ export async function warmBoards(sql: Sql, fetchFn?: FetchFn): Promise<void> {
   await warming
 }
 
+/**
+ * Listings kept in memory: each request reads only which boards changed (a small query) and
+ * loads just those boards' jobs, instead of every board's listing each time.
+ */
+const memory = new Map<string, Cached>()
+
+async function cachedRows(sql: Sql, keys: string[]): Promise<Map<string, Cached>> {
+  const meta = await sql<Omit<Cached, 'jobs'>[]>`
+    select board, fetched_at, ok, last_ok_at, error from job_boards where board in ${sql(keys)}`
+  const changed = meta
+    .filter((m) => memory.get(m.board)?.fetchedAt.getTime() !== m.fetchedAt.getTime())
+    .map((m) => m.board)
+  for (let i = 0; i < changed.length; i += 200) {
+    const part = changed.slice(i, i + 200)
+    for (const r of await sql<Cached[]>`select * from job_boards where board in ${sql(part)}`)
+      memory.set(r.board, r)
+  }
+  return new Map(
+    meta.flatMap((m) => {
+      const c = memory.get(m.board)
+      return c ? [[m.board, { ...c, ...m }] as const] : []
+    }),
+  )
+}
+
 /** The boards' listings, refreshing the stale ones first */
 export async function listings(
   sql: Sql,
@@ -182,13 +208,7 @@ export async function listings(
 ): Promise<{ jobs: Job[]; failed: Board[]; updatedAt: Date | null }> {
   const now = opts.now ?? Date.now()
   const keys = boards.map(boardKey)
-  const rows = async () =>
-    new Map(
-      (await sql<Cached[]>`select * from job_boards where board in ${sql(keys)}`).map((r) => [
-        r.board,
-        r,
-      ]),
-    )
+  const rows = () => cachedRows(sql, keys)
   let cache = await rows()
   const stale = boards.filter((b) => {
     const c = cache.get(boardKey(b))
@@ -219,7 +239,7 @@ export async function listings(
     // the person's own name and website for the company win over what the cache was saved with
     for (const j of c.jobs)
       jobs.push({ ...j, company: b.name, ...(b.site ? { site: b.site } : {}) })
-    if (!updatedAt || c.fetchedAt < updatedAt) updatedAt = c.fetchedAt
+    if (!updatedAt || c.fetchedAt > updatedAt) updatedAt = c.fetchedAt
   }
   return { jobs, failed, updatedAt }
 }
@@ -267,27 +287,30 @@ export interface Suggested {
 export async function requirementsFor(
   sql: Sql,
   jobs: Job[],
-  opts: { fetch?: FetchFn } = {},
+  opts: { fetch?: FetchFn; pay?: Map<string, Pay> } = {},
 ): Promise<Map<string, string[]>> {
   if (jobs.length === 0) return new Map()
-  const rows = await sql<{ jobId: string; requirements: string[] }[]>`
-    select job_id, requirements from job_details where job_id in ${sql(jobs.map((j) => j.id))}`
+  const rows = await sql<{ jobId: string; requirements: string[]; pay: Pay | null }[]>`
+    select job_id, requirements, pay from job_details where job_id in ${sql(jobs.map((j) => j.id))}`
   const have = new Map(rows.map((r) => [r.jobId, r.requirements]))
+  for (const r of rows) if (r.pay) opts.pay?.set(r.jobId, r.pay)
   const missing = jobs.filter((j) => !have.has(j.id) && j.board.startsWith('greenhouse:'))
   await pool(missing, CONCURRENCY, async (j) => {
     const [, token, id] = j.id.split(':') as [string, string, string]
     let requirements: string[] = []
+    let pay: Pay | null = null
     try {
-      requirements = await greenhouseRequirements(
+      ;({ requirements, pay } = await greenhouseDetails(
         token,
         id,
         opts.fetch ? { fetch: opts.fetch } : {},
-      )
+      ))
     } catch {}
     have.set(j.id, requirements)
+    if (pay) opts.pay?.set(j.id, pay)
     await sql`
-      insert into job_details (job_id, board, requirements) values (${j.id}, ${j.board}, ${requirements})
-      on conflict (job_id) do update set requirements = excluded.requirements, fetched_at = now()`
+      insert into job_details (job_id, board, requirements, pay) values (${j.id}, ${j.board}, ${requirements}, ${pay ? sql.json(pay as never) : null})
+      on conflict (job_id) do update set requirements = excluded.requirements, pay = excluded.pay, fetched_at = now()`
   })
   return have
 }
@@ -358,6 +381,12 @@ export async function knownFor(
   return out
 }
 
+const RANKED_MS = 90_000
+const RANKED = new Map<
+  string,
+  { at: number; ranked: JobWithFit[]; gaps: Gap[]; failed: Board[]; updatedAt: Date | null }
+>()
+
 export async function suggestions(
   sql: Sql,
   owner: string,
@@ -375,46 +404,71 @@ export async function suggestions(
       updatedAt: null,
       search: state,
     }
-  const { jobs: all, failed, updatedAt } = await listings(sql, boards, opts)
-  const hidden = new Set(state.hidden)
-  const jobs = all.filter(
-    (j) =>
-      (!state.search.ycOnly || ycOf({ site: j.site }) || ycBoard(j)) &&
-      (!state.search.visaOnly || visaOf(j.board)),
-  )
-  const pace = momentum(all, opts.now)
-  // the best title matches, then how well the person's record answers each one's requirements
-  const candidates = spread(
-    rank(
-      jobs.filter((j) => !hidden.has(j.id)),
-      state.search,
-      opts.now,
-    ),
-    6,
-  ).slice(0, FIT_POOL)
-  const reqs = profile ? await requirementsFor(sql, candidates, opts) : new Map<string, string[]>()
-  const fitted: JobWithFit[] = candidates.map((j) => {
-    const fit = profile ? fitOf(reqs.get(j.id) ?? [], profile) : null
-    const yc = ycBoard(j) ?? ycOf({ site: j.site })
-    const hiring = pace.get(j.board)
-    const visa = visaOf(j.board)
-    return {
-      ...j,
-      ...(fit ? { fit, score: j.score + FIT_BONUS[fit.level] } : {}),
-      ...(yc?.batch ? { yc: yc.batch } : {}),
-      ...(hiring ? { hiring } : {}),
-      ...(visa ? { visa } : {}),
+  // the ranking is the slow part: reuse it for a minute and a half while nothing it depends on changes
+  const key = JSON.stringify([owner, state, profile ?? null, opts.limit ?? 24])
+  let hit = opts.fetch || opts.now ? undefined : RANKED.get(key)
+  if (!hit || Date.now() - hit.at > RANKED_MS) {
+    hit = await (async () => {
+      const { jobs: all, failed, updatedAt } = await listings(sql, boards, opts)
+      const hidden = new Set(state.hidden)
+      const jobs = all.filter(
+        (j) =>
+          (!state.search.ycOnly || ycOf({ site: j.site }) || ycBoard(j)) &&
+          (!state.search.visaOnly || visaOf(j.board)),
+      )
+      const pace = momentum(all, opts.now)
+      // the best title matches, then how well the person's record answers each one's requirements
+      const candidates = spread(
+        rank(
+          jobs.filter((j) => !hidden.has(j.id)),
+          state.search,
+          opts.now,
+        ),
+        6,
+      ).slice(0, FIT_POOL)
+      const paid = new Map<string, Pay>()
+      const reqs = profile
+        ? await requirementsFor(sql, candidates, { ...opts, pay: paid })
+        : new Map<string, string[]>()
+      const fitted: JobWithFit[] = candidates.map((j) => {
+        const fit = profile ? fitOf(reqs.get(j.id) ?? [], profile) : null
+        const yc = ycBoard(j) ?? ycOf({ site: j.site })
+        const hiring = pace.get(j.board)
+        const visa = visaOf(j.board)
+        return {
+          ...j,
+          ...(fit ? { fit, score: j.score + FIT_BONUS[fit.level] } : {}),
+          ...(!j.pay && paid.has(j.id) ? { pay: paid.get(j.id)! } : {}),
+          ...(yc?.batch ? { yc: yc.batch } : {}),
+          ...(hiring ? { hiring } : {}),
+          ...(visa ? { visa } : {}),
+        }
+      })
+      const fastest = state.search.sort === 'fastest'
+      fitted.sort(
+        (a, b) =>
+          (fastest ? (b.hiring?.recent ?? 0) - (a.hiring?.recent ?? 0) : 0) ||
+          b.score - a.score ||
+          (Date.parse(b.posted ?? '') || 0) - (Date.parse(a.posted ?? '') || 0) ||
+          a.company.localeCompare(b.company),
+      )
+      const ranked = spread(fitted, fastest ? 2 : 3).slice(0, opts.limit ?? 24)
+      const gaps = profile
+        ? gapsOf(
+            candidates.map((j) => ({ id: j.id, requirements: reqs.get(j.id) ?? [] })),
+            profile,
+            { ignore: state.ignoredGaps },
+          )
+        : []
+
+      return { at: Date.now(), ranked, gaps, failed, updatedAt }
+    })()
+    if (!opts.fetch && !opts.now) {
+      RANKED.set(key, hit)
+      if (RANKED.size > 200) RANKED.delete(RANKED.keys().next().value!)
     }
-  })
-  const fastest = state.search.sort === 'fastest'
-  fitted.sort(
-    (a, b) =>
-      (fastest ? (b.hiring?.recent ?? 0) - (a.hiring?.recent ?? 0) : 0) ||
-      b.score - a.score ||
-      (Date.parse(b.posted ?? '') || 0) - (Date.parse(a.posted ?? '') || 0) ||
-      a.company.localeCompare(b.company),
-  )
-  const ranked = spread(fitted, fastest ? 2 : 3).slice(0, opts.limit ?? 24)
+  }
+  const { ranked, gaps, failed, updatedAt } = hit
   // which of these already have a film: the job link, given as the job post or as the website
   const urls = ranked.map((j) => j.url)
   const made = urls.length
@@ -426,13 +480,6 @@ export async function suggestions(
     : []
   const film = new Map(made.map((m) => [m.url, m.id]))
   const known = await knownFor(sql, owner, ranked)
-  const gaps = profile
-    ? gapsOf(
-        candidates.map((j) => ({ id: j.id, requirements: reqs.get(j.id) ?? [] })),
-        profile,
-        { ignore: state.ignoredGaps },
-      )
-    : []
   return {
     gaps,
     data: ranked.map((j) => ({

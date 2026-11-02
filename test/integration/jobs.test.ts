@@ -16,7 +16,7 @@ const fakeFetch = async (url: string) => {
   calls.push(url)
   if (down) return new Response('busy', { status: 503 })
   // one Greenhouse job, with its description
-  if (url.endsWith('/boards/anthropic/jobs/11'))
+  if (url.split('?')[0]!.endsWith('/boards/anthropic/jobs/11'))
     return Response.json({
       id: 11,
       content:
@@ -122,7 +122,7 @@ describe('suggested jobs', () => {
     expect(r.failed).toEqual([])
     // every board once, plus the one Greenhouse post read for its requirements
     const n = calls.length
-    expect(calls.filter((u) => !u.endsWith('/jobs/11'))).toHaveLength(r.companies)
+    expect(calls.filter((u) => !u.split('?')[0]!.endsWith('/jobs/11'))).toHaveLength(r.companies)
     // cached: a second look fetches nothing
     await suggested()
     expect(calls.length).toBe(n)
@@ -165,10 +165,10 @@ describe('suggested jobs', () => {
       },
     })
     expect(by('Acme Labs').fit).toBeUndefined()
-    const reads = calls.filter((u) => u.endsWith('/jobs/11')).length
+    const reads = calls.filter((u) => u.split('?')[0]!.endsWith('/jobs/11')).length
     expect(reads).toBe(1)
     await suggested()
-    expect(calls.filter((u) => u.endsWith('/jobs/11')).length).toBe(1)
+    expect(calls.filter((u) => u.split('?')[0]!.endsWith('/jobs/11')).length).toBe(1)
   })
 
   it('puts a strong fit above a stretch with the same title', async () => {
