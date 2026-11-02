@@ -38,8 +38,12 @@ export class OpenAICompatibleProvider implements LlmProvider {
    * and a cap on the reply stops one request from reserving the whole minute.
    */
   #budget(): Record<string, unknown> {
-    if (!/^openai\/gpt-oss/i.test(this.#model)) return {}
-    return { reasoning_effort: 'low', include_reasoning: false, max_completion_tokens: 1500 }
+    if (/^openai\/gpt-oss/i.test(this.#model))
+      return { reasoning_effort: 'low', include_reasoning: false, max_completion_tokens: 1500 }
+    // Gemini's thinking counts toward the reply's tokens: low effort, with room for both
+    if (/^gemini-/i.test(this.#model))
+      return { reasoning_effort: 'low', max_completion_tokens: 4000 }
+    return {}
   }
 
   /** set after the endpoint rejects a json_schema response_format once */

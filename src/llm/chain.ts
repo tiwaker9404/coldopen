@@ -54,13 +54,15 @@ export interface ModelEndpoint {
  * One model, or a primary with fallbacks. LLM_FALLBACK_MODEL may list several, comma
  * separated, tried in order. A name with a slash ("openai/gpt-oss-20b") is served by the
  * primary's endpoint, so a second Groq model with its own rate limit needs no extra setup; a
- * name without one ("qwen2.5:7b") is a local Ollama model, unless LLM_FALLBACK_BASE_URL says
- * otherwise.
+ * name starting "gemini:" ("gemini:gemini-3.8-flash") is Google's Gemini API, with its own free
+ * tier and key (GEMINI_API_KEY), and is left out without one; any other name ("qwen2.5:7b") is
+ * a local Ollama model, unless LLM_FALLBACK_BASE_URL says otherwise.
  */
 export function buildLlm(
   primary: ModelEndpoint,
   fallback: Partial<ModelEndpoint> | null,
   timeoutMs: number,
+  keys: { gemini?: string | undefined } = {},
 ): LlmProvider {
   const names = (fallback?.model ?? '')
     .split(',')
@@ -68,14 +70,20 @@ export function buildLlm(
     .filter(Boolean)
   const endpoints: ModelEndpoint[] = [
     primary,
-    ...names.map((model) => {
+    ...names.flatMap((model): ModelEndpoint[] => {
+      if (model.startsWith('gemini:'))
+        return keys.gemini
+          ? [{ model: model.slice('gemini:'.length), baseUrl: GEMINI, apiKey: keys.gemini }]
+          : []
       const local = !model.includes('/')
       const customUrl = fallback?.baseUrl && fallback.baseUrl !== OLLAMA
-      return {
-        model,
-        baseUrl: customUrl ? fallback.baseUrl! : local ? OLLAMA : primary.baseUrl,
-        apiKey: customUrl || local ? (fallback?.apiKey ?? 'ollama') : primary.apiKey,
-      }
+      return [
+        {
+          model,
+          baseUrl: customUrl ? fallback.baseUrl! : local ? OLLAMA : primary.baseUrl,
+          apiKey: customUrl || local ? (fallback?.apiKey ?? 'ollama') : primary.apiKey,
+        },
+      ]
     }),
   ]
   const providers = endpoints.map(
@@ -90,4 +98,6 @@ export function buildLlm(
   return providers.length === 1 ? providers[0]! : new ChainProvider(providers)
 }
 
+/** Gemini's OpenAI-compatible endpoint */
+export const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/openai'
 const OLLAMA = 'http://localhost:11434/v1'

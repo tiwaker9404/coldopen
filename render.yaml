@@ -22,7 +22,7 @@ services:
       - key: LLM_MODEL
         value: openai/gpt-oss-120b
       - key: LLM_FALLBACK_MODEL
-        value: openai/gpt-oss-20b
+        value: openai/gpt-oss-20b,gemini:gemini-3.8-flash
       - key: SESSION_SECRET
         generateValue: true
       - key: DB_POOL_SIZE
@@ -38,6 +38,9 @@ services:
       - key: GITHUB_CLIENT_ID
         sync: false
       - key: GITHUB_CLIENT_SECRET
+        sync: false
+      # optional: a free Google AI Studio key; Gemini is tried when both Groq models are busy
+      - key: GEMINI_API_KEY
         sync: false
       - key: LLM_API_KEY
         sync: false

@@ -36,6 +36,7 @@ const llm: LlmProvider =
             }
           : null,
         cfg.LLM_TIMEOUT_MS,
+        { gemini: cfg.GEMINI_API_KEY },
       )
     : {
         name: 'none',

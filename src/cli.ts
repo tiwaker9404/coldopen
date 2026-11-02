@@ -188,6 +188,7 @@ function modelFromFlags() {
             }
           : null,
         180_000,
+        { gemini: process.env.GEMINI_API_KEY },
       )
     : null
 }

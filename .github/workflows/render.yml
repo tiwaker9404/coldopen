@@ -7,6 +7,7 @@ name: Render films for the hosted app
 # Turn it on with the repository variable RENDER_FILMS=true and these secrets:
 #   DATABASE_URL  the same database as the app (Supabase session pooler, ?sslmode=require)
 #   LLM_API_KEY   Groq key
+#   GEMINI_API_KEY  optional: a free Google AI Studio key, the last model tried when Groq is busy
 #   SHARE_URL, SHARE_TOKEN   the share worker films are published to
 on:
   repository_dispatch:
@@ -30,12 +31,14 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       SHARE_URL: ${{ secrets.SHARE_URL }}
       SHARE_TOKEN: ${{ secrets.SHARE_TOKEN }}
       LLM_PROVIDER: openai
       LLM_BASE_URL: https://api.groq.com/openai/v1
       LLM_MODEL: openai/gpt-oss-120b
-      LLM_FALLBACK_MODEL: openai/gpt-oss-20b
+      # a "gemini:" model is used only when GEMINI_API_KEY is set
+      LLM_FALLBACK_MODEL: openai/gpt-oss-20b,gemini:gemini-3.8-flash
       CHROME_PATH: /usr/bin/google-chrome
       # (the runner context isn't available at job level, so a fixed path)
       FILMS_DIR: /tmp/coldopen-films

@@ -49,6 +49,8 @@ const schema = z.object({
   LLM_FALLBACK_MODEL: z.string().optional(),
   LLM_FALLBACK_BASE_URL: z.string().default('http://localhost:11434/v1'),
   LLM_FALLBACK_API_KEY: z.string().default('ollama'),
+  /** Google AI Studio key, for "gemini:..." models in LLM_FALLBACK_MODEL (free tier) */
+  GEMINI_API_KEY: z.string().optional(),
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
 
   /** Slack app (optional): mention the bot with a URL, the film comes back in the thread */

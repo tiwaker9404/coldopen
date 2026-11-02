@@ -40,7 +40,7 @@ Use the session pooler, not the direct connection, which is IPv6 only. coldopen 
 
 In the repo: **Settings → Secrets and variables → Actions**.
 
-- **Secrets** tab, **New repository secret** for each: `DATABASE_URL` (step 1), `LLM_API_KEY` (your Groq key), `SHARE_URL` (`https://coldopen-share.<you>.workers.dev`), `SHARE_TOKEN` (on a Mac: `security find-generic-password -a "$USER" -s coldopen-share-token -w | pbcopy`).
+- **Secrets** tab, **New repository secret** for each: `DATABASE_URL` (step 1), `LLM_API_KEY` (your Groq key), `GEMINI_API_KEY` (optional, a free [Google AI Studio](https://aistudio.google.com/apikey) key: the third model, tried when Groq is busy), `SHARE_URL` (`https://coldopen-share.<you>.workers.dev`), `SHARE_TOKEN` (on a Mac: `security find-generic-password -a "$USER" -s coldopen-share-token -w | pbcopy`).
 - **Variables** tab, **New repository variable:** `RENDER_FILMS` = `true`.
 
 The **Render films for the hosted app** workflow now runs whenever a film is waiting. Its logs are public, like everything in a public repository, so it logs errors only.
@@ -127,6 +127,7 @@ nano ~/coldopen/deploy/oracle/.env
 | `GITHUB_CLIENT_ID`     | the GitHub App's Client ID (starts with `Iv`)                                                                                                 |
 | `GITHUB_CLIENT_SECRET` | its client secret                                                                                                                             |
 | `LLM_API_KEY`          | your Groq key                                                                                                                                 |
+| `GEMINI_API_KEY`       | optional: a free key from [Google AI Studio](https://aistudio.google.com/apikey), tried when both Groq models are rate limited                |
 | `SHARE_URL`            | your share worker, e.g. `https://coldopen-share.<you>.workers.dev`                                                                            |
 | `SHARE_TOKEN`          | its upload token. On your Mac: `security find-generic-password -a "$USER" -s coldopen-share-token -w \| pbcopy` copies it without printing it |
 

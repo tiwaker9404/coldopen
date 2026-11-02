@@ -61,6 +61,23 @@ describe('model providers', () => {
     expect(calls.map((c) => c.model)).toEqual(['openai/gpt-oss-limited', 'openai/gpt-oss-20b'])
   })
 
+  it('adds Gemini with its own endpoint and key, and leaves it out without a key', () => {
+    const fb = { model: 'openai/gpt-oss-20b, gemini:gemini-3.8-flash' }
+    // a chain is named after its providers, in the order it tries them
+    const names = (llm: { name: string }) => llm.name.split(' -> ')
+    expect(
+      names(buildLlm({ baseUrl: base, model: 'a/b', apiKey: 'k' }, fb, 5000, { gemini: 'g' })),
+    ).toEqual([
+      'openai-compatible:a/b',
+      'openai-compatible:openai/gpt-oss-20b',
+      'openai-compatible:gemini-3.8-flash',
+    ])
+    expect(names(buildLlm({ baseUrl: base, model: 'a/b', apiKey: 'k' }, fb, 5000))).toEqual([
+      'openai-compatible:a/b',
+      'openai-compatible:openai/gpt-oss-20b',
+    ])
+  })
+
   it('keeps gpt-oss requests small enough for a free tier', async () => {
     calls.length = 0
     await ask(provider('openai/gpt-oss-120b'))
@@ -69,6 +86,10 @@ describe('model providers', () => {
       include_reasoning: false,
       max_completion_tokens: 1500,
     })
+    calls.length = 0
+    await ask(provider('gemini-3.8-flash'))
+    expect(calls[0]!.body).toMatchObject({ reasoning_effort: 'low', max_completion_tokens: 4000 })
+    expect(calls[0]!.body.include_reasoning).toBeUndefined()
     calls.length = 0
     await ask(provider('qwen2.5:7b'))
     expect(calls[0]!.body.reasoning_effort).toBeUndefined()
