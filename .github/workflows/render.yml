@@ -16,9 +16,10 @@ on:
   schedule:
     - cron: "*/15 * * * *"
 
-# one renderer at a time; a start signal that arrives while one runs waits for it
+# One job per lane. The app starts up to RENDER_RUNNERS lanes when films pile up, so a burst
+# renders side by side; a start signal for a busy lane waits for it. The schedule uses lane 0.
 concurrency:
-  group: render
+  group: render-${{ github.event.client_payload.slot || 0 }}
   cancel-in-progress: false
 
 jobs:
@@ -38,8 +39,8 @@ jobs:
       CHROME_PATH: /usr/bin/google-chrome
       # (the runner context isn't available at job level, so a fixed path)
       FILMS_DIR: /tmp/coldopen-films
-      WORKER_CONCURRENCY: "2"
-      # the runner has 4 cores: render 3 scenes of a film at once
+      # one film per job, with all 4 cores: 3 scenes at once. More films start more jobs
+      WORKER_CONCURRENCY: "1"
       RENDER_PAGES: "3"
       # this repository is public, and so are its logs: keep them to errors, with no film details
       LOG_LEVEL: error
@@ -47,7 +48,8 @@ jobs:
       - name: Anything to render?
         id: queue
         run: |
-          n=$(psql "$DATABASE_URL" -tAc "select count(*) from runs where status = 'running' or (status = 'queued' and next_run_at <= now() + interval '5 minutes')" 2>/dev/null || echo 1)
+          # films no other job is rendering: queued (or due to retry soon), or left by a job that died
+          n=$(psql "$DATABASE_URL" -tAc "select count(*) from runs where (status = 'queued' and next_run_at <= now() + interval '5 minutes') or (status = 'running' and lease_expires_at < now())" 2>/dev/null || echo 1)
           echo "pending=$n" >> "$GITHUB_OUTPUT"
       - if: steps.queue.outputs.pending != '0'
         uses: actions/checkout@v5

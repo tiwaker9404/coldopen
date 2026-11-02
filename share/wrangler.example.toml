@@ -11,3 +11,7 @@ id = "KV_NAMESPACE_ID"
 binding = "VIEWS"
 database_name = "coldopen-views"
 database_id = "D1_DATABASE_ID"
+
+# every 10 minutes: visit the hosted app (APP_URL) so its free server doesn't fall asleep
+[triggers]
+crons = ["*/10 * * * *"]

@@ -74,7 +74,7 @@ async function main() {
     await worker.start()
     stoppers.push(() => worker.stop(60_000))
     stoppers.push(closeBrowser)
-    if (role === 'drain') void drain()
+    if (role === 'drain') void drain(worker)
   }
   if (role === 'api' || role === 'all') {
     const app = await buildApi({
@@ -95,21 +95,54 @@ async function main() {
  * finishing one and checking isn't missed. A hard cap keeps a stuck queue from burning a
  * CI runner for hours; whatever is left is picked up by the next run.
  */
-async function drain() {
-  const started = Date.now()
+/**
+ * A renderer started on demand (a GitHub Actions job): render until there's nothing left this
+ * job could take, then exit. Films other jobs are rendering don't keep it running; a crashed
+ * job's film (its lease ran out) and retries due soon do. Logs each film's step timings without
+ * any film details, since the job's logs are public.
+ */
+async function drain(worker: Worker) {
+  const started = new Date()
   const maxMs = Number(process.env.DRAIN_MAX_MINUTES ?? 50) * 60_000
   let quiet = 0
   while (!stopping) {
-    await new Promise((r) => setTimeout(r, 10_000))
+    await new Promise((r) => setTimeout(r, 5_000))
     const [row] = await sql<{ n: number }[]>`
       select count(*)::int as n from runs
-      where status = 'running'
-         or (status = 'queued' and next_run_at <= now() + interval '5 minutes')`
-    quiet = (row?.n ?? 0) === 0 ? quiet + 1 : 0
-    if (quiet >= 2 || Date.now() - started > maxMs) {
-      log.info({ minutes: Math.round((Date.now() - started) / 60_000) }, 'queue drained')
+      where (status = 'queued' and next_run_at <= now() + interval '5 minutes')
+         or (status = 'running' and lease_expires_at < now())`
+    quiet = worker.inFlight === 0 && (row?.n ?? 0) === 0 ? quiet + 1 : 0
+    if (quiet >= 2 || Date.now() - started.getTime() > maxMs) {
+      await logTimings(started, worker.id)
+      log.info({ minutes: Math.round((Date.now() - started.getTime()) / 60_000) }, 'queue drained')
       return shutdown('drained')
     }
+  }
+}
+
+/** "film: 82.4s from request to ready (research 6.2, script-1 9.8, render 37.0, encode 2.1, publish 3.0)" */
+async function logTimings(since: Date, workerId: string) {
+  try {
+    const rows = await sql<{ id: string; total: number; key: string; ms: number }[]>`
+      select r.id, extract(epoch from r.completed_at - r.created_at)::float8 as total,
+        case when s.key like 'render:%' then 'render' else s.key end as key,
+        -- elapsed time: scenes render side by side, so their durations don't add up
+        (extract(epoch from max(s.completed_at) - min(s.started_at)) * 1000)::int as ms
+      from runs r join steps s on s.run_id = r.id
+      where r.agent = 'film' and r.status = 'succeeded' and r.completed_at >= ${since}
+        and r.worker_id = ${workerId} and s.replays = 0
+      group by 1, 2, 3 order by 1, min(s.seq)`
+    const films = new Map<string, { total: number; parts: string[] }>()
+    for (const r of rows) {
+      const f = films.get(r.id) ?? { total: r.total, parts: [] }
+      f.parts.push(`${r.key} ${(r.ms / 1000).toFixed(1)}`)
+      films.set(r.id, f)
+    }
+    // stdout, not the logger: it's set to errors only on GitHub, and this holds no film details
+    for (const f of films.values())
+      console.log(`film: ${f.total.toFixed(1)}s from request to ready (${f.parts.join(', ')})`)
+  } catch {
+    // timings are a nice-to-have
   }
 }
 

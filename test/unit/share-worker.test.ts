@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
-import { beforeEach, describe, expect, it } from 'vitest'
-import { type D1, type Env, handle, type KV } from '../../share/worker.ts'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import worker, { type D1, type Env, handle, type KV } from '../../share/worker.ts'
 
 const ttls = new Map<string, number>()
 /** Workers KV, in memory. */
@@ -219,4 +219,22 @@ describe('share worker', () => {
     const all = await (await call('/api/views', { headers: auth })).json()
     expect(all.films).toEqual([])
   })
+
+  it('keeps the hosted app awake on its schedule, and names downloads', async () => {
+    const seen: string[] = []
+    vi.stubGlobal('fetch', async (u: string) => {
+      seen.push(String(u))
+      return new Response('ok')
+    })
+    worker.scheduled({}, { ...env, APP_URL: 'https://app.example.dev/' }, ctx)
+    worker.scheduled({}, env, ctx)
+    await Promise.all(waits)
+    expect(seen).toEqual(['https://app.example.dev/healthz'])
+
+    await upload()
+    const r = await call(`/f/${ID}/film-square.mp4?download=${encodeURIComponent('Deel - Ashwin')}`)
+    expect(r.headers.get('content-disposition')).toBe('attachment; filename="Deel - Ashwin.mp4"')
+  })
 })
+
+afterEach(() => vi.unstubAllGlobals())

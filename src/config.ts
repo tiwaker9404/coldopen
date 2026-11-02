@@ -83,6 +83,8 @@ const schema = z.object({
    * workflows (fine-grained, "Contents: read and write" on the repo) and "owner/repo"
    */
   RENDER_DISPATCH_TOKEN: z.string().optional(),
+  /** most GitHub Actions renderers to run at once; each renders one film with all its cores */
+  RENDER_RUNNERS: z.coerce.number().int().min(1).max(20).default(4),
   RENDER_DISPATCH_REPO: z
     .string()
     .regex(/^[\w.-]+\/[\w.-]+$/)

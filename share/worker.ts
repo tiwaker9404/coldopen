@@ -460,4 +460,21 @@ export async function handle(req: Request, env: Env, ctx: Ctx): Promise<Response
   return err(404, 'not found')
 }
 
-export default { fetch: handle }
+/**
+ * Every 10 minutes (the cron in wrangler.toml): visit the hosted app, so its free server never
+ * falls asleep and the next visitor doesn't wait a minute for it to start.
+ */
+async function keepAwake(env: Env): Promise<void> {
+  if (!env.APP_URL) return
+  const url = `${env.APP_URL.replace(/\/$/, '')}/healthz`
+  try {
+    await fetch(url, { headers: { 'user-agent': 'coldopen-keep-awake' } })
+  } catch {
+    // waking up or briefly down: the next tick tries again
+  }
+}
+
+export default {
+  fetch: handle,
+  scheduled: (_event: unknown, env: Env, ctx: Ctx) => ctx.waitUntil(keepAwake(env)),
+}

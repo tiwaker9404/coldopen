@@ -146,7 +146,12 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
     cfg.SHARE_URL && cfg.SHARE_TOKEN
       ? { url: cfg.SHARE_URL.replace(/\/$/, ''), token: cfg.SHARE_TOKEN }
       : null
-  const kick = renderDispatcher(cfg, log)
+  const kick = renderDispatcher(cfg, log, async () => {
+    const [r] = await sql<{ n: number }[]>`
+      select count(*)::int as n from runs
+      where agent = 'film' and status in ('queued', 'running')`
+    return r?.n ?? 1
+  })
   const app = Fastify({
     loggerInstance: log,
     logController: new LogController({
