@@ -30,7 +30,6 @@ jobs:
       - run: pnpm install --frozen-lockfile --prod
         env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
       - run: node src/jobs/visa-build.ts
-        env: { VISA_DEBUG: "1" }
       - name: Commit the list if it changed
         run: |
           git diff --quiet src/jobs/visa.json && exit 0

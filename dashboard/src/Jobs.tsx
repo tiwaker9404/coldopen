@@ -283,9 +283,9 @@ function JobRow({
           {job.visa && (
             <span
               className="tag visa"
-              title={`USCIS approved ${job.visa.approvals} H-1B petitions for this company in fiscal year ${job.visa.year}`}
+              title={`USCIS approved H-1B petitions for this company in fiscal year ${job.visa.year} (its latest public data)`}
             >
-              Sponsors H-1B · {job.visa.approvals} in FY{String(job.visa.year).slice(2)}
+              Sponsors H-1B
             </span>
           )}
           {job.pay && (

@@ -104,8 +104,6 @@ async function main() {
       ),
     )
   ).join('\n')
-  if (process.env.VISA_DEBUG)
-    for (const m of page.matchAll(/href="([^"]*(?:data|hub|export|20\d\d)[^"]*)"/gi)) console.log('link', m[1])
   const links = [...page.matchAll(/href="([^"]+?\.csv)"/gi)].map((m) =>
     new URL(m[1]!, HUB).toString(),
   )
