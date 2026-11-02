@@ -12,9 +12,14 @@ mkdir -p "$TOOLS/bin" "$TOOLS/fonts"
 
 if [ ! -x "$TOOLS/bin/ffmpeg" ] || [ ! -x "$TOOLS/bin/ffprobe" ]; then
   tmp=$(mktemp -d)
-  # BtbN's builds are static and published as GitHub releases, so the download stays on GitHub
-  if gh release download latest -R BtbN/FFmpeg-Builds -D "$tmp" \
-      -p 'ffmpeg-n7*-latest-linux64-gpl-7*.tar.xz' 2>/dev/null; then
+  # BtbN's builds are static and published as GitHub releases, so the download stays on GitHub.
+  # Asset names carry the version (ffmpeg-n7.1-latest-linux64-gpl-7.1.tar.xz): take the newest
+  # numbered release, not the nightly master build.
+  asset=$(gh api repos/BtbN/FFmpeg-Builds/releases/latest \
+    --jq '.assets[].name | select(test("^ffmpeg-n[0-9.]+-latest-linux64-gpl-[0-9.]+\\.tar\\.xz$"))' \
+    | sort -V | tail -1 || true)
+  echo "static ffmpeg: ${asset:-none found}"
+  if [ -n "$asset" ] && gh release download latest -R BtbN/FFmpeg-Builds -D "$tmp" -p "$asset"; then
     tar -xJf "$(ls "$tmp"/*.tar.xz | head -1)" -C "$tmp"
     cp "$tmp"/ffmpeg-*/bin/ffmpeg "$tmp"/ffmpeg-*/bin/ffprobe "$TOOLS/bin/"
   else

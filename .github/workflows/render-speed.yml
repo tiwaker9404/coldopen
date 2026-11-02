@@ -36,7 +36,9 @@ jobs:
         run: |
           t0=$(date +%s.%N)
           bash .github/scripts/render-tools.sh
-          echo "sec=$(echo "$(date +%s.%N) - $t0" | bc)" >> "$GITHUB_OUTPUT"
+          sec=$(echo "$(date +%s.%N) - $t0" | bc)
+          echo "RESULT tools=${sec}s cache-hit=${{ steps.tools-cache.outputs.cache-hit || 'false' }}"
+          echo "sec=$sec" >> "$GITHUB_OUTPUT"
       - run: pnpm install --frozen-lockfile --prod
         env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
       - name: Render the same film with different page counts
@@ -64,5 +66,6 @@ jobs:
             frames=$(echo "$log" | awk '/^  render/ {print $2}')
             # the decoded frames, not the file: the container's timestamps differ run to run
             sum=$(ffmpeg -v error -i "$out"/*/film-square.mp4 -f framemd5 - | md5sum | cut -c1-10)
+            echo "RESULT pages=$p total=$total render=$render frames=$frames output=$sum"
             echo "| $p | $total | $render | $frames | $sum |" >> "$GITHUB_STEP_SUMMARY"
           done
