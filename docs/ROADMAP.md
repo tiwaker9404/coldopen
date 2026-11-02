@@ -38,7 +38,7 @@ Huntr and others).
 8. **Raised recently:** a badge and filter from SEC Form D filings.
 9. **YC Work at a Startup links,** so YC companies without a public board still appear.
 10. **Filters:** exclude companies, posted within (if it didn't make launch), pay range (from Ashby's salaries), team.
-11. **People you know** on each job row ("2 connections at Sierra").
+11. **People you know** on each job row, if it didn't make launch.
 12. **Fit gaps:** the requirements your profile keeps missing, one click to add.
 
 ### 11 to 24 Nov: closing the loop
