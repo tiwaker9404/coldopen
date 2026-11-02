@@ -21,7 +21,15 @@ export interface Film {
   share: string | null
   job: { title: string | null; url: string | null } | null
   views: ViewSummary | null
-  outreach: { status: OutreachStatus; at: string; sentAt: string } | null
+  outreach: {
+    status: OutreachStatus
+    at: string
+    sentAt: string
+    followUps?: number
+    followedUpAt?: string
+    /** what to do next while it waits for a reply */
+    next: NextStep | null
+  } | null
   /** the first film, when this one re-renders it with edited lines */
   editOf: string | null
 }
@@ -336,4 +344,23 @@ export interface JobSuggestions {
   failed: string[]
   updatedAt: string | null
   search: JobSearch
+}
+
+/** a follow-up (1 or 2), or "close": time to mark it no reply */
+export interface NextStep {
+  kind: 'follow_up' | 'close'
+  step: 1 | 2 | null
+  dueAt: string
+  due: boolean
+}
+
+export interface FollowUps {
+  data: {
+    film: Film
+    next: NextStep
+    message: { subject: string; body: string; linkedin: string } | null
+  }[]
+  /** sent films not due yet */
+  waiting: number
+  nextDueAt: string | null
 }

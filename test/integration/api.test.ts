@@ -378,6 +378,52 @@ describe('films', () => {
     expect((await app.inject({ url: '/v1/outreach', headers: auth })).json().sent).toBe(1)
   })
 
+  it('lists films due a follow-up with the message ready, and records each one sent', async () => {
+    const id = (
+      await app.inject({
+        method: 'POST',
+        url: '/v1/films',
+        headers: auth,
+        payload: { url: 'followup.example' },
+      })
+    ).json().id
+    await finish(id, 'Followup Co')
+    await app.inject({
+      method: 'PUT',
+      url: `/v1/films/${id}/outreach`,
+      headers: auth,
+      payload: { status: 'sent' },
+    })
+    const list = async () => (await app.inject({ url: '/v1/followups', headers: auth })).json()
+    // just sent: nothing due yet
+    expect((await list()).data.some((d: { film: { id: string } }) => d.film.id === id)).toBe(false)
+    // five days later
+    const back = new Date(Date.now() - 5 * 86_400_000).toISOString()
+    await sql`update runs set outreach = jsonb_set(jsonb_set(outreach, '{sentAt}', to_jsonb(${back}::text)), '{at}', to_jsonb(${back}::text)) where id = ${id}`
+    const due = (await list()).data.find((d: { film: { id: string } }) => d.film.id === id)
+    expect(due.next).toMatchObject({ kind: 'follow_up', step: 1, due: true })
+    expect(due.message.subject).toMatch(/^Re: /)
+    expect(due.message.body).toContain('Bumping this')
+    expect(due.film.outreach.next).toMatchObject({ step: 1, due: true })
+
+    const f = await app.inject({ method: 'POST', url: `/v1/films/${id}/followup`, headers: auth })
+    expect(f.json().outreach).toMatchObject({ status: 'sent', followUps: 1 })
+    expect(f.json().outreach.next).toMatchObject({ step: 2, due: false })
+    expect((await list()).data.some((d: { film: { id: string } }) => d.film.id === id)).toBe(false)
+    // a reply keeps the follow-up count, and ends the follow-ups
+    const r = await app.inject({
+      method: 'PUT',
+      url: `/v1/films/${id}/outreach`,
+      headers: auth,
+      payload: { status: 'replied' },
+    })
+    expect(r.json().outreach).toMatchObject({ status: 'replied', followUps: 1, next: null })
+    expect(
+      (await app.inject({ method: 'POST', url: `/v1/films/${id}/followup`, headers: auth }))
+        .statusCode,
+    ).toBe(409)
+  })
+
   it('re-renders a film with edited lines, and keeps numbers honest', async () => {
     const a = (
       await app.inject({

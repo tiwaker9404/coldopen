@@ -706,6 +706,48 @@ small,
   color: var(--faint);
 }
 
+/* --------------------------------------------------------------- follow-ups */
+
+.followups {
+  display: grid;
+  gap: 10px;
+}
+
+.title-link {
+  justify-self: start;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+  white-space: normal;
+}
+
+.followup-msg {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.followup-msg summary {
+  cursor: pointer;
+  width: max-content;
+}
+
+.followup-msg pre {
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--rule);
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+
+.followup-do {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 /* -------------------------------------------------------------------- jobs */
 
 .jobs {

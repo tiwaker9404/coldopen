@@ -34,7 +34,7 @@ function stepLabel(key: string) {
   return STEP_LABEL[key] ?? key
 }
 
-function Copy({
+export function Copy({
   text,
   label,
   done = 'Copied',

@@ -105,6 +105,7 @@ export function Outreach({ film }: { film: Film }) {
       void qc.invalidateQueries({ queryKey: ['films'] })
       void qc.invalidateQueries({ queryKey: ['film', film.id] })
       void qc.invalidateQueries({ queryKey: ['outreach'] })
+      void qc.invalidateQueries({ queryKey: ['followups'] })
     },
   })
   const value = mark.isPending ? (mark.variables ?? '') : (film.outreach?.status ?? '')
@@ -126,5 +127,4 @@ export function Outreach({ film }: { film: Film }) {
   )
 }
 
-const due = (f: Film) =>
-  f.outreach?.status === 'sent' && Date.now() - Date.parse(f.outreach.sentAt) >= 4 * 86_400_000
+const due = (f: Film) => !!f.outreach?.next?.due

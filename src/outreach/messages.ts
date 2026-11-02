@@ -11,6 +11,10 @@ export interface Messages {
   email: { subject: string; body: string }
   linkedin: string
   followUp: string
+  /** the second and last follow-up: short, and easy to answer either way */
+  lastNote: string
+  /** a follow-up short enough for a LinkedIn message */
+  linkedinFollowUp: string
 }
 
 const LINKEDIN_LIMIT = 300
@@ -87,5 +91,23 @@ export function draftMessages(
     first,
   ].join('\n')
 
-  return { email, linkedin, followUp }
+  const lastNote = [
+    'Hi [First name],',
+    '',
+    `One last note on the film I made ${forWhat}: ${link}`,
+    '',
+    candidate
+      ? `If the timing isn't right, no problem at all. If someone else on the team is the better person to talk to about the role, I'd be grateful for a pointer.`
+      : `If the timing isn't right, no problem at all. If someone else on the team is the better person to talk to, I'd be grateful for a pointer.`,
+    '',
+    first,
+  ].join('\n')
+
+  const fu = `Hi [First name], following up on the film I made for ${company}: ${link} ${ask} – ${first}`
+  const linkedinFollowUp =
+    fu.length <= LINKEDIN_LIMIT
+      ? fu
+      : `Hi [First name], following up on my film: ${link} – ${first}`
+
+  return { email, linkedin, followUp, lastNote, linkedinFollowUp }
 }

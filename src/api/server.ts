@@ -22,6 +22,13 @@ import { getSearch, hideJob, MAX_OWN_BOARDS, saveSearch, suggestions } from '../
 import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
+import {
+  followedUp,
+  nextStep,
+  OUTREACH,
+  type Outreach,
+  type OutreachStatus,
+} from '../outreach/followup.ts'
 import { draftMessages } from '../outreach/messages.ts'
 import {
   type Connection,
@@ -73,14 +80,7 @@ const PUBLIC_FILES =
   /^(film-(square|landscape|portrait)\.mp4|poster\.jpg|preview\.gif|contact-sheet\.jpg)$/
 const RunId = z.string().regex(/^run_[0-9A-Z]{26}$/, 'not a film id')
 
-export const OUTREACH = ['sent', 'replied', 'interview', 'no_reply'] as const
-export type OutreachStatus = (typeof OUTREACH)[number]
-interface Outreach {
-  status: OutreachStatus
-  at: string
-  /** when it was first marked sent: reply rates are counted from here */
-  sentAt: string
-}
+export { OUTREACH, type OutreachStatus } from '../outreach/followup.ts'
 
 interface FilmRow extends Run {
   input: z.infer<typeof FilmInputSchema>
@@ -124,8 +124,8 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
       (r.input.job ? { title: r.input.job.title ?? null, url: r.input.job.url ?? null } : null),
     /** what people did on the share page; null until the film is finished */
     views: out ? (views ?? NO_VIEWS) : null,
-    /** what happened after it was sent, as the sender marked it */
-    outreach: r.outreach ?? null,
+    /** what happened after it was sent, as the sender marked it, and what to do next */
+    outreach: r.outreach ? { ...r.outreach, next: nextStep(r.outreach) } : null,
     /** the first film, when this one re-renders it with an edited script */
     editOf: r.input.editOf ?? null,
   }
@@ -1057,11 +1057,86 @@ export async function buildApi({ sql, cfg, log, slack, llm = null, jobsFetch }: 
           .send({ error: { code: 'not_finished', message: 'only a finished film can be sent' } })
       const now = new Date().toISOString()
       const prev = (run as FilmRow).outreach
+      // follow-ups already sent stay on the record when the status changes
       const next: Outreach | null = req.body.status
-        ? { status: req.body.status, at: now, sentAt: prev?.sentAt ?? now }
+        ? { ...(prev ?? {}), status: req.body.status, at: now, sentAt: prev?.sentAt ?? now }
         : null
       const [r] = await sql<FilmRow[]>`
         update runs set outreach = ${next ? sql.json(next as never) : null}
+        where id = ${req.params.id} returning *`
+      return filmDto(r!, publicUrl)
+    },
+  )
+
+  app.get(
+    '/v1/followups',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Sent films that are due a follow-up, with the message ready',
+        description:
+          'A film marked sent with no reply is due a first follow-up after 4 days and a last, shorter one 7 days later; 7 days after that it is due to be marked no reply. Each comes with the email (subject "Re: …") and a LinkedIn version, with a [First name] placeholder.',
+      },
+    },
+    async (req) => {
+      const rows = await sql<FilmRow[]>`
+        select * from runs where agent = 'film' and owner = ${req.owner} and status = 'succeeded'
+          and outreach->>'status' = 'sent'
+        order by id desc limit 500`
+      const now = Date.now()
+      const steps = rows.map((r) => ({ r, next: nextStep(r.outreach, now)! }))
+      const due = steps
+        .filter((s) => s.next.due)
+        .sort((a, b) => a.next.dueAt.localeCompare(b.next.dueAt))
+      const upcoming = steps
+        .filter((s) => !s.next.due)
+        .map((s) => s.next.dueAt)
+        .sort()
+      return {
+        data: due.map(({ r, next }) => {
+          const film = filmDto(r, publicUrl)
+          const m =
+            r.output && film.share ? draftMessages(r.output, r.input.profile, film.share) : null
+          return {
+            film,
+            next,
+            message:
+              m && next.kind === 'follow_up'
+                ? {
+                    subject: `Re: ${m.email.subject}`,
+                    body: next.step === 1 ? m.followUp : m.lastNote,
+                    linkedin: m.linkedinFollowUp,
+                  }
+                : null,
+          }
+        }),
+        waiting: upcoming.length,
+        nextDueAt: upcoming[0] ?? null,
+      }
+    },
+  )
+
+  app.post(
+    '/v1/films/:id/followup',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Record that you sent a follow-up for this film',
+        params: z.object({ id: RunId }),
+      },
+    },
+    async (req, reply) => {
+      const run = (await ownFilm(req.params.id, req.owner)) as FilmRow | undefined
+      if (!run) return notFound(reply)
+      if (run.outreach?.status !== 'sent')
+        return reply.status(409).send({
+          error: {
+            code: 'not_waiting',
+            message: 'only a film marked sent, with no reply yet, can be followed up',
+          },
+        })
+      const [r] = await sql<FilmRow[]>`
+        update runs set outreach = ${sql.json(followedUp(run.outreach) as never)}
         where id = ${req.params.id} returning *`
       return filmDto(r!, publicUrl)
     },
