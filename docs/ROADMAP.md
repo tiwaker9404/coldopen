@@ -29,31 +29,33 @@ Huntr and others).
 4. Model quota guard: per-visitor caps so launch traffic can't use up the day's free limits, with
    a friendly "busy, try again in 10 minutes".
 5. Error alerts (Sentry's free plan).
+6. If done by 3pm: **people you know** on each job row ("2 connections at Sierra") and a
+   **posted within** filter (this week, this month). Otherwise they wait for after launch.
 
 ### Week of 4 Nov: sharper finding
 
-6. **Sponsors visas:** a badge and filter from the Labor Department's free H-1B (LCA) data.
-7. **Raised recently:** a badge and filter from SEC Form D filings.
-8. **YC Work at a Startup links,** so YC companies without a public board still appear.
-9. **Filters:** posted within, exclude companies, pay range (from Ashby's salaries), team.
-10. **People you know** on each job row ("2 connections at Sierra").
-11. **Fit gaps:** the requirements your profile keeps missing, one click to add.
+7. **Sponsors visas:** a badge and filter from the Labor Department's free H-1B (LCA) data.
+8. **Raised recently:** a badge and filter from SEC Form D filings.
+9. **YC Work at a Startup links,** so YC companies without a public board still appear.
+10. **Filters:** exclude companies, posted within (if it didn't make launch), pay range (from Ashby's salaries), team.
+11. **People you know** on each job row ("2 connections at Sierra").
+12. **Fit gaps:** the requirements your profile keeps missing, one click to add.
 
 ### 11 to 24 Nov: closing the loop
 
-12. **Alerts:** new roles at companies you filmed and new matches, on Today and in a weekly email.
-13. **Follow-ups that use views:** "watched to the end 2 days ago, no reply" brings the
+13. **Alerts:** new roles at companies you filmed and new matches, on Today and in a weekly email.
+14. **Follow-ups that use views:** "watched to the end 2 days ago, no reply" brings the
     follow-up forward.
-14. **They replied → interview brief:** the film's research as a one-page company brief and
+15. **They replied → interview brief:** the film's research as a one-page company brief and
     three questions to ask.
-15. **Chrome extension:** a Make film button on any job post you're viewing.
-16. The last follow-up can switch to LinkedIn; the dashboard's files served from Cloudflare.
+16. **Chrome extension:** a Make film button on any job post you're viewing.
+17. The last follow-up can switch to LinkedIn; the dashboard's files served from Cloudflare.
 
 ### December onward
 
-17. **Better films:** an optional clip of you, recorded once; voiceover; recent company news; two
+18. **Better films:** an optional clip of you, recorded once; voiceover; recent company news; two
     hooks per film to learn which wins.
-18. A Pro plan (Stripe, test mode first), a career center pilot (Duke first), then the recruiting
+19. A Pro plan (Stripe, test mode first), a career center pilot (Duke first), then the recruiting
     agency direction and the YC application.
 
 ## Keeping as is
