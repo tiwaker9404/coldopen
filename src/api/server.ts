@@ -24,6 +24,7 @@ import {
   hideJob,
   ignoreGap,
   MAX_OWN_BOARDS,
+  markSeen,
   saveSearch,
   suggestions,
   warmBoards,
@@ -39,6 +40,7 @@ import {
   guesses,
   HunterError,
   hunterFind,
+  hunterLeaders,
 } from '../outreach/email.ts'
 import {
   followedUp,
@@ -787,6 +789,10 @@ export async function buildApi({
       })
       return {
         data: r.data.map(({ score: _s, board: _b, ...j }) => j),
+        alerts: {
+          ...r.alerts,
+          filmed: r.alerts.filmed.map(({ score: _s, board: _b, ...j }) => j),
+        },
         gaps: r.gaps,
         companies: r.companies,
         ycCompanies: YC_BOARDS.length,
@@ -798,6 +804,20 @@ export async function buildApi({
           suggested: r.search.suggested,
         },
       }
+    },
+  )
+
+  app.post(
+    '/v1/jobs/seen',
+    {
+      schema: {
+        tags: ['jobs'],
+        summary: 'Mark your matches as seen: what is new is counted from now',
+      },
+    },
+    async (req) => {
+      await markSeen(sql, req.owner)
+      return { seen: true }
     },
   )
 
@@ -1252,6 +1272,46 @@ export async function buildApi({
       }
       const guessed = guesses(req.body.name, domain).filter((g) => g.email !== found?.email)
       return { domain, found, guesses: guessed, hunter: !!key, note }
+    },
+  )
+
+  app.post(
+    '/v1/films/:id/founders',
+    {
+      schema: {
+        tags: ['films'],
+        summary: "The company's founders and executives, with their work emails",
+        description:
+          'One Hunter domain search with your saved Hunter key (PUT /v1/me/keys/hunter): founders, CEOs and CTOs first. Nothing is sent.',
+        params: z.object({ id: RunId }),
+      },
+    },
+    async (req, reply) => {
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run?.output) return notFound(reply)
+      const domain = domainOf(run.output.host ?? run.input.url)
+      if (!domain)
+        return reply
+          .status(422)
+          .send({ error: { code: 'no_domain', message: "couldn't tell the company's domain" } })
+      const key = await readKey(sql, keySecret, req.owner, 'hunter')
+      if (!key)
+        return reply.status(409).send({
+          error: {
+            code: 'no_hunter_key',
+            message: 'Add your free Hunter key on your Profile page to look up founders’ emails',
+          },
+        })
+      try {
+        return { domain, people: await hunterLeaders(key, domain, hunterFetch) }
+      } catch (err) {
+        return reply.status(502).send({
+          error: {
+            code: 'hunter',
+            message: err instanceof HunterError ? err.message : 'Hunter could not be reached',
+          },
+        })
+      }
     },
   )
 

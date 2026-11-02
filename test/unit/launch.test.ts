@@ -209,3 +209,44 @@ describe('follow-ups after a watch', () => {
     expect(nextStep(sent, NOW, before)!.watched).toBe(undefined)
   })
 })
+
+describe('fit check accuracy', () => {
+  it("doesn't call a post with one requirement a strong fit", async () => {
+    const { fitOf } = await import('../../src/job/fit.ts')
+    const p = profile('candidate')
+    const req = p.points[0]!
+    expect(fitOf([req], p)?.level).toBe('good')
+  })
+})
+
+describe('founders from Hunter', () => {
+  it('puts founders and CEOs first, with their emails', async () => {
+    const { hunterLeaders } = await import('../../src/outreach/email.ts')
+    const f = async () =>
+      Response.json({
+        data: {
+          emails: [
+            {
+              value: 'vp@acme.com',
+              first_name: 'Val',
+              last_name: 'P',
+              position: 'VP Sales',
+              confidence: 99,
+            },
+            {
+              value: 'ann@acme.com',
+              first_name: 'Ann',
+              last_name: 'Lee',
+              position: 'Co-founder & CEO',
+              confidence: 80,
+              verification: { status: 'valid' },
+            },
+            { value: 'noname@acme.com', position: 'CTO' },
+          ],
+        },
+      })
+    const l = await hunterLeaders('k', 'acme.com', f as never)
+    expect(l.map((x) => x.email)).toEqual(['ann@acme.com', 'vp@acme.com'])
+    expect(l[0]).toMatchObject({ name: 'Ann Lee', status: 'valid' })
+  })
+})

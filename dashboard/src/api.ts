@@ -406,6 +406,8 @@ export interface FitGap {
 
 export interface JobSuggestions {
   data: JobSuggestion[]
+  /** what's new since their last look at Jobs */
+  alerts: { since: string | null; newMatches: number; filmed: JobSuggestion[] }
   gaps: FitGap[]
   companies: number
   /** how many of them are YC companies */

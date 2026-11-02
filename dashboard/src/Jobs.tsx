@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ago,
   api,
@@ -70,6 +70,15 @@ export function Jobs({
     },
   })
 
+  // looking at the full list counts as seeing it: Today's "new since" starts from here
+  const marked = useRef(false)
+  useEffect(() => {
+    if (full && r && !marked.current) {
+      marked.current = true
+      void send('POST', '/v1/jobs/seen', {}).catch(() => {})
+    }
+  }, [full, r])
+
   if (!full)
     return (
       <section className="jobs" aria-labelledby="jobs-title">
@@ -97,13 +106,16 @@ export function Jobs({
             No open roles fit your search right now. <a href="#jobs">Change your search</a>
           </p>
         ) : (
-          <ul className="job-list">
-            {r!.data.slice(0, 3).map((j) => (
-              <li key={j.id}>
-                <JobRow job={j} onMade={onMade} />
-              </li>
-            ))}
-          </ul>
+          <>
+            <Alerts alerts={r!.alerts} />
+            <ul className="job-list">
+              {r!.data.slice(0, 3).map((j) => (
+                <li key={j.id}>
+                  <JobRow job={j} onMade={onMade} />
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </section>
     )
@@ -354,6 +366,42 @@ function JobRow({
           Not for me
         </button>
       </div>
+    </div>
+  )
+}
+
+/** What's new since their last look: new matches, and new roles at companies they filmed */
+function Alerts({ alerts }: { alerts: JobSuggestions['alerts'] }) {
+  if (!alerts || (alerts.newMatches === 0 && alerts.filmed.length === 0)) return null
+  return (
+    <div className="alerts" aria-live="polite">
+      {alerts.newMatches > 0 && (
+        <p>
+          <b>
+            {alerts.newMatches} new {alerts.newMatches === 1 ? 'match' : 'matches'}
+          </b>{' '}
+          since you last looked{alerts.since ? ` (${ago(alerts.since)})` : ''}.{' '}
+          <a href="#jobs">See them</a>
+        </p>
+      )}
+      {alerts.filmed.length > 0 && (
+        <>
+          <p>
+            <b>New roles at companies you made a film for</b>
+          </p>
+          <ul>
+            {alerts.filmed.map((j) => (
+              <li key={j.id}>
+                {j.company}:{' '}
+                <a href={j.url} target="_blank" rel="noreferrer">
+                  {j.title}
+                </a>
+                {j.posted && <span className="quiet"> · {ago(j.posted)}</span>}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   )
 }
