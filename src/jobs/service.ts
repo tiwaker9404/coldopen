@@ -1,6 +1,7 @@
 import type { Sql } from '../db/index.ts'
 import type { Fit } from '../job/fit.ts'
-import { fitOf } from '../job/fit.ts'
+import { fitOf, type Gap, gapsOf, stemOf } from '../job/fit.ts'
+import { type Connection, companyKey, knownAt } from '../outreach/people.ts'
 import type { Profile } from '../script/types.ts'
 import {
   type Board,
@@ -11,7 +12,7 @@ import {
   type Job,
   readBoard,
 } from './boards.ts'
-import { DEFAULT_BOARDS } from './companies.ts'
+import { DEFAULT_BOARDS, visaOf, ycOf } from './companies.ts'
 import { detailsFromBoard, greenhouseRequirements } from './details.ts'
 import { defaultSearch, rank, type Search, SearchSchema, type Suggestion, spread } from './rank.ts'
 
@@ -31,6 +32,8 @@ export interface SearchState {
   search: Search
   boards: Board[]
   hidden: string[]
+  /** fit gaps they marked not relevant */
+  ignoredGaps: string[]
   /** true when nothing was saved yet and the search came from their profile */
   suggested: boolean
 }
@@ -40,16 +43,31 @@ export async function getSearch(
   owner: string,
   profileRole: string | undefined,
 ): Promise<SearchState> {
-  const [row] = await sql<{ search: unknown; boards: unknown; hidden: string[] }[]>`
-    select search, boards, hidden from job_searches where owner = ${owner}`
-  if (!row) return { search: defaultSearch(profileRole), boards: [], hidden: [], suggested: true }
+  const [row] = await sql<
+    { search: unknown; boards: unknown; hidden: string[]; ignoredGaps: string[] }[]
+  >`
+    select search, boards, hidden, ignored_gaps from job_searches where owner = ${owner}`
+  if (!row)
+    return {
+      search: defaultSearch(profileRole),
+      boards: [],
+      hidden: [],
+      ignoredGaps: [],
+      suggested: true,
+    }
   const boards = Array.isArray(row.boards)
     ? row.boards.flatMap((b) => {
         const p = BoardSchema.safeParse(b)
         return p.success ? [p.data] : []
       })
     : []
-  return { search: SearchSchema.parse(row.search), boards, hidden: row.hidden, suggested: false }
+  return {
+    search: SearchSchema.parse(row.search),
+    boards,
+    hidden: row.hidden,
+    ignoredGaps: row.ignoredGaps,
+    suggested: false,
+  }
 }
 
 export async function saveSearch(
@@ -126,11 +144,41 @@ async function pool<T>(items: T[], n: number, fn: (x: T) => Promise<void>) {
   )
 }
 
+let warming: Promise<void> | null = null
+
+/** Refreshes boards without holding up the request; one background sweep at a time */
+function background(sql: Sql, boards: Board[], fetchFn?: FetchFn) {
+  if (warming) return
+  warming = pool(boards, 6, (b) => refresh(sql, b, fetchFn))
+    .catch(() => {})
+    .finally(() => {
+      warming = null
+    })
+}
+
+/** Reads every default board that's due, in the background: run at start and every few hours */
+export async function warmBoards(sql: Sql, fetchFn?: FetchFn): Promise<void> {
+  const keys = DEFAULT_BOARDS.map(boardKey)
+  const fresh = new Set(
+    (
+      await sql<{ board: string }[]>`
+        select board from job_boards where board in ${sql(keys)}
+        and fetched_at > now() - make_interval(secs => ${FRESH_MS / 1000})`
+    ).map((r) => r.board),
+  )
+  background(
+    sql,
+    DEFAULT_BOARDS.filter((b) => !fresh.has(boardKey(b))),
+    fetchFn,
+  )
+  await warming
+}
+
 /** The boards' listings, refreshing the stale ones first */
 export async function listings(
   sql: Sql,
   boards: Board[],
-  opts: { fetch?: FetchFn; now?: number } = {},
+  opts: { fetch?: FetchFn; now?: number; wait?: boolean } = {},
 ): Promise<{ jobs: Job[]; failed: Board[]; updatedAt: Date | null }> {
   const now = opts.now ?? Date.now()
   const keys = boards.map(boardKey)
@@ -148,8 +196,14 @@ export async function listings(
     const age = now - c.fetchedAt.getTime()
     return age > (c.ok ? FRESH_MS : RETRY_MS)
   })
-  if (stale.length) {
-    await pool(stale, CONCURRENCY, (b) => refresh(sql, b, opts.fetch))
+  // YC boards (hundreds) refresh in the background, so a page load never waits on them; the
+  // curated ones and their own are read before answering, as before
+  const isYc = (b: Board) => !!ycOf({ board: b })
+  const due = opts.wait ? stale : stale.filter((b) => !isYc(b))
+  const behind = opts.wait ? [] : stale.filter(isYc)
+  if (behind.length) background(sql, behind, opts.fetch)
+  if (due.length) {
+    await pool(due, CONCURRENCY, (b) => refresh(sql, b, opts.fetch))
     cache = await rows()
   }
   const jobs: Job[] = []
@@ -158,7 +212,8 @@ export async function listings(
   for (const b of boards) {
     const c = cache.get(boardKey(b))
     if (!c?.lastOkAt) {
-      failed.push(b)
+      // a YC board not read yet is on its way, not broken
+      if (!isYc(b)) failed.push(b)
       continue
     }
     // the person's own name and website for the company win over what the cache was saved with
@@ -185,10 +240,19 @@ const FIT_BONUS: Record<Fit['level'], number> = { strong: 1.5, good: 0.75, stret
 /** how many of the best title matches get their requirements read and a fit worked out */
 const FIT_POOL = 60
 
-export type JobWithFit = Suggestion & { filmId?: string; fit?: Fit }
+/** people they know at the company, from their LinkedIn connections export */
+export interface Known {
+  count: number
+  /** up to three, recruiters and likely managers first */
+  people: { name: string; position: string | null; url: string | null }[]
+}
+
+export type JobWithFit = Suggestion & { filmId?: string; fit?: Fit; known?: Known }
 
 export interface Suggested {
   data: JobWithFit[]
+  /** skills their best matches keep asking for that the profile doesn't show */
+  gaps: Gap[]
   companies: number
   failed: string[]
   updatedAt: string | null
@@ -228,6 +292,72 @@ export async function requirementsFor(
   return have
 }
 
+const ycBoard = (j: Pick<Job, 'board'>) => {
+  const [ats, token] = j.board.split(':') as [Board['ats'], string]
+  return ycOf({ board: { ats, token } })
+}
+
+/**
+ * How fast each company is hiring: its open roles (one per title and place) and how many of
+ * them went up in the last 30 days.
+ */
+export function momentum(
+  jobs: Job[],
+  now = Date.now(),
+): Map<string, { open: number; recent: number }> {
+  const out = new Map<string, { open: number; recent: number }>()
+  const seen = new Set<string>()
+  for (const j of jobs) {
+    const k = `${j.board}|${j.title.toLowerCase()}|${j.location.toLowerCase()}`
+    if (seen.has(k)) continue
+    seen.add(k)
+    const m = out.get(j.board) ?? { open: 0, recent: 0 }
+    m.open++
+    const t = Date.parse(j.posted ?? '')
+    if (!Number.isNaN(t) && now - t <= 30 * 86_400_000) m.recent++
+    out.set(j.board, m)
+  }
+  return out
+}
+
+const hostOf = (url: string | undefined) => {
+  try {
+    return new URL(url ?? '').hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
+}
+
+/** Who they know at each of these jobs' companies, by board */
+export async function knownFor(
+  sql: Sql,
+  owner: string,
+  jobs: Pick<Job, 'board' | 'company' | 'site'>[],
+): Promise<Map<string, Known>> {
+  const out = new Map<string, Known>()
+  if (jobs.length === 0) return out
+  const keys = new Set<string>()
+  for (const j of jobs)
+    for (const k of [companyKey(j.company), companyKey(hostOf(j.site) ?? '')]) if (k) keys.add(k)
+  if (keys.size === 0) return out
+  const first = [...new Set([...keys].map((k) => k.split(' ')[0]!))]
+  const rows = await sql<Connection[]>`
+    select name, url, company, position, connected_on from connections
+    where owner = ${owner} and (company_key = any(${[...keys]}) or split_part(company_key, ' ', 1) = any(${first}))
+    limit 2000`
+  if (rows.length === 0) return out
+  for (const j of jobs) {
+    if (out.has(j.board)) continue
+    const at = knownAt(rows, j.company, hostOf(j.site))
+    if (at.length)
+      out.set(j.board, {
+        count: at.length,
+        people: at.slice(0, 3).map((c) => ({ name: c.name, position: c.position, url: c.url })),
+      })
+  }
+  return out
+}
+
 export async function suggestions(
   sql: Sql,
   owner: string,
@@ -237,9 +367,22 @@ export async function suggestions(
   const state = await getSearch(sql, owner, profile?.sender.role)
   const boards = boardsFor(state.boards)
   if (state.search.roles.length === 0)
-    return { data: [], companies: boards.length, failed: [], updatedAt: null, search: state }
-  const { jobs, failed, updatedAt } = await listings(sql, boards, opts)
+    return {
+      data: [],
+      gaps: [],
+      companies: boards.length,
+      failed: [],
+      updatedAt: null,
+      search: state,
+    }
+  const { jobs: all, failed, updatedAt } = await listings(sql, boards, opts)
   const hidden = new Set(state.hidden)
+  const jobs = all.filter(
+    (j) =>
+      (!state.search.ycOnly || ycOf({ site: j.site }) || ycBoard(j)) &&
+      (!state.search.visaOnly || visaOf(j.board)),
+  )
+  const pace = momentum(all, opts.now)
   // the best title matches, then how well the person's record answers each one's requirements
   const candidates = spread(
     rank(
@@ -252,15 +395,26 @@ export async function suggestions(
   const reqs = profile ? await requirementsFor(sql, candidates, opts) : new Map<string, string[]>()
   const fitted: JobWithFit[] = candidates.map((j) => {
     const fit = profile ? fitOf(reqs.get(j.id) ?? [], profile) : null
-    return fit ? { ...j, fit, score: j.score + FIT_BONUS[fit.level] } : j
+    const yc = ycBoard(j) ?? ycOf({ site: j.site })
+    const hiring = pace.get(j.board)
+    const visa = visaOf(j.board)
+    return {
+      ...j,
+      ...(fit ? { fit, score: j.score + FIT_BONUS[fit.level] } : {}),
+      ...(yc?.batch ? { yc: yc.batch } : {}),
+      ...(hiring ? { hiring } : {}),
+      ...(visa ? { visa } : {}),
+    }
   })
+  const fastest = state.search.sort === 'fastest'
   fitted.sort(
     (a, b) =>
+      (fastest ? (b.hiring?.recent ?? 0) - (a.hiring?.recent ?? 0) : 0) ||
       b.score - a.score ||
       (Date.parse(b.posted ?? '') || 0) - (Date.parse(a.posted ?? '') || 0) ||
       a.company.localeCompare(b.company),
   )
-  const ranked = spread(fitted, 3).slice(0, opts.limit ?? 24)
+  const ranked = spread(fitted, fastest ? 2 : 3).slice(0, opts.limit ?? 24)
   // which of these already have a film: the job link, given as the job post or as the website
   const urls = ranked.map((j) => j.url)
   const made = urls.length
@@ -271,11 +425,34 @@ export async function suggestions(
         ) r where u in ${sql(urls)} order by u, id desc`
     : []
   const film = new Map(made.map((m) => [m.url, m.id]))
+  const known = await knownFor(sql, owner, ranked)
+  const gaps = profile
+    ? gapsOf(
+        candidates.map((j) => ({ id: j.id, requirements: reqs.get(j.id) ?? [] })),
+        profile,
+        { ignore: state.ignoredGaps },
+      )
+    : []
   return {
-    data: ranked.map((j) => (film.has(j.url) ? { ...j, filmId: film.get(j.url)! } : j)),
+    gaps,
+    data: ranked.map((j) => ({
+      ...j,
+      ...(film.has(j.url) ? { filmId: film.get(j.url)! } : {}),
+      ...(known.has(j.board) ? { known: known.get(j.board)! } : {}),
+    })),
     companies: boards.length,
     failed: failed.map((b) => b.name),
     updatedAt: updatedAt?.toISOString() ?? null,
     search: state,
   }
+}
+
+/** Stop suggesting a fit gap */
+export async function ignoreGap(sql: Sql, owner: string, word: string, profileRole?: string) {
+  const s = await getSearch(sql, owner, profileRole)
+  const t = stemOf(word)
+  const ignored = [...s.ignoredGaps.filter((g) => g !== t), t].slice(-200)
+  await sql`
+    insert into job_searches (owner, search, boards, ignored_gaps) values (${owner}, ${sql.json(s.search as never)}, ${sql.json(s.boards as never)}, ${ignored})
+    on conflict (owner) do update set ignored_gaps = excluded.ignored_gaps, updated_at = now()`
 }

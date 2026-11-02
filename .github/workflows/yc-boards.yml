@@ -1,0 +1,40 @@
+name: YC boards
+
+# Rebuilds src/jobs/yc.json: the Greenhouse, Lever and Ashby boards of every hiring YC company,
+# from YC's own company directory (via yc-oss). Weekly, by hand, or when the builder changes.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 14 * * 1"
+  push:
+    paths:
+      - src/jobs/yc-build.ts
+      - .github/workflows/yc-boards.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yc-boards-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile --prod
+        env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
+      - run: node src/jobs/yc-build.ts
+      - name: Commit the list if it changed
+        run: |
+          git diff --quiet src/jobs/yc.json && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/jobs/yc.json
+          git commit -m "YC boards: refresh the list of hiring YC companies"
+          git push

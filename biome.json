@@ -12,7 +12,9 @@
       "!**/node_modules",
       "!bench/results",
       "!evals/results.md",
-      "!pnpm-lock.yaml"
+      "!pnpm-lock.yaml",
+      "!src/jobs/yc.json",
+      "!src/jobs/visa.json"
     ]
   },
   "formatter": {

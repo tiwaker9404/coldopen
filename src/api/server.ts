@@ -17,11 +17,21 @@ import type { Sql } from '../db/index.ts'
 import { FilmInputSchema, type FilmResult } from '../film.ts'
 import { newId } from '../ids.ts'
 import { type BoardSchema, type FetchFn, parseBoardLink } from '../jobs/boards.ts'
+import { YC_BOARDS, ycOf } from '../jobs/companies.ts'
 import { SearchSchema } from '../jobs/rank.ts'
-import { getSearch, hideJob, MAX_OWN_BOARDS, saveSearch, suggestions } from '../jobs/service.ts'
+import {
+  getSearch,
+  hideJob,
+  ignoreGap,
+  MAX_OWN_BOARDS,
+  saveSearch,
+  suggestions,
+  warmBoards,
+} from '../jobs/service.ts'
 import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
+import { briefOf } from '../outreach/brief.ts'
 import {
   checkHunterKey,
   domainOf,
@@ -36,6 +46,7 @@ import {
   OUTREACH,
   type Outreach,
   type OutreachStatus,
+  watchedFrom,
 } from '../outreach/followup.ts'
 import { addressed, draftMessages } from '../outreach/messages.ts'
 import {
@@ -146,7 +157,9 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
     /** what people did on the share page; null until the film is finished */
     views: out ? (views ?? NO_VIEWS) : null,
     /** what happened after it was sent, as the sender marked it, and what to do next */
-    outreach: r.outreach ? { ...r.outreach, next: nextStep(r.outreach) } : null,
+    outreach: r.outreach
+      ? { ...r.outreach, next: nextStep(r.outreach, Date.now(), watchedFrom(views)) }
+      : null,
     /** who it's going to (or went to), when the sender said */
     recipient: r.recipient ?? null,
     /** the first film, when this one re-renders it with an edited script */
@@ -774,7 +787,9 @@ export async function buildApi({
       })
       return {
         data: r.data.map(({ score: _s, board: _b, ...j }) => j),
+        gaps: r.gaps,
         companies: r.companies,
+        ycCompanies: YC_BOARDS.length,
         failed: r.failed,
         updatedAt: r.updatedAt,
         search: {
@@ -783,6 +798,40 @@ export async function buildApi({
           suggested: r.search.suggested,
         },
       }
+    },
+  )
+
+  app.post(
+    '/v1/jobs/gaps',
+    {
+      schema: {
+        tags: ['jobs'],
+        summary: 'Answer a fit gap: add the skill to your profile, or stop suggesting it',
+        body: z.object({
+          skill: z.string().trim().min(1).max(40),
+          action: z.enum(['have', 'ignore']),
+        }),
+      },
+    },
+    async (req, reply) => {
+      if (req.body.action === 'ignore') {
+        await ignoreGap(sql, req.owner, req.body.skill)
+        return { ignored: true }
+      }
+      const [p] = await sql<{ id: string; data: unknown }[]>`
+        select id, data from profiles where owner = ${req.owner} order by updated_at desc limit 1`
+      const parsed = p ? ProfileSchema.safeParse(p.data) : null
+      if (!p || !parsed?.success)
+        return reply
+          .status(409)
+          .send({ error: { code: 'no_profile', message: 'make a profile first' } })
+      const have = parsed.data.skills ?? []
+      if (!have.some((k) => k.toLowerCase() === req.body.skill.toLowerCase()))
+        have.push(req.body.skill)
+      const data = { ...parsed.data, skills: have.slice(-40) }
+      await sql`update profiles set data = ${sql.json(data as never)}, updated_at = now()
+        where owner = ${req.owner} and id = ${p.id}`
+      return { profile: p.id, skills: data.skills }
     },
   )
 
@@ -1263,7 +1312,14 @@ export async function buildApi({
           and outreach->>'status' = 'sent'
         order by id desc limit 500`
       const now = Date.now()
-      const steps = rows.map((r) => ({ r, next: nextStep(r.outreach, now)! }))
+      const seen = await viewSummaries(
+        sql,
+        rows.map((r) => r.id),
+      )
+      const steps = rows.map((r) => ({
+        r,
+        next: nextStep(r.outreach, now, watchedFrom(seen.get(r.id)))!,
+      }))
       const due = steps
         .filter((s) => s.next.due)
         .sort((a, b) => a.next.dueAt.localeCompare(b.next.dueAt))
@@ -1273,7 +1329,7 @@ export async function buildApi({
         .sort()
       return {
         data: due.map(({ r, next }) => {
-          const film = filmDto(r, publicUrl)
+          const film = filmDto(r, publicUrl, seen.get(r.id))
           const m =
             r.output && film.share
               ? addressed(draftMessages(r.output, r.input.profile, film.share), r.recipient?.name)
@@ -1517,6 +1573,29 @@ export async function buildApi({
   )
 
   app.get(
+    '/v1/films/:id/brief',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'A brief for the call once they reply: the company, the role and questions to ask',
+        description:
+          "Built from the film's own research (the company's site and the job post) and your profile; nothing new is fetched.",
+        params: z.object({ id: RunId }),
+      },
+    },
+    async (req, reply) => {
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run?.output) return notFound(reply)
+      const steps = await sql<{ key: string; output: unknown }[]>`
+        select key, output from steps
+        where run_id = any(${[run.id, run.input.editOf].filter(Boolean) as string[]})
+          and key in ('research', 'job') and status = 'completed'`
+      const out = (k: string) => (steps.find((s) => s.key === k)?.output ?? null) as never
+      return briefOf(run.output.company, out('research'), out('job'), run.input.profile)
+    },
+  )
+
+  app.get(
     '/v1/films/:id/people',
     {
       schema: {
@@ -1545,7 +1624,11 @@ export async function buildApi({
         select count(*)::int as n from connections where owner = ${req.owner}`
       return {
         company: out.company,
-        searches: peopleSearches(out.company, { jobTitle: title, profile: run.input.profile }),
+        searches: peopleSearches(out.company, {
+          jobTitle: title,
+          profile: run.input.profile,
+          yc: ycOf({ site: /^https?:\/\//.test(out.host) ? out.host : `https://${out.host}` }),
+        }),
         known: knownAt(rows, out.company, out.host, title).slice(0, 25),
         connections: n,
       }
@@ -1751,6 +1834,17 @@ export async function buildApi({
     const timer = setInterval(purge, 60 * 60_000)
     timer.unref()
     app.addHook('onClose', async () => clearInterval(timer))
+    // keep every company's board read, so Jobs for you never waits on hundreds of them
+    const warm = () =>
+      warmBoards(sql, jobsFetch).catch((err) => log.warn({ err }, 'could not read job boards'))
+    const first = setTimeout(warm, 20_000)
+    const boards = setInterval(warm, 3 * 60 * 60_000)
+    first.unref()
+    boards.unref()
+    app.addHook('onClose', async () => {
+      clearTimeout(first)
+      clearInterval(boards)
+    })
   }
 
   return app

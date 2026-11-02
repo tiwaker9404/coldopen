@@ -16,11 +16,29 @@ export const SearchSchema = z.object({
   remote: z.boolean().default(true),
   /** leave out staff, principal, director, head-of and manager roles */
   skipSenior: z.boolean().default(false),
+  /** only YC companies */
+  ycOnly: z.boolean().default(false),
+  /** only companies with H-1B approvals last year */
+  visaOnly: z.boolean().default(false),
+  /** best fit first, or the companies adding the most roles lately first */
+  sort: z.enum(['best', 'fastest']).default('best'),
+  /** only roles posted in the last week or month */
+  within: z.enum(['any', 'week', 'month']).default('any'),
+  /** companies to leave out, by name */
+  exclude: z.array(z.string().trim().min(1).max(80)).max(50).default([]),
+  /** leave out roles whose listed pay tops out below this (yearly, in dollars); unlisted pay stays */
+  minPay: z.number().int().min(0).max(2_000_000).nullable().default(null),
 })
 export type Search = z.infer<typeof SearchSchema>
 
 export interface Suggestion extends Job {
   score: number
+  /** the company's YC batch, "W24", when it's a YC company */
+  yc?: string
+  /** how fast the company is hiring: open roles on its board, and how many went up in 30 days */
+  hiring?: { open: number; recent: number }
+  /** H-1B petitions the company had approved in the latest fiscal year */
+  visa?: { approvals: number; year: number }
   /** short reasons, shown as chips: "Forward Deployed Engineer", "San Francisco", "New this week" */
   why: string[]
 }
@@ -184,6 +202,19 @@ export function ago(iso: string | undefined, now: number): number | null {
   return Number.isNaN(t) ? null : Math.max(0, (now - t) / DAY)
 }
 
+const nameKey = (n: string) =>
+  n
+    .toLowerCase()
+    .replace(/\b(inc|llc|ltd|corp|co|labs?|ai|hq)\b\.?/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+
+/** "Stripe" leaves out "Stripe, Inc."; a short name has to match whole */
+function sameName(key: string, company: string): boolean {
+  const c = nameKey(company)
+  return c === key || (key.length >= 4 && c.startsWith(`${key} `))
+}
+
 /**
  * Jobs that fit the search, best first: title fit, then where, then how new. Jobs whose title
  * fits none of the roles are left out; with no roles at all, nothing is suggested.
@@ -191,6 +222,7 @@ export function ago(iso: string | undefined, now: number): number | null {
 export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
   if (s.roles.length === 0) return []
   const wantsSenior = asksFor(s.roles, SENIOR)
+  const excluded = s.exclude.map(nameKey).filter(Boolean)
   const out: Suggestion[] = []
   const seen = new Set<string>()
   for (const j of jobs) {
@@ -208,6 +240,12 @@ export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
       }
     }
     if (fit === 0) continue
+    if (s.within !== 'any') {
+      const d = ago(j.posted, now)
+      if (d === null || d > (s.within === 'week' ? 7 : 31)) continue
+    }
+    if (excluded.length && excluded.some((x) => sameName(x, j.company))) continue
+    if (s.minPay && j.pay && j.pay.currency === 'USD' && j.pay.max < s.minPay) continue
     if (s.skipSenior && !wantsSenior && SENIOR.test(j.title)) continue
     if (
       s.skipSenior &&

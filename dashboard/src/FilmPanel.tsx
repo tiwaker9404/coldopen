@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   ago,
   api,
+  type Brief,
   downloadUrl,
   type Film,
   type FilmDetail,
@@ -327,44 +328,114 @@ function SendSteps({ film }: { film: FilmDetail }) {
     ? Math.floor((Date.now() - Date.parse(film.outreach.sentAt)) / 86_400_000)
     : 0
   return (
-    <ol className="steps">
-      <li>
-        <WhoToSend film={film} />
-      </li>
-      <li>
-        <Message
-          id={film.id}
-          to={film.recipient?.email}
-          followUp={status === 'sent' && days >= 4}
-          last={(film.outreach?.followUps ?? 0) >= 1}
-        />
-      </li>
-      <li>
-        <section className="block">
-          <h3>Mark it sent</h3>
-          {status ? (
-            <p>
-              {status === 'sent'
-                ? `Sent ${days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`}. ${
-                    days >= 4
-                      ? 'No reply yet: the follow-up message above is ready.'
-                      : 'When they answer, change Sent to Replied at the top of this panel.'
-                  }`
-                : `Marked ${OUTREACH_LABEL[status].toLowerCase()}. Change it any time at the top of this panel.`}
-            </p>
-          ) : (
-            <>
-              <p>So coldopen can count your reply rate and remind you to follow up.</p>
-              <div className="actions">
-                <button type="button" onClick={() => mark.mutate('sent')} disabled={mark.isPending}>
-                  I sent it
-                </button>
-              </div>
-            </>
-          )}
-        </section>
-      </li>
-    </ol>
+    <>
+      {(status === 'replied' || status === 'interview') && <CallBrief id={film.id} />}
+      <ol className="steps">
+        <li>
+          <WhoToSend film={film} />
+        </li>
+        <li>
+          <Message
+            id={film.id}
+            to={film.recipient?.email}
+            followUp={status === 'sent' && days >= 4}
+            last={(film.outreach?.followUps ?? 0) >= 1}
+          />
+        </li>
+        <li>
+          <section className="block">
+            <h3>Mark it sent</h3>
+            {status ? (
+              <p>
+                {status === 'sent'
+                  ? `Sent ${days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`}. ${
+                      days >= 4
+                        ? 'No reply yet: the follow-up message above is ready.'
+                        : 'When they answer, change Sent to Replied at the top of this panel.'
+                    }`
+                  : `Marked ${OUTREACH_LABEL[status].toLowerCase()}. Change it any time at the top of this panel.`}
+              </p>
+            ) : (
+              <>
+                <p>So coldopen can count your reply rate and remind you to follow up.</p>
+                <div className="actions">
+                  <button
+                    type="button"
+                    onClick={() => mark.mutate('sent')}
+                    disabled={mark.isPending}
+                  >
+                    I sent it
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        </li>
+      </ol>
+    </>
+  )
+}
+
+/** They replied: what to know and ask on the call, from the film's own research */
+function CallBrief({ id }: { id: string }) {
+  const q = useQuery({
+    queryKey: ['brief', id],
+    queryFn: () => api<Brief>(`/v1/films/${id}/brief`),
+    staleTime: Number.POSITIVE_INFINITY,
+  })
+  const b = q.data
+  if (!b) return null
+  return (
+    <section className="block brief" aria-label="Brief for the call">
+      <h3>Before the call with {b.company}</h3>
+      {b.what && <p>{b.what}</p>}
+      {b.facts.length > 0 && (
+        <>
+          <h4>Worth knowing</h4>
+          <ul>
+            {b.facts.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {b.role && b.role.matches.length > 0 && (
+        <>
+          <h4>Where you fit the {b.role.title} role</h4>
+          <ul>
+            {b.role.matches.map((m) => (
+              <li key={m.asks}>
+                They ask: {m.asks}
+                <br />
+                <span className="quiet">You have: {m.you}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {b.role && b.role.prepare.length > 0 && (
+        <>
+          <h4>Have an answer ready for</h4>
+          <ul>
+            {b.role.prepare.map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {b.pitch && (
+        <>
+          <h4>Your story in two lines</h4>
+          <p>{b.pitch}</p>
+        </>
+      )}
+      <h4>Questions to ask</h4>
+      <ol>
+        {b.questions.map((x) => (
+          <li key={x}>{x}</li>
+        ))}
+      </ol>
+    </section>
   )
 }
 

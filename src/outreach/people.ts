@@ -60,9 +60,30 @@ function backgrounds(profile: Profile | undefined): string[] {
 
 export function peopleSearches(
   company: string,
-  opts: { jobTitle?: string | undefined; profile?: Profile | undefined } = {},
+  opts: {
+    jobTitle?: string | undefined
+    profile?: Profile | undefined
+    /** the YC company it is, when it's one: its YC page lists the founders by name */
+    yc?: { batch: string; slug: string } | null | undefined
+  } = {},
 ): PeopleSearch[] {
+  // a YC startup's founders are named on its YC page, and at that size they read their own inbox
+  const founders: PeopleSearch[] = opts.yc
+    ? [
+        {
+          label: 'Founders',
+          hint: `Named on its YC page${opts.yc.batch ? ` (${opts.yc.batch})` : ''}; at a startup they read their own inbox`,
+          url: `https://www.ycombinator.com/companies/${encodeURIComponent(opts.yc.slug)}`,
+        },
+        {
+          label: 'Founders on LinkedIn',
+          hint: 'Message the founder directly',
+          url: linkedin(`founder ${company}`),
+        },
+      ]
+    : []
   const out: PeopleSearch[] = [
+    ...founders,
     {
       label: 'Recruiters',
       hint: 'They read every message about open roles',

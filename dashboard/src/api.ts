@@ -207,6 +207,8 @@ export interface ProfileData {
   points: string[]
   proof: { value: string; label: string; where?: string }[]
   cta: { line: string; contact: string; book?: string }
+  /** skills and tools, counted by Fit check */
+  skills?: string[]
   color?: string
 }
 
@@ -351,6 +353,16 @@ export interface JobSuggestion {
   posted?: string
   /** why it was picked: the role it fits, the place, "New this week" */
   why: string[]
+  /** the company's YC batch, "W24", when it's a YC company */
+  yc?: string
+  /** the company's open roles, and how many went up in the last 30 days */
+  hiring?: { open: number; recent: number }
+  /** H-1B petitions the company had approved in the latest fiscal year */
+  visa?: { approvals: number; year: number }
+  /** yearly base pay the post lists */
+  pay?: { min: number; max: number; currency: string }
+  /** people you know there, from your LinkedIn connections */
+  known?: { count: number; people: { name: string; position: string | null; url: string | null }[] }
   /** the film already made for it */
   filmId?: string
   /** how well your profile answers the post's requirements; absent when it lists none we read */
@@ -367,14 +379,37 @@ export interface JobSearch {
   locations: string[]
   remote: boolean
   skipSenior: boolean
+  /** only YC companies */
+  ycOnly: boolean
+  /** best fit first, or the companies hiring fastest first */
+  sort: 'best' | 'fastest'
+  /** only companies with H-1B approvals last year */
+  visaOnly: boolean
+  /** only roles posted in the last week or month */
+  within: 'any' | 'week' | 'month'
+  /** companies to leave out */
+  exclude: string[]
+  /** hide roles whose listed pay tops out below this, yearly in dollars */
+  minPay: number | null
   boards: { ats: 'greenhouse' | 'lever' | 'ashby'; token: string; name: string }[]
   /** nothing saved yet: the roles came from the profile */
   suggested: boolean
 }
 
+/** a skill your best matches keep asking for that your profile doesn't show */
+export interface FitGap {
+  term: string
+  label: string
+  jobs: number
+  example: string
+}
+
 export interface JobSuggestions {
   data: JobSuggestion[]
+  gaps: FitGap[]
   companies: number
+  /** how many of them are YC companies */
+  ycCompanies: number
   failed: string[]
   updatedAt: string | null
   search: JobSearch
@@ -386,6 +421,8 @@ export interface NextStep {
   step: 1 | 2 | null
   dueAt: string
   due: boolean
+  /** brought forward: they watched it since you last wrote */
+  watched?: { at: string; finished: boolean }
 }
 
 export interface FollowUps {
@@ -397,4 +434,18 @@ export interface FollowUps {
   /** sent films not due yet */
   waiting: number
   nextDueAt: string | null
+}
+
+/** a brief for the call once they reply, from the film's own research */
+export interface Brief {
+  company: string
+  what: string | null
+  facts: string[]
+  role: {
+    title: string
+    matches: { asks: string; you: string }[]
+    prepare: string[]
+  } | null
+  pitch: string
+  questions: string[]
 }

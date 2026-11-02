@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApi } from '../../src/api/server.ts'
 import type { Sql } from '../../src/db/index.ts'
+import { warmBoards } from '../../src/jobs/service.ts'
 import { freshDb, log, profile, testConfig, tmp } from '../helpers/index.ts'
 
 let sql: Sql
@@ -107,6 +108,8 @@ describe('suggested jobs', () => {
     expect(s).toMatchObject({ roles: ['Forward Deployed Engineer'], suggested: true, boards: [] })
 
     const r = await suggested()
+    // YC boards are read in the background; let that sweep finish
+    await warmBoards(sql, fakeFetch as never)
     expect(
       r.data.map((j: { title: string; company: string }) => `${j.title} @ ${j.company}`),
     ).toEqual(['Forward Deployed Engineer @ Anthropic'])

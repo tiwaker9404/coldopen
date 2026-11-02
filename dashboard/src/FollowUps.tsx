@@ -82,6 +82,11 @@ function FollowUp({
         </button>
         <span className="job-why">
           <span className="tag">{since}</span>
+          {next.watched && (
+            <span className="tag new">
+              {next.watched.finished ? 'Watched to the end' : 'Watched'} {ago(next.watched.at)}
+            </span>
+          )}
           <span className="tag quiet">
             {next.kind === 'close'
               ? 'Two follow-ups, no reply'

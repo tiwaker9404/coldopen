@@ -5,7 +5,7 @@
  * Exits non-zero when a board is gone (an empty one is fine), so a dead entry in companies.ts gets noticed.
  */
 import { type Board, boardKey, fetchBoard, prettyToken } from './boards.ts'
-import { DEFAULT_BOARDS } from './companies.ts'
+import { CURATED_BOARDS as DEFAULT_BOARDS } from './companies.ts'
 
 // `--details ashby:acme ...`: the requirements read from a few engineering jobs on each board
 if (process.argv[2] === '--details') {
@@ -44,7 +44,14 @@ const results = await Promise.all(
         .map((j) => j.posted ?? '')
         .sort()
         .at(-1)
-      return { b, n: jobs.length, newest: newest?.slice(0, 10) ?? '', sample: jobs[0] }
+      const paid = jobs.filter((j) => j.pay).length
+      return {
+        b,
+        n: jobs.length,
+        paid,
+        newest: newest?.slice(0, 10) ?? '',
+        sample: jobs.find((j) => j.pay) ?? jobs[0],
+      }
     } catch (err) {
       return { b, n: -1, error: err instanceof Error ? err.message : String(err) }
     }
@@ -57,7 +64,7 @@ for (const r of results) {
   const line =
     r.n < 0
       ? `FAIL  ${boardKey(r.b)}  ${r.error}`
-      : `${r.n === 0 ? 'EMPTY' : 'ok   '} ${boardKey(r.b)}  ${r.n} roles  newest ${r.newest}`
+      : `${r.n === 0 ? 'EMPTY' : 'ok   '} ${boardKey(r.b)}  ${r.n} roles  pay on ${'paid' in r ? r.paid : 0}  newest ${r.newest}`
   console.log(line)
 }
 const sample = results.find((r) => r.sample)?.sample

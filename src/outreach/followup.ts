@@ -29,22 +29,44 @@ export interface NextStep {
   step: 1 | 2 | null
   dueAt: string
   due: boolean
+  /** brought forward because they watched it since you last wrote, with no reply */
+  watched?: { at: string; finished: boolean }
+}
+
+/** days after a watch with no reply before the follow-up is due: interest is fresh */
+export const AFTER_WATCH_DAYS = 2
+
+/** The latest time someone watched the film, from its share page views */
+export interface Watched {
+  /** last time anyone was on the page after pressing play */
+  at: string
+  finished: boolean
 }
 
 /** What to do next about a sent film, and when; null once it has an answer */
-export function nextStep(o: Outreach | null | undefined, now = Date.now()): NextStep | null {
+export function nextStep(
+  o: Outreach | null | undefined,
+  now = Date.now(),
+  watched?: Watched | null,
+): NextStep | null {
   if (o?.status !== 'sent') return null
   const n = Math.max(0, o.followUps ?? 0)
   const last = Date.parse(o.followedUpAt ?? o.sentAt)
   if (Number.isNaN(last)) return null
   const at = (days: number) => new Date(last + days * DAY)
   if (n < WAIT_DAYS.length) {
-    const dueAt = at(WAIT_DAYS[n]!)
+    let dueAt = at(WAIT_DAYS[n]!)
+    // watched since the last message and no reply: follow up while it's fresh
+    const w = watched ? Date.parse(watched.at) : Number.NaN
+    const early = !Number.isNaN(w) && w > last ? new Date(w + AFTER_WATCH_DAYS * DAY) : null
+    const sooner = early && early < dueAt
+    if (sooner) dueAt = early
     return {
       kind: 'follow_up',
       step: (n + 1) as 1 | 2,
       dueAt: dueAt.toISOString(),
       due: now >= dueAt.getTime(),
+      ...(sooner ? { watched: { at: watched!.at, finished: watched!.finished } } : {}),
     }
   }
   const dueAt = at(CLOSE_DAYS)
@@ -54,4 +76,12 @@ export function nextStep(o: Outreach | null | undefined, now = Date.now()): Next
 /** The outreach after one more follow-up was sent */
 export function followedUp(o: Outreach, now = new Date()): Outreach {
   return { ...o, followUps: (o.followUps ?? 0) + 1, followedUpAt: now.toISOString() }
+}
+
+/** What views say for follow-ups: someone pressed play, and when they were last there */
+export function watchedFrom(
+  v: { plays: number; finishes: number; lastSeen: string | null } | null | undefined,
+): Watched | null {
+  if (!v || v.plays === 0 || !v.lastSeen) return null
+  return { at: v.lastSeen, finished: v.finishes > 0 }
 }
