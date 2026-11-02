@@ -24,7 +24,15 @@ export const ProfileSchema = z.object({
     )
     .min(1)
     .max(8),
-  cta: z.object({ line: z.string().min(3).max(60), contact: z.string().min(3).max(80) }),
+  cta: z.object({
+    line: z.string().min(3).max(60),
+    contact: z.string().min(3).max(80),
+    /** a booking link (Calendly, Cal.com...): the share page's main button */
+    book: z
+      .string()
+      .regex(/^https:\/\/\S{4,300}$/, 'a booking link starts with https://')
+      .optional(),
+  }),
   /** optional sender brand for the end card */
   color: z
     .string()

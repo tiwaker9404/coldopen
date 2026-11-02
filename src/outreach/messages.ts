@@ -15,6 +15,8 @@ export interface Messages {
   lastNote: string
   /** a follow-up short enough for a LinkedIn message */
   linkedinFollowUp: string
+  /** to someone you already know there: would they pass the film on */
+  intro: string
 }
 
 const LINKEDIN_LIMIT = 300
@@ -109,5 +111,36 @@ export function draftMessages(
       ? fu
       : `Hi [First name], following up on my film: ${link} – ${first}`
 
-  return { email, linkedin, followUp, lastNote, linkedinFollowUp }
+  const intro = [
+    'Hi [First name],',
+    '',
+    role
+      ? `Hope you're doing well! I'm applying for the ${role} role at ${company}, and I made a 30-second film for the team: ${link}`
+      : `Hope you're doing well! I'd love to work with the team at ${company}, and I made a 30-second film for them: ${link}`,
+    '',
+    `Would you be open to passing it to the hiring manager, or pointing me to the right person? I'm happy to write a short note you can forward.`,
+    '',
+    'Thank you!',
+    first,
+  ].join('\n')
+
+  return { email, linkedin, followUp, lastNote, linkedinFollowUp, intro }
+}
+
+/**
+ * The same messages addressed to one person: "[First name]" becomes their first name in all of
+ * them except the intro, which goes to someone else (the person you know there).
+ */
+export function addressed(m: Messages, name: string | undefined): Messages {
+  const first = name?.trim().split(/\s+/)[0]
+  if (!first) return m
+  const fill = (t: string) => t.replaceAll('[First name]', first)
+  return {
+    ...m,
+    email: { subject: m.email.subject, body: fill(m.email.body) },
+    linkedin: fill(m.linkedin),
+    followUp: fill(m.followUp),
+    lastNote: fill(m.lastNote),
+    linkedinFollowUp: fill(m.linkedinFollowUp),
+  }
 }

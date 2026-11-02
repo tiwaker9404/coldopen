@@ -32,6 +32,30 @@ export interface Film {
   } | null
   /** the first film, when this one re-renders it with edited lines */
   editOf: string | null
+  /** who it's going to, when you saved it */
+  recipient: Recipient | null
+}
+
+export interface Recipient {
+  name: string
+  email?: string
+  url?: string
+}
+
+/** an address for someone at the film's company: found by Hunter, or a common pattern */
+export interface EmailFound {
+  email: string
+  source: 'hunter' | 'guess'
+  score?: number
+  status?: string
+}
+export interface FoundEmails {
+  domain: string
+  found: EmailFound | null
+  guesses: EmailFound[]
+  /** whether you saved a Hunter key */
+  hunter: boolean
+  note: string | null
 }
 
 /** lines that can be rewritten before re-rendering */
@@ -103,6 +127,8 @@ export interface ViewSummary {
   viewers: number
   plays: number
   finishes: number
+  /** pressed the button under the film (book a call, or reply) */
+  clicks: number
   bestSeconds: number
   firstPlayAt: string | null
   lastSeen: string | null
@@ -124,6 +150,10 @@ export interface Messages {
   email: { subject: string; body: string }
   linkedin: string
   followUp: string
+  lastNote: string
+  linkedinFollowUp: string
+  /** to someone you know there, asking them to pass it on */
+  intro: string
 }
 
 /** "3 min ago", "yesterday", "Oct 12" */
@@ -176,7 +206,7 @@ export interface ProfileData {
   offer: string
   points: string[]
   proof: { value: string; label: string; where?: string }[]
-  cta: { line: string; contact: string }
+  cta: { line: string; contact: string; book?: string }
   color?: string
 }
 
@@ -358,7 +388,7 @@ export interface FollowUps {
   data: {
     film: Film
     next: NextStep
-    message: { subject: string; body: string; linkedin: string } | null
+    message: { subject: string; body: string; linkedin: string; to: string | null } | null
   }[]
   /** sent films not due yet */
   waiting: number

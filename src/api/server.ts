@@ -23,13 +23,21 @@ import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
 import {
+  checkHunterKey,
+  domainOf,
+  type EmailFound,
+  guesses,
+  HunterError,
+  hunterFind,
+} from '../outreach/email.ts'
+import {
   followedUp,
   nextStep,
   OUTREACH,
   type Outreach,
   type OutreachStatus,
 } from '../outreach/followup.ts'
-import { draftMessages } from '../outreach/messages.ts'
+import { addressed, draftMessages } from '../outreach/messages.ts'
 import {
   type Connection,
   companyKey,
@@ -72,6 +80,7 @@ import {
   used,
 } from './accounts.ts'
 import { renderDispatcher } from './dispatch.ts'
+import { deleteKey, listKeys, readKey, saveKey } from './keys.ts'
 import { privacyPage } from './privacy.ts'
 
 const FILE_NAMES =
@@ -82,10 +91,20 @@ const RunId = z.string().regex(/^run_[0-9A-Z]{26}$/, 'not a film id')
 
 export { OUTREACH, type OutreachStatus } from '../outreach/followup.ts'
 
+/** who a film went to, as the sender saved it */
+const RecipientSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  email: z.string().trim().email().max(200).optional(),
+  /** their LinkedIn profile */
+  url: z.string().url().max(400).optional(),
+})
+type Recipient = z.infer<typeof RecipientSchema>
+
 interface FilmRow extends Run {
   input: z.infer<typeof FilmInputSchema>
   output: FilmResult | null
   outreach?: Outreach | null
+  recipient?: Recipient | null
 }
 
 function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
@@ -126,6 +145,8 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
     views: out ? (views ?? NO_VIEWS) : null,
     /** what happened after it was sent, as the sender marked it, and what to do next */
     outreach: r.outreach ? { ...r.outreach, next: nextStep(r.outreach) } : null,
+    /** who it's going to (or went to), when the sender said */
+    recipient: r.recipient ?? null,
     /** the first film, when this one re-renders it with an edited script */
     editOf: r.input.editOf ?? null,
   }
@@ -144,9 +165,19 @@ export interface ApiDeps {
   llm?: LlmProvider | null
   /** for tests: how job boards are fetched (default: the real public APIs) */
   jobsFetch?: FetchFn
+  /** for tests: how Hunter is called (default: its real API) */
+  hunterFetch?: FetchFn
 }
 
-export async function buildApi({ sql, cfg, log, slack, llm = null, jobsFetch }: ApiDeps) {
+export async function buildApi({
+  sql,
+  cfg,
+  log,
+  slack,
+  llm = null,
+  jobsFetch,
+  hunterFetch = fetch,
+}: ApiDeps) {
   const filmsDir = resolve(cfg.FILMS_DIR)
   const publicUrl = cfg.PUBLIC_URL
   const share =
@@ -491,6 +522,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null, jobsFetch }: 
       await sql`delete from profiles where owner = ${req.owner}`
       await sql`delete from connections where owner = ${req.owner}`
       await sql`delete from job_searches where owner = ${req.owner}`
+      await sql`delete from owner_keys where owner = ${req.owner}`
       if (req.owner.startsWith('u:')) await sql`delete from users where id = ${req.owner.slice(2)}`
       signOut(cfg, reply)
       return { deleted: { films: films.length } }
@@ -1068,8 +1100,110 @@ export async function buildApi({ sql, cfg, log, slack, llm = null, jobsFetch }: 
     },
   )
 
+  /* ---------------------------------------------------------------- sending */
+  // keys are sealed with the server's secret; a private install without one uses its database URL
+  const keySecret = cfg.SESSION_SECRET ?? cfg.DATABASE_URL
+
+  app.put(
+    '/v1/films/:id/recipient',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Save who this film is going to',
+        description:
+          'Their name (and email or LinkedIn profile when known). The messages then greet them by name, and follow-ups open in Gmail already addressed. Send null to clear.',
+        params: z.object({ id: RunId }),
+        body: RecipientSchema.nullable(),
+      },
+    },
+    async (req, reply) => {
+      if (!(await ownFilm(req.params.id, req.owner))) return notFound(reply)
+      const [r] = await sql<FilmRow[]>`
+        update runs set recipient = ${req.body ? sql.json(req.body as never) : null}
+        where id = ${req.params.id} returning *`
+      return filmDto(r!, publicUrl)
+    },
+  )
+
+  app.post(
+    '/v1/films/:id/find-email',
+    {
+      schema: {
+        tags: ['films'],
+        summary: "Find someone's work email at the film's company",
+        description:
+          "With your Hunter key saved (PUT /v1/me/keys/hunter), Hunter looks it up; the likely patterns for the company's domain always come with it, as guesses. Nothing is sent.",
+        params: z.object({ id: RunId }),
+        body: z.object({ name: z.string().trim().min(2).max(120) }),
+      },
+    },
+    async (req, reply) => {
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run?.output) return notFound(reply)
+      const domain = domainOf(run.output.host ?? run.input.url)
+      if (!domain)
+        return reply
+          .status(422)
+          .send({ error: { code: 'no_domain', message: "couldn't tell the company's domain" } })
+      const key = await readKey(sql, keySecret, req.owner, 'hunter')
+      let found: EmailFound | null = null
+      let note: string | null = null
+      if (key) {
+        try {
+          found = await hunterFind(key, req.body.name, domain, hunterFetch)
+          if (!found) note = "Hunter doesn't know this person's address."
+        } catch (err) {
+          note = err instanceof HunterError ? err.message : 'Hunter could not be reached'
+        }
+      }
+      const guessed = guesses(req.body.name, domain).filter((g) => g.email !== found?.email)
+      return { domain, found, guesses: guessed, hunter: !!key, note }
+    },
+  )
+
+  app.get(
+    '/v1/me/keys',
+    {
+      schema: {
+        tags: ['account'],
+        summary: 'Keys you saved for other services (last 4 characters only)',
+      },
+    },
+    async (req) => listKeys(sql, req.owner),
+  )
+
+  app.put(
+    '/v1/me/keys/hunter',
+    {
+      schema: {
+        tags: ['account'],
+        summary: 'Save your Hunter API key, to find emails',
+        description:
+          "Checked with Hunter first, then kept encrypted. It's only ever used for your own searches.",
+        body: z.object({ key: z.string().trim().min(10).max(200) }),
+      },
+    },
+    async (req, reply) => {
+      try {
+        const { left } = await checkHunterKey(req.body.key, hunterFetch)
+        await saveKey(sql, keySecret, req.owner, 'hunter', req.body.key)
+        return { saved: true, last4: req.body.key.slice(-4), searchesLeft: left }
+      } catch (err) {
+        const msg = err instanceof HunterError ? err.message : 'Hunter could not be reached'
+        return reply.status(422).send({ error: { code: 'bad_key', message: msg } })
+      }
+    },
+  )
+
+  app.delete(
+    '/v1/me/keys/hunter',
+    { schema: { tags: ['account'], summary: 'Forget your Hunter key' } },
+    async (req) => ({ deleted: await deleteKey(sql, req.owner, 'hunter') }),
+  )
+
   app.get(
     '/v1/followups',
+
     {
       schema: {
         tags: ['films'],
@@ -1096,7 +1230,9 @@ export async function buildApi({ sql, cfg, log, slack, llm = null, jobsFetch }: 
         data: due.map(({ r, next }) => {
           const film = filmDto(r, publicUrl)
           const m =
-            r.output && film.share ? draftMessages(r.output, r.input.profile, film.share) : null
+            r.output && film.share
+              ? addressed(draftMessages(r.output, r.input.profile, film.share), r.recipient?.name)
+              : null
           return {
             film,
             next,
@@ -1106,6 +1242,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null, jobsFetch }: 
                     subject: `Re: ${m.email.subject}`,
                     body: next.step === 1 ? m.followUp : m.lastNote,
                     linkedin: m.linkedinFollowUp,
+                    to: r.recipient?.email ?? null,
                   }
                 : null,
           }
@@ -1330,7 +1467,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null, jobsFetch }: 
       const run = await ownFilm(req.params.id, req.owner)
       if (!run?.output) return notFound(reply)
       const link = filmDto(run, publicUrl).share!
-      return draftMessages(run.output, run.input.profile, link)
+      return addressed(draftMessages(run.output, run.input.profile, link), run.recipient?.name)
     },
   )
 

@@ -2198,3 +2198,103 @@ kbd {
     flex-wrap: wrap;
   }
 }
+
+/* ------------------------------------------------------------------ sending */
+
+.people li.open {
+  flex-wrap: wrap;
+}
+
+.intro {
+  flex-basis: 100%;
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.intro pre,
+.followup-msg pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.intro pre {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--rule);
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.recipient {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+.recipient h4 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.recipient-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.recipient.saved {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.recipient.saved small {
+  display: block;
+  color: var(--muted);
+}
+
+.emails {
+  display: grid;
+  gap: 6px;
+}
+
+.email-pick {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  padding: 8px 12px;
+  text-align: left;
+  white-space: normal;
+}
+
+.email-pick.on {
+  border-color: var(--ink);
+}
+
+.email-pick small {
+  color: var(--go);
+  font-weight: 500;
+}
+
+.key-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.key-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .recipient-row {
+    grid-template-columns: 1fr;
+  }
+}

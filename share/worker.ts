@@ -128,6 +128,7 @@ function parseView(body: unknown): ShareView | null {
     ctaLine: v.ctaLine as string,
     contact: v.contact as string,
     film: v.film,
+    ...(typeof v.book === 'string' && /^https:\/\/\S{4,300}$/.test(v.book) ? { book: v.book } : {}),
   }
 }
 
@@ -237,6 +238,8 @@ type D1Row = {
   played: number
   seconds: number
   finished: number
+  /** null on rows from before the column existed */
+  clicked: number | null
   device: 'mobile' | 'desktop'
   referrer: string | null
   country: string | null
@@ -250,6 +253,7 @@ const fromD1 = (r: D1Row): ViewRow => ({
   played: !!r.played,
   seconds: r.seconds,
   finished: !!r.finished,
+  clicked: !!r.clicked,
   device: r.device,
   referrer: r.referrer,
   country: r.country,
@@ -268,13 +272,14 @@ export function d1ViewStore(db: D1): ViewStore {
       await db
         .prepare(
           `insert into film_views
-             (film_id, session, viewer, first_seen, last_seen, played, seconds, finished, device, referrer, country)
-           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             (film_id, session, viewer, first_seen, last_seen, played, seconds, finished, clicked, device, referrer, country)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            on conflict (film_id, session) do update set
              last_seen = max(last_seen, excluded.last_seen),
              played = max(played, excluded.played),
              seconds = max(seconds, excluded.seconds),
-             finished = max(finished, excluded.finished)`,
+             finished = max(finished, excluded.finished),
+             clicked = max(clicked, excluded.clicked)`,
         )
         .bind(
           v.filmId,
@@ -285,6 +290,7 @@ export function d1ViewStore(db: D1): ViewStore {
           v.played ? 1 : 0,
           v.seconds,
           v.finished ? 1 : 0,
+          v.clicked ? 1 : 0,
           v.device,
           v.referrer,
           v.country,
@@ -303,6 +309,7 @@ async function summaries(db: D1, filter?: string | string[]): Promise<Map<string
        count(distinct viewer) as viewers,
        sum(played) as plays,
        sum(finished) as finishes,
+       sum(clicked) as clicks,
        max(seconds) as best_seconds,
        min(case when played = 1 then first_seen end) as first_play_at,
        max(last_seen) as last_seen
@@ -314,6 +321,7 @@ async function summaries(db: D1, filter?: string | string[]): Promise<Map<string
     viewers: number
     plays: number
     finishes: number
+    clicks: number | null
     best_seconds: number
     first_play_at: string | null
     last_seen: string | null
@@ -326,6 +334,7 @@ async function summaries(db: D1, filter?: string | string[]): Promise<Map<string
         viewers: r.viewers,
         plays: r.plays ?? 0,
         finishes: r.finishes ?? 0,
+        clicks: r.clicks ?? 0,
         bestSeconds: Math.round((r.best_seconds ?? 0) * 10) / 10,
         firstPlayAt: r.first_play_at,
         lastSeen: r.last_seen,
@@ -339,6 +348,7 @@ const EMPTY: ViewSummary = {
   viewers: 0,
   plays: 0,
   finishes: 0,
+  clicks: 0,
   bestSeconds: 0,
   firstPlayAt: null,
   lastSeen: null,

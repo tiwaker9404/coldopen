@@ -285,6 +285,24 @@ export function ProfileEditor({
           </div>
           <label>
             <span>
+              Booking link{' '}
+              <small>optional: Calendly or Cal.com, the main button on your film’s page</small>
+            </span>
+            <input
+              type="url"
+              pattern="https://.*"
+              maxLength={300}
+              value={d.cta.book ?? ''}
+              placeholder="https://cal.com/you/15min"
+              onChange={(e) => {
+                const book = e.target.value.trim()
+                const { book: _old, ...rest } = d.cta
+                set({ cta: book ? { ...rest, book } : rest })
+              }}
+            />
+          </label>
+          <label>
+            <span>
               Profile name <small>shown when you have more than one</small>
             </span>
             <input

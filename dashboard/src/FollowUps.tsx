@@ -102,7 +102,7 @@ function FollowUp({
           <>
             <a
               className="button primary-link"
-              href={`https://mail.google.com/mail/?view=cm&fs=1&su=${enc(message.subject)}&body=${enc(message.body)}`}
+              href={`https://mail.google.com/mail/?view=cm&fs=1${message.to ? `&to=${enc(message.to)}` : ''}&su=${enc(message.subject)}&body=${enc(message.body)}`}
               target="_blank"
               rel="noreferrer"
             >

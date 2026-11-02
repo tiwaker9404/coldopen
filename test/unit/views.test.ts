@@ -102,6 +102,13 @@ describe('a viewing session', () => {
     expect(r.firstSeen).toBe(t0.toISOString())
   })
 
+  it('counts a press of the button, without counting it as a play', () => {
+    const r = applyBeacon(undefined, { s: 'sess12345', e: 'click', t: 0, d: 30 }, meta, t0)
+    expect(r).toMatchObject({ clicked: true, played: false })
+    const later = applyBeacon(r, { s: 'sess12345', e: 'progress', t: 12, d: 30 }, meta, t0)
+    expect(later).toMatchObject({ clicked: true, played: true })
+  })
+
   it("can't claim more than the film's length", () => {
     const r = applyBeacon(undefined, { s: 'sess12345', e: 'progress', t: 500, d: 30 }, meta, t0)
     expect(r.seconds).toBe(31)
@@ -117,6 +124,7 @@ describe('a viewing session', () => {
         played: true,
         seconds: 30,
         finished: true,
+        clicked: true,
       },
       {
         ...meta,
@@ -126,6 +134,7 @@ describe('a viewing session', () => {
         played: true,
         seconds: 8,
         finished: false,
+        clicked: false,
       },
       {
         ...meta,
@@ -136,6 +145,7 @@ describe('a viewing session', () => {
         played: false,
         seconds: 0,
         finished: false,
+        clicked: false,
       },
     ]
     expect(summarize(rows)).toEqual({
@@ -143,6 +153,7 @@ describe('a viewing session', () => {
       viewers: 2,
       plays: 2,
       finishes: 1,
+      clicks: 1,
       bestSeconds: 30,
       firstPlayAt: at(0).toISOString(),
       lastSeen: at(90).toISOString(),

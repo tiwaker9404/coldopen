@@ -25,5 +25,24 @@ if (!/^\[triggers\]/m.test(text)) {
   console.log('Added the keep-awake schedule to share/wrangler.toml')
 }
 ensureR2(dir)
+// views recorded before button clicks were counted: add the column (once; already there is fine)
+const col = spawnSync(
+  'npx',
+  [
+    '--yes',
+    'wrangler@4.149.0',
+    'd1',
+    'execute',
+    'coldopen-views',
+    '--remote',
+    '--yes',
+    '--command',
+    'alter table film_views add column clicked integer not null default 0',
+  ],
+  { cwd: dir, encoding: 'utf8' },
+)
+if (col.status === 0) console.log('Views now count clicks on the button under each film')
+else if (!/duplicate column/i.test(`${col.stdout}${col.stderr}`))
+  console.warn('Could not add the clicked column to the views database:', col.stderr.trim())
 const r = spawnSync('npx', ['--yes', 'wrangler@4.149.0', 'deploy'], { cwd: dir, stdio: 'inherit' })
 process.exit(r.status ?? 1)

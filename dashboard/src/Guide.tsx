@@ -247,6 +247,9 @@ export function ToolsPanel({ me, onClose }: { me: Me | undefined; onClose: () =>
           {upload.error && <p className="error">{upload.error.message}</p>}
         </li>
         <li>
+          <HunterKey />
+        </li>
+        <li>
           <div>
             <h3>Gmail, Outlook and your mail app</h3>
             <p>
@@ -324,5 +327,83 @@ export function ToolsPanel({ me, onClose }: { me: Me | undefined; onClose: () =>
         matching role.
       </p>
     </Drawer>
+  )
+}
+
+/** Your own Hunter key, so the Send tab can find a person's work email */
+function HunterKey() {
+  const qc = useQueryClient()
+  const toast = useToast()
+  const keys = useQuery({
+    queryKey: ['keys'],
+    queryFn: () => api<{ hunter?: { last4: string } }>('/v1/me/keys'),
+  })
+  const [key, setKey] = useState('')
+  const save = useMutation({
+    mutationFn: () =>
+      send<{ last4: string; searchesLeft: number | null }>('PUT', '/v1/me/keys/hunter', {
+        key: key.trim(),
+      }),
+    onSuccess: (r) => {
+      setKey('')
+      toast({
+        text:
+          r.searchesLeft === null
+            ? 'Hunter key saved.'
+            : `Hunter key saved. ${r.searchesLeft} searches left this month.`,
+      })
+      void qc.invalidateQueries({ queryKey: ['keys'] })
+    },
+  })
+  const remove = useMutation({
+    mutationFn: () => send('DELETE', '/v1/me/keys/hunter'),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['keys'] }),
+  })
+  const saved = keys.data?.hunter
+  return (
+    <>
+      <div>
+        <h3>Find emails with Hunter</h3>
+        <p>
+          With your own free{' '}
+          <a href="https://hunter.io/users/sign_up" target="_blank" rel="noreferrer">
+            Hunter
+          </a>{' '}
+          key (50 searches a month), the Send tab finds the work email of the person you pick.
+          Without one, it suggests the usual addresses for their company. Your key is kept encrypted
+          and used only for your searches.
+        </p>
+        {!saved && (
+          <form
+            className="key-form"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (key.trim()) save.mutate()
+            }}
+          >
+            <input
+              type="password"
+              autoComplete="off"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="Paste your Hunter API key"
+              aria-label="Hunter API key"
+            />
+            <button type="submit" disabled={save.isPending || !key.trim()}>
+              {save.isPending ? 'Checking…' : 'Save'}
+            </button>
+          </form>
+        )}
+        {save.error && <p className="error">{save.error.message}</p>}
+      </div>
+      {saved && (
+        <div className="tool-state">
+          <span className="on">Key ending {saved.last4}</span>
+          <button type="button" className="link" onClick={() => remove.mutate()}>
+            Remove
+          </button>
+        </div>
+      )}
+    </>
   )
 }

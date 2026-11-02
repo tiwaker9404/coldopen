@@ -92,7 +92,8 @@ function watched(film: Film): string {
   if (v.plays === 0) return `Opened ${v.opens === 1 ? 'once' : `${v.opens} times`}, not played`
   const what =
     v.finishes > 0 ? 'Watched to the end' : `Watched ${v.plays === 1 ? 'once' : `${v.plays} times`}`
-  return `${what}${v.lastSeen ? `, ${ago(v.lastSeen)}` : ''}`
+  const pressed = v.clicks > 0 ? ', pressed your button' : ''
+  return `${what}${pressed}${v.lastSeen ? `, ${ago(v.lastSeen)}` : ''}`
 }
 
 /** Not sent / Sent / Replied / Interview / No reply, right in the list, like a job tracker. */

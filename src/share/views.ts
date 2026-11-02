@@ -8,7 +8,8 @@
  * person on the same day counts once and the hash can't be reversed into an address.
  */
 
-export type BeaconEvent = 'open' | 'play' | 'progress' | 'end'
+/** click: the viewer pressed the page's button (book a call, or reply) */
+export type BeaconEvent = 'open' | 'play' | 'progress' | 'end' | 'click'
 
 export interface Beacon {
   /** random per page load */
@@ -31,6 +32,8 @@ export interface ViewRow {
   played: boolean
   seconds: number
   finished: boolean
+  /** pressed the button under the film */
+  clicked: boolean
   device: 'mobile' | 'desktop'
   referrer: string | null
   country: string | null
@@ -45,13 +48,15 @@ export interface ViewSummary {
   plays: number
   /** sessions that reached the end */
   finishes: number
+  /** sessions that pressed the button under the film (book a call, or reply) */
+  clicks: number
   /** furthest anyone got, seconds */
   bestSeconds: number
   firstPlayAt: string | null
   lastSeen: string | null
 }
 
-const EVENTS = new Set<BeaconEvent>(['open', 'play', 'progress', 'end'])
+const EVENTS = new Set<BeaconEvent>(['open', 'play', 'progress', 'end', 'click'])
 const MAX_SECONDS = 600
 
 /** Validates a report from a share page. Anything malformed is dropped, never an error page. */
@@ -119,11 +124,16 @@ export async function viewerHash(secret: string, ip: string, ua: string, now: Da
 export function applyBeacon(
   prev: ViewRow | undefined,
   b: Beacon,
-  meta: Omit<ViewRow, 'session' | 'firstSeen' | 'lastSeen' | 'played' | 'seconds' | 'finished'>,
+  meta: Omit<
+    ViewRow,
+    'session' | 'firstSeen' | 'lastSeen' | 'played' | 'seconds' | 'finished' | 'clicked'
+  >,
   now: Date,
 ): ViewRow {
   const at = now.toISOString()
-  const played = (prev?.played ?? false) || b.e !== 'open'
+  // a click on the button isn't a play: people can reply without watching
+  const played = (prev?.played ?? false) || (b.e !== 'open' && b.e !== 'click')
+  const clicked = (prev?.clicked ?? false) || b.e === 'click'
   // a session can't report more than the film's length (plus rounding)
   const cap = b.d > 0 ? b.d + 1 : MAX_SECONDS
   const seconds = Math.min(Math.max(prev?.seconds ?? 0, b.t), cap)
@@ -137,6 +147,7 @@ export function applyBeacon(
     played,
     seconds: Math.round(seconds * 10) / 10,
     finished,
+    clicked,
   }
 }
 
@@ -153,6 +164,7 @@ export function summarize(rows: ViewRow[]): ViewSummary {
     viewers: new Set(rows.map((r) => r.viewer)).size,
     plays: plays.length,
     finishes: rows.filter((r) => r.finished).length,
+    clicks: rows.filter((r) => r.clicked).length,
     bestSeconds: rows.reduce((m, r) => Math.max(m, r.seconds), 0),
     firstPlayAt: plays.map((r) => r.firstSeen).sort(byTime)[0] ?? null,
     lastSeen:

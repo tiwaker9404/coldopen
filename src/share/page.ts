@@ -18,6 +18,8 @@ export interface ShareView {
   firstName: string
   ctaLine: string
   contact: string
+  /** a booking link (Calendly, Cal.com...): the page's main button when there is one */
+  book?: string
   /** the film's file name, e.g. film-square.mp4 */
   film: string
 }
@@ -41,6 +43,7 @@ export function viewFromRun(input: FilmInput, out: FilmResult): ShareView {
     firstName: p.sender.name.split(' ')[0]!,
     ctaLine: p.cta.line,
     contact: p.cta.contact,
+    ...(p.cta.book ? { book: p.cta.book } : {}),
     film: out.files.film.split('/').pop()!,
   }
 }
@@ -84,7 +87,8 @@ send('open');
 v.addEventListener('play',()=>{if(!played){played=true;send('play')}});
 v.addEventListener('timeupdate',()=>{max=Math.max(max,v.currentTime);if(played&&Date.now()-last>5000){last=Date.now();send('progress')}});
 v.addEventListener('ended',()=>{max=v.duration||max;send('end')});
-addEventListener('pagehide',()=>{if(played)send('progress')});})()</script>`
+addEventListener('pagehide',()=>{if(played)send('progress')});
+document.querySelectorAll('a[data-track]').forEach(a=>a.addEventListener('click',()=>send('click')));})()</script>`
 }
 
 /**
@@ -126,12 +130,13 @@ h1{font-size:20px;font-weight:650;margin:20px 0 2px}p{margin:0;color:var(--muted
 .row{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:4px}
 a.cta{display:inline-block;background:var(--fg);color:var(--bg);text-decoration:none;font-weight:600;padding:12px 20px;border-radius:10px}
 a.cta:focus-visible{outline:3px solid #3f6fd8;outline-offset:3px}
+.do{display:flex;gap:8px;flex-wrap:wrap}a.cta.alt{background:none;color:var(--fg);box-shadow:inset 0 0 0 1.5px var(--fg)}
 footer{margin-top:40px;font-size:13px;color:var(--muted);text-align:center}
 footer a{color:inherit}
 </style></head><body><main>
 <video src="${url}/${v.film}" poster="${url}/poster.jpg" controls playsinline preload="metadata" width="${w}" height="${h}"></video>
 <div class="row"><div><h1>${esc(v.ctaLine)}</h1><p>From ${esc(v.from)}, made for ${esc(v.company)}</p></div>
-<a class="cta" href="${esc(contactHref(v.contact))}">Reply to ${esc(v.firstName)}</a></div>
+<div class="do">${v.book ? `<a class="cta" data-track href="${esc(v.book)}" target="_blank" rel="noopener">Book 15 minutes</a><a class="cta alt" data-track href="${esc(contactHref(v.contact))}">Reply</a>` : `<a class="cta" data-track href="${esc(contactHref(v.contact))}">Reply to ${esc(v.firstName)}</a>`}</div></div>
 <footer><a href="${esc(made.toString())}">Made with coldopen</a>. Make one for a company you'd like to work with.${privacy ? `<br>Views are counted without storing your IP address. <a href="${esc(privacy)}">Privacy</a>` : ''}</footer>
 </main>${track ? trackingScript(track) : ''}</body></html>`
 }

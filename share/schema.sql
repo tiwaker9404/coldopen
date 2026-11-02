@@ -9,6 +9,8 @@ create table if not exists film_views (
   played      integer not null default 0,
   seconds     real not null default 0,
   finished    integer not null default 0,
+  -- pressed the button under the film (book a call, or reply)
+  clicked     integer not null default 0,
   device      text not null,
   referrer    text,
   country     text,

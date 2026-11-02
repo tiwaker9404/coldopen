@@ -6,6 +6,7 @@ import {
   downloadUrl,
   type Film,
   type FilmDetail,
+  type FoundEmails,
   fileName,
   LIMITS,
   type Messages,
@@ -328,10 +329,15 @@ function SendSteps({ film }: { film: FilmDetail }) {
   return (
     <ol className="steps">
       <li>
-        <WhoToSend id={film.id} />
+        <WhoToSend film={film} />
       </li>
       <li>
-        <Message id={film.id} followUp={status === 'sent' && days >= 4} />
+        <Message
+          id={film.id}
+          to={film.recipient?.email}
+          followUp={status === 'sent' && days >= 4}
+          last={(film.outreach?.followUps ?? 0) >= 1}
+        />
       </li>
       <li>
         <section className="block">
@@ -363,7 +369,14 @@ function SendSteps({ film }: { film: FilmDetail }) {
 }
 
 /** Who to send it to: people they know there first, then LinkedIn searches they run themselves. */
-function WhoToSend({ id }: { id: string }) {
+function WhoToSend({ film }: { film: FilmDetail }) {
+  const id = film.id
+  const [intro, setIntro] = useState<string | null>(null)
+  const messages = useQuery({
+    queryKey: ['messages', id],
+    queryFn: () => api<Messages>(`/v1/films/${id}/messages`),
+    staleTime: Number.POSITIVE_INFINITY,
+  })
   const q = useQuery({
     queryKey: ['people', id],
     queryFn: () => api<People>(`/v1/films/${id}/people`),
@@ -386,19 +399,42 @@ function WhoToSend({ id }: { id: string }) {
             message.
           </p>
           <ul className="people">
-            {p.known.map((c) => (
-              <li key={`${c.name}-${c.url}`}>
-                <span>
-                  <b>{c.name}</b>
-                  <small>{c.position ?? c.company}</small>
-                </span>
-                {c.url && (
-                  <a className="link" href={c.url} target="_blank" rel="noreferrer">
-                    LinkedIn profile <Out />
-                  </a>
-                )}
-              </li>
-            ))}
+            {p.known.map((c) => {
+              const key = `${c.name}-${c.url}`
+              const text = messages.data?.intro.replaceAll(
+                '[First name]',
+                c.name.split(/\s+/)[0] ?? c.name,
+              )
+              return (
+                <li key={key} className={intro === key ? 'open' : ''}>
+                  <span>
+                    <b>{c.name}</b>
+                    <small>{c.position ?? c.company}</small>
+                  </span>
+                  <button
+                    type="button"
+                    className="link"
+                    aria-expanded={intro === key}
+                    onClick={() => setIntro(intro === key ? null : key)}
+                  >
+                    Ask for an intro
+                  </button>
+                  {intro === key && text && (
+                    <div className="intro">
+                      <pre>{text}</pre>
+                      <div className="actions">
+                        <Copy className="primary" text={text} label="Copy message" done="Copied" />
+                        {c.url && (
+                          <a className="button" href={c.url} target="_blank" rel="noreferrer">
+                            Open {c.name.split(/\s+/)[0]}’s LinkedIn <Out />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </>
       )}
@@ -424,12 +460,157 @@ function WhoToSend({ id }: { id: string }) {
           Upload your LinkedIn connections under Connect tools to see who you already know here.
         </p>
       )}
+      <Recipient film={film} />
     </section>
   )
 }
 
+/**
+ * Who this film is for: their name, and their email, found by Hunter (with your key) or picked
+ * from the usual patterns. Saved, it greets them by name and addresses the drafts.
+ */
+function Recipient({ film }: { film: FilmDetail }) {
+  const qc = useQueryClient()
+  const saved = film.recipient
+  const [editing, setEditing] = useState(!saved)
+  const [name, setName] = useState(saved?.name ?? '')
+  const [email, setEmail] = useState(saved?.email ?? '')
+  const find = useMutation({
+    mutationFn: () =>
+      send<FoundEmails>('POST', `/v1/films/${film.id}/find-email`, { name: name.trim() }),
+    onSuccess: (r) => {
+      if (r.found && !email) setEmail(r.found.email)
+    },
+  })
+  const save = useMutation({
+    mutationFn: (body: { name: string; email?: string } | null) =>
+      send<Film>('PUT', `/v1/films/${film.id}/recipient`, body),
+    onSuccess: () => {
+      setEditing(false)
+      void qc.invalidateQueries({ queryKey: ['film', film.id] })
+      void qc.invalidateQueries({ queryKey: ['messages', film.id] })
+      void qc.invalidateQueries({ queryKey: ['followups'] })
+    },
+  })
+  if (saved && !editing)
+    return (
+      <div className="recipient saved">
+        <span>
+          Writing to <b>{saved.name}</b>
+          {saved.email && <small>{saved.email}</small>}
+        </span>
+        <button type="button" className="link" onClick={() => setEditing(true)}>
+          Change
+        </button>
+      </div>
+    )
+  const r = find.data
+  return (
+    <form
+      className="recipient"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (name.trim())
+          save.mutate({ name: name.trim(), ...(email.trim() ? { email: email.trim() } : {}) })
+      }}
+    >
+      <h4>Who are you writing to?</h4>
+      <p className="small muted">
+        Their name puts “Hi {name.trim().split(/\s+/)[0] || 'Priya'},” in the messages, and
+        follow-ups open already addressed.
+      </p>
+      <div className="recipient-row">
+        <label>
+          <span>Name</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Priya Shah"
+            autoComplete="off"
+          />
+        </label>
+        <label>
+          <span>Email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="optional"
+            autoComplete="off"
+          />
+        </label>
+        <button
+          type="button"
+          disabled={name.trim().length < 2 || find.isPending}
+          onClick={() => find.mutate()}
+        >
+          {find.isPending ? 'Looking…' : 'Find email'}
+        </button>
+      </div>
+      {r && (
+        <div className="emails" aria-live="polite">
+          {r.found && (
+            <button
+              type="button"
+              className={`email-pick${email === r.found.email ? ' on' : ''}`}
+              onClick={() => setEmail(r.found!.email)}
+            >
+              <b>{r.found.email}</b>
+              <small>
+                Found by Hunter
+                {r.found.score !== undefined && ` · ${r.found.score}% sure`}
+                {r.found.status === 'valid' && ' · verified'}
+              </small>
+            </button>
+          )}
+          {r.note && <p className="small muted">{r.note}</p>}
+          <p className="small muted">
+            {r.found ? 'Or one of the usual patterns at ' : 'Likely addresses at '}
+            {r.domain}
+            {r.hunter ? ':' : ' (guesses; add a Hunter key under Connect tools to look it up):'}
+          </p>
+          <div className="chips">
+            {r.guesses.map((g) => (
+              <button
+                key={g.email}
+                type="button"
+                aria-pressed={email === g.email}
+                onClick={() => setEmail(g.email)}
+              >
+                {g.email}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {(find.error || save.error) && <p className="error">{(find.error ?? save.error)!.message}</p>}
+      <div className="actions">
+        <button type="submit" className="primary" disabled={!name.trim() || save.isPending}>
+          {save.isPending ? 'Saving…' : 'Save'}
+        </button>
+        {saved && (
+          <button type="button" className="link" onClick={() => save.mutate(null)}>
+            Clear
+          </button>
+        )}
+      </div>
+    </form>
+  )
+}
+
 /** The message, and where to send it from: Gmail, Outlook or the mail app, as a ready draft. */
-function Message({ id, followUp }: { id: string; followUp: boolean }) {
+function Message({
+  id,
+  to,
+  followUp,
+  last = false,
+}: {
+  id: string
+  to?: string | undefined
+  followUp: boolean
+  /** one follow-up already went out: the next is the short last note */
+  last?: boolean
+}) {
   const q = useQuery({
     queryKey: ['messages', id],
     queryFn: () => api<Messages>(`/v1/films/${id}/messages`),
@@ -445,7 +626,14 @@ function Message({ id, followUp }: { id: string; followUp: boolean }) {
         <h3>Send the message</h3>
       </section>
     )
-  const body = kind === 'email' ? m.email.body : kind === 'linkedin' ? m.linkedin : m.followUp
+  const body =
+    kind === 'email'
+      ? m.email.body
+      : kind === 'linkedin'
+        ? m.linkedin
+        : last
+          ? m.lastNote
+          : m.followUp
   const subject = kind === 'followUp' ? `Re: ${m.email.subject}` : m.email.subject
   const enc = encodeURIComponent
   return (
@@ -478,7 +666,9 @@ function Message({ id, followUp }: { id: string; followUp: boolean }) {
           ? 'Your first message, with the film’s link in it.'
           : kind === 'linkedin'
             ? 'For a LinkedIn connection request, which allows 300 characters.'
-            : 'A friendly nudge for 4 or 5 days later, if you haven’t heard back. One is all it takes.'}
+            : last
+              ? 'Your last note: short, and easy to answer either way. After this, let it go.'
+              : 'A friendly nudge for 4 or 5 days later, if you haven’t heard back.'}
       </p>
       <div className="letter">
         {kind !== 'linkedin' && (
@@ -489,7 +679,13 @@ function Message({ id, followUp }: { id: string; followUp: boolean }) {
         <pre>{body}</pre>
       </div>
       <p className="small">
-        Replace <b>[First name]</b> before sending.
+        {body.includes('[First name]') ? (
+          <>
+            Replace <b>[First name]</b> before sending, or say who it’s for above.
+          </>
+        ) : (
+          to && `Opens addressed to ${to}.`
+        )}
         {kind === 'linkedin' && ` ${m.linkedin.length} of 300 characters.`}
       </p>
       {kind === 'linkedin' ? (
@@ -501,7 +697,7 @@ function Message({ id, followUp }: { id: string; followUp: boolean }) {
         <div className="actions">
           <a
             className="button primary-link"
-            href={`https://mail.google.com/mail/?view=cm&fs=1&su=${enc(subject)}&body=${enc(body)}`}
+            href={`https://mail.google.com/mail/?view=cm&fs=1${to ? `&to=${enc(to)}` : ''}&su=${enc(subject)}&body=${enc(body)}`}
             target="_blank"
             rel="noreferrer"
           >
@@ -509,13 +705,16 @@ function Message({ id, followUp }: { id: string; followUp: boolean }) {
           </a>
           <a
             className="button"
-            href={`https://outlook.office.com/mail/deeplink/compose?subject=${enc(subject)}&body=${enc(body)}`}
+            href={`https://outlook.office.com/mail/deeplink/compose?${to ? `to=${enc(to)}&` : ''}subject=${enc(subject)}&body=${enc(body)}`}
             target="_blank"
             rel="noreferrer"
           >
             Outlook <Out />
           </a>
-          <a className="button" href={`mailto:?subject=${enc(subject)}&body=${enc(body)}`}>
+          <a
+            className="button"
+            href={`mailto:${to ? enc(to) : ''}?subject=${enc(subject)}&body=${enc(body)}`}
+          >
             Mail app
           </a>
           <Copy text={`${subject}\n\n${body}`} label="Copy" done="Message copied" />
@@ -695,6 +894,10 @@ function Views({ id }: { id: string }) {
         <div>
           <dt>Watched to the end</dt>
           <dd>{s.finishes}</dd>
+        </div>
+        <div>
+          <dt>Pressed your button</dt>
+          <dd>{s.clicks ?? 0}</dd>
         </div>
         <div>
           <dt>People</dt>

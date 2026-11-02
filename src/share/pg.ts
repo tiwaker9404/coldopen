@@ -29,7 +29,8 @@ export function pgViewStore(sql: Sql): ViewStore {
           last_seen = greatest(film_views.last_seen, excluded.last_seen),
           played = film_views.played or excluded.played,
           seconds = greatest(film_views.seconds, excluded.seconds),
-          finished = film_views.finished or excluded.finished`
+          finished = film_views.finished or excluded.finished,
+          clicked = film_views.clicked or excluded.clicked`
     },
   }
 }
@@ -53,6 +54,7 @@ export async function viewSummaries(sql: Sql, ids: string[]): Promise<Map<string
       viewers: number
       plays: number
       finishes: number
+      clicks: number
       bestSeconds: number
       firstPlayAt: Date | null
       lastSeen: Date | null
@@ -63,6 +65,7 @@ export async function viewSummaries(sql: Sql, ids: string[]): Promise<Map<string
       count(distinct viewer)::int as viewers,
       (count(*) filter (where played))::int as plays,
       (count(*) filter (where finished))::int as finishes,
+      (count(*) filter (where clicked))::int as clicks,
       coalesce(max(seconds), 0)::float8 as best_seconds,
       min(first_seen) filter (where played) as first_play_at,
       max(last_seen) as last_seen
@@ -75,6 +78,7 @@ export async function viewSummaries(sql: Sql, ids: string[]): Promise<Map<string
         viewers: r.viewers,
         plays: r.plays,
         finishes: r.finishes,
+        clicks: r.clicks,
         bestSeconds: Math.round(r.bestSeconds * 10) / 10,
         firstPlayAt: r.firstPlayAt ? new Date(r.firstPlayAt).toISOString() : null,
         lastSeen: r.lastSeen ? new Date(r.lastSeen).toISOString() : null,
@@ -88,6 +92,7 @@ export const NO_VIEWS: ViewSummary = {
   viewers: 0,
   plays: 0,
   finishes: 0,
+  clicks: 0,
   bestSeconds: 0,
   firstPlayAt: null,
   lastSeen: null,
