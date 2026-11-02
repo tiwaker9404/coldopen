@@ -95,7 +95,15 @@ async function get(url: string): Promise<Response> {
 }
 
 async function main() {
-  const page = await (await get(HUB)).text()
+  const page = (
+    await Promise.all(
+      [HUB, 'https://www.uscis.gov/tools/reports-and-studies/h-1b-employer-data-hub'].map((u) =>
+        get(u)
+          .then((r) => r.text())
+          .catch(() => ''),
+      ),
+    )
+  ).join('\n')
   if (process.env.VISA_DEBUG)
     for (const m of page.matchAll(/href="([^"]*(?:data|hub|export|20\d\d)[^"]*)"/gi)) console.log('link', m[1])
   const links = [...page.matchAll(/href="([^"]+?\.csv)"/gi)].map((m) =>
