@@ -11,7 +11,7 @@ import {
   type Job,
   readBoard,
 } from './boards.ts'
-import { DEFAULT_BOARDS } from './companies.ts'
+import { DEFAULT_BOARDS, ycOf } from './companies.ts'
 import { detailsFromBoard, greenhouseRequirements } from './details.ts'
 import { defaultSearch, rank, type Search, SearchSchema, type Suggestion, spread } from './rank.ts'
 
@@ -126,11 +126,41 @@ async function pool<T>(items: T[], n: number, fn: (x: T) => Promise<void>) {
   )
 }
 
+let warming: Promise<void> | null = null
+
+/** Refreshes boards without holding up the request; one background sweep at a time */
+function background(sql: Sql, boards: Board[], fetchFn?: FetchFn) {
+  if (warming) return
+  warming = pool(boards, 6, (b) => refresh(sql, b, fetchFn))
+    .catch(() => {})
+    .finally(() => {
+      warming = null
+    })
+}
+
+/** Reads every default board that's due, in the background: run at start and every few hours */
+export async function warmBoards(sql: Sql, fetchFn?: FetchFn): Promise<void> {
+  const keys = DEFAULT_BOARDS.map(boardKey)
+  const fresh = new Set(
+    (
+      await sql<{ board: string }[]>`
+        select board from job_boards where board in ${sql(keys)}
+        and fetched_at > now() - make_interval(secs => ${FRESH_MS / 1000})`
+    ).map((r) => r.board),
+  )
+  background(
+    sql,
+    DEFAULT_BOARDS.filter((b) => !fresh.has(boardKey(b))),
+    fetchFn,
+  )
+  await warming
+}
+
 /** The boards' listings, refreshing the stale ones first */
 export async function listings(
   sql: Sql,
   boards: Board[],
-  opts: { fetch?: FetchFn; now?: number } = {},
+  opts: { fetch?: FetchFn; now?: number; wait?: boolean } = {},
 ): Promise<{ jobs: Job[]; failed: Board[]; updatedAt: Date | null }> {
   const now = opts.now ?? Date.now()
   const keys = boards.map(boardKey)
@@ -148,8 +178,14 @@ export async function listings(
     const age = now - c.fetchedAt.getTime()
     return age > (c.ok ? FRESH_MS : RETRY_MS)
   })
-  if (stale.length) {
-    await pool(stale, CONCURRENCY, (b) => refresh(sql, b, opts.fetch))
+  // YC boards (hundreds) refresh in the background, so a page load never waits on them; the
+  // curated ones and their own are read before answering, as before
+  const isYc = (b: Board) => !!ycOf({ board: b })
+  const due = opts.wait ? stale : stale.filter((b) => !isYc(b))
+  const behind = opts.wait ? [] : stale.filter(isYc)
+  if (behind.length) background(sql, behind, opts.fetch)
+  if (due.length) {
+    await pool(due, CONCURRENCY, (b) => refresh(sql, b, opts.fetch))
     cache = await rows()
   }
   const jobs: Job[] = []
@@ -158,7 +194,8 @@ export async function listings(
   for (const b of boards) {
     const c = cache.get(boardKey(b))
     if (!c?.lastOkAt) {
-      failed.push(b)
+      // a YC board not read yet is on its way, not broken
+      if (!isYc(b)) failed.push(b)
       continue
     }
     // the person's own name and website for the company win over what the cache was saved with
@@ -228,6 +265,34 @@ export async function requirementsFor(
   return have
 }
 
+const ycBoard = (j: Pick<Job, 'board'>) => {
+  const [ats, token] = j.board.split(':') as [Board['ats'], string]
+  return ycOf({ board: { ats, token } })
+}
+
+/**
+ * How fast each company is hiring: its open roles (one per title and place) and how many of
+ * them went up in the last 30 days.
+ */
+export function momentum(
+  jobs: Job[],
+  now = Date.now(),
+): Map<string, { open: number; recent: number }> {
+  const out = new Map<string, { open: number; recent: number }>()
+  const seen = new Set<string>()
+  for (const j of jobs) {
+    const k = `${j.board}|${j.title.toLowerCase()}|${j.location.toLowerCase()}`
+    if (seen.has(k)) continue
+    seen.add(k)
+    const m = out.get(j.board) ?? { open: 0, recent: 0 }
+    m.open++
+    const t = Date.parse(j.posted ?? '')
+    if (!Number.isNaN(t) && now - t <= 30 * 86_400_000) m.recent++
+    out.set(j.board, m)
+  }
+  return out
+}
+
 export async function suggestions(
   sql: Sql,
   owner: string,
@@ -238,8 +303,10 @@ export async function suggestions(
   const boards = boardsFor(state.boards)
   if (state.search.roles.length === 0)
     return { data: [], companies: boards.length, failed: [], updatedAt: null, search: state }
-  const { jobs, failed, updatedAt } = await listings(sql, boards, opts)
+  const { jobs: all, failed, updatedAt } = await listings(sql, boards, opts)
   const hidden = new Set(state.hidden)
+  const jobs = state.search.ycOnly ? all.filter((j) => ycOf({ site: j.site }) || ycBoard(j)) : all
+  const pace = momentum(all, opts.now)
   // the best title matches, then how well the person's record answers each one's requirements
   const candidates = spread(
     rank(
@@ -252,15 +319,24 @@ export async function suggestions(
   const reqs = profile ? await requirementsFor(sql, candidates, opts) : new Map<string, string[]>()
   const fitted: JobWithFit[] = candidates.map((j) => {
     const fit = profile ? fitOf(reqs.get(j.id) ?? [], profile) : null
-    return fit ? { ...j, fit, score: j.score + FIT_BONUS[fit.level] } : j
+    const yc = ycBoard(j) ?? ycOf({ site: j.site })
+    const hiring = pace.get(j.board)
+    return {
+      ...j,
+      ...(fit ? { fit, score: j.score + FIT_BONUS[fit.level] } : {}),
+      ...(yc?.batch ? { yc: yc.batch } : {}),
+      ...(hiring ? { hiring } : {}),
+    }
   })
+  const fastest = state.search.sort === 'fastest'
   fitted.sort(
     (a, b) =>
+      (fastest ? (b.hiring?.recent ?? 0) - (a.hiring?.recent ?? 0) : 0) ||
       b.score - a.score ||
       (Date.parse(b.posted ?? '') || 0) - (Date.parse(a.posted ?? '') || 0) ||
       a.company.localeCompare(b.company),
   )
-  const ranked = spread(fitted, 3).slice(0, opts.limit ?? 24)
+  const ranked = spread(fitted, fastest ? 2 : 3).slice(0, opts.limit ?? 24)
   // which of these already have a film: the job link, given as the job post or as the website
   const urls = ranked.map((j) => j.url)
   const made = urls.length

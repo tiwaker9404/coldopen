@@ -16,11 +16,19 @@ export const SearchSchema = z.object({
   remote: z.boolean().default(true),
   /** leave out staff, principal, director, head-of and manager roles */
   skipSenior: z.boolean().default(false),
+  /** only YC companies */
+  ycOnly: z.boolean().default(false),
+  /** best fit first, or the companies adding the most roles lately first */
+  sort: z.enum(['best', 'fastest']).default('best'),
 })
 export type Search = z.infer<typeof SearchSchema>
 
 export interface Suggestion extends Job {
   score: number
+  /** the company's YC batch, "W24", when it's a YC company */
+  yc?: string
+  /** how fast the company is hiring: open roles on its board, and how many went up in 30 days */
+  hiring?: { open: number; recent: number }
   /** short reasons, shown as chips: "Forward Deployed Engineer", "San Francisco", "New this week" */
   why: string[]
 }

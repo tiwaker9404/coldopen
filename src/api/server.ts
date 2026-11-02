@@ -17,8 +17,16 @@ import type { Sql } from '../db/index.ts'
 import { FilmInputSchema, type FilmResult } from '../film.ts'
 import { newId } from '../ids.ts'
 import { type BoardSchema, type FetchFn, parseBoardLink } from '../jobs/boards.ts'
+import { YC_BOARDS, ycOf } from '../jobs/companies.ts'
 import { SearchSchema } from '../jobs/rank.ts'
-import { getSearch, hideJob, MAX_OWN_BOARDS, saveSearch, suggestions } from '../jobs/service.ts'
+import {
+  getSearch,
+  hideJob,
+  MAX_OWN_BOARDS,
+  saveSearch,
+  suggestions,
+  warmBoards,
+} from '../jobs/service.ts'
 import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
@@ -775,6 +783,7 @@ export async function buildApi({
       return {
         data: r.data.map(({ score: _s, board: _b, ...j }) => j),
         companies: r.companies,
+        ycCompanies: YC_BOARDS.length,
         failed: r.failed,
         updatedAt: r.updatedAt,
         search: {
@@ -1545,7 +1554,11 @@ export async function buildApi({
         select count(*)::int as n from connections where owner = ${req.owner}`
       return {
         company: out.company,
-        searches: peopleSearches(out.company, { jobTitle: title, profile: run.input.profile }),
+        searches: peopleSearches(out.company, {
+          jobTitle: title,
+          profile: run.input.profile,
+          yc: ycOf({ site: /^https?:\/\//.test(out.host) ? out.host : `https://${out.host}` }),
+        }),
         known: knownAt(rows, out.company, out.host, title).slice(0, 25),
         connections: n,
       }
@@ -1751,6 +1764,17 @@ export async function buildApi({
     const timer = setInterval(purge, 60 * 60_000)
     timer.unref()
     app.addHook('onClose', async () => clearInterval(timer))
+    // keep every company's board read, so Jobs for you never waits on hundreds of them
+    const warm = () =>
+      warmBoards(sql, jobsFetch).catch((err) => log.warn({ err }, 'could not read job boards'))
+    const first = setTimeout(warm, 20_000)
+    const boards = setInterval(warm, 3 * 60 * 60_000)
+    first.unref()
+    boards.unref()
+    app.addHook('onClose', async () => {
+      clearTimeout(first)
+      clearInterval(boards)
+    })
   }
 
   return app

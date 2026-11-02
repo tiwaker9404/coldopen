@@ -5,7 +5,7 @@
  * Exits non-zero when a board is gone (an empty one is fine), so a dead entry in companies.ts gets noticed.
  */
 import { type Board, boardKey, fetchBoard, prettyToken } from './boards.ts'
-import { DEFAULT_BOARDS } from './companies.ts'
+import { CURATED_BOARDS as DEFAULT_BOARDS } from './companies.ts'
 
 // `--details ashby:acme ...`: the requirements read from a few engineering jobs on each board
 if (process.argv[2] === '--details') {

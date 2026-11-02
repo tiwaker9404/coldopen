@@ -1,4 +1,6 @@
-import type { Board } from './boards.ts'
+import { readFileSync } from 'node:fs'
+import { type Board, boardKey } from './boards.ts'
+import type { YcBoard } from './yc-build.ts'
 
 /**
  * Companies whose public job boards coldopen searches by default: AI, developer tools, data and
@@ -80,9 +82,46 @@ const LIST: [Board['ats'], string, string, string][] = [
   ['ashby', 'zip', 'Zip', 'https://ziphq.com/'],
 ]
 
-export const DEFAULT_BOARDS: Board[] = LIST.map(([ats, token, name, site]) => ({
-  ats,
-  token,
-  name,
-  site,
-}))
+/**
+ * Hiring YC companies' boards, from src/jobs/yc.json (rebuilt weekly by the "YC boards"
+ * workflow from YC's own company directory).
+ */
+export const YC_BOARDS: YcBoard[] = (() => {
+  try {
+    const raw = JSON.parse(readFileSync(new URL('./yc.json', import.meta.url), 'utf8'))
+    return Array.isArray(raw) ? (raw as YcBoard[]) : []
+  } catch {
+    return []
+  }
+})()
+
+const ycByKey = new Map(YC_BOARDS.map((y) => [boardKey(y), y]))
+
+const host = (url: string | undefined) => {
+  try {
+    return new URL(url ?? '').hostname.toLowerCase().replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+const ycByHost = new Map(YC_BOARDS.filter((y) => y.site).map((y) => [host(y.site), y]))
+
+/** The YC company behind a board or a website, if it's one of the hiring ones */
+export function ycOf(by: { board?: Pick<Board, 'ats' | 'token'>; site?: string }) {
+  const y =
+    (by.board && ycByKey.get(boardKey(by.board))) || (by.site && ycByHost.get(host(by.site)))
+  return y ? { batch: y.batch, slug: y.slug } : null
+}
+
+const CURATED: Board[] = LIST.map(([ats, token, name, site]) => ({ ats, token, name, site }))
+
+/** The curated companies first, then every hiring YC company with a public board */
+export const DEFAULT_BOARDS: Board[] = [
+  ...CURATED,
+  ...YC_BOARDS.filter((y) => !CURATED.some((c) => boardKey(c) === boardKey(y))).map(
+    ({ ats, token, name, site }) => ({ ats, token, name, ...(site ? { site } : {}) }),
+  ),
+]
+
+/** The curated list alone, for the weekly board check */
+export const CURATED_BOARDS = CURATED

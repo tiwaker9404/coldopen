@@ -80,13 +80,15 @@ export function Jobs({
         </div>
         {q.isPending ? (
           <p className="jobs-note" aria-live="polite">
-            Reading open roles from 70 companies’ job boards…
+            Reading open roles from hundreds of companies’ job boards…
           </p>
         ) : q.isError ? (
           <p className="error">Couldn’t load jobs: {q.error.message}</p>
         ) : noRoles ? (
           <p className="empty">
-            Tell coldopen which roles you want and it finds open ones at 70 companies.{' '}
+            Tell coldopen which roles you want and it finds open ones at{' '}
+            {r?.companies ?? 'hundreds of'} companies
+            {r?.ycCompanies ? `, ${r.ycCompanies} of them YC startups` : ''}.{' '}
             <a href="#jobs">Set up your job search</a>
           </p>
         ) : r!.data.length === 0 ? (
@@ -109,7 +111,7 @@ export function Jobs({
     <section className="jobs" aria-label="Jobs for you">
       {q.isPending ? (
         <p className="jobs-note" aria-live="polite">
-          Reading open roles from 70 companies’ job boards…
+          Reading open roles from hundreds of companies’ job boards…
         </p>
       ) : q.isError ? (
         <p className="error">Couldn’t load jobs: {q.error.message}</p>
@@ -124,6 +126,8 @@ export function Jobs({
             {r.search.locations.length > 0 && ` in ${r.search.locations.join(', ')}`}
             {r.search.remote &&
               (r.search.locations.length ? ', or remote' : ', anywhere or remote')}
+            {r.search.ycOnly && ' at YC companies'}
+            {r.search.sort === 'fastest' && ', hiring fastest first'}
             {`. ${r.data.length} matches across ${r.companies} companies`}
             {r.updatedAt && `, checked ${ago(r.updatedAt)}`}
             {r.failed.length > 0 && `. Couldn’t read ${r.failed.join(', ')}`}.
@@ -260,6 +264,19 @@ function JobRow({
               {FIT_LABEL[job.fit.level]} · {job.fit.answered} of {job.fit.of}
             </span>
           )}
+          {job.yc && (
+            <span className="tag yc" title={`Y Combinator, ${job.yc} batch`}>
+              YC {job.yc}
+            </span>
+          )}
+          {job.hiring && job.hiring.recent > 0 && (
+            <span
+              className={job.hiring.recent >= 5 ? 'tag hot' : 'tag quiet'}
+              title={`${job.hiring.open} open roles, ${job.hiring.recent} posted in the last 30 days`}
+            >
+              {job.hiring.recent} new {job.hiring.recent === 1 ? 'role' : 'roles'} this month
+            </span>
+          )}
           {why.map((w) => (
             <span key={w} className={w === 'New this week' ? 'tag new' : 'tag'}>
               {w}
@@ -311,6 +328,8 @@ function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
   const [places, setPlaces] = useState(search.locations.join(', '))
   const [remote, setRemote] = useState(search.remote)
   const [skipSenior, setSkipSenior] = useState(search.skipSenior)
+  const [ycOnly, setYcOnly] = useState(search.ycOnly)
+  const [sort, setSort] = useState(search.sort)
   const [boards, setBoards] = useState(
     search.boards
       .map((b) =>
@@ -331,6 +350,8 @@ function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
         locations: list(places).slice(0, 8),
         remote,
         skipSenior,
+        ycOnly,
+        sort,
         boards: list(boards),
       })
     },
@@ -379,6 +400,17 @@ function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
             onChange={(e) => setSkipSenior(e.target.checked)}
           />
           Hide staff, principal and manager roles
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={ycOnly} onChange={(e) => setYcOnly(e.target.checked)} />
+          YC companies only
+        </label>
+        <label className="check sort">
+          Sort by
+          <select value={sort} onChange={(e) => setSort(e.target.value as JobSearch['sort'])}>
+            <option value="best">Best fit</option>
+            <option value="fastest">Hiring fastest</option>
+          </select>
         </label>
       </div>
       <details className="more-companies" open={search.boards.length > 0}>
