@@ -71,6 +71,8 @@ const schema = z.object({
     .enum(['true', 'false', '1', '0'])
     .default('false')
     .transform((v) => v === 'true' || v === '1'),
+  /** where the privacy page says to send questions (else it points to GitHub issues) */
+  CONTACT_EMAIL: z.string().email().optional(),
   /** signs session cookies; required when HOSTED. A long random string. */
   SESSION_SECRET: z.string().optional(),
   GITHUB_CLIENT_ID: z.string().optional(),

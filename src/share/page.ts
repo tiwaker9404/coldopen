@@ -100,6 +100,8 @@ export function sharePage(
 ): string {
   const made = new URL(app)
   made.searchParams.set('ref', 'share')
+  // the hosted app has a privacy page; the project's GitHub page doesn't
+  const privacy = made.hostname === 'github.com' ? null : new URL('/privacy', made).toString()
   const title = `A 30-second film for ${v.company}`
   const [w, h] = FORMAT_SIZE[v.format]
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -130,6 +132,6 @@ footer a{color:inherit}
 <video src="${url}/${v.film}" poster="${url}/poster.jpg" controls playsinline preload="metadata" width="${w}" height="${h}"></video>
 <div class="row"><div><h1>${esc(v.ctaLine)}</h1><p>From ${esc(v.from)}, made for ${esc(v.company)}</p></div>
 <a class="cta" href="${esc(contactHref(v.contact))}">Reply to ${esc(v.firstName)}</a></div>
-<footer><a href="${esc(made.toString())}">Made with coldopen</a>. Make one for a company you'd like to work with.</footer>
+<footer><a href="${esc(made.toString())}">Made with coldopen</a>. Make one for a company you'd like to work with.${privacy ? `<br>Views are counted without storing your IP address. <a href="${esc(privacy)}">Privacy</a>` : ''}</footer>
 </main>${track ? trackingScript(track) : ''}</body></html>`
 }

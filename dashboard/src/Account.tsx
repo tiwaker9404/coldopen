@@ -163,7 +163,8 @@ export function Privacy({ me }: { me: Me }) {
         {me.keepsDays === null
           ? 'until you delete them'
           : `${me.keepsDays} days${me.user ? '' : ', or 30 if you sign in'}`}
-        . Views are counted without storing anyone’s IP address. coldopen is{' '}
+        . Views are counted without storing anyone’s IP address.{' '}
+        <a href="/privacy">Privacy and terms</a>. coldopen is{' '}
         <a href="https://github.com/tiwaker9404/coldopen" target="_blank" rel="noreferrer">
           open source
         </a>

@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import fastifyStatic from '@fastify/static'
 import fastifySwagger from '@fastify/swagger'
@@ -55,12 +55,14 @@ import {
   hostedOwner,
   networkKey,
   type Owner,
+  purgeExpired,
   readSession,
   refund,
   signOut,
   used,
 } from './accounts.ts'
 import { renderDispatcher } from './dispatch.ts'
+import { privacyPage } from './privacy.ts'
 
 const FILE_NAMES =
   /^(film-(square|landscape|portrait)\.mp4|poster\.jpg|preview\.gif|contact-sheet\.jpg|site\.jpg|kit\.json|storyboard\.json)$/
@@ -204,6 +206,29 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
 
   /* ------------------------------------------------------------------- ops */
   app.get('/healthz', { schema: { hide: true } }, async () => ({ ok: true }))
+  // the web app's bundled Archivo, so /privacy matches the app (its name carries a build hash)
+  const appFont = (() => {
+    try {
+      const dir = join(import.meta.dirname, '../../dashboard/dist/assets')
+      const f = readdirSync(dir).find((n) => /^archivo-latin-wdth-normal-.*\.woff2$/.test(n))
+      return f ? `/assets/${f}` : null
+    } catch {
+      return null
+    }
+  })()
+  app.get('/privacy', { schema: { hide: true } }, async (_req, reply) =>
+    reply
+      .header('content-type', 'text/html; charset=utf-8')
+      .header('cache-control', 'public, max-age=3600')
+      .send(
+        privacyPage({
+          ...(appFont ? { font: appFont } : {}),
+          ...(cfg.CONTACT_EMAIL ? { contact: cfg.CONTACT_EMAIL } : {}),
+          repo: 'https://github.com/tiwaker9404/coldopen',
+          updated: 'November 1, 2026',
+        }),
+      ),
+  )
   app.get('/readyz', { schema: { hide: true } }, async (_r, reply) => {
     try {
       await sql`select 1`
@@ -1319,5 +1344,17 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       reply.status(404).send({ error: { code: 'not_found', message: 'route not found' } })
     })
   }
+  // the hosted app keeps what people make 7 days (30 with an account): delete the rest hourly
+  if (cfg.HOSTED) {
+    const purge = () =>
+      purgeExpired(sql, cfg)
+        .then((n) => (n.runs || n.profiles || n.connections) && log.info(n, 'expired data deleted'))
+        .catch((err) => log.warn({ err }, 'could not delete expired data'))
+    void purge()
+    const timer = setInterval(purge, 60 * 60_000)
+    timer.unref()
+    app.addHook('onClose', async () => clearInterval(timer))
+  }
+
   return app
 }

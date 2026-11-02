@@ -42,8 +42,10 @@ jobs:
       # one film per job, with all 4 cores: 3 scenes at once. More films start more jobs
       WORKER_CONCURRENCY: "1"
       RENDER_PAGES: "3"
-      # this repository is public, and so are its logs: keep them to errors, with no film details
-      LOG_LEVEL: error
+      # this repository is public, and so are its logs. A failed film's error names the site it
+      # was for, so only startup failures are logged here; why films failed is kept in the
+      # database (the app's Launch numbers). The per-film timing line has no film details.
+      LOG_LEVEL: fatal
     steps:
       - name: Anything to render?
         id: queue

@@ -249,5 +249,10 @@ describe('the share page', () => {
     expect(tracked).toContain('preview') // ?preview turns it off
     expect(tracked).toContain('A&lt;b&gt;')
     expect(tracked).not.toContain('A<b>')
+    // the hosted app links its privacy page; the GitHub default has none
+    expect(plain).not.toContain('/privacy')
+    expect(sharePage(v, 'https://x.dev/f/a', undefined, 'https://app.example.dev')).toContain(
+      'href="https://app.example.dev/privacy"',
+    )
   })
 })

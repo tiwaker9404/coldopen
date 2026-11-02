@@ -249,3 +249,34 @@ export function signOut(cfg: Config, reply: FastifyReply) {
   // a fresh visitor id, so the next person on this browser starts clean
   setCookie(reply, VISITOR, '', 0, secure)
 }
+
+/* ----------------------------------------------------------------- retention */
+
+/** How long the hosted app keeps what people make: visitors 7 days, accounts 30. */
+export const KEEP_DAYS = { visitor: 7, account: 30 } as const
+
+/**
+ * Deletes what the hosted app promised not to keep: a visitor's films, profiles and uploaded
+ * connections after 7 days, an account's after 30, counted from when each was made (a profile
+ * from its last edit). Accounts in UNLIMITED_GITHUB_USERS keep theirs until they delete it.
+ * Films still being made are left alone. Share links expire on their own at the same age.
+ */
+export async function purgeExpired(sql: Sql, cfg: Config) {
+  const keepers = cfg.UNLIMITED_GITHUB_USERS.length
+    ? (
+        await sql<{ owner: string }[]>`
+          select 'u:' || id as owner from users where lower(login) = any(${cfg.UNLIMITED_GITHUB_USERS})`
+      ).map((r) => r.owner)
+    : []
+  const rule = (col: string) => sql`(
+      (owner like 'a:%' and ${sql(col)} < now() - make_interval(days => ${KEEP_DAYS.visitor}))
+   or (owner like 'u:%' and ${sql(col)} < now() - make_interval(days => ${KEEP_DAYS.account})
+       and not (owner = any(${keepers}))))`
+  const runs = await sql`
+    delete from runs where ${rule('created_at')} and status not in ('queued', 'running', 'waiting')`
+  const profiles = await sql`delete from profiles where ${rule('updated_at')}`
+  const connections = await sql`delete from connections where ${rule('added_at')}`
+  // daily counters only matter for today's limits and the 90-day funnel
+  await sql`delete from usage where day < current_date - 90`
+  return { runs: runs.count, profiles: profiles.count, connections: connections.count }
+}

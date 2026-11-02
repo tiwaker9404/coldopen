@@ -27,6 +27,9 @@ services:
         generateValue: true
       - key: DB_POOL_SIZE
         value: "4"
+      # shown on /privacy as the address for questions
+      - key: CONTACT_EMAIL
+        sync: false
       # set these in the Render dashboard (they are secrets)
       - key: PUBLIC_URL
         sync: false

@@ -235,4 +235,45 @@ describe('the owner', () => {
     })
     expect(batch.statusCode).toBe(202)
   })
+
+  it('deletes what it said it would: visitors after 7 days, accounts after 30, never the owner', async () => {
+    const at = (days: number) => sql`now() - make_interval(days => ${days})`
+    const row = async (owner: string, id: string, days: number, status = 'succeeded') => {
+      await sql`insert into runs (id, agent, input, status, owner, created_at)
+        values (${id}, 'film', '{}'::jsonb, ${status}, ${owner}, ${at(days)})`
+      await sql`insert into profiles (owner, id, name, data, updated_at)
+        values (${owner}, ${id}, 'x', '{}'::jsonb, ${at(days)})`
+      await sql`insert into connections (owner, name, company, company_key, added_at)
+        values (${owner}, 'A Person', 'Acme', 'acme', ${at(days)})`
+    }
+    await row('a:old', 'run_old_visitor', 8)
+    await row('a:new', 'run_new_visitor', 6)
+    await row('a:busy', 'run_busy_visitor', 9, 'running')
+    await row('u:gh:41', 'run_old_account', 31)
+    await row('u:gh:42', 'run_new_account', 29)
+    await row('u:gh:7', 'run_owner', 400) // "boss", in UNLIMITED_GITHUB_USERS
+
+    const { purgeExpired } = await import('../../src/api/accounts.ts')
+    const cfg = { UNLIMITED_GITHUB_USERS: ['boss'] } as never
+    await purgeExpired(sql, cfg)
+
+    const left = async (table: 'runs' | 'profiles' | 'connections') =>
+      (
+        await sql<{ owner: string }[]>`select distinct owner from ${sql(table)}
+        where owner in ('a:old', 'a:new', 'a:busy', 'u:gh:41', 'u:gh:42', 'u:gh:7')`
+      )
+        .map((r) => r.owner)
+        .sort()
+    // a film still being made is kept whatever its age; everything else goes by age
+    expect(await left('runs')).toEqual(['a:busy', 'a:new', 'u:gh:42', 'u:gh:7'])
+    expect(await left('profiles')).toEqual(['a:new', 'u:gh:42', 'u:gh:7'])
+    expect(await left('connections')).toEqual(['a:new', 'u:gh:42', 'u:gh:7'])
+  })
+
+  it('serves a privacy page that states the real retention', async () => {
+    const r = await app.inject({ url: '/privacy' })
+    expect(r.statusCode).toBe(200)
+    expect(r.body).toContain('Kept 7 days after your last edit, or 30 days if you sign in')
+    expect(r.body).toContain('Groq')
+  })
 })
