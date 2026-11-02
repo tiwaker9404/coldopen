@@ -289,6 +289,7 @@ async function makeFilm(
     filmsDir,
     llmModel: llm ? values.model! : null,
     allowPrivateNetworks: true,
+    ...(process.env.RENDER_PAGES ? { renderPages: Number(process.env.RENDER_PAGES) } : {}),
   })
   const proof = values.proof
     ?.split(',')

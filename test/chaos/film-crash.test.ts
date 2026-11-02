@@ -49,12 +49,14 @@ describe('crash during render', () => {
     const { run } = await createRun(sql, { agent: 'film', input })
 
     const first = worker()
-    // wait until at least two scenes are rendered, then kill -9
+    // wait until at least two scenes are rendered, then kill -9. Scenes render several at a
+    // time, so which ones finished first varies: remember them
+    let finished: string[] = []
     for (let i = 0; ; i++) {
-      const done = (await getSteps(sql, run.id)).filter(
-        (s) => s.key.startsWith('render:') && s.status === 'completed',
-      )
-      if (done.length >= 2) break
+      finished = (await getSteps(sql, run.id))
+        .filter((s) => s.key.startsWith('render:') && s.status === 'completed')
+        .map((s) => s.key)
+      if (finished.length >= 2) break
       if (i > 600) throw new Error('first worker never got to the render stage')
       await sleep(200)
     }
@@ -73,9 +75,7 @@ describe('crash during render', () => {
     expect(final.attempts).toBe(2)
     const steps = await getSteps(sql, run.id)
     const replayed = steps.filter((s) => s.replays > 0).map((s) => s.key)
-    expect(replayed).toEqual(
-      expect.arrayContaining(['research', 'script', 'compose', 'render:0', 'render:1']),
-    )
+    expect(replayed).toEqual(expect.arrayContaining(['research', 'script', 'compose', ...finished]))
     // each scene was journaled by exactly one execution: finished scenes were never redone
     for (const s of steps.filter((x) => x.key.startsWith('render:'))) expect(s.attempts).toBe(1)
     const timeline = (await getLog(sql, run.id)).map((l) => l.kind)

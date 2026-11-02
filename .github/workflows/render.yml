@@ -39,6 +39,8 @@ jobs:
       # (the runner context isn't available at job level, so a fixed path)
       FILMS_DIR: /tmp/coldopen-films
       WORKER_CONCURRENCY: "2"
+      # the runner has 4 cores: render 3 scenes of a film at once
+      RENDER_PAGES: "3"
       # this repository is public, and so are its logs: keep them to errors, with no film details
       LOG_LEVEL: error
     steps:
@@ -54,8 +56,15 @@ jobs:
       - if: steps.queue.outputs.pending != '0'
         uses: actions/setup-node@v5
         with: { node-version: 24, cache: pnpm }
+      # ffmpeg and fonts from a cache: installing them with apt took ~37s of every film
       - if: steps.queue.outputs.pending != '0'
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-noto-core
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/coldopen-tools
+          key: render-tools-${{ runner.os }}-${{ hashFiles('.github/scripts/render-tools.sh') }}
+      - if: steps.queue.outputs.pending != '0'
+        run: bash .github/scripts/render-tools.sh
+        env: { GH_TOKEN: "${{ github.token }}" }
       - if: steps.queue.outputs.pending != '0'
         run: pnpm install --frozen-lockfile --prod
         env: { PUPPETEER_SKIP_DOWNLOAD: "1" }

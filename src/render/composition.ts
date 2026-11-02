@@ -197,7 +197,7 @@ html,body{width:${width}px;height:${height}px;overflow:hidden;background:#000}
 #chrome .meta{position:absolute;top:calc(var(--u)*4.2);left:calc(var(--u)*7.5);right:calc(var(--u)*7.5);display:flex;justify-content:space-between;font-size:calc(var(--u)*2.1);font-weight:500;opacity:.72;letter-spacing:.01em}
 #reel{position:absolute;left:calc(var(--u)*7.5);right:calc(var(--u)*7.5);bottom:calc(var(--u)*5);display:flex;gap:calc(var(--u)*.8)}
 #reel i{flex:1;height:calc(var(--u)*.45);border-radius:calc(var(--u)*.3);background:color-mix(in srgb,currentColor 22%,transparent);overflow:hidden;position:relative}
-#reel b{position:absolute;inset:0;background:currentColor;transform-origin:left;transform:scaleX(0)}
+#reel b{position:absolute;inset:0;background:currentColor;transform-origin:left;transform:scaleX(0);will-change:transform}
 
 .chip{position:absolute;top:calc(var(--u)*8.5);left:calc(var(--u)*7.5);background:${theme.light.bg};border-radius:calc(var(--u)*1.2);padding:calc(var(--u)*1.2) calc(var(--u)*1.6);display:flex;align-items:center;max-width:calc(var(--u)*34)}
 .chip img{display:block;max-height:calc(var(--u)*4.2);max-width:calc(var(--u)*30)}
