@@ -14,6 +14,13 @@ const recent = new Date(Date.now() - 2 * 86_400_000).toISOString()
 const fakeFetch = async (url: string) => {
   calls.push(url)
   if (down) return new Response('busy', { status: 503 })
+  // one Greenhouse job, with its description
+  if (url.endsWith('/boards/anthropic/jobs/11'))
+    return Response.json({
+      id: 11,
+      content:
+        '&lt;p&gt;&lt;strong&gt;What you will do&lt;/strong&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Ship production agents with customers, with evals&lt;/li&gt;&lt;li&gt;Turn messy customer data into pipelines&lt;/li&gt;&lt;li&gt;Fluent in Kubernetes and Terraform&lt;/li&gt;&lt;/ul&gt;',
+    })
   if (url.includes('/boards/anthropic/'))
     return Response.json({
       jobs: [
@@ -42,6 +49,8 @@ const fakeFetch = async (url: string) => {
           location: 'Remote (US)',
           isRemote: true,
           publishedAt: recent,
+          descriptionHtml:
+            '<h2>Requirements</h2><ul><li><p>Ten years of iOS development in Swift</p></li><li><p>Clinical trial design experience</p></li><li><p>Fluent Japanese for client calls</p></li></ul>',
         },
       ],
     })
@@ -108,8 +117,9 @@ describe('suggested jobs', () => {
     })
     expect(r.companies).toBeGreaterThan(50)
     expect(r.failed).toEqual([])
+    // every board once, plus the one Greenhouse post read for its requirements
     const n = calls.length
-    expect(n).toBe(r.companies)
+    expect(calls.filter((u) => !u.endsWith('/jobs/11'))).toHaveLength(r.companies)
     // cached: a second look fetches nothing
     await suggested()
     expect(calls.length).toBe(n)
@@ -137,6 +147,39 @@ describe('suggested jobs', () => {
       'Ramp: Solutions Engineer, Remote, New this week',
       'Acme Labs: FDE, Oakland, CA',
     ])
+  })
+
+  it('says how well each job fits the record, and reads each post once', async () => {
+    const r = await suggested()
+    const by = (c: string) => r.data.find((j: { company: string }) => j.company === c)
+    expect(by('Anthropic').fit).toEqual({
+      level: 'strong',
+      answered: 2,
+      of: 3,
+      best: {
+        requirement: 'Turn messy customer data into pipelines',
+        with: 'Turns messy customer data into working pipelines',
+      },
+    })
+    expect(by('Acme Labs').fit).toBeUndefined()
+    const reads = calls.filter((u) => u.endsWith('/jobs/11')).length
+    expect(reads).toBe(1)
+    await suggested()
+    expect(calls.filter((u) => u.endsWith('/jobs/11')).length).toBe(1)
+  })
+
+  it('puts a strong fit above a stretch with the same title', async () => {
+    await app.inject({
+      method: 'PUT',
+      url: '/v1/jobs/search',
+      headers: auth,
+      payload: { roles: ['Solutions Engineer', 'Forward Deployed Engineer'], remote: true },
+    })
+    const r = await suggested()
+    const ramp = r.data.find((j: { company: string }) => j.company === 'Ramp')
+    expect(ramp.fit.level).toBe('stretch')
+    // both are new this week; the fit decides
+    expect(r.data[0].company).toBe('Anthropic')
   })
 
   it('refuses links that are not careers boards', async () => {
@@ -182,7 +225,7 @@ describe('suggested jobs', () => {
     const s = await (
       await app.inject({ method: 'GET', url: '/v1/jobs/search', headers: auth })
     ).json()
-    expect(s.roles).toEqual(['FDE', 'Solutions Engineer'])
+    expect(s.roles).toEqual(['Solutions Engineer', 'Forward Deployed Engineer'])
   })
 
   it('says which boards it could never read', async () => {

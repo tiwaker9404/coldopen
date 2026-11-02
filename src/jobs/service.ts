@@ -1,6 +1,18 @@
 import type { Sql } from '../db/index.ts'
-import { type Board, BoardSchema, boardKey, type FetchFn, fetchBoard, type Job } from './boards.ts'
+import type { Fit } from '../job/fit.ts'
+import { fitOf } from '../job/fit.ts'
+import type { Profile } from '../script/types.ts'
+import {
+  type Board,
+  BoardSchema,
+  boardKey,
+  type FetchFn,
+  fetchBoardBody,
+  type Job,
+  readBoard,
+} from './boards.ts'
 import { DEFAULT_BOARDS } from './companies.ts'
+import { detailsFromBoard, greenhouseRequirements } from './details.ts'
 import { defaultSearch, rank, type Search, SearchSchema, type Suggestion, spread } from './rank.ts'
 
 /**
@@ -78,7 +90,18 @@ async function refresh(sql: Sql, b: Board, fetchFn?: FetchFn): Promise<void> {
   if (running) return running
   const p = (async () => {
     try {
-      const jobs = await fetchBoard(b, fetchFn ? { fetch: fetchFn } : {})
+      const body = await fetchBoardBody(b, fetchFn ? { fetch: fetchFn } : {})
+      const jobs = readBoard(b, body)
+      // Lever and Ashby listings carry descriptions: keep each job's requirements
+      const details = [...detailsFromBoard(b, body)].map(([jobId, requirements]) => ({
+        jobId,
+        board: key,
+        requirements,
+      }))
+      for (let i = 0; i < details.length; i += 500)
+        await sql`
+          insert into job_details ${sql(details.slice(i, i + 500), 'jobId', 'board', 'requirements')}
+          on conflict (job_id) do update set requirements = excluded.requirements, fetched_at = now()`
       await sql`
         insert into job_boards (board, fetched_at, ok, last_ok_at, error, jobs) values (${key}, now(), true, now(), null, ${sql.json(jobs as never)})
         on conflict (board) do update set fetched_at = now(), ok = true, last_ok_at = now(), error = null, jobs = excluded.jobs`
@@ -157,34 +180,87 @@ export function boardsFor(own: Board[]): Board[] {
   })
 }
 
+/** how a job's fit moves it in the list: strong fits first, stretches after */
+const FIT_BONUS: Record<Fit['level'], number> = { strong: 1.5, good: 0.75, stretch: -0.25 }
+/** how many of the best title matches get their requirements read and a fit worked out */
+const FIT_POOL = 60
+
+export type JobWithFit = Suggestion & { filmId?: string; fit?: Fit }
+
 export interface Suggested {
-  data: (Suggestion & { filmId?: string })[]
+  data: JobWithFit[]
   companies: number
   failed: string[]
   updatedAt: string | null
   search: SearchState
 }
 
+/**
+ * Requirements for these jobs: from the cache, reading the Greenhouse ones not seen yet (their
+ * listing has no descriptions). A job that can't be read is saved with none, so it isn't asked
+ * for again on every page load.
+ */
+export async function requirementsFor(
+  sql: Sql,
+  jobs: Job[],
+  opts: { fetch?: FetchFn } = {},
+): Promise<Map<string, string[]>> {
+  if (jobs.length === 0) return new Map()
+  const rows = await sql<{ jobId: string; requirements: string[] }[]>`
+    select job_id, requirements from job_details where job_id in ${sql(jobs.map((j) => j.id))}`
+  const have = new Map(rows.map((r) => [r.jobId, r.requirements]))
+  const missing = jobs.filter((j) => !have.has(j.id) && j.board.startsWith('greenhouse:'))
+  await pool(missing, CONCURRENCY, async (j) => {
+    const [, token, id] = j.id.split(':') as [string, string, string]
+    let requirements: string[] = []
+    try {
+      requirements = await greenhouseRequirements(
+        token,
+        id,
+        opts.fetch ? { fetch: opts.fetch } : {},
+      )
+    } catch {}
+    have.set(j.id, requirements)
+    await sql`
+      insert into job_details (job_id, board, requirements) values (${j.id}, ${j.board}, ${requirements})
+      on conflict (job_id) do update set requirements = excluded.requirements, fetched_at = now()`
+  })
+  return have
+}
+
 export async function suggestions(
   sql: Sql,
   owner: string,
-  profileRole: string | undefined,
+  profile: Profile | undefined,
   opts: { limit?: number; fetch?: FetchFn; now?: number } = {},
 ): Promise<Suggested> {
-  const state = await getSearch(sql, owner, profileRole)
+  const state = await getSearch(sql, owner, profile?.sender.role)
   const boards = boardsFor(state.boards)
   if (state.search.roles.length === 0)
     return { data: [], companies: boards.length, failed: [], updatedAt: null, search: state }
   const { jobs, failed, updatedAt } = await listings(sql, boards, opts)
   const hidden = new Set(state.hidden)
-  const ranked = spread(
+  // the best title matches, then how well the person's record answers each one's requirements
+  const candidates = spread(
     rank(
       jobs.filter((j) => !hidden.has(j.id)),
       state.search,
       opts.now,
     ),
-    3,
-  ).slice(0, opts.limit ?? 24)
+    6,
+  ).slice(0, FIT_POOL)
+  const reqs = profile ? await requirementsFor(sql, candidates, opts) : new Map<string, string[]>()
+  const fitted: JobWithFit[] = candidates.map((j) => {
+    const fit = profile ? fitOf(reqs.get(j.id) ?? [], profile) : null
+    return fit ? { ...j, fit, score: j.score + FIT_BONUS[fit.level] } : j
+  })
+  fitted.sort(
+    (a, b) =>
+      b.score - a.score ||
+      (Date.parse(b.posted ?? '') || 0) - (Date.parse(a.posted ?? '') || 0) ||
+      a.company.localeCompare(b.company),
+  )
+  const ranked = spread(fitted, 3).slice(0, opts.limit ?? 24)
   // which of these already have a film: the job link, given as the job post or as the website
   const urls = ranked.map((j) => j.url)
   const made = urls.length

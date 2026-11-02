@@ -172,14 +172,22 @@ export async function fetchBoard(
   b: Board,
   opts: { fetch?: FetchFn; timeoutMs?: number } = {},
 ): Promise<Job[]> {
+  return readBoard(b, await fetchBoardBody(b, opts))
+}
+
+/** The board's JSON as its API returns it */
+export async function fetchBoardBody(
+  b: Board,
+  opts: { fetch?: FetchFn; timeoutMs?: number } = {},
+): Promise<unknown> {
   const f = opts.fetch ?? fetch
   const res = await f(apiUrl(b), {
     headers: {
       accept: 'application/json',
       'user-agent': 'coldopen/1.0 (+https://github.com/tiwaker9404/coldopen)',
     },
-    signal: AbortSignal.timeout(opts.timeoutMs ?? 12_000),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 30_000),
   })
   if (!res.ok) throw new Error(`${b.name}: ${b.ats} board returned HTTP ${res.status}`)
-  return readBoard(b, await res.json())
+  return res.json()
 }

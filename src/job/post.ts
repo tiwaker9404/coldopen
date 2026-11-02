@@ -18,6 +18,8 @@ export type JobPost = z.infer<typeof JobPostSchema>
 export interface JobItem {
   heading: string
   text: string
+  /** a list item, not a paragraph */
+  bullet?: boolean
 }
 
 // what a section is, judged by its heading
@@ -93,7 +95,7 @@ export function itemsFromText(text: string): JobItem[] {
       heading = body.replace(/^#+\s*/, '').replace(/:$/, '')
       continue
     }
-    if (bullet || sectionWeight(heading) > 0) items.push({ heading, text: body })
+    if (bullet || sectionWeight(heading) > 0) items.push({ heading, text: body, bullet })
   }
   return items
 }

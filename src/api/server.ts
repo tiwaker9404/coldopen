@@ -614,12 +614,14 @@ export async function buildApi({ sql, cfg, log, slack, llm = null, jobsFetch }: 
     /^https?:\/\//i.test(u.trim()) ? u.trim() : `https://${u.trim()}`
 
   /* --------------------------------------------------------- suggested jobs */
-  /** the role on their newest profile, the starting point for a job search */
-  const profileRole = async (owner: Owner) => {
-    const [p] = await sql<{ data: { sender?: { role?: string } } }[]>`
+  /** their newest profile: its role starts a job search, and its record is what fits a job */
+  const newestProfile = async (owner: Owner) => {
+    const [p] = await sql<{ data: unknown }[]>`
       select data from profiles where owner = ${owner} order by updated_at desc limit 1`
-    return p?.data?.sender?.role
+    const parsed = p ? ProfileSchema.safeParse(p.data) : null
+    return parsed?.success ? parsed.data : undefined
   }
+  const profileRole = async (owner: Owner) => (await newestProfile(owner))?.sender.role
   const boardDto = (b: z.infer<typeof BoardSchema>) => ({
     ats: b.ats,
     token: b.token,
@@ -689,7 +691,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null, jobsFetch }: 
       },
     },
     async (req) => {
-      const r = await suggestions(sql, req.owner, await profileRole(req.owner), {
+      const r = await suggestions(sql, req.owner, await newestProfile(req.owner), {
         limit: req.query.limit,
         ...(jobsFetch ? { fetch: jobsFetch } : {}),
       })

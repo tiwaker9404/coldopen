@@ -1,4 +1,5 @@
 import type { BrandKit, Fact } from '../brand/types.ts'
+import { answers, proofText } from '../job/fit.ts'
 import type { ChatMessage } from '../llm/types.ts'
 import { checkScript, clampScript, overlap, words } from './checks.ts'
 import { LIMITS, TASTE_RULES } from './taste.ts'
@@ -285,34 +286,6 @@ export function deterministicScript(kit: BrandKit, profile: Profile): Script {
 /* --------------------------------------------- answering a job post */
 
 type ProofItem = Profile['proof'][number]
-const proofText = (p: ProofItem) => `${p.value} ${p.label} ${p.where ?? ''}`
-
-// words every job post and résumé share; matching on them says nothing
-const VAGUE = new Set(
-  'the and for with that this your you our are was from into have has its their they them than what when which who will able strong skills skill experience years year work working build building built end data team teams across using use own owning ensure great good new high help plus etc including such other well'.split(
-    ' ',
-  ),
-)
-const stem = (w: string) => (w.length > 4 ? w.replace(/(es|s)$/, '') : w)
-const terms = (s: string) =>
-  new Set(
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9+#\s]/g, ' ')
-      .split(/\s+/)
-      .filter((w) => w.length > 2 && !VAGUE.has(w))
-      .map(stem),
-  )
-
-/** How well a line of the sender's record answers a requirement: shared, meaningful words. */
-function answers(record: string, requirement: string): number {
-  const a = terms(record)
-  const b = terms(requirement)
-  if (!a.size || !b.size) return 0
-  let n = 0
-  for (const w of a) if (b.has(w)) n++
-  return n / Math.min(a.size, b.size)
-}
 
 /** Shortens a phrase at a natural break ("..., via X", "... using Y") so it still reads whole. */
 function trimAtBreak(text: string, max: number): string | null {

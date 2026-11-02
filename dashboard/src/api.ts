@@ -311,6 +311,13 @@ export interface JobSuggestion {
   why: string[]
   /** the film already made for it */
   filmId?: string
+  /** how well your profile answers the post's requirements; absent when it lists none we read */
+  fit?: {
+    level: 'strong' | 'good' | 'stretch'
+    answered: number
+    of: number
+    best: { requirement: string; with: string } | null
+  }
 }
 
 export interface JobSearch {

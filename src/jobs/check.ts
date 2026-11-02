@@ -7,6 +7,30 @@
 import { type Board, boardKey, fetchBoard, prettyToken } from './boards.ts'
 import { DEFAULT_BOARDS } from './companies.ts'
 
+// `--details ashby:acme ...`: the requirements read from a few engineering jobs on each board
+if (process.argv[2] === '--details') {
+  const { readBoard, fetchBoardBody } = await import('./boards.ts')
+  const { detailsFromBoard, greenhouseRequirements } = await import('./details.ts')
+  for (const a of process.argv.slice(3)) {
+    const [ats, token] = a.split(':') as [Board['ats'], string]
+    const b: Board = { ats, token, name: prettyToken(token) }
+    const body = await fetchBoardBody(b, { timeoutMs: 45_000 })
+    const jobs = readBoard(b, body)
+      .filter((j) => /engineer|solutions|deployed/i.test(j.title))
+      .slice(0, 3)
+    const details = detailsFromBoard(b, body)
+    for (const j of jobs) {
+      const reqs =
+        ats === 'greenhouse'
+          ? await greenhouseRequirements(token, j.id.split(':')[2]!)
+          : (details.get(j.id) ?? [])
+      console.log(`\n== ${b.name}: ${j.title} (${reqs.length})`)
+      for (const r of reqs) console.log(`  - ${r}`)
+    }
+  }
+  process.exit(0)
+}
+
 // `node src/jobs/check.ts ashby:acme greenhouse:acme` checks those boards instead
 const asked: Board[] = process.argv.slice(2).map((a) => {
   const [ats, token] = a.split(':') as [Board['ats'], string]
@@ -15,7 +39,7 @@ const asked: Board[] = process.argv.slice(2).map((a) => {
 const results = await Promise.all(
   (asked.length ? asked : DEFAULT_BOARDS).map(async (b) => {
     try {
-      const jobs = await fetchBoard(b, { timeoutMs: 20_000 })
+      const jobs = await fetchBoard(b, { timeoutMs: 45_000 })
       const newest = jobs
         .map((j) => j.posted ?? '')
         .sort()

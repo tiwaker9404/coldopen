@@ -13,6 +13,8 @@ import {
 
 const SHOWN = 6
 
+const FIT_LABEL = { strong: 'Strong fit', good: 'Good fit', stretch: 'Stretch' } as const
+
 const list = (s: string) =>
   s
     .split(/[,\n]/)
@@ -222,6 +224,14 @@ function JobRow({
           {job.title}
         </a>
         <span className="job-why">
+          {job.fit && (
+            <span
+              className={`tag fit ${job.fit.level}`}
+              title={`Your profile answers ${job.fit.answered} of the ${job.fit.of} requirements this post lists`}
+            >
+              {FIT_LABEL[job.fit.level]} · {job.fit.answered} of {job.fit.of}
+            </span>
+          )}
           {why.map((w) => (
             <span key={w} className={w === 'New this week' ? 'tag new' : 'tag'}>
               {w}
@@ -231,6 +241,12 @@ function JobRow({
             <span className="tag quiet">Posted {ago(job.posted)}</span>
           )}
         </span>
+        {job.fit?.best && (
+          <span className="job-match">
+            <span>They ask: “{job.fit.best.requirement}”</span>
+            <span>You have: {job.fit.best.with}</span>
+          </span>
+        )}
         {make.error && <span className="error">{make.error.message}</span>}
       </div>
       <div className="job-do">
