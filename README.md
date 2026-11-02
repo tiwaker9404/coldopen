@@ -2,11 +2,21 @@
 
 **Paste a company's website. Get a 30-second film made for them.**
 
-[See the films →](https://tiwaker9404.github.io/coldopen/)
+[Try it free →](https://coldopen-nk8o.onrender.com/?ref=readme) · [See the films →](https://tiwaker9404.github.io/coldopen/)
 
 coldopen is an open-source agent for personalized video outreach. Give it a prospect's URL and it reads their homepage, matches their brand (fonts, colors, logo), writes a short script grounded in what's actually on their site, and renders an on-brand MP4. It also produces the GIF an outreach email embeds and a share page to link to. It runs free on your own machine.
 
 ![Three films for three companies, each in that company's own brand](docs/media/three-films.gif)
+
+## For job seekers
+
+**60% of the first 15 films got a reply, against 2 replies from plain messages.** Friends using the public beta are seeing 50 to 70% more replies.
+
+- **Find the role.** Open roles from 450+ companies' public job boards, including about 400 hiring YC startups, ranked against the roles you want. Each shows its pay, a YC badge, whether the company sponsors H-1B visas, how fast it's hiring, and who you already know there.
+- **Fit it.** Fit check scores how well your profile answers each post. Fit gaps shows the skills your best matches keep asking for, one click to add.
+- **Make the film.** One click per job, or tick ten and make them all. Each film quotes a requirement from the post and answers it with your own numbers.
+- **Reach the right person.** For YC startups, the founders come first. Find their email with your own free Hunter key, and the message opens as a ready draft.
+- **Follow up, then prepare.** A follow-up comes due 4 days later, or sooner when they watch without replying. When they reply, you get a brief for the call: the company, where you fit, what to prepare and three questions to ask.
 
 ## See it work
 
@@ -80,10 +90,10 @@ docker compose up --build       # web app, API, renderer and Postgres on http://
 ![The coldopen web app](docs/media/dashboard.png)
 
 - **Web app.** Paste a job link, a company's website or a list of hundreds, and watch films render live. The page says what each film will be about before you press the button, and a short getting-started guide walks a new person from résumé to first reply.
-- **Send it from where you work.** Each film suggests who to write to (people you already know there first, with an intro request ready, then recruiters and the likely hiring manager). Say who it's for and the drafts greet them by name; find their work email with your own free Hunter key, or pick from the usual patterns for their domain. The email opens as a ready draft, already addressed, in Gmail, Outlook or your mail app. The share page's button books a call (your Calendly or Cal.com link) or replies, and presses are counted next to plays. Downloads are named after the company. Mark each film Sent, Replied or Interview right in the list, and a Follow up today list brings back films with no reply after 4 days, with the follow-up written and one click from Gmail, then a shorter last note a week later.
+- **Send it from where you work.** Each film suggests who to write to (people you already know there first, with an intro request ready; for a YC startup, its founders, named on its YC page; then recruiters and the likely hiring manager). Say who it's for and the drafts greet them by name; find their work email with your own free Hunter key, or pick from the usual patterns for their domain. The email opens as a ready draft, already addressed, in Gmail, Outlook or your mail app. The share page's button books a call (your Calendly or Cal.com link) or replies, and presses are counted next to plays. Downloads are named after the company. Mark each film Sent, Replied or Interview right in the list, and a Follow up today list brings back films with no reply after 4 days (or 2 days after they watch it), with the follow-up written and one click from Gmail, then a shorter last note a week later. Mark it Replied and the film gets a brief for the call: what the company says, where you fit the role, what to prepare and three questions to ask (`GET /v1/films/:id/brief`).
 - **Fix a line without starting over.** Rewrite any line of a finished film and render it again, without reading the site again. Numbers still have to come from your profile or their site, checked before and during the render (`POST /v1/films/:id/edit`).
 - **Launch numbers.** The owner of a hosted app sees its funnel: visitors, people who made a film, sign-ups, films sent, watched and replied, and the most common reasons films failed (`GET /v1/funnel`).
-- **Jobs for you.** Say which roles you want and where, and the app lists open ones from the public job boards of 70 companies hiring for them (Greenhouse, Lever and Ashby), each with why it fits and a Make film button. Tick several to make their films in one go. Each shows how well your profile answers the post's requirements (strong, good or a stretch) and the requirement you answer best, and strong fits are listed first. Add any other company's careers board with a link. Boards are read with no key and cached for a few hours; a weekly workflow checks every built-in board still exists (`GET /v1/jobs/suggested`).
+- **Jobs for you.** Say which roles you want and where, and the app lists open ones from the public job boards of 450+ companies (Greenhouse, Lever and Ashby): 70 picked by hand and about 400 hiring YC startups, found weekly from YC's own directory and kept only when the board is clearly the company's own. Each job shows why it fits, its pay (most Ashby and Lever posts list it), a YC badge, whether the company had H-1B petitions approved (from USCIS's H-1B Employer Data Hub), how many roles the company posted this month, and people you know there from your LinkedIn connections. Filter by YC only, H-1B sponsors, minimum pay, posted this week or month, or leave companies out; sort by best fit or hiring fastest. Fit check shows how well your profile answers each post's requirements, and Fit gaps lists the skills your best matches keep asking for, with one click to add one to your profile. Tick several jobs to make their films in one go, or add any other careers board with a link. Boards are read with no key, in the background, and cached for a few hours (`GET /v1/jobs/suggested`).
 - **Answer a job post.** Add `--job <link or file>` and the film quotes one of the role's requirements word for word, then answers it with your proof. See [docs/PROFILES.md](docs/PROFILES.md#answer-a-job-post).
 - **Know who watched.** Share pages report opens, plays, how far people got and who finished, with bots, link previews and email scanners left out. Get a Slack or Discord ping when someone starts watching. Using the CLI? `pnpm share:setup` puts your share links on Cloudflare's free plan, then `coldopen share films` and `coldopen views`. See [docs/SHARING.md](docs/SHARING.md).
 - **Batches.** `POST /v1/batches` with a list of URLs, then download `results.csv` with share, GIF and video links per prospect, ready for a CRM or a sequencer like Apollo, Outreach or HubSpot.

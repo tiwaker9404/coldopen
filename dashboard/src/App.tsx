@@ -151,7 +151,7 @@ export function App() {
             <>
               <PageTitle
                 title="Jobs for you"
-                sub="Open roles from 70 companies’ job boards, ranked by how well you fit."
+                sub="Open roles from 450+ companies’ job boards, about 400 of them YC startups, ranked by how well you fit."
               />
               <Jobs onMade={setOpen} variant="full" />
             </>
