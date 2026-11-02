@@ -42,20 +42,11 @@ export function AccountMenu({ me, onStats }: { me: Me; onStats: () => void }) {
   })
   if (!me.hosted) return null
   const canDelete = !!me.user || (me.films?.used ?? 0) > 0
-  if (!me.user && !canDelete)
-    return me.signIn ? (
-      <a className="button" href="/auth/github" target={framed ? '_blank' : '_top'}>
-        Sign in with GitHub
-      </a>
-    ) : null
+  if (!me.user && !canDelete) return me.signIn ? <SignIn me={me} /> : null
 
   return (
     <div className="account" ref={box}>
-      {!me.user && me.signIn && (
-        <a className="link signin" href="/auth/github" target={framed ? '_blank' : '_top'}>
-          Sign in to keep your films
-        </a>
-      )}
+      {!me.user && me.signIn && <SignIn me={me} keep />}
       <button
         type="button"
         className="me"
@@ -264,6 +255,27 @@ export function StatsPanel({ onClose }: { onClose: () => void }) {
           </>
         )}
       </aside>
+    </div>
+  )
+}
+
+/** Sign-in buttons, Google first; "keep" says why when they've already made something */
+export function SignIn({ me, keep = false }: { me: Me; keep?: boolean }) {
+  const ways = me.providers?.length ? me.providers : ['github' as const]
+  const target = framed ? '_blank' : '_top'
+  return (
+    <div className="signin-ways">
+      {keep && <small>Sign in to keep your films</small>}
+      {ways.map((w, i) => (
+        <a
+          key={w}
+          className={i === 0 ? 'button signin-main' : 'quiet-link'}
+          href={`/auth/${w}`}
+          target={target}
+        >
+          {w === 'google' ? 'Continue with Google' : i === 0 ? 'Continue with GitHub' : 'or GitHub'}
+        </a>
+      ))}
     </div>
   )
 }

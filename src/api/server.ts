@@ -70,6 +70,8 @@ import {
   filmLimit,
   githubCallback,
   githubStart,
+  googleCallback,
+  googleStart,
   hostedOwner,
   networkKey,
   type Owner,
@@ -167,6 +169,8 @@ export interface ApiDeps {
   jobsFetch?: FetchFn
   /** for tests: how Hunter is called (default: its real API) */
   hunterFetch?: FetchFn
+  /** for tests: how sign-in providers are called (default: their real APIs) */
+  authFetch?: typeof fetch
 }
 
 export async function buildApi({
@@ -177,6 +181,7 @@ export async function buildApi({
   llm = null,
   jobsFetch,
   hunterFetch = fetch,
+  authFetch,
 }: ApiDeps) {
   const filmsDir = resolve(cfg.FILMS_DIR)
   const publicUrl = cfg.PUBLIC_URL
@@ -406,10 +411,41 @@ export async function buildApi({
       },
       async (req, reply) => {
         try {
-          await githubCallback(cfg, sql, req, reply)
+          await githubCallback(cfg, sql, req, reply, authFetch)
           return reply.redirect('/')
         } catch (err) {
           app.log.warn({ err }, 'github sign-in failed')
+          return reply.redirect(`/?signin=${encodeURIComponent((err as Error).message)}`)
+        }
+      },
+    )
+    app.get('/auth/google', { schema: { hide: true } }, async (_req, reply) => {
+      if (!cfg.GOOGLE_CLIENT_ID || !cfg.GOOGLE_CLIENT_SECRET)
+        return reply
+          .status(404)
+          .send({ error: { code: 'not_configured', message: 'Google sign-in is off' } })
+      return googleStart(cfg, reply)
+    })
+    app.get(
+      '/auth/google/callback',
+      {
+        schema: {
+          hide: true,
+          querystring: z.object({
+            code: z.string().optional(),
+            state: z.string().optional(),
+            error: z.string().optional(),
+          }),
+        },
+      },
+      async (req, reply) => {
+        // they pressed Cancel on Google's page
+        if (req.query.error) return reply.redirect('/')
+        try {
+          await googleCallback(cfg, sql, req, reply, authFetch)
+          return reply.redirect('/')
+        } catch (err) {
+          app.log.warn({ err }, 'google sign-in failed')
           return reply.redirect(`/?signin=${encodeURIComponent((err as Error).message)}`)
         }
       },
@@ -431,13 +467,22 @@ export async function buildApi({
       if (cfg.HOSTED && !free) await consume(sql, `visit:${req.owner}`, Number.MAX_SAFE_INTEGER)
       return {
         hosted: cfg.HOSTED,
-        signIn: cfg.HOSTED && !!cfg.GITHUB_CLIENT_ID,
+        signIn: cfg.HOSTED && (!!cfg.GITHUB_CLIENT_ID || !!cfg.GOOGLE_CLIENT_ID),
+        /** the ways to sign in, Google first: most people have a Google account */
+        providers: cfg.HOSTED
+          ? [
+              ...(cfg.GOOGLE_CLIENT_ID && cfg.GOOGLE_CLIENT_SECRET ? ['google'] : []),
+              ...(cfg.GITHUB_CLIENT_ID ? ['github'] : []),
+            ]
+          : [],
         user: s ? { login: s.login, name: s.name, avatar: s.avatar } : null,
         films: limit === null ? null : { used: await used(sql, `films:${req.owner}`), limit },
         // a visitor's work is kept 7 days; an account's, 30; an unlimited user's, until deleted
         keepsDays: free ? null : s ? 30 : 7,
         /** can see the app-wide funnel at GET /v1/funnel */
         stats: cfg.HOSTED && free,
+        /** where feedback goes: the app's contact address, when it has one */
+        ...(cfg.CONTACT_EMAIL ? { contact: cfg.CONTACT_EMAIL } : {}),
       }
     },
   )

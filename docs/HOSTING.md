@@ -122,14 +122,15 @@ Keep the App's **Client ID** and a **client secret** for the next step.
 nano ~/coldopen/deploy/oracle/.env
 ```
 
-| Line                   | Value                                                                                                                                         |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GITHUB_CLIENT_ID`     | the GitHub App's Client ID (starts with `Iv`)                                                                                                 |
-| `GITHUB_CLIENT_SECRET` | its client secret                                                                                                                             |
-| `LLM_API_KEY`          | your Groq key                                                                                                                                 |
-| `GEMINI_API_KEY`       | optional: a free key from [Google AI Studio](https://aistudio.google.com/apikey), tried when both Groq models are rate limited                |
-| `SHARE_URL`            | your share worker, e.g. `https://coldopen-share.<you>.workers.dev`                                                                            |
-| `SHARE_TOKEN`          | its upload token. On your Mac: `security find-generic-password -a "$USER" -s coldopen-share-token -w \| pbcopy` copies it without printing it |
+| Line                                       | Value                                                                                                                                                                                                                                                                 |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GITHUB_CLIENT_ID`                         | the GitHub App's Client ID (starts with `Iv`)                                                                                                                                                                                                                         |
+| `GITHUB_CLIENT_SECRET`                     | its client secret                                                                                                                                                                                                                                                     |
+| `LLM_API_KEY`                              | your Groq key                                                                                                                                                                                                                                                         |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional: Sign in with Google. In [Google Cloud](https://console.cloud.google.com), APIs & Services, Credentials, create an OAuth client ID (Web application) with the redirect URI `https://<your app>/auth/google/callback`. Google is offered first, GitHub second |
+| `GEMINI_API_KEY`                           | optional: a free key from [Google AI Studio](https://aistudio.google.com/apikey), tried when both Groq models are rate limited                                                                                                                                        |
+| `SHARE_URL`                                | your share worker, e.g. `https://coldopen-share.<you>.workers.dev`                                                                                                                                                                                                    |
+| `SHARE_TOKEN`                              | its upload token. On your Mac: `security find-generic-password -a "$USER" -s coldopen-share-token -w \| pbcopy` copies it without printing it                                                                                                                         |
 
 Save with **Ctrl+O, Enter**, quit with **Ctrl+X**. The file is readable only by you.
 
@@ -151,7 +152,7 @@ The first build takes about 10 minutes (it installs Chromium). Then open the add
 
 Defaults you can change (in Render's **Environment**, or the server's `.env`): `ANON_DAILY_FILMS` (1), `USER_DAILY_FILMS` (5), `IP_DAILY_FILMS` (8), `GLOBAL_DAILY_FILMS` (80), `DAILY_DRAFTS` (6). The global cap keeps the app inside Groq's free daily tokens and Cloudflare's 1,000 free writes a day.
 
-**No limits for you.** Set `UNLIMITED_GITHUB_USERS` to your GitHub username (several, comma-separated). Signed in as that account, you skip every daily limit, can make batches of any size, and your films are kept until you delete them. Groq's own rate limits still apply; when they're hit, films are written by the built-in writer.
+**No limits for you.** Set `UNLIMITED_GITHUB_USERS` to your GitHub username, or the Gmail address you sign in to Google with (several, comma-separated). Signed in as that account, you skip every daily limit, can make batches of any size, and your films are kept until you delete them. Groq's own rate limits still apply; when they're hit, films are written by the built-in writer.
 
 ## What to expect
 

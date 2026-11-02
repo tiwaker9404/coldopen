@@ -177,6 +177,19 @@ export function GuidePanel({ onClose, onTools }: { onClose: () => void; onTools:
 
 /** Everything coldopen can work with, what each does, and whether it's set up. */
 export function ToolsPanel({ me, onClose }: { me: Me | undefined; onClose: () => void }) {
+  return (
+    <Drawer
+      title="Connect tools"
+      sub="Make coldopen fit the way you already work"
+      onClose={onClose}
+    >
+      <Tools me={me} />
+    </Drawer>
+  )
+}
+
+/** The tools list on its own, for the Profile page */
+export function Tools({ me }: { me: Me | undefined }) {
   const qc = useQueryClient()
   const toast = useToast()
   const conn = useQuery({
@@ -207,126 +220,116 @@ export function ToolsPanel({ me, onClose }: { me: Me | undefined; onClose: () =>
   )
 
   return (
-    <Drawer
-      title="Connect tools"
-      sub="Make coldopen fit the way you already work"
-      onClose={onClose}
-    >
-      <ul className="tools">
-        <li>
-          <div>
-            <h3>LinkedIn connections</h3>
-            <p>
-              Shows who you already know at each company, so you can ask for an intro instead of
-              writing cold. On LinkedIn: Settings, Data privacy, Get a copy of your data,
-              Connections. The file arrives by email in about 10 minutes. Emails in it aren’t kept.
-            </p>
-          </div>
-          {n > 0 ? (
-            <div className="tool-state">
-              <span className="on">{n.toLocaleString()} added</span>
-              <button type="button" className="link" onClick={() => remove.mutate()}>
-                Delete them
-              </button>
-            </div>
-          ) : (
-            <label className="button">
-              {upload.isPending ? 'Reading…' : 'Upload Connections.csv'}
-              <input
-                type="file"
-                accept=".csv,text/csv"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) upload.mutate(file)
-                  e.target.value = ''
-                }}
-              />
-            </label>
-          )}
-          {upload.error && <p className="error">{upload.error.message}</p>}
-        </li>
-        <li>
-          <HunterKey />
-        </li>
-        <li>
-          <div>
-            <h3>Gmail, Outlook and your mail app</h3>
-            <p>
-              Built in. Each film’s email opens as a ready draft in the one you choose, with the
-              subject, message and link filled in. Nothing to connect, and coldopen never sees your
-              inbox.
-            </p>
-          </div>
-          <span className="tool-state on">Ready</span>
-        </li>
-        <li>
-          <div>
-            <h3>Notifications</h3>
-            <p>
-              A film takes about a minute. Get a notification when it’s ready, even in another tab.
-            </p>
-          </div>
-          {notifyState === 'granted' ? (
-            <span className="tool-state on">On</span>
-          ) : notifyState === 'denied' ? (
-            <span className="tool-state">Blocked in your browser settings</span>
-          ) : notifyState === 'unsupported' ? (
-            <span className="tool-state">Not available in this browser</span>
-          ) : (
-            <button
-              type="button"
-              onClick={async () => setNotifyState(await Notification.requestPermission())}
-            >
-              Turn on
+    <ul className="tools">
+      <li>
+        <div>
+          <h3>LinkedIn connections</h3>
+          <p>
+            Shows who you already know at each company, so you can ask for an intro instead of
+            writing cold. On LinkedIn: Settings, Data privacy, Get a copy of your data, Connections.
+            The file arrives by email in about 10 minutes. Emails in it aren’t kept.
+          </p>
+        </div>
+        {n > 0 ? (
+          <div className="tool-state">
+            <span className="on">{n.toLocaleString()} added</span>
+            <button type="button" className="link" onClick={() => remove.mutate()}>
+              Delete them
             </button>
-          )}
-        </li>
-        <li>
-          <div>
-            <h3>Spreadsheet or CRM</h3>
-            <p>
-              Make films for a list of companies at once (Options, then Several companies) and
-              download every link as a CSV for a spreadsheet, CRM or email sequencer.
-              {signedOut ? ' Sign in with GitHub to use it.' : ''}
-            </p>
           </div>
-          <span className={`tool-state${signedOut ? '' : ' on'}`}>
-            {signedOut ? 'Needs sign-in' : 'Ready'}
-          </span>
-        </li>
-        <li>
-          <div>
-            <h3>Slack</h3>
-            <p>
-              Mention the coldopen bot with a company’s website in a channel and it replies in the
-              thread with the film. Runs on your own install of coldopen.
-            </p>
-          </div>
-          <a
-            className="button"
-            href={`${REPO}/blob/main/docs/SLACK.md`}
-            target="_blank"
-            rel="noreferrer"
+        ) : (
+          <label className="button">
+            {upload.isPending ? 'Reading…' : 'Upload Connections.csv'}
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) upload.mutate(file)
+                e.target.value = ''
+              }}
+            />
+          </label>
+        )}
+        {upload.error && <p className="error">{upload.error.message}</p>}
+      </li>
+      <li>
+        <HunterKey />
+      </li>
+      <li>
+        <div>
+          <h3>Gmail, Outlook and your mail app</h3>
+          <p>
+            Built in. Each film’s email opens as a ready draft in the one you choose, with the
+            subject, message and link filled in. Nothing to connect, and coldopen never sees your
+            inbox.
+          </p>
+        </div>
+        <span className="tool-state on">Ready</span>
+      </li>
+      <li>
+        <div>
+          <h3>Notifications</h3>
+          <p>
+            A film takes about a minute. Get a notification when it’s ready, even in another tab.
+          </p>
+        </div>
+        {notifyState === 'granted' ? (
+          <span className="tool-state on">On</span>
+        ) : notifyState === 'denied' ? (
+          <span className="tool-state">Blocked in your browser settings</span>
+        ) : notifyState === 'unsupported' ? (
+          <span className="tool-state">Not available in this browser</span>
+        ) : (
+          <button
+            type="button"
+            onClick={async () => setNotifyState(await Notification.requestPermission())}
           >
-            Setup guide <Out />
-          </a>
-        </li>
-        <li>
-          <div>
-            <h3>API</h3>
-            <p>Make films from your own code or a no-code tool. Every endpoint, with examples.</p>
-          </div>
-          <a className="button" href="/docs" target="_blank" rel="noreferrer">
-            API reference <Out />
-          </a>
-        </li>
-      </ul>
-      <p className="small muted">
-        Next on the roadmap: one-click Gmail drafts, and alerts when a company you filmed posts a
-        matching role.
-      </p>
-    </Drawer>
+            Turn on
+          </button>
+        )}
+      </li>
+      <li>
+        <div>
+          <h3>Spreadsheet or CRM</h3>
+          <p>
+            Make films for a list of companies at once (More options, then Several companies) and
+            download every link as a CSV for a spreadsheet, CRM or email sequencer.
+            {signedOut ? ' Sign in to use it.' : ''}
+          </p>
+        </div>
+        <span className={`tool-state${signedOut ? '' : ' on'}`}>
+          {signedOut ? 'Needs sign-in' : 'Ready'}
+        </span>
+      </li>
+      <li>
+        <div>
+          <h3>Slack</h3>
+          <p>
+            Mention the coldopen bot with a company’s website in a channel and it replies in the
+            thread with the film. Runs on your own install of coldopen.
+          </p>
+        </div>
+        <a
+          className="button"
+          href={`${REPO}/blob/main/docs/SLACK.md`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Setup guide <Out />
+        </a>
+      </li>
+      <li>
+        <div>
+          <h3>API</h3>
+          <p>Make films from your own code or a no-code tool. Every endpoint, with examples.</p>
+        </div>
+        <a className="button" href="/docs" target="_blank" rel="noreferrer">
+          API reference <Out />
+        </a>
+      </li>
+    </ul>
   )
 }
 

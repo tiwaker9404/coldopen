@@ -10,6 +10,7 @@ import type { Sql } from '../db/index.ts'
  *
  *   'team'      a private install, or a request with an API key
  *   'u:gh:123'  a signed-in GitHub user
+ *   'u:go:456'  a signed-in Google user
  *   'a:k3j…'    a visitor without an account
  */
 export type Owner = string
@@ -196,23 +197,34 @@ export async function githubCallback(
   }
   if (!gh.id || !gh.login)
     throw Object.assign(new Error('GitHub sign-in failed'), { statusCode: 502 })
+  return finishSignIn(cfg, sql, req, reply, {
+    sub: `gh:${gh.id}`,
+    login: gh.login,
+    name: gh.name ?? null,
+    avatar: gh.avatar_url ?? null,
+  })
+}
 
-  const sub = `gh:${gh.id}`
+/**
+ * The end of any sign-in: the user row, what they made as a visitor moved onto the account,
+ * and the session cookie.
+ */
+async function finishSignIn(
+  cfg: Config,
+  sql: Sql,
+  req: FastifyRequest,
+  reply: FastifyReply,
+  who: Omit<Session, 'exp'>,
+): Promise<Session> {
   await sql`
-    insert into users (id, login, name, avatar) values (${sub}, ${gh.login}, ${gh.name ?? null}, ${gh.avatar_url ?? null})
+    insert into users (id, login, name, avatar) values (${who.sub}, ${who.login}, ${who.name}, ${who.avatar})
     on conflict (id) do update set login = excluded.login, name = excluded.name, avatar = excluded.avatar, seen_at = now()`
 
   // what they made before signing in is theirs now
   const visitor = unsign(cfg.SESSION_SECRET!, cookies(req)[VISITOR])
-  if (visitor) await claim(sql, `a:${visitor}`, `u:${sub}`)
+  if (visitor) await claim(sql, `a:${visitor}`, `u:${who.sub}`)
 
-  const session: Session = {
-    sub,
-    login: gh.login,
-    name: gh.name ?? null,
-    avatar: gh.avatar_url ?? null,
-    exp: Math.floor(Date.now() / 1000) + 30 * DAY,
-  }
+  const session: Session = { ...who, exp: Math.floor(Date.now() / 1000) + 30 * DAY }
   const secure = cfg.PUBLIC_URL.startsWith('https://')
   setCookie(
     reply,
@@ -240,6 +252,85 @@ export async function claim(sql: Sql, from: Owner, to: Owner) {
       await tx`delete from connections where owner = ${to}`
       await tx`update connections set owner = ${to} where owner = ${from}`
     }
+    // the job search and saved keys come along unless the account already has its own
+    await tx`
+      update job_searches set owner = ${to}
+      where owner = ${from} and not exists (select 1 from job_searches where owner = ${to})`
+    await tx`delete from job_searches where owner = ${from}`
+    await tx`
+      update owner_keys k set owner = ${to}
+      where k.owner = ${from}
+        and not exists (select 1 from owner_keys o where o.owner = ${to} and o.name = k.name)`
+    await tx`delete from owner_keys where owner = ${from}`
+  })
+}
+
+/* ------------------------------------------------------------ Google sign-in */
+
+const googleRedirect = (cfg: Config) => `${cfg.PUBLIC_URL.replace(/\/$/, '')}/auth/google/callback`
+
+export function googleStart(cfg: Config, reply: FastifyReply) {
+  const state = randomBytes(16).toString('base64url')
+  setCookie(reply, STATE, state, 600, cfg.PUBLIC_URL.startsWith('https://'))
+  const u = new URL('https://accounts.google.com/o/oauth2/v2/auth')
+  u.searchParams.set('client_id', cfg.GOOGLE_CLIENT_ID!)
+  u.searchParams.set('redirect_uri', googleRedirect(cfg))
+  u.searchParams.set('response_type', 'code')
+  // name, email and picture; nothing else from the Google account
+  u.searchParams.set('scope', 'openid email profile')
+  u.searchParams.set('state', state)
+  u.searchParams.set('prompt', 'select_account')
+  return reply.redirect(u.toString())
+}
+
+/** Finishes Google sign-in the same way as GitHub's: state, code for profile, then the session. */
+export async function googleCallback(
+  cfg: Config,
+  sql: Sql,
+  req: FastifyRequest<{ Querystring: { code?: string; state?: string } }>,
+  reply: FastifyReply,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Session> {
+  const { code, state } = req.query
+  const expected = cookies(req)[STATE]
+  if (!code || !state || !expected || state !== expected)
+    throw Object.assign(new Error('sign-in expired or was started elsewhere; try again'), {
+      statusCode: 400,
+    })
+  const tokenRes = await fetchImpl('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
+    body: new URLSearchParams({
+      code,
+      client_id: cfg.GOOGLE_CLIENT_ID!,
+      client_secret: cfg.GOOGLE_CLIENT_SECRET!,
+      redirect_uri: googleRedirect(cfg),
+      grant_type: 'authorization_code',
+    }).toString(),
+    signal: AbortSignal.timeout(10_000),
+  })
+  const token = ((await tokenRes.json()) as { access_token?: string }).access_token
+  if (!token)
+    throw Object.assign(new Error('Google did not confirm the sign-in'), { statusCode: 502 })
+  const infoRes = await fetchImpl('https://openidconnect.googleapis.com/v1/userinfo', {
+    headers: { authorization: `Bearer ${token}`, accept: 'application/json' },
+    signal: AbortSignal.timeout(10_000),
+  })
+  const g = (await infoRes.json()) as {
+    sub?: string
+    email?: string
+    email_verified?: boolean
+    name?: string
+    picture?: string
+  }
+  if (!g.sub || !g.email || g.email_verified === false)
+    throw Object.assign(new Error('Google sign-in failed'), { statusCode: 502 })
+  return finishSignIn(cfg, sql, req, reply, {
+    sub: `go:${g.sub}`,
+    // the email is the login: what UNLIMITED_GITHUB_USERS can list for a Google account
+    login: g.email.toLowerCase(),
+    name: g.name ?? null,
+    avatar: g.picture ?? null,
   })
 }
 

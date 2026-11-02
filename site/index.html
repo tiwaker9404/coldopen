@@ -104,12 +104,13 @@ footer{border-top:1px solid var(--rule);padding:30px 0 48px;color:var(--muted);f
 }
 @media (max-width:480px){.wrap{padding:0 16px}.how{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.film img{transition:none}}
+.beta{margin-left:10px;padding:2px 9px;border:1px solid currentColor;border-radius:99px;color:#c0392b;font-size:12px;font-weight:600;letter-spacing:.02em;vertical-align:middle}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top" id="top">
-    <a class="mark" href="#top"><i aria-hidden="true"></i>coldopen</a>
+    <a class="mark" href="#top"><i aria-hidden="true"></i>coldopen<span class="beta">Public beta</span></a>
     <nav aria-label="Sections">
       <a class="wide" href="#films">Films</a>
       <a class="wide" href="#how">How it works</a>
@@ -123,10 +124,10 @@ footer{border-top:1px solid var(--rule);padding:30px 0 48px;color:var(--muted);f
         <h1>A 30-second film for every company you apply to.</h1>
         <p class="lede">Paste a job link. coldopen reads the company’s site, picks the results from your résumé that answer the role, and makes a short film in their colors. You send the link, and see when they watch.</p>
         <div class="ctas">
-          <a class="btn" href="https://coldopen-nk8o.onrender.com/?ref=site">Make one free</a>
+          <a class="btn" href="https://coldopen-nk8o.onrender.com/?ref=site">Try the free beta</a>
           <a class="quiet" href="#films">Watch four films</a>
         </div>
-        <p class="note">No account needed. About a minute and a half per film. Open source.</p>
+        <p class="note">No account needed to try it; continue with Google to keep your films. About a minute and a half per film. Open source.</p>
         <p class="count" id="count" hidden></p>
       </div>
       <div class="reel">
@@ -139,7 +140,7 @@ footer{border-top:1px solid var(--rule);padding:30px 0 48px;color:var(--muted);f
         <p class="stat" aria-hidden="true">60%</p>
         <div>
           <h2 id="result-h">My reply rate in the first week.</h2>
-          <p class="intro">I built coldopen for my own job search and sent a film with every application that week. More than half the people I sent one to wrote back. I hope it opens as many doors for you.</p>
+          <p class="intro">I built coldopen for my own job search and sent a film with every application that week. More than half the people I sent one to wrote back. Friends in the beta are now seeing 50–70% more replies than with plain messages. I hope it opens as many doors for you.</p>
         </div>
       </div>
     </section>
@@ -161,7 +162,7 @@ footer{border-top:1px solid var(--rule);padding:30px 0 48px;color:var(--muted);f
         <li><h3>Your résumé, once</h3><p>Upload it and name the role. It becomes your profile; every number is copied from the résumé word for word.</p></li>
         <li><h3>Paste a job link</h3><p>coldopen reads the post and the company’s homepage: colors, logo, typeface, and the line or number they lead with.</p></li>
         <li><h3>Check the film</h3><p>It answers one requirement from the post with your results. Rewrite any line and render it again in a minute.</p></li>
-        <li><h3>Send it to one person</h3><p>It suggests who to write to and opens the email in Gmail or Outlook. You see when they watch, and mark when they reply.</p></li>
+        <li><h3>Send it to one person</h3><p>It suggests who to write to, finds their email, and opens it in Gmail already addressed. You see when they watch, and it reminds you when to follow up.</p></li>
       </ol>
     </section>
 

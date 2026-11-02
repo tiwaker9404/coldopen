@@ -79,6 +79,9 @@ const schema = z.object({
   SESSION_SECRET: z.string().optional(),
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
+  /** Sign in with Google (an OAuth web client; redirect URI <PUBLIC_URL>/auth/google/callback) */
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
   /** a share worker (share/worker.ts): hosted films are stored there, so they outlive restarts */
   SHARE_URL: z.string().url().optional(),
   SHARE_TOKEN: z.string().optional(),

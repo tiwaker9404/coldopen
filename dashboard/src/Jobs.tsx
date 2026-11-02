@@ -25,7 +25,15 @@ const list = (s: string) =>
  * Open roles from the public job boards of companies that hire for what they want, each one
  * click away from a film. The roles come from their profile until they set their own.
  */
-export function Jobs({ onMade }: { onMade: (id: string) => void }) {
+export function Jobs({
+  onMade,
+  variant = 'full',
+}: {
+  onMade: (id: string) => void
+  /** full: the Jobs page, search always open; preview: the best three, on Today */
+  variant?: 'full' | 'preview'
+}) {
+  const full = variant === 'full'
   const q = useQuery({
     queryKey: ['jobs'],
     queryFn: () => api<JobSuggestions>('/v1/jobs/suggested?limit=24'),
@@ -33,7 +41,6 @@ export function Jobs({ onMade }: { onMade: (id: string) => void }) {
   })
   const me = useQuery({ queryKey: ['me'], queryFn: () => api<Me>('/v1/me') })
   const qc = useQueryClient()
-  const [editing, setEditing] = useState(false)
   const [all, setAll] = useState(false)
   const [picked, setPicked] = useState<string[]>([])
   const [started, setStarted] = useState<number | null>(null)
@@ -62,31 +69,53 @@ export function Jobs({ onMade }: { onMade: (id: string) => void }) {
     },
   })
 
-  return (
-    <section className="jobs" aria-labelledby="jobs-title">
-      <div className="films-head">
-        <h2 id="jobs-title">Jobs for you</h2>
-        {r && !noRoles && (
-          <button
-            type="button"
-            className="link"
-            onClick={() => setEditing((e) => !e)}
-            aria-expanded={editing}
-          >
-            {editing ? 'Close' : 'Edit search'}
-          </button>
+  if (!full)
+    return (
+      <section className="jobs" aria-labelledby="jobs-title">
+        <div className="films-head">
+          <h2 id="jobs-title">Best fits for you</h2>
+          <a className="see-all" href="#jobs">
+            {r && r.data.length > 0 ? `All ${r.data.length} jobs` : 'Jobs'}
+          </a>
+        </div>
+        {q.isPending ? (
+          <p className="jobs-note" aria-live="polite">
+            Reading open roles from 70 companies’ job boards…
+          </p>
+        ) : q.isError ? (
+          <p className="error">Couldn’t load jobs: {q.error.message}</p>
+        ) : noRoles ? (
+          <p className="empty">
+            Tell coldopen which roles you want and it finds open ones at 70 companies.{' '}
+            <a href="#jobs">Set up your job search</a>
+          </p>
+        ) : r!.data.length === 0 ? (
+          <p className="empty">
+            No open roles fit your search right now. <a href="#jobs">Change your search</a>
+          </p>
+        ) : (
+          <ul className="job-list">
+            {r!.data.slice(0, 3).map((j) => (
+              <li key={j.id}>
+                <JobRow job={j} onMade={onMade} />
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
+      </section>
+    )
 
+  return (
+    <section className="jobs" aria-label="Jobs for you">
       {q.isPending ? (
         <p className="jobs-note" aria-live="polite">
           Reading open roles from 70 companies’ job boards…
         </p>
       ) : q.isError ? (
         <p className="error">Couldn’t load jobs: {q.error.message}</p>
-      ) : noRoles || editing ? (
-        <SearchForm search={r!.search} first={noRoles} onDone={() => setEditing(false)} />
-      ) : null}
+      ) : (
+        <SearchForm search={r!.search} first={noRoles} />
+      )}
 
       {r && !noRoles && (
         <>
@@ -95,10 +124,9 @@ export function Jobs({ onMade }: { onMade: (id: string) => void }) {
             {r.search.locations.length > 0 && ` in ${r.search.locations.join(', ')}`}
             {r.search.remote &&
               (r.search.locations.length ? ', or remote' : ', anywhere or remote')}
-            {' · '}
-            {r.companies} companies
+            {`. ${r.data.length} matches across ${r.companies} companies`}
             {r.updatedAt && `, checked ${ago(r.updatedAt)}`}
-            {r.failed.length > 0 && ` · couldn’t read ${r.failed.join(', ')}`}
+            {r.failed.length > 0 && `. Couldn’t read ${r.failed.join(', ')}`}.
           </p>
           {r.data.length === 0 ? (
             <p className="jobs-empty">
@@ -133,8 +161,8 @@ export function Jobs({ onMade }: { onMade: (id: string) => void }) {
                     </>
                   ) : started ? (
                     <span>
-                      Making {started} film{started === 1 ? '' : 's'}. They appear in Your films
-                      below as they finish, about a minute and a half each.
+                      Making {started} film{started === 1 ? '' : 's'}. They appear on the Films page
+                      as they finish, about a minute and a half each.
                     </span>
                   ) : (
                     <span className="quiet">Tick several jobs to make their films in one go.</span>
@@ -277,15 +305,7 @@ function JobRow({
   )
 }
 
-function SearchForm({
-  search,
-  first,
-  onDone,
-}: {
-  search: JobSearch
-  first: boolean
-  onDone: () => void
-}) {
+function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
   const qc = useQueryClient()
   const [roles, setRoles] = useState(search.roles.join(', '))
   const [places, setPlaces] = useState(search.locations.join(', '))
@@ -316,7 +336,6 @@ function SearchForm({
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['jobs'] })
-      onDone()
     },
   })
   return (
@@ -327,32 +346,31 @@ function SearchForm({
         save.mutate()
       }}
     >
-      {first && (
-        <p className="jobs-note">
-          Tell coldopen what you’re looking for, and it finds open roles at 70 companies you can
-          make a film for in one click.
-        </p>
-      )}
-      <label>
-        <span>Roles</span>
-        <input
-          value={roles}
-          onChange={(e) => setRoles(e.target.value)}
-          placeholder="Forward Deployed Engineer, Solutions Engineer"
-        />
-      </label>
-      <label>
-        <span>Places</span>
-        <input
-          value={places}
-          onChange={(e) => setPlaces(e.target.value)}
-          placeholder="Bay Area, New York (empty for anywhere)"
-        />
-      </label>
+      <h2 className="search-title">{first ? 'What are you looking for?' : 'Your search'}</h2>
+      <div className="search-grid">
+        <label>
+          <span>Roles</span>
+          <input
+            value={roles}
+            onChange={(e) => setRoles(e.target.value)}
+            placeholder="Forward Deployed Engineer, Solutions Engineer"
+          />
+          <small>Job titles you’d apply for, separated by commas.</small>
+        </label>
+        <label>
+          <span>Places</span>
+          <input
+            value={places}
+            onChange={(e) => setPlaces(e.target.value)}
+            placeholder="Bay Area, New York"
+          />
+          <small>Cities or regions. Leave it empty to see every place.</small>
+        </label>
+      </div>
       <div className="job-checks">
         <label className="check">
           <input type="checkbox" checked={remote} onChange={(e) => setRemote(e.target.checked)} />
-          Remote roles too
+          Include remote roles
         </label>
         <label className="check">
           <input
@@ -360,22 +378,29 @@ function SearchForm({
             checked={skipSenior}
             onChange={(e) => setSkipSenior(e.target.checked)}
           />
-          Skip staff, principal and manager roles
+          Hide staff, principal and manager roles
         </label>
       </div>
-      <label>
-        <span>More companies</span>
-        <textarea
-          rows={2}
-          value={boards}
-          onChange={(e) => setBoards(e.target.value)}
-          placeholder="Any Greenhouse, Lever or Ashby careers link, one per line"
-        />
-      </label>
+      <details className="more-companies" open={search.boards.length > 0}>
+        <summary>Add companies that aren’t in the list</summary>
+        <label>
+          <span className="sr">Careers page links</span>
+          <textarea
+            rows={2}
+            value={boards}
+            onChange={(e) => setBoards(e.target.value)}
+            placeholder="jobs.ashbyhq.com/acme"
+          />
+          <small>
+            Paste a company’s careers page if it’s on Greenhouse, Lever or Ashby, one per line.
+          </small>
+        </label>
+      </details>
       {save.error && <p className="error">{save.error.message}</p>}
       <div className="job-search-do">
+        {save.isSuccess && !save.isPending && <span className="saved">Results updated</span>}
         <button type="submit" className="primary" disabled={save.isPending}>
-          {save.isPending ? 'Finding jobs…' : first ? 'Find jobs' : 'Save'}
+          {save.isPending ? 'Finding jobs…' : first ? 'Find jobs' : 'Update results'}
         </button>
       </div>
     </form>

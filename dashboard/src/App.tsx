@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { AccountMenu, FramedNotice, Privacy, StatsPanel } from './Account.tsx'
+import { AccountMenu, FramedNotice, StatsPanel } from './Account.tsx'
 import {
   ApiError,
   api,
@@ -15,6 +15,7 @@ import {
   send,
   setApiKey,
 } from './api.ts'
+import { Board } from './Board.tsx'
 import { FilmPanel } from './FilmPanel.tsx'
 import { FilmRow } from './FilmRow.tsx'
 import { FollowUps } from './FollowUps.tsx'
@@ -22,6 +23,7 @@ import { GettingStarted, GuidePanel, ToolsPanel } from './Guide.tsx'
 import { Jobs } from './Jobs.tsx'
 import { Onboarding } from './Onboarding.tsx'
 import { ProfileEditor } from './ProfileEditor.tsx'
+import { ProfilesPage } from './Profiles.tsx'
 import { notify, useToast } from './ui.tsx'
 
 const FORMATS: { id: Format; label: string }[] = [
@@ -91,53 +93,121 @@ export function App() {
       : 'coldopen'
   }, [list, toast])
 
+  const place = usePlace()
+  const followups = useQuery({
+    queryKey: ['followups'],
+    queryFn: () => api<{ data: unknown[] }>('/v1/followups'),
+  })
+  const dueCount = followups.data?.data.length ?? 0
+  const onboarding = !loading && noProfile && list.length === 0
+  const name = (f: Film) => nameOf(f, list)
+
   return (
-    <div className="app">
-      <header className="top">
-        <a className="wordmark" href="/" aria-label="coldopen home">
+    <div className="app shell">
+      <aside className="side" aria-label="coldopen">
+        <a className="wordmark" href="#today" aria-label="coldopen, Today">
           <i aria-hidden="true" />
           coldopen
+          <span className="beta">Beta</span>
         </a>
-        <nav className="nav" aria-label="Help">
-          <button type="button" className="link" onClick={() => setSide('guide')}>
+        <nav className="places" aria-label="Pages">
+          {PLACES.map((p) => (
+            <a key={p.id} href={`#${p.id}`} aria-current={place === p.id ? 'page' : undefined}>
+              {p.label}
+              {p.id === 'today' && dueCount > 0 && <span className="count due">{dueCount}</span>}
+              {p.id === 'films' && list.length > 0 && <span className="count">{list.length}</span>}
+            </a>
+          ))}
+        </nav>
+        <div className="side-foot">
+          <button type="button" className="quiet-link" onClick={() => setSide('guide')}>
             How it works
           </button>
-          <button type="button" className="link" onClick={() => setSide('tools')}>
-            Connect tools
-          </button>
+          {me.data?.contact && (
+            <a
+              className="quiet-link"
+              href={`mailto:${me.data.contact}?subject=${encodeURIComponent('coldopen feedback')}`}
+            >
+              Send feedback
+            </a>
+          )}
           {me.data && <AccountMenu me={me.data} onStats={() => setStats(true)} />}
-        </nav>
-      </header>
+        </div>
+      </aside>
 
-      <main className="page">
-        {hosted && <FramedNotice />}
-        {signinError && <p className="error">Sign-in didn't work: {signinError}</p>}
-        {unauthorized && !hosted && <KeyForm />}
+      <div className="main">
+        <main className="page">
+          {hosted && <FramedNotice />}
+          {signinError && <p className="error">Sign-in didn't work: {signinError}</p>}
+          {unauthorized && !hosted && <KeyForm />}
 
-        {loading ? null : noProfile && list.length === 0 ? (
-          <Onboarding
-            hosted={hosted}
-            onDraft={(draft, notice) => setEditing({ profile: null, draft, notice })}
-            onBlank={(draft, notice) => setEditing({ profile: null, draft, notice })}
-          />
-        ) : (
-          <>
-            <Composer
-              me={me.data}
-              profiles={profiles.data?.data ?? []}
-              onMade={setOpen}
-              onEdit={(p) => setEditing({ profile: p })}
-              onNew={() => setEditing({ profile: null })}
+          {loading ? null : onboarding ? (
+            <Onboarding
+              hosted={hosted}
+              onDraft={(draft, notice) => setEditing({ profile: null, draft, notice })}
+              onBlank={(draft, notice) => setEditing({ profile: null, draft, notice })}
             />
-            <GettingStarted films={list} onOpen={setOpen} onGuide={() => setSide('guide')} />
-            <FollowUps onOpen={setOpen} />
-            <Jobs onMade={setOpen} />
-            <Films list={list} open={open} onOpen={setOpen} />
-          </>
-        )}
+          ) : place === 'jobs' ? (
+            <>
+              <PageTitle
+                title="Jobs for you"
+                sub="Open roles from 70 companies’ job boards, ranked by how well you fit."
+              />
+              <Jobs onMade={setOpen} variant="full" />
+            </>
+          ) : place === 'films' ? (
+            <>
+              <PageTitle
+                title="Your films"
+                sub="Every film by where it stands. Open one to send it, or to mark what happened."
+                aside={<ReplyRate />}
+              />
+              {list.length === 0 ? (
+                <p className="empty">
+                  No films yet. <a href="#today">Make your first one</a>; it takes about a minute.
+                </p>
+              ) : (
+                <Board list={list} name={name} open={open} onOpen={setOpen} />
+              )}
+            </>
+          ) : place === 'profile' ? (
+            <>
+              <PageTitle
+                title="Profile"
+                sub="Who your films are from, and the tools coldopen works with."
+              />
+              <ProfilesPage
+                me={me.data}
+                profiles={profiles.data?.data ?? []}
+                onEdit={(p) => setEditing({ profile: p })}
+                onNew={() => setEditing({ profile: null })}
+              />
+            </>
+          ) : (
+            <>
+              <Composer
+                me={me.data}
+                profiles={profiles.data?.data ?? []}
+                onMade={setOpen}
+                onEdit={(p) => setEditing({ profile: p })}
+              />
+              <GettingStarted films={list} onOpen={setOpen} onGuide={() => setSide('guide')} />
+              <FollowUps onOpen={setOpen} />
+              <Jobs onMade={setOpen} variant="preview" />
+              <Recent list={list} name={name} open={open} onOpen={setOpen} />
+            </>
+          )}
+        </main>
+      </div>
 
-        {me.data && <Privacy me={me.data} />}
-      </main>
+      <nav className="tabbar" aria-label="Pages">
+        {PLACES.map((p) => (
+          <a key={p.id} href={`#${p.id}`} aria-current={place === p.id ? 'page' : undefined}>
+            {p.label}
+            {p.id === 'today' && dueCount > 0 && <span className="count due">{dueCount}</span>}
+          </a>
+        ))}
+      </nav>
 
       {open && (
         <FilmPanel
@@ -165,10 +235,90 @@ export function App() {
       )}
       {stats && <StatsPanel onClose={() => setStats(false)} />}
       {side === 'guide' && (
-        <GuidePanel onClose={() => setSide(null)} onTools={() => setSide('tools')} />
+        <GuidePanel
+          onClose={() => setSide(null)}
+          onTools={() => {
+            setSide(null)
+            window.location.hash = 'profile'
+          }}
+        />
       )}
       {side === 'tools' && <ToolsPanel me={me.data} onClose={() => setSide(null)} />}
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ places */
+
+type Place = 'today' | 'jobs' | 'films' | 'profile'
+const PLACES: { id: Place; label: string }[] = [
+  { id: 'today', label: 'Today' },
+  { id: 'jobs', label: 'Jobs' },
+  { id: 'films', label: 'Films' },
+  { id: 'profile', label: 'Profile' },
+]
+
+/** The page in the address (#jobs), so back, forward and bookmarks work */
+const readPlace = (): Place => {
+  const h = window.location.hash.slice(1)
+  return PLACES.some((p) => p.id === h) ? (h as Place) : 'today'
+}
+
+function usePlace(): Place {
+  const read = readPlace
+  const [place, setPlace] = useState(read)
+  useEffect(() => {
+    const on = () => {
+      setPlace(read())
+      window.scrollTo(0, 0)
+    }
+    window.addEventListener('hashchange', on)
+    return () => window.removeEventListener('hashchange', on)
+  }, [])
+  return place
+}
+
+function PageTitle({ title, sub, aside }: { title: string; sub: string; aside?: React.ReactNode }) {
+  return (
+    <header className="page-title">
+      <div>
+        <h1>{title}</h1>
+        <p>{sub}</p>
+      </div>
+      {aside}
+    </header>
+  )
+}
+
+/** The newest few films on Today, with the way to the whole board */
+function Recent({
+  list,
+  name,
+  open,
+  onOpen,
+}: {
+  list: Film[]
+  name: (f: Film) => string | undefined
+  open: string | null
+  onOpen: (id: string) => void
+}) {
+  if (list.length === 0) return null
+  return (
+    <section className="films" aria-labelledby="recent-title">
+      <div className="films-head">
+        <h2 id="recent-title">Latest films</h2>
+        <a className="see-all" href="#films">
+          All {list.length} films
+        </a>
+      </div>
+      <ul>
+        {list.slice(0, 4).map((f) => (
+          <li key={f.id}>
+            <FilmRow film={f} name={name(f)} active={open === f.id} onOpen={() => onOpen(f.id)} />
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
@@ -213,13 +363,11 @@ function Composer({
   profiles,
   onMade,
   onEdit,
-  onNew,
 }: {
   me: Me | undefined
   profiles: Profile[]
   onMade: (id: string) => void
   onEdit: (p: Profile) => void
-  onNew: () => void
 }) {
   const qc = useQueryClient()
   const [text, setText] = useState('')
@@ -340,18 +488,29 @@ function Composer({
         </p>
 
         <div className="under">
-          <span>
-            {profile ? (
-              <>
-                From{' '}
-                <button type="button" className="link" onClick={() => onEdit(profile)}>
-                  {profile.name}
-                </button>
-              </>
-            ) : (
-              'Loading your profile…'
-            )}
-          </span>
+          {profiles.length > 0 && (
+            <label className="from">
+              <span>Film from</span>
+              <select
+                value={profileId}
+                onChange={(e) => {
+                  setProfileId(e.target.value)
+                  setPicks([])
+                }}
+              >
+                {profiles.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {profile && (
+            <button type="button" className="quiet-link" onClick={() => onEdit(profile)}>
+              Edit profile
+            </button>
+          )}
           {left !== null && (
             <span className={left === 0 ? 'out' : ''}>
               {left === 0 ? 'No films left today' : `${left} left today`}
@@ -359,39 +518,17 @@ function Composer({
           )}
           <button
             type="button"
-            className="link"
+            className="quiet-link"
             aria-expanded={more}
             aria-controls="composer-more"
             onClick={() => setMore(!more)}
           >
-            {more ? 'Fewer options' : 'Options'}
+            {more ? 'Fewer options' : 'More options'}
           </button>
         </div>
 
         {more && (
           <div className="more" id="composer-more">
-            <label className="row">
-              <span>Profile</span>
-              <span className="inline">
-                <select
-                  value={profileId}
-                  onChange={(e) => {
-                    setProfileId(e.target.value)
-                    setPicks([])
-                  }}
-                >
-                  {profiles.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" className="link" onClick={onNew}>
-                  New profile
-                </button>
-              </span>
-            </label>
-
             <div className="row">
               <span id="format-label">Shape</span>
               <div className="shapes" role="radiogroup" aria-labelledby="format-label">
@@ -482,43 +619,6 @@ function Composer({
           </p>
         )}
       </form>
-    </section>
-  )
-}
-
-function Films({
-  list,
-  open,
-  onOpen,
-}: {
-  list: Film[]
-  open: string | null
-  onOpen: (id: string) => void
-}) {
-  if (list.length === 0)
-    return (
-      <section className="films empty">
-        <p>Your first film will appear here as it’s made.</p>
-      </section>
-    )
-  return (
-    <section className="films" aria-labelledby="films-title">
-      <div className="films-head">
-        <h2 id="films-title">Your films</h2>
-        <ReplyRate />
-      </div>
-      <ul>
-        {list.map((f) => (
-          <li key={f.id}>
-            <FilmRow
-              film={f}
-              name={nameOf(f, list)}
-              active={open === f.id}
-              onOpen={() => onOpen(f.id)}
-            />
-          </li>
-        ))}
-      </ul>
     </section>
   )
 }

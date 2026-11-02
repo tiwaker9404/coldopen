@@ -30,9 +30,9 @@ function memoryKv(): KV {
 }
 
 /** D1 is SQLite: run the real schema and queries on node:sqlite. */
-function sqliteD1(): D1 {
+function sqliteD1(schema?: string): D1 {
   const db = new DatabaseSync(':memory:')
-  db.exec(readFileSync(join(import.meta.dirname, '../../share/schema.sql'), 'utf8'))
+  db.exec(schema ?? readFileSync(join(import.meta.dirname, '../../share/schema.sql'), 'utf8'))
   const stmt = (sql: string, args: unknown[] = []) => ({
     bind: (...a: unknown[]) => stmt(sql, a),
     first: async <T>() => (db.prepare(sql).get(...(args as never[])) as T) ?? null,
@@ -154,6 +154,33 @@ describe('share worker', () => {
     const one = await (await call(`/api/films/${ID}/views`, { headers: auth })).json()
     expect(one.sessions).toHaveLength(1)
     expect(JSON.stringify(one)).not.toContain('198.51.100.7')
+  })
+
+  it('counts presses of the button, and keeps counting views on an older database without them', async () => {
+    const beacon = (body: unknown) =>
+      call(`/f/${ID}/v`, {
+        method: 'POST',
+        headers: { 'user-agent': CHROME, 'cf-connecting-ip': '198.51.100.7' },
+        body: JSON.stringify(body),
+      })
+    const views = async () =>
+      (await (await call('/api/views', { headers: auth })).json()).films[0].views
+    await upload()
+    await beacon({ s: 'sess-cccccccc', e: 'open', t: 0, d: 30 })
+    await beacon({ s: 'sess-cccccccc', e: 'click', t: 0, d: 30 })
+    expect(await views()).toMatchObject({ opens: 1, plays: 0, clicks: 1 })
+
+    // a views database set up before clicks were counted
+    const old = readFileSync(join(import.meta.dirname, '../../share/schema.sql'), 'utf8').replace(
+      /\n\s*-- pressed the button[^\n]*\n\s*clicked[^\n]*/,
+      '',
+    )
+    expect(old).not.toContain('clicked')
+    env = { ...env, VIEWS: sqliteD1(old) }
+    await upload()
+    expect((await beacon({ s: 'sess-dddddddd', e: 'play', t: 5, d: 30 })).status).toBe(204)
+    await beacon({ s: 'sess-dddddddd', e: 'click', t: 5, d: 30 })
+    expect(await views()).toMatchObject({ opens: 1, plays: 1, clicks: 0 })
   })
 
   it('reports views for just the films asked about, and can expire uploads', async () => {

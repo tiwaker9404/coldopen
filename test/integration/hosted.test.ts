@@ -19,6 +19,8 @@ beforeAll(async () => {
       SESSION_SECRET: 'x'.repeat(40),
       GITHUB_CLIENT_ID: 'gh-client',
       GITHUB_CLIENT_SECRET: 'gh-secret',
+      GOOGLE_CLIENT_ID: 'go-client',
+      GOOGLE_CLIENT_SECRET: 'go-secret',
       PUBLIC_URL: 'https://coldopen.example',
       FILMS_DIR: tmp('hosted-films-'),
       ANON_DAILY_FILMS: '1',
@@ -180,6 +182,83 @@ describe('signing in with GitHub', () => {
       { n: number }[]
     >`select count(*)::int as n from runs where owner like ${'u:gh:4242'}`
     expect(left!.n).toBe(0)
+  })
+})
+
+describe('signing in with Google', () => {
+  it("offers Google first, and keeps a visitor's films, job search and keys", async () => {
+    const sam = browser()
+    expect((await sam.req('GET', '/v1/me')).json().providers).toEqual(['google', 'github'])
+    await saveProfile(sam)
+    const film = (await sam.req('POST', '/v1/films', { url: 'globex.com', profileId: 'me' })).json()
+    await sam.req('PUT', '/v1/jobs/search', { roles: ['Solutions Engineer'] })
+
+    const start = await sam.req('GET', '/auth/google')
+    expect(start.statusCode).toBe(302)
+    const to = new URL(start.headers.location as string)
+    expect(to.origin).toBe('https://accounts.google.com')
+    expect(to.searchParams.get('scope')).toBe('openid email profile')
+    expect(to.searchParams.get('redirect_uri')).toBe(
+      'https://coldopen.example/auth/google/callback',
+    )
+    const state = to.searchParams.get('state')!
+
+    const seen: { url: string; body: string }[] = []
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      seen.push({ url: String(url), body: String(init?.body ?? '') })
+      return Response.json(
+        String(url).includes('oauth2.googleapis.com/token')
+          ? { access_token: 'ya29.test', id_token: 'x' }
+          : {
+              sub: '1087',
+              email: 'Sam@Example.com',
+              email_verified: true,
+              name: 'Sam Lee',
+              picture: 'https://lh3.example/s',
+            },
+      )
+    })
+    // pressing Cancel on Google's page just comes back
+    expect(
+      (await sam.req('GET', '/auth/google/callback?error=access_denied')).headers.location,
+    ).toBe('/')
+    const forged = await sam.req('GET', '/auth/google/callback?code=c&state=wrong')
+    expect(forged.headers.location).toMatch(/signin=/)
+    const done = await sam.req('GET', `/auth/google/callback?code=c&state=${state}`)
+    expect(done.headers.location).toBe('/')
+    expect(seen[0]!.body).toContain('grant_type=authorization_code')
+    expect(seen[0]!.body).toContain('client_secret=go-secret')
+
+    const me = (await sam.req('GET', '/v1/me')).json()
+    expect(me.user).toEqual({
+      login: 'sam@example.com',
+      name: 'Sam Lee',
+      avatar: 'https://lh3.example/s',
+    })
+    expect(me.keepsDays).toBe(30)
+    expect(
+      (await sam.req('GET', '/v1/films')).json().data.map((f: { id: string }) => f.id),
+    ).toEqual([film.id])
+    expect((await sam.req('GET', '/v1/jobs/search')).json().roles).toEqual(['Solutions Engineer'])
+    const [row] = await sql<{ id: string }[]>`select id from users where login = 'sam@example.com'`
+    expect(row!.id).toBe('go:1087')
+  })
+
+  it('refuses an unverified Google email', async () => {
+    const kim = browser()
+    const state = new URL(
+      (await kim.req('GET', '/auth/google')).headers.location as string,
+    ).searchParams.get('state')!
+    vi.stubGlobal('fetch', async (url: string) =>
+      Response.json(
+        String(url).includes('/token')
+          ? { access_token: 't' }
+          : { sub: '9', email: 'kim@example.com', email_verified: false },
+      ),
+    )
+    const r = await kim.req('GET', `/auth/google/callback?code=c&state=${state}`)
+    expect(r.headers.location).toMatch(/signin=/)
+    expect((await kim.req('GET', '/v1/me')).json().user).toBeNull()
   })
 })
 

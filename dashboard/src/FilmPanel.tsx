@@ -457,7 +457,7 @@ function WhoToSend({ film }: { film: FilmDetail }) {
       </ul>
       {p.connections === 0 && (
         <p className="small muted">
-          Upload your LinkedIn connections under Connect tools to see who you already know here.
+          Upload your LinkedIn connections on your Profile page to see who you already know here.
         </p>
       )}
       <Recipient film={film} />
@@ -567,7 +567,7 @@ function Recipient({ film }: { film: FilmDetail }) {
           <p className="small muted">
             {r.found ? 'Or one of the usual patterns at ' : 'Likely addresses at '}
             {r.domain}
-            {r.hunter ? ':' : ' (guesses; add a Hunter key under Connect tools to look it up):'}
+            {r.hunter ? ':' : ' (guesses; add a Hunter key on your Profile page to look it up):'}
           </p>
           <div className="chips">
             {r.guesses.map((g) => (

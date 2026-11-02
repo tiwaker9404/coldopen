@@ -269,63 +269,92 @@ export function d1ViewStore(db: D1): ViewStore {
       return r ? fromD1(r) : undefined
     },
     async put(v) {
-      await db
-        .prepare(
-          `insert into film_views
-             (film_id, session, viewer, first_seen, last_seen, played, seconds, finished, clicked, device, referrer, country)
-           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-           on conflict (film_id, session) do update set
-             last_seen = max(last_seen, excluded.last_seen),
-             played = max(played, excluded.played),
-             seconds = max(seconds, excluded.seconds),
-             finished = max(finished, excluded.finished),
-             clicked = max(clicked, excluded.clicked)`,
-        )
-        .bind(
-          v.filmId,
-          v.session,
-          v.viewer,
-          v.firstSeen,
-          v.lastSeen,
-          v.played ? 1 : 0,
-          v.seconds,
-          v.finished ? 1 : 0,
-          v.clicked ? 1 : 0,
-          v.device,
-          v.referrer,
-          v.country,
-        )
-        .run()
+      const row = [
+        v.filmId,
+        v.session,
+        v.viewer,
+        v.firstSeen,
+        v.lastSeen,
+        v.played ? 1 : 0,
+        v.seconds,
+        v.finished ? 1 : 0,
+      ]
+      const tail = [v.device, v.referrer, v.country]
+      try {
+        await db
+          .prepare(
+            `insert into film_views
+               (film_id, session, viewer, first_seen, last_seen, played, seconds, finished, clicked, device, referrer, country)
+             values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             on conflict (film_id, session) do update set
+               last_seen = max(last_seen, excluded.last_seen),
+               played = max(played, excluded.played),
+               seconds = max(seconds, excluded.seconds),
+               finished = max(finished, excluded.finished),
+               clicked = max(clicked, excluded.clicked)`,
+          )
+          .bind(...row, v.clicked ? 1 : 0, ...tail)
+          .run()
+      } catch (err) {
+        if (!noClickedColumn(err)) throw err
+        // a views database from before clicks were counted: keep counting everything else
+        await db
+          .prepare(
+            `insert into film_views
+               (film_id, session, viewer, first_seen, last_seen, played, seconds, finished, device, referrer, country)
+             values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             on conflict (film_id, session) do update set
+               last_seen = max(last_seen, excluded.last_seen),
+               played = max(played, excluded.played),
+               seconds = max(seconds, excluded.seconds),
+               finished = max(finished, excluded.finished)`,
+          )
+          .bind(...row, ...tail)
+          .run()
+      }
     },
   }
 }
 
+/** the views database predates the clicked column (share:deploy adds it) */
+const noClickedColumn = (err: unknown) =>
+  /no such column: clicked|has no column named clicked/i.test(String(err))
+
 async function summaries(db: D1, filter?: string | string[]): Promise<Map<string, ViewSummary>> {
   const ids = filter === undefined ? null : Array.isArray(filter) ? filter : [filter]
   if (ids && ids.length === 0) return new Map()
-  const stmt = db.prepare(
-    `select film_id,
+  const query = (CLICKS: string) =>
+    db.prepare(
+      `select film_id,
        count(*) as opens,
        count(distinct viewer) as viewers,
        sum(played) as plays,
        sum(finished) as finishes,
-       sum(clicked) as clicks,
+       ${CLICKS} as clicks,
        max(seconds) as best_seconds,
        min(case when played = 1 then first_seen end) as first_play_at,
        max(last_seen) as last_seen
      from film_views ${ids ? `where film_id in (${ids.map(() => '?').join(',')})` : ''} group by film_id`,
-  )
-  const { results } = await (ids ? stmt.bind(...ids) : stmt).all<{
-    film_id: string
-    opens: number
-    viewers: number
-    plays: number
-    finishes: number
-    clicks: number | null
-    best_seconds: number
-    first_play_at: string | null
-    last_seen: string | null
-  }>()
+    )
+  const run = (CLICKS: string) => {
+    const stmt = query(CLICKS)
+    return (ids ? stmt.bind(...ids) : stmt).all<{
+      film_id: string
+      opens: number
+      viewers: number
+      plays: number
+      finishes: number
+      clicks: number | null
+      best_seconds: number
+      first_play_at: string | null
+      last_seen: string | null
+    }>()
+  }
+  // a views database from before clicks were counted: count them as none
+  const { results } = await run('sum(clicked)').catch((err: unknown) => {
+    if (noClickedColumn(err)) return run('0')
+    throw err
+  })
   return new Map(
     results.map((r) => [
       r.film_id,

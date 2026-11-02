@@ -226,6 +226,10 @@ export interface Me {
   keepsDays: number | null
   /** the owner: can see the app-wide funnel */
   stats?: boolean
+  /** where feedback goes */
+  contact?: string
+  /** ways to sign in, the most common first */
+  providers?: ('google' | 'github')[]
 }
 
 export class ApiError extends Error {

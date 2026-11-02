@@ -43,6 +43,13 @@ const col = spawnSync(
 )
 if (col.status === 0) console.log('Views now count clicks on the button under each film')
 else if (!/duplicate column/i.test(`${col.stdout}${col.stderr}`))
-  console.warn('Could not add the clicked column to the views database:', col.stderr.trim())
+  console.warn(
+    [
+      "Couldn't add the clicked column to the views database. Views still count; clicks on the",
+      'button under each film will count once you run this from the share folder:',
+      '  npx wrangler d1 execute coldopen-views --remote --command "alter table film_views add column clicked integer not null default 0"',
+      'If it says "not authorized", run `npx wrangler login` first.',
+    ].join('\n'),
+  )
 const r = spawnSync('npx', ['--yes', 'wrangler@4.149.0', 'deploy'], { cwd: dir, stdio: 'inherit' })
 process.exit(r.status ?? 1)

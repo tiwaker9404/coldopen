@@ -66,7 +66,7 @@ export function FilmRow({
   )
 }
 
-function progressLabel(film: Film): string {
+export function progressLabel(film: Film): string {
   if (film.status === 'queued') return 'Waiting for a renderer'
   const s = film.progress?.stage
   if (s === 'render') return `Rendering, ${film.progress?.percent ?? 0}%`
@@ -81,7 +81,7 @@ function progressLabel(film: Film): string {
 }
 
 /** has anyone watched it yet? */
-function watched(film: Film): string {
+export function watched(film: Film): string {
   const v = film.views
   // sent, no answer after 4 days: time for the one follow-up
   if (film.outreach?.status === 'sent') {
@@ -128,4 +128,4 @@ export function Outreach({ film }: { film: Film }) {
   )
 }
 
-const due = (f: Film) => !!f.outreach?.next?.due
+export const due = (f: Film) => !!f.outreach?.next?.due
