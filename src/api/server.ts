@@ -27,6 +27,15 @@ import {
   parseConnections,
   peopleSearches,
 } from '../outreach/people.ts'
+import { BoardSchema, type FetchFn, parseBoardLink } from '../jobs/boards.ts'
+import { SearchSchema } from '../jobs/rank.ts'
+import {
+  getSearch,
+  hideJob,
+  MAX_OWN_BOARDS,
+  saveSearch,
+  suggestions,
+} from '../jobs/service.ts'
 import { draftProfile } from '../profile/draft.ts'
 import { parseResume } from '../profile/parse.ts'
 import { resumeText } from '../profile/read.ts'
@@ -139,9 +148,11 @@ export interface ApiDeps {
   slack: SlackClient | null
   /** writes résumé-based profile drafts; null uses the deterministic drafter */
   llm?: LlmProvider | null
+  /** for tests: how job boards are fetched (default: the real public APIs) */
+  jobsFetch?: FetchFn
 }
 
-export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
+export async function buildApi({ sql, cfg, log, slack, llm = null, jobsFetch }: ApiDeps) {
   const filmsDir = resolve(cfg.FILMS_DIR)
   const publicUrl = cfg.PUBLIC_URL
   const share =
@@ -485,6 +496,7 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       await sql`delete from runs where owner = ${req.owner}`
       await sql`delete from profiles where owner = ${req.owner}`
       await sql`delete from connections where owner = ${req.owner}`
+      await sql`delete from job_searches where owner = ${req.owner}`
       if (req.owner.startsWith('u:')) await sql`delete from users where id = ${req.owner.slice(2)}`
       signOut(cfg, reply)
       return { deleted: { films: films.length } }
@@ -606,6 +618,111 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
 
   const normalizeUrl = (u: string) =>
     /^https?:\/\//i.test(u.trim()) ? u.trim() : `https://${u.trim()}`
+
+  /* --------------------------------------------------------- suggested jobs */
+  /** the role on their newest profile, the starting point for a job search */
+  const profileRole = async (owner: Owner) => {
+    const [p] = await sql<{ data: { sender?: { role?: string } } }[]>`
+      select data from profiles where owner = ${owner} order by updated_at desc limit 1`
+    return p?.data?.sender?.role
+  }
+  const boardDto = (b: z.infer<typeof BoardSchema>) => ({
+    ats: b.ats,
+    token: b.token,
+    name: b.name,
+  })
+
+  app.get(
+    '/v1/jobs/search',
+    { schema: { tags: ['jobs'], summary: 'What you are looking for, and the boards you added' } },
+    async (req) => {
+      const s = await getSearch(sql, req.owner, await profileRole(req.owner))
+      return { ...s.search, boards: s.boards.map(boardDto), suggested: s.suggested }
+    },
+  )
+
+  app.put(
+    '/v1/jobs/search',
+    {
+      schema: {
+        tags: ['jobs'],
+        summary: 'Set the roles and places to suggest jobs for',
+        description:
+          'Boards are links to any Greenhouse, Lever or Ashby careers board (or one of its jobs), searched alongside the built-in companies.',
+        body: SearchSchema.extend({
+          boards: z.array(z.string().max(300)).max(MAX_OWN_BOARDS).default([]),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const { boards: links, ...search } = req.body
+      const boards: z.infer<typeof BoardSchema>[] = []
+      for (const link of links) {
+        const b = parseBoardLink(link)
+        if (!b)
+          return reply.status(422).send({
+            error: {
+              code: 'bad_board',
+              message: `"${link.slice(0, 80)}" isn't a Greenhouse, Lever or Ashby careers link`,
+            },
+          })
+        if (!boards.some((x) => x.ats === b.ats && x.token.toLowerCase() === b.token.toLowerCase()))
+          boards.push(b)
+      }
+      // keep the names they had for boards they already added
+      const before = await getSearch(sql, req.owner, undefined)
+      const named = boards.map(
+        (b) =>
+          before.boards.find(
+            (o) => o.ats === b.ats && o.token.toLowerCase() === b.token.toLowerCase(),
+          ) ?? b,
+      )
+      const s = SearchSchema.parse(search)
+      await saveSearch(sql, req.owner, s, named)
+      return { ...s, boards: named.map(boardDto), suggested: false }
+    },
+  )
+
+  app.get(
+    '/v1/jobs/suggested',
+    {
+      schema: {
+        tags: ['jobs'],
+        summary: 'Open roles that fit your search, best first',
+        description:
+          'Reads the public job boards of the built-in companies and any you added (cached for a few hours), and ranks their open roles against your roles and places. Each comes with the reasons it was picked, and the film you already made for it, if any.',
+        querystring: z.object({ limit: z.coerce.number().int().min(1).max(60).default(24) }),
+      },
+    },
+    async (req) => {
+      const r = await suggestions(sql, req.owner, await profileRole(req.owner), {
+        limit: req.query.limit,
+        ...(jobsFetch ? { fetch: jobsFetch } : {}),
+      })
+      return {
+        data: r.data.map(({ score: _s, board: _b, ...j }) => j),
+        companies: r.companies,
+        failed: r.failed,
+        updatedAt: r.updatedAt,
+        search: { ...r.search.search, boards: r.search.boards.map(boardDto), suggested: r.search.suggested },
+      }
+    },
+  )
+
+  app.post(
+    '/v1/jobs/:id/hide',
+    {
+      schema: {
+        tags: ['jobs'],
+        summary: 'Stop suggesting this job',
+        params: z.object({ id: z.string().min(3).max(200) }),
+      },
+    },
+    async (req) => {
+      await hideJob(sql, req.owner, req.params.id)
+      return { hidden: true }
+    },
+  )
 
   /* ----------------------------------------------------------------- films */
   const FilmBody = z.object({
