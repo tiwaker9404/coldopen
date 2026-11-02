@@ -21,42 +21,26 @@ Huntr and others).
 
 ## Next, in order
 
-### Before launch (Tue 3 Nov; launch Wed 4 Nov, 9am Pacific)
+### Week of 4 Nov (after the launch on 4 Nov, 9am Pacific)
 
-1. Merge the YC batch and test it live.
-2. Keep the app awake during launch hours: a free uptime ping every 10 minutes.
-3. Load check: 470 boards on Render's 512 MB, and 50 films at once.
-4. Model quota guard: per-visitor caps so launch traffic can't use up the day's free limits, with
-   a friendly "busy, try again in 10 minutes".
-5. Error alerts (Sentry's free plan).
-6. If done by 3pm: **people you know** on each job row ("2 connections at Sierra") and a
-   **posted within** filter (this week, this month). Otherwise they wait for after launch.
-
-### Week of 4 Nov: sharper finding
-
-7. **Sponsors visas:** a badge and filter from the Labor Department's free H-1B (LCA) data.
-8. **Raised recently:** a badge and filter from SEC Form D filings.
-9. **YC Work at a Startup links,** so YC companies without a public board still appear.
-10. **Filters:** exclude companies, posted within (if it didn't make launch), pay range (from Ashby's salaries), team.
-11. **People you know** on each job row, if it didn't make launch.
-12. **Fit gaps:** the requirements your profile keeps missing, one click to add.
+1. Fix what launch breaks; talk to the first users.
+2. **Raised recently:** a badge and filter from SEC Form D filings.
+3. **YC Work at a Startup links,** so YC companies without a public board still appear.
+4. **Newer visa data:** USCIS's downloadable data stops at fiscal year 2023; add the Labor
+   Department's H-1B filings for 2025.
 
 ### 11 to 24 Nov: closing the loop
 
-13. **Alerts:** new roles at companies you filmed and new matches, on Today and in a weekly email.
-14. **Follow-ups that use views:** "watched to the end 2 days ago, no reply" brings the
-    follow-up forward.
-15. **They replied → interview brief:** the film's research as a one-page company brief and
-    three questions to ask.
-16. **Chrome extension:** a Make film button on any job post you're viewing.
-17. The last follow-up can switch to LinkedIn; the dashboard's files served from Cloudflare.
+5. **Alerts:** new roles at companies you filmed and new matches, on Today and in a weekly email.
+6. **Chrome extension:** a Make film button on any job post you're viewing.
+7. The last follow-up can switch to LinkedIn; the dashboard's files served from Cloudflare.
 
 ### December onward
 
-18. **Better films:** an optional clip of you, recorded once; voiceover; recent company news; two
-    hooks per film to learn which wins.
-19. A Pro plan (Stripe, test mode first), a career center pilot (Duke first), then the recruiting
-    agency direction and the YC application.
+8. **Better films:** an optional clip of you, recorded once; voiceover; recent company news; two
+   hooks per film to learn which wins.
+9. A Pro plan (Stripe, test mode first), a career center pilot (Duke first), then the recruiting
+   agency direction and the YC application.
 
 ## Keeping as is
 
