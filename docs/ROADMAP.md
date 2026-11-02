@@ -1,6 +1,6 @@
 # Roadmap
 
-What's shipped, what's next, and why. Updated 2 November 2026. The reasoning behind each move is in
+What's shipped, what's next, and why. Updated 2 November 2026 (evening). The reasoning behind each move is in
 the unit-by-unit review against the leaders in each category (Jobright, Teal, Sendspark, Apollo,
 Huntr and others).
 
@@ -15,21 +15,46 @@ Huntr and others).
 | 2 Nov    | **Follow up today:** a nudge at day 4, a last note at day 11, then mark no reply                                                                                                        |
 | 2 Nov    | **Gemini as a third model**, after both Groq models                                                                                                                                     |
 | 2 Nov    | **Send:** who each film is for (drafts greet them, follow-ups open addressed); find their email with your own Hunter key or the usual patterns; intro requests to people you know there |
+| 2 Nov    | **Public beta:** a clearer app (Today, Jobs, Films, Profile), a films board by stage, Sign in with Google                                                                               |
+| 3 Nov    | **YC jobs (merging Tue):** 398 hiring YC startups in Jobs for you, a YC companies only filter, Sort by Hiring fastest, founder links for YC companies                                   |
 | 2 Nov    | **Share page button:** Book 15 minutes (your booking link) or Reply, with presses counted next to plays                                                                                 |
 
 ## Next, in order
 
-1. **Fit: close the gaps.** The requirement words your profile keeps missing across suggestions,
-   one click to add; ignore a requirement that doesn't apply.
-2. **Find: filters and people you know.** Posted within, team, exclude companies, sponsorship;
-   "2 connections at Sierra" on the row; alerts for new matching roles.
-3. **Follow up:** the last note can switch to LinkedIn; reply rate with and without follow-ups.
-4. **UI/UX redesign,** after studying best-in-class products: clearer profiles and search
-   options, stronger contrast, a board of films by stage.
-5. **Platform:** Sign in with Google; serve the dashboard's files from Cloudflare (Render's free
-   plan includes 5 GB of bandwidth a month).
-6. **Later:** an optional clip of you, recorded once, as the film's opener or closer; a Pro plan;
-   a career center pilot.
+### Before launch (Tue 3 Nov; launch Wed 4 Nov, 9am Pacific)
+
+1. Merge the YC batch and test it live.
+2. Keep the app awake during launch hours: a free uptime ping every 10 minutes.
+3. Load check: 470 boards on Render's 512 MB, and 50 films at once.
+4. Model quota guard: per-visitor caps so launch traffic can't use up the day's free limits, with
+   a friendly "busy, try again in 10 minutes".
+5. Error alerts (Sentry's free plan).
+
+### Week of 4 Nov: sharper finding
+
+6. **Sponsors visas:** a badge and filter from the Labor Department's free H-1B (LCA) data.
+7. **Raised recently:** a badge and filter from SEC Form D filings.
+8. **YC Work at a Startup links,** so YC companies without a public board still appear.
+9. **Filters:** posted within, exclude companies, pay range (from Ashby's salaries), team.
+10. **People you know** on each job row ("2 connections at Sierra").
+11. **Fit gaps:** the requirements your profile keeps missing, one click to add.
+
+### 11 to 24 Nov: closing the loop
+
+12. **Alerts:** new roles at companies you filmed and new matches, on Today and in a weekly email.
+13. **Follow-ups that use views:** "watched to the end 2 days ago, no reply" brings the
+    follow-up forward.
+14. **They replied → interview brief:** the film's research as a one-page company brief and
+    three questions to ask.
+15. **Chrome extension:** a Make film button on any job post you're viewing.
+16. The last follow-up can switch to LinkedIn; the dashboard's files served from Cloudflare.
+
+### December onward
+
+17. **Better films:** an optional clip of you, recorded once; voiceover; recent company news; two
+    hooks per film to learn which wins.
+18. A Pro plan (Stripe, test mode first), a career center pilot (Duke first), then the recruiting
+    agency direction and the YC application.
 
 ## Keeping as is
 
@@ -38,5 +63,4 @@ API and the front-end stack: each is current, free, and works.
 
 ## Not doing
 
-Auto-apply, résumé rewriting and sending email from coldopen. They're crowded, paid everywhere,
-and work against quality over volume.
+Auto-apply, résumé rewriting, sending email from coldopen, and reading people's Gmail for replies (Google's restricted-scope review costs money and weeks). The first three are crowded, paid everywhere, and work against quality over volume.
