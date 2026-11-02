@@ -86,4 +86,30 @@ describe('film pipeline (no database)', () => {
       }),
     ).rejects.toThrow(/could not read .* HTTP 404/)
   })
+
+  it('renders a script the person edited, but not one with a number nobody gave it', async () => {
+    const { url } = await fixtureServer()
+    const filmsDir = tmp('films-')
+    const agent = createFilmAgent({ filmsDir, llmModel: null, allowPrivateNetworks: true })
+    const base = { url: `${url}/lumen/`, profile: profile('candidate'), format: 'square' as const }
+    const first = await agent.run(new LocalContext({ runId: 'run_first' }), base)
+
+    const edited = {
+      ...first.script,
+      hook: 'Hello Lumen Health team',
+      insight: { ...first.script.insight, factId: 'gone' },
+    }
+    const r = await agent.run(new LocalContext({ runId: 'run_edit' }), { ...base, script: edited })
+    expect(r.script.hook).toBe('Hello Lumen Health team')
+    expect(r.scriptMeta.model).toBe('edited')
+    // the featured fact disappeared from the site: the built-in writer's pick stands in
+    expect(r.script.insight.factId).toBe(first.script.insight.factId)
+
+    await expect(
+      agent.run(new LocalContext({ runId: 'run_bad' }), {
+        ...base,
+        script: { ...first.script, hook: 'Lumen grew 97% with me' },
+      }),
+    ).rejects.toThrow(/edited script can't be used: hook mentions "97%"/)
+  }, 360_000)
 })

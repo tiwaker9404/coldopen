@@ -1,43 +1,8 @@
 import { useMutation } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
-import { draftFromResume, type Profile, type ProfileData, send } from './api.ts'
-
-const BLANK: ProfileData = {
-  preset: 'sales',
-  sender: { name: '', company: '', role: '' },
-  offer: '',
-  points: ['', '', ''],
-  proof: [
-    { value: '', label: '', where: '' },
-    { value: '', label: '', where: '' },
-  ],
-  cta: { line: 'Worth a 15-minute look?', contact: '' },
-}
-
-/** Starter profiles for different roles, bundled from profiles/ at build time. */
-const EXAMPLES = Object.entries(
-  import.meta.glob<{ default: ProfileData }>(
-    ['../../profiles/examples/*.json', '../../profiles/*.example.json'],
-    { eager: true },
-  ),
-)
-  .map(([path, mod]) => ({
-    id: path
-      .split('/')
-      .pop()!
-      .replace(/(\.example)?\.json$/, ''),
-    data: mod.default,
-  }))
-  .map((e) => ({
-    ...e,
-    label:
-      e.id === 'sales'
-        ? 'Selling a product (founder or SDR)'
-        : e.id === 'candidate'
-          ? 'Software engineer'
-          : (e.data.sender.role ?? e.id),
-  }))
-  .sort((a, b) => (a.id === 'sales' ? -1 : b.id === 'sales' ? 1 : a.label.localeCompare(b.label)))
+import { useEffect, useState } from 'react'
+import { type Profile, type ProfileData, send } from './api.ts'
+import { BLANK } from './examples.ts'
+import { ResumeDraft } from './Onboarding.tsx'
 
 const slug = (s: string) =>
   s
@@ -50,55 +15,29 @@ const MAX_PROOF = 8
 
 export function ProfileEditor({
   profile,
+  draft,
+  notice,
   onClose,
   onSaved,
 }: {
   profile: Profile | null
+  /** a résumé draft or an example to start from */
+  draft?: ProfileData
+  notice?: string
   onClose: () => void
   onSaved: (id: string) => void
 }) {
-  const [d, setD] = useState<ProfileData>(profile?.data ?? BLANK)
+  const [d, setD] = useState<ProfileData>(profile?.data ?? draft ?? BLANK)
+  const [note, setNote] = useState(notice)
   const [name, setName] = useState(profile?.name ?? '')
-  const [notice, setNotice] = useState<string | null>(null)
   const set = (patch: Partial<ProfileData>) => setD({ ...d, ...patch })
+  const job = d.preset === 'candidate'
 
-  // starting points: a résumé, or an example for your kind of role
-  const file = useRef<HTMLInputElement>(null)
-  const [role, setRole] = useState('')
-  const [exclude, setExclude] = useState('')
-  const draft = useMutation({
-    mutationFn: () => {
-      const f = file.current?.files?.[0]
-      if (!f) throw new Error('Choose your résumé first (PDF, Word, Markdown or text)')
-      if (!role.trim())
-        throw new Error('Say which role you’re applying for, so the right points are picked')
-      return draftFromResume(
-        f,
-        role.trim(),
-        exclude
-          .split(',')
-          .map((x) => x.trim())
-          .filter(Boolean),
-      )
-    },
-    onSuccess: ({ profile: p, meta }) => {
-      setD({
-        ...p,
-        proof: p.proof.map((x) => ({ ...x, where: x.where ?? '' })),
-        // keep what the person already typed
-        sender: { ...p.sender, name: d.sender.name.trim() || p.sender.name },
-        cta: { ...p.cta, contact: d.cta.contact.trim() || p.cta.contact },
-      })
-      if (!name) setName(`${p.sender.name}, ${p.sender.role ?? role}`)
-      setNotice(
-        `Drafted from your résumé${meta.model === 'deterministic' ? '' : ` by ${meta.model.replace(/^openai-compatible:/, '')}`}. ` +
-          'Every number is copied from it word for word. Read each line before saving.' +
-          (meta.dropped.length
-            ? ` Left out ${meta.dropped.length} item(s) it couldn’t match to your résumé.`
-            : ''),
-      )
-    },
-  })
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   const save = useMutation({
     mutationFn: () => {
@@ -118,8 +57,12 @@ export function ProfileEditor({
             ...(p.where?.trim() ? { where: p.where.trim() } : {}),
           })),
       }
+      if (data.points.length < 2)
+        throw new Error('Add at least 2 things the film can say about you')
+      if (data.proof.length < 1) throw new Error('Add at least one result with a number')
       const label =
-        name.trim() || `${data.sender.name}${data.sender.company ? `, ${data.sender.company}` : ''}`
+        name.trim() ||
+        [data.sender.name, job ? data.sender.role : data.sender.company].filter(Boolean).join(', ')
       const id = profile?.id ?? slug(label)
       return send<Profile>('PUT', `/v1/profiles/${id}`, { name: label, data }).then(() => id)
     },
@@ -134,212 +77,172 @@ export function ProfileEditor({
     // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users close with Escape or the Close button
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <form
-        className="panel editor"
+        className="drawer editor"
         role="dialog"
         aria-modal="true"
-        aria-label="Profile"
+        aria-label="Your profile"
         onSubmit={(e) => {
           e.preventDefault()
           save.mutate()
         }}
       >
-        <div className="panel-head">
-          <h2>{profile ? 'Edit profile' : 'Who are the films from?'}</h2>
-          <button type="button" className="close" onClick={onClose}>
-            Close
+        <header className="drawer-head">
+          <div>
+            <h2>{profile ? 'Your profile' : draft ? 'Check your profile' : 'Your profile'}</h2>
+            <p>What every film says about you. Nothing here is invented for you.</p>
+          </div>
+          <button type="button" className="x" onClick={onClose} aria-label="Close">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+              <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.6" />
+            </svg>
           </button>
+        </header>
+
+        {!profile && !draft && (
+          <details className="redraft">
+            <summary>Start from a résumé instead</summary>
+            <ResumeDraft
+              hosted={false}
+              onDraft={(p, n) => {
+                setD(p)
+                setNote(n)
+              }}
+            />
+          </details>
+        )}
+        {note && <p className="note">{note}</p>}
+
+        <div className="switch" role="radiogroup" aria-label="What the films are for">
+          {(
+            [
+              ['candidate', 'Applying for jobs'],
+              ['sales', 'Selling a product'],
+            ] as const
+          ).map(([k, label]) => (
+            // biome-ignore lint/a11y/useSemanticElements: radio-styled buttons are the WAI-ARIA pattern for this control
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={d.preset === k}
+              onClick={() => set({ preset: k })}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        {!profile && (
-          <section className="start" aria-label="Start from">
-            <div className="start-card">
-              <h3>Start from your résumé</h3>
-              <p>
-                For job seekers in any role. Your proof points are pulled from it, numbers word for
-                word.
-              </p>
+        <fieldset>
+          <legend>You</legend>
+          <div className="pair">
+            <label>
+              Name
               <input
-                ref={file}
-                type="file"
-                aria-label="Résumé file"
-                accept=".pdf,.docx,.md,.txt,application/pdf"
+                required
+                value={d.sender.name}
+                onChange={(e) => set({ sender: { ...d.sender, name: e.target.value } })}
               />
-              <div className="two">
-                <label>
-                  Role you’re applying for
-                  <input
-                    value={role}
-                    placeholder="Data analyst"
-                    onChange={(e) => setRole(e.target.value)}
-                  />
-                </label>
-                <label>
-                  Leave out (optional)
-                  <input
-                    value={exclude}
-                    placeholder="Current employer, comma-separated"
-                    onChange={(e) => setExclude(e.target.value)}
-                  />
-                </label>
-              </div>
-              <button
-                type="button"
-                className="primary"
-                disabled={draft.isPending}
-                onClick={() => draft.mutate()}
-              >
-                {draft.isPending ? 'Reading your résumé…' : 'Draft my profile'}
-              </button>
-              {draft.error && <p className="error">{draft.error.message}</p>}
-            </div>
-            <label className="start-example">
-              Or start from an example
-              <select
-                defaultValue=""
-                onChange={(e) => {
-                  const ex = EXAMPLES.find((x) => x.id === e.target.value)
-                  if (!ex) return
-                  setD({
-                    ...ex.data,
-                    proof: ex.data.proof.map((x) => ({ ...x, where: x.where ?? '' })),
-                  })
-                  setNotice(
-                    `Loaded the ${ex.label.toLowerCase()} example. Replace every line with your own.`,
-                  )
-                }}
-              >
-                <option value="" disabled>
-                  Choose a role
-                </option>
-                {EXAMPLES.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.label}
-                  </option>
-                ))}
-              </select>
             </label>
-          </section>
-        )}
-
-        {notice && <p className="notice">{notice}</p>}
-
-        <fieldset className="preset">
-          <legend>Use it for</legend>
+            <label>
+              {job ? 'Role you want' : 'Company'}
+              <input
+                value={(job ? d.sender.role : d.sender.company) ?? ''}
+                onChange={(e) =>
+                  set({
+                    sender: {
+                      ...d.sender,
+                      ...(job ? { role: e.target.value } : { company: e.target.value }),
+                    },
+                  })
+                }
+              />
+            </label>
+          </div>
           <label>
+            {job ? 'What you bring, in one line' : 'What you offer, in one line'}
             <input
-              type="radio"
-              checked={d.preset === 'sales'}
-              onChange={() => set({ preset: 'sales' })}
-            />{' '}
-            Selling a product
-          </label>
-          <label>
-            <input
-              type="radio"
-              checked={d.preset === 'candidate'}
-              onChange={() => set({ preset: 'candidate' })}
-            />{' '}
-            Applying for a job
+              required
+              minLength={3}
+              maxLength={120}
+              value={d.offer}
+              placeholder={
+                job
+                  ? 'An analyst who turns messy data into dashboards leaders use'
+                  : 'Product analytics that shows which features keep customers'
+              }
+              onChange={(e) => set({ offer: e.target.value })}
+            />
           </label>
         </fieldset>
 
-        <div className="two">
-          <label>
-            Your name
-            <input
-              required
-              value={d.sender.name}
-              onChange={(e) => set({ sender: { ...d.sender, name: e.target.value } })}
-            />
-          </label>
-          <label>
-            {d.preset === 'candidate' ? 'Role you want (optional)' : 'Company'}
-            <input
-              value={(d.preset === 'candidate' ? d.sender.role : d.sender.company) ?? ''}
-              onChange={(e) =>
-                set({
-                  sender: {
-                    ...d.sender,
-                    ...(d.preset === 'candidate'
-                      ? { role: e.target.value }
-                      : { company: e.target.value }),
-                  },
-                })
-              }
-            />
-          </label>
-        </div>
-
-        <label>
-          {d.preset === 'candidate' ? 'What you bring, in one line' : 'What you offer, in one line'}
-          <input
-            required
-            minLength={3}
-            maxLength={120}
-            value={d.offer}
-            placeholder={
-              d.preset === 'candidate'
-                ? 'An analyst who turns messy data into dashboards leaders use'
-                : 'Product analytics that shows which features keep customers'
-            }
-            onChange={(e) => set({ offer: e.target.value })}
-          />
-        </label>
-
         <fieldset>
-          <legend>Points the script can use (2 to 6, each under ten words)</legend>
+          <legend>What the film can say about you</legend>
+          <p className="hint">
+            2 to 6 short lines. The script rewords these for each company and adds nothing new.
+          </p>
           {d.points.map((p, i) => (
-            <input
-              // biome-ignore lint/suspicious/noArrayIndexKey: editable list keyed by position
-              key={i}
-              aria-label={`Point ${i + 1}`}
-              value={p}
-              maxLength={120}
-              onChange={(e) =>
-                set({ points: d.points.map((x, j) => (j === i ? e.target.value : x)) })
-              }
-            />
+            <div className="listrow" key={`p${i.toString()}`}>
+              <input
+                aria-label={`Point ${i + 1}`}
+                value={p}
+                maxLength={120}
+                placeholder={i === 0 ? 'Built dashboards a leadership team used weekly' : ''}
+                onChange={(e) =>
+                  set({ points: d.points.map((x, j) => (j === i ? e.target.value : x)) })
+                }
+              />
+              {d.points.length > 2 && (
+                <button
+                  type="button"
+                  className="link"
+                  aria-label={`Remove point ${i + 1}`}
+                  onClick={() => set({ points: d.points.filter((_, j) => j !== i) })}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           ))}
           {d.points.length < 6 && (
             <button
               type="button"
-              className="text"
+              className="link"
               onClick={() => set({ points: [...d.points, ''] })}
             >
-              Add a point
+              Add a line
             </button>
           )}
         </fieldset>
 
         <fieldset>
-          <legend>
-            Proof, shown word for word (1 to {MAX_PROOF}; each film shows the 3 that fit best)
-          </legend>
-          <div className="proof-head" aria-hidden="true">
+          <legend>Results with numbers</legend>
+          <p className="hint">
+            Shown word for word. Each film shows the 3 that fit the company best.
+          </p>
+          <div className="proof proof-head" aria-hidden="true">
             <span>Number</span>
-            <span>What it counts</span>
+            <span>What it measures</span>
             <span>Where</span>
           </div>
           {d.proof.map((p, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: editable list keyed by position
-            <div className="proof-row" key={i}>
+            <div className="proof" key={`r${i.toString()}`}>
               <input
-                aria-label={`Proof ${i + 1} number`}
+                aria-label={`Result ${i + 1}: number`}
                 placeholder="31%"
                 maxLength={12}
                 value={p.value}
                 onChange={(e) => setProof(i, { value: e.target.value })}
               />
               <input
-                aria-label={`Proof ${i + 1} label`}
-                placeholder="lift in week-4 retention"
+                aria-label={`Result ${i + 1}: what it measures`}
+                placeholder="faster month-end close"
                 maxLength={60}
                 value={p.label}
                 onChange={(e) => setProof(i, { label: e.target.value })}
               />
               <input
-                aria-label={`Proof ${i + 1} where`}
-                placeholder="Brightline"
+                aria-label={`Result ${i + 1}: where`}
+                placeholder="Acme Corp"
                 maxLength={40}
                 value={p.where ?? ''}
                 onChange={(e) => setProof(i, { where: e.target.value })}
@@ -349,48 +252,58 @@ export function ProfileEditor({
           {d.proof.length < MAX_PROOF && (
             <button
               type="button"
-              className="text"
+              className="link"
               onClick={() => set({ proof: [...d.proof, { value: '', label: '', where: '' }] })}
             >
-              Add proof
+              Add a result
             </button>
           )}
         </fieldset>
 
-        <div className="two">
+        <fieldset>
+          <legend>How the film ends</legend>
+          <div className="pair">
+            <label>
+              The ask
+              <input
+                required
+                maxLength={60}
+                value={d.cta.line}
+                onChange={(e) => set({ cta: { ...d.cta, line: e.target.value } })}
+              />
+            </label>
+            <label>
+              Email or link
+              <input
+                required
+                maxLength={80}
+                value={d.cta.contact}
+                placeholder="you@example.com"
+                onChange={(e) => set({ cta: { ...d.cta, contact: e.target.value } })}
+              />
+            </label>
+          </div>
           <label>
-            Closing ask
+            <span>
+              Profile name <small>shown when you have more than one</small>
+            </span>
             <input
-              required
-              maxLength={60}
-              value={d.cta.line}
-              onChange={(e) => set({ cta: { ...d.cta, line: e.target.value } })}
+              value={name}
+              placeholder={[d.sender.name, job ? d.sender.role : d.sender.company]
+                .filter(Boolean)
+                .join(', ')}
+              onChange={(e) => setName(e.target.value)}
             />
           </label>
-          <label>
-            Email or link
-            <input
-              required
-              maxLength={80}
-              value={d.cta.contact}
-              onChange={(e) => set({ cta: { ...d.cta, contact: e.target.value } })}
-            />
-          </label>
-        </div>
-
-        <label>
-          Profile name
-          <input
-            value={name}
-            placeholder="Shown in the From menu, e.g. Priya, data analyst"
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
+        </fieldset>
 
         {save.error && <p className="error">{save.error.message}</p>}
-        <div className="editor-actions">
+        <div className="drawer-foot">
           <button type="submit" className="primary" disabled={save.isPending}>
             {save.isPending ? 'Saving…' : 'Save profile'}
+          </button>
+          <button type="button" className="link" onClick={onClose}>
+            Cancel
           </button>
         </div>
       </form>

@@ -3,50 +3,87 @@ import { useEffect, useRef, useState } from 'react'
 import {
   ago,
   api,
+  downloadUrl,
+  type Film,
   type FilmDetail,
+  fileName,
+  LIMITS,
   type Messages,
   media,
   OUTREACH_LABEL,
-  type OutreachStatus,
   type People,
+  type ScriptEdit,
   send,
   type ViewSession,
   type ViewSummary,
 } from './api.ts'
+import { host, Outreach } from './FilmRow.tsx'
+import { canNotify, Out, useToast } from './ui.tsx'
 
 const STEP_LABEL: Record<string, string> = {
-  research: 'Read the homepage',
+  job: 'Read the job post',
+  research: 'Read their site',
   script: 'Wrote the script',
-  compose: 'Matched the brand',
-  encode: 'Encoded film, GIF and poster',
+  compose: 'Matched their brand',
+  encode: 'Encoded the film, GIF and poster',
   'slack-reply': 'Posted to Slack',
 }
-
 function stepLabel(key: string) {
   if (key.startsWith('render:')) return `Rendered scene ${Number(key.split(':')[1]) + 1}`
   if (key.startsWith('script-')) return `Script draft ${key.split('-')[1]}`
   return STEP_LABEL[key] ?? key
 }
 
-function Copy({ text, label, done = 'Copied' }: { text: string; label: string; done?: string }) {
+function Copy({
+  text,
+  label,
+  done = 'Copied',
+  className,
+}: {
+  text: string
+  label: string
+  done?: string
+  className?: string
+}) {
   const [ok, setOk] = useState(false)
+  const toast = useToast()
   return (
     <button
       type="button"
+      className={className}
       onClick={async () => {
-        await navigator.clipboard.writeText(text)
-        setOk(true)
-        setTimeout(() => setOk(false), 1600)
+        try {
+          await navigator.clipboard.writeText(text)
+          setOk(true)
+          toast({ text: done })
+          setTimeout(() => setOk(false), 1600)
+        } catch {
+          toast({ text: 'Your browser blocked copying. Select the text and copy it instead.' })
+        }
       }}
     >
-      {ok ? done : label}
+      {ok ? 'Copied' : label}
     </button>
   )
 }
 
-export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) {
+type Tab = 'send' | 'script' | 'views' | 'details'
+
+export function FilmPanel({
+  id,
+  name,
+  onClose,
+  onOpen,
+}: {
+  id: string
+  /** the company, when the film doesn't know it yet */
+  name?: string
+  onClose: () => void
+  onOpen: (id: string) => void
+}) {
   const qc = useQueryClient()
   const ref = useRef<HTMLDivElement>(null)
+  const [tab, setTab] = useState<Tab>('send')
   const q = useQuery({
     queryKey: ['film', id],
     queryFn: () => api<FilmDetail>(`/v1/films/${id}`),
@@ -67,29 +104,47 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
 
   const f = q.data
   const live = f && (f.status === 'queued' || f.status === 'running')
+  const done = f?.status === 'succeeded'
+  const tabs: [Tab, string][] = done
+    ? [
+        ['send', 'Send'],
+        ['script', 'Script'],
+        ['views', 'Views'],
+        ['details', 'How it was made'],
+      ]
+    : []
+
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop closes; Escape and the Close button do the same
     // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users close with Escape or the Close button
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <aside
-        className="panel"
+        className="drawer"
         role="dialog"
         aria-modal="true"
-        aria-label="Film"
+        aria-label={f?.company ?? name ?? 'Film'}
         tabIndex={-1}
         ref={ref}
       >
-        <div className="panel-head">
+        <header className="drawer-head">
           <div>
-            <h2>{f?.company ?? f?.url ?? 'Loading…'}</h2>
-            {f && <p className="muted">{f.host ?? f.url}</p>}
+            <h2>{f?.company ?? name ?? (f ? host(f.url) : '')}</h2>
+            {f && (
+              <p>
+                {f.job?.title ? `${f.job.title}, ` : ''}
+                {f.host ?? host(f.url)}
+              </p>
+            )}
           </div>
-          <button type="button" className="close" onClick={onClose} aria-label="Close">
-            Close
+          {done && f && <Outreach film={f} />}
+          <button type="button" className="x" onClick={onClose} aria-label="Close">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+              <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.6" />
+            </svg>
           </button>
-        </div>
+        </header>
 
-        {f?.status === 'succeeded' && f.files && (
+        {done && f.files && (
           <>
             <video
               key={f.id}
@@ -101,126 +156,512 @@ export function FilmPanel({ id, onClose }: { id: string; onClose: () => void }) 
               muted
               playsInline
             />
-            <div className="actions">
-              {f.share && <Copy text={f.share} label="Copy share link" />}
-              {f.embed && (
-                <Copy text={f.embed} label="Copy email GIF" done="Paste into your email" />
-              )}
-              <a className="button" href={media(f, 'film')} download={`${f.company}.mp4`}>
-                Download MP4
-              </a>
-              <a className="button" href={media(f, 'preview.gif')} download={`${f.company}.gif`}>
-                GIF
-              </a>
-              {f.share && (
-                // ?preview: your own visits aren't counted as views
-                <a className="button" href={`${f.share}?preview`} target="_blank" rel="noreferrer">
-                  Open share page
-                </a>
-              )}
-            </div>
+            <FilmActions film={f} />
           </>
         )}
 
-        {live && (
-          <div className="live">
-            <span className="tally" aria-hidden="true" />
-            <div>
-              <p className="live-label">{f.progress?.label ?? 'Waiting for a renderer'}</p>
-              <div
-                className="bar"
-                role="progressbar"
-                aria-valuenow={f.progress?.percent ?? 0}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <b
-                  style={{ width: `${f.progress?.percent ?? (f.status === 'queued' ? 0 : 4)}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {f?.status === 'succeeded' && <WhoToSend id={f.id} />}
-        {f?.status === 'succeeded' && <SendIt id={f.id} />}
-        {f?.status === 'succeeded' && <Replied id={f.id} status={f.outreach?.status ?? null} />}
-        {f?.status === 'succeeded' && <Views id={f.id} />}
+        {live && <Progress film={f} />}
 
         {f?.status === 'failed' && (
           <div className="failure">
-            <p>{f.error}</p>
+            <p>{sentence(f.error ?? 'Something went wrong while making this film.')}</p>
             {f.errorCode !== 'non_retryable' && (
-              <button type="button" onClick={() => retry.mutate()}>
-                Resume from where it stopped
+              <button type="button" onClick={() => retry.mutate()} disabled={retry.isPending}>
+                Try again from where it stopped
               </button>
             )}
           </div>
         )}
 
-        {f?.script && (
-          <section>
-            <h3>Script</h3>
-            <dl className="script">
-              <dt>Hook</dt>
-              <dd>{f.script.hook}</dd>
-              <dt>Noticed</dt>
-              <dd>{f.script.noticed}</dd>
-              <dt>Why it matters</dt>
-              <dd>{f.script.insight.why}</dd>
-              <dt>Pitch</dt>
-              <dd>
-                {f.script.pitch.headline}
-                <ul>
-                  {f.script.pitch.points.map((p) => (
-                    <li key={p}>{p}</li>
-                  ))}
-                </ul>
-              </dd>
-              <dt>Ask</dt>
-              <dd>{f.script.cta}</dd>
-            </dl>
-            {f.scriptMeta && (
-              <p className="muted small">
-                {f.scriptMeta.model === 'deterministic'
-                  ? 'Written by the built-in writer. Connect a model for more natural copy.'
-                  : `Written by ${f.scriptMeta.model} in ${f.scriptMeta.rounds} draft${f.scriptMeta.rounds > 1 ? 's' : ''}${
-                      f.scriptMeta.violations.flat().length
-                        ? `; ${f.scriptMeta.violations.flat().length} taste-rule issue${f.scriptMeta.violations.flat().length > 1 ? 's' : ''} caught and fixed`
-                        : ''
-                    }.`}
-              </p>
-            )}
-          </section>
+        {tabs.length > 0 && (
+          <div className="tabs" role="tablist" aria-label="About this film">
+            {tabs.map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                id={`tab-${k}`}
+                aria-selected={tab === k}
+                aria-controls={`pane-${k}`}
+                onClick={() => setTab(k)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         )}
-
-        {f && f.steps.length > 0 && (
-          <section>
-            <h3>How it was made</h3>
-            <ol className="steps-list">
-              {f.steps.map((s) => (
-                <li key={s.key} className={s.status}>
-                  <span>{stepLabel(s.key)}</span>
-                  <span className="muted">
-                    {s.replays > 0
-                      ? 'kept after restart'
-                      : s.durationMs != null
-                        ? `${(s.durationMs / 1000).toFixed(1)}s`
-                        : s.status}
-                  </span>
-                </li>
-              ))}
-            </ol>
-            {f.attempts > 1 && (
-              <p className="muted small">
-                A renderer restarted during this film. Finished work was kept, and only the
-                remaining scenes were rendered.
-              </p>
-            )}
-          </section>
+        {done && (
+          <div className="pane" role="tabpanel" id={`pane-${tab}`} aria-labelledby={`tab-${tab}`}>
+            {tab === 'send' && <SendSteps film={f} />}
+            {tab === 'script' && <ScriptEditor film={f} onMade={onOpen} />}
+            {tab === 'views' && <Views id={f.id} />}
+            {tab === 'details' && <Details film={f} />}
+          </div>
         )}
+        {f && !done && f.steps.length > 0 && <Details film={f} />}
       </aside>
     </div>
+  )
+}
+
+const sentence = (s: string) => {
+  const t = s.trim()
+  return `${t.charAt(0).toUpperCase()}${t.slice(1)}${/[.!?]$/.test(t) ? '' : '.'}`
+}
+
+/** Offers a system notification for when the film is ready, once. */
+function NotifyMe() {
+  const [state, setState] = useState(() => (canNotify() ? Notification.permission : 'denied'))
+  if (state !== 'default') return null
+  return (
+    <button
+      type="button"
+      className="link"
+      onClick={async () => setState(await Notification.requestPermission())}
+    >
+      Notify me when it’s ready, so I can use another tab
+    </button>
+  )
+}
+
+function Progress({ film }: { film: Film }) {
+  const pct = film.progress?.percent ?? 0
+  return (
+    <div className="progress">
+      <span className="rec" aria-hidden="true" />
+      <div>
+        <p>{film.progress?.label ?? 'Waiting for a renderer. This can take a minute.'}</p>
+        <NotifyMe />
+        <div
+          className="meter"
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <b style={{ width: `${film.status === 'queued' ? 0 : Math.max(3, pct)}%` }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The buttons under the film, each saying what it does: the share link is what you send; the
+ * video and GIF save under the company's name.
+ */
+function FilmActions({ film: f }: { film: FilmDetail }) {
+  const [canShare] = useState(
+    () => typeof navigator.share === 'function' && matchMedia('(pointer: coarse)').matches,
+  )
+  return (
+    <div className="film-actions">
+      <div className="actions">
+        {f.share && (
+          <Copy
+            className="primary"
+            text={f.share}
+            label="Copy share link"
+            done="Share link copied"
+          />
+        )}
+        {canShare && f.share && (
+          <button
+            type="button"
+            onClick={() =>
+              navigator.share({ title: `A film for ${f.company}`, url: f.share! }).catch(() => {})
+            }
+          >
+            Share…
+          </button>
+        )}
+        <a className="button" href={downloadUrl(f, 'film')} download={`${fileName(f)}.mp4`}>
+          Download MP4
+        </a>
+        {f.embed && (
+          <Copy
+            text={f.embed}
+            label="Copy GIF for email"
+            done="GIF copied. Paste it into your email"
+          />
+        )}
+      </div>
+      <p className="explain">
+        The share link opens a page with the film, where you’ll see who watched.{' '}
+        {f.share && (
+          // ?preview: your own visits aren't counted as views
+          <a className="link" href={`${f.share}?preview`} target="_blank" rel="noreferrer">
+            Preview it <Out />
+          </a>
+        )}
+        <br />
+        The MP4 saves as “{fileName(f)}.mp4”. The GIF plays inside Gmail or Outlook and links to the
+        film.
+      </p>
+    </div>
+  )
+}
+
+/**
+ * Sending, as the three things to do in order: pick who, send the message, mark it sent.
+ * Nothing here sends anything by itself; every link says where it goes.
+ */
+function SendSteps({ film }: { film: FilmDetail }) {
+  const qc = useQueryClient()
+  const toast = useToast()
+  const status = film.outreach?.status ?? null
+  const mark = useMutation({
+    mutationFn: (s: 'sent' | null) => send('PUT', `/v1/films/${film.id}/outreach`, { status: s }),
+    onSuccess: (_r, s) => {
+      void qc.invalidateQueries({ queryKey: ['films'] })
+      void qc.invalidateQueries({ queryKey: ['film', film.id] })
+      void qc.invalidateQueries({ queryKey: ['outreach'] })
+      if (s)
+        toast({
+          text: `Marked ${film.company ?? 'it'} as sent. Come back and mark it when they reply.`,
+        })
+    },
+  })
+  const days = film.outreach
+    ? Math.floor((Date.now() - Date.parse(film.outreach.sentAt)) / 86_400_000)
+    : 0
+  return (
+    <ol className="steps">
+      <li>
+        <WhoToSend id={film.id} />
+      </li>
+      <li>
+        <Message id={film.id} followUp={status === 'sent' && days >= 4} />
+      </li>
+      <li>
+        <section className="block">
+          <h3>Mark it sent</h3>
+          {status ? (
+            <p>
+              {status === 'sent'
+                ? `Sent ${days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`}. ${
+                    days >= 4
+                      ? 'No reply yet: the follow-up message above is ready.'
+                      : 'When they answer, change Sent to Replied at the top of this panel.'
+                  }`
+                : `Marked ${OUTREACH_LABEL[status].toLowerCase()}. Change it any time at the top of this panel.`}
+            </p>
+          ) : (
+            <>
+              <p>So coldopen can count your reply rate and remind you to follow up.</p>
+              <div className="actions">
+                <button type="button" onClick={() => mark.mutate('sent')} disabled={mark.isPending}>
+                  I sent it
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      </li>
+    </ol>
+  )
+}
+
+/** Who to send it to: people they know there first, then LinkedIn searches they run themselves. */
+function WhoToSend({ id }: { id: string }) {
+  const q = useQuery({
+    queryKey: ['people', id],
+    queryFn: () => api<People>(`/v1/films/${id}/people`),
+  })
+  const p = q.data
+  if (!p)
+    return (
+      <section className="block">
+        <h3>Pick one or two people</h3>
+      </section>
+    )
+  return (
+    <section className="block">
+      <h3>Pick one or two people</h3>
+      {p.known.length > 0 && (
+        <>
+          <p>
+            You know {p.known.length === 1 ? 'someone' : `${p.known.length} people`} at {p.company}.
+            Ask {p.known.length === 1 ? 'them' : 'one of them'} for an intro first; it beats a cold
+            message.
+          </p>
+          <ul className="people">
+            {p.known.map((c) => (
+              <li key={`${c.name}-${c.url}`}>
+                <span>
+                  <b>{c.name}</b>
+                  <small>{c.position ?? c.company}</small>
+                </span>
+                {c.url && (
+                  <a className="link" href={c.url} target="_blank" rel="noreferrer">
+                    LinkedIn profile <Out />
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <p>
+        {p.known.length ? 'Or write to someone new. ' : ''}Each search opens LinkedIn in a new tab,
+        filtered to {p.company}. coldopen doesn’t contact anyone.
+      </p>
+      <ul className="who-list">
+        {p.searches.map((s) => (
+          <li key={s.url}>
+            <span>
+              <b>{s.label}</b>
+              <small>{s.hint}</small>
+            </span>
+            <a className="button" href={s.url} target="_blank" rel="noreferrer">
+              Search LinkedIn <Out />
+            </a>
+          </li>
+        ))}
+      </ul>
+      {p.connections === 0 && (
+        <p className="small muted">
+          Upload your LinkedIn connections under Connect tools to see who you already know here.
+        </p>
+      )}
+    </section>
+  )
+}
+
+/** The message, and where to send it from: Gmail, Outlook or the mail app, as a ready draft. */
+function Message({ id, followUp }: { id: string; followUp: boolean }) {
+  const q = useQuery({
+    queryKey: ['messages', id],
+    queryFn: () => api<Messages>(`/v1/films/${id}/messages`),
+    staleTime: Number.POSITIVE_INFINITY,
+  })
+  const [kind, setKind] = useState<'email' | 'linkedin' | 'followUp'>(
+    followUp ? 'followUp' : 'email',
+  )
+  const m = q.data
+  if (!m)
+    return (
+      <section className="block">
+        <h3>Send the message</h3>
+      </section>
+    )
+  const body = kind === 'email' ? m.email.body : kind === 'linkedin' ? m.linkedin : m.followUp
+  const subject = kind === 'followUp' ? `Re: ${m.email.subject}` : m.email.subject
+  const enc = encodeURIComponent
+  return (
+    <section className="block">
+      <div className="block-head">
+        <h3>Send the message</h3>
+        <div className="switch" role="radiogroup" aria-label="Where you're sending it">
+          {(
+            [
+              ['email', 'Email'],
+              ['linkedin', 'LinkedIn note'],
+              ['followUp', 'Follow-up'],
+            ] as const
+          ).map(([k, label]) => (
+            // biome-ignore lint/a11y/useSemanticElements: radio-styled buttons are the WAI-ARIA pattern for this control
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={kind === k}
+              onClick={() => setKind(k)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="small muted">
+        {kind === 'email'
+          ? 'Your first message, with the film’s link in it.'
+          : kind === 'linkedin'
+            ? 'For a LinkedIn connection request, which allows 300 characters.'
+            : 'If they haven’t replied after 4 or 5 days. Send it once, then stop.'}
+      </p>
+      <div className="letter">
+        {kind !== 'linkedin' && (
+          <p className="subject">
+            <span>Subject</span> {subject}
+          </p>
+        )}
+        <pre>{body}</pre>
+      </div>
+      <p className="small">
+        Replace <b>[First name]</b> before sending.
+        {kind === 'linkedin' && ` ${m.linkedin.length} of 300 characters.`}
+      </p>
+      {kind === 'linkedin' ? (
+        <div className="actions">
+          <Copy className="primary" text={body} label="Copy note" done="Note copied" />
+          <small>Then on their LinkedIn profile: Connect, Add a note, paste.</small>
+        </div>
+      ) : (
+        <div className="actions">
+          <a
+            className="button primary-link"
+            href={`https://mail.google.com/mail/?view=cm&fs=1&su=${enc(subject)}&body=${enc(body)}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open in Gmail <Out />
+          </a>
+          <a
+            className="button"
+            href={`https://outlook.office.com/mail/deeplink/compose?subject=${enc(subject)}&body=${enc(body)}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Outlook <Out />
+          </a>
+          <a className="button" href={`mailto:?subject=${enc(subject)}&body=${enc(body)}`}>
+            Mail app
+          </a>
+          <Copy text={`${subject}\n\n${body}`} label="Copy" done="Message copied" />
+        </div>
+      )}
+    </section>
+  )
+}
+
+const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length
+
+/** Rewrite any line and re-render, without researching the company again. */
+function ScriptEditor({ film, onMade }: { film: FilmDetail; onMade: (id: string) => void }) {
+  const qc = useQueryClient()
+  const s = film.script
+  const start = () =>
+    s
+      ? {
+          hook: s.hook,
+          noticed: s.noticed,
+          why: s.insight.why,
+          headline: s.pitch.headline,
+          points: s.pitch.points,
+          cta: s.cta,
+        }
+      : null
+  const [e, setE] = useState(start)
+  // a new film opened in the same panel starts from its own script
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the film changes
+  useEffect(() => setE(start()), [film.id])
+  const save = useMutation({
+    mutationFn: (edit: ScriptEdit) => send<Film>('POST', `/v1/films/${film.id}/edit`, edit),
+    onSuccess: (f) => {
+      void qc.invalidateQueries({ queryKey: ['films'] })
+      onMade(f.id)
+    },
+  })
+  if (!s || !e) return <p className="small muted">This film has no script to show.</p>
+
+  const changed: ScriptEdit = {}
+  if (e.hook !== s.hook) changed.hook = e.hook
+  if (e.noticed !== s.noticed) changed.noticed = e.noticed
+  if (e.why !== s.insight.why) changed.why = e.why
+  if (e.headline !== s.pitch.headline) changed.headline = e.headline
+  if (e.points.join('\n') !== s.pitch.points.join('\n')) changed.points = e.points
+  if (e.cta !== s.cta) changed.cta = e.cta
+  const dirty = Object.keys(changed).length > 0
+
+  const field = (
+    key: 'hook' | 'noticed' | 'why' | 'headline' | 'cta',
+    label: string,
+    max: number,
+  ) => <Line label={label} max={max} value={e[key]} onChange={(v) => setE({ ...e, [key]: v })} />
+  return (
+    <form
+      className="block script"
+      onSubmit={(ev) => {
+        ev.preventDefault()
+        save.mutate(changed)
+      }}
+    >
+      <p className="small">
+        The lines in the film, in order. Change any of them and render it again; their site isn’t
+        read again. Numbers still have to come from your profile or their site.
+      </p>
+      {field('hook', 'Greeting', LIMITS.hook)}
+      {field('noticed', 'What you noticed', LIMITS.noticed)}
+      {film.highlights?.quote && (
+        <p className="quote">
+          <span>Shown from their {film.job ? 'job post' : 'site'}</span>“
+          {film.highlights.quote.text}”
+        </p>
+      )}
+      {field('why', 'Why it matters', LIMITS.why)}
+      {field('headline', 'What you offer', LIMITS.headline)}
+      {e.points.map((p, i) => (
+        <Line
+          // biome-ignore lint/suspicious/noArrayIndexKey: points are positional
+          key={i}
+          label={`Point ${i + 1}`}
+          max={LIMITS.point}
+          value={p}
+          onChange={(v) => setE({ ...e, points: e.points.map((x, j) => (j === i ? v : x)) })}
+        />
+      ))}
+      {film.highlights?.proof.length ? (
+        <div className="results">
+          <span>Results shown, word for word from your profile</span>
+          <ul>
+            {film.highlights.proof.map((p) => (
+              <li key={`${p.value}${p.label}`}>
+                <b>{p.value}</b> {p.label}
+                {p.where ? <small> at {p.where}</small> : null}
+              </li>
+            ))}
+          </ul>
+          <small>To show different ones, choose them under Options when you make a film.</small>
+        </div>
+      ) : null}
+      {field('cta', 'The ask', LIMITS.cta)}
+      <p className="small muted">
+        {film.scriptMeta?.model === 'edited'
+          ? 'You edited this script.'
+          : film.scriptMeta?.model === 'deterministic'
+            ? 'Written by the built-in writer.'
+            : film.scriptMeta
+              ? `Written by ${film.scriptMeta.model}.`
+              : ''}
+      </p>
+      {save.error && <p className="error">{save.error.message}</p>}
+      <div className="actions">
+        <button type="submit" className="primary" disabled={!dirty || save.isPending}>
+          {save.isPending ? 'Starting…' : 'Render with these lines'}
+        </button>
+        {dirty && (
+          <button type="button" className="link" onClick={() => setE(start())}>
+            Undo changes
+          </button>
+        )}
+      </div>
+    </form>
+  )
+}
+
+function Line({
+  label,
+  max,
+  value,
+  onChange,
+}: {
+  label: string
+  max: number
+  value: string
+  onChange: (v: string) => void
+}) {
+  const n = words(value)
+  return (
+    <label className="line">
+      <span>
+        {label}
+        <small className={n > max ? 'over' : ''}>
+          {n}/{max} words
+        </small>
+      </span>
+      <input value={value} onChange={(ev) => onChange(ev.target.value)} />
+    </label>
   )
 }
 
@@ -233,236 +674,81 @@ function Views({ id }: { id: string }) {
   const v = q.data
   if (!v) return null
   const s = v.summary
-  return (
-    <section>
-      <h3>Who watched</h3>
-      {s.opens === 0 ? (
-        <p className="muted small">
-          Nobody has opened the share page yet. Link previews and email scanners aren't counted, and
-          neither are your own visits from this page.
-        </p>
-      ) : (
-        <>
-          <dl className="views-sum">
-            <div>
-              <dt>Opened</dt>
-              <dd>{s.opens}</dd>
-            </div>
-            <div>
-              <dt>Played</dt>
-              <dd>{s.plays}</dd>
-            </div>
-            <div>
-              <dt>Finished</dt>
-              <dd>{s.finishes}</dd>
-            </div>
-            <div>
-              <dt>People</dt>
-              <dd>{s.viewers}</dd>
-            </div>
-          </dl>
-          <ol className="views-list">
-            {v.sessions.slice(0, 12).map((x) => (
-              <li key={x.session}>
-                <span>
-                  {x.finished
-                    ? 'Watched to the end'
-                    : x.played
-                      ? `Watched ${Math.round(x.seconds)}s`
-                      : 'Opened, didn’t play'}
-                </span>
-                <span className="muted">
-                  {[x.device, x.referrer ? `via ${x.referrer}` : null, x.country, ago(x.lastSeen)]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </>
-      )}
-    </section>
-  )
-}
-
-/** The messages that go with the film, ready to copy. */
-function SendIt({ id }: { id: string }) {
-  const q = useQuery({
-    queryKey: ['messages', id],
-    queryFn: () => api<Messages>(`/v1/films/${id}/messages`),
-    staleTime: Number.POSITIVE_INFINITY,
-  })
-  const [tab, setTab] = useState<'email' | 'linkedin' | 'followUp'>('email')
-  const m = q.data
-  if (!m) return null
-  const text =
-    tab === 'email'
-      ? `${m.email.subject}\n\n${m.email.body}`
-      : tab === 'linkedin'
-        ? m.linkedin
-        : m.followUp
-  return (
-    <section>
-      <h3>Send it</h3>
-      <div className="segmented msg-tabs" role="tablist" aria-label="Message">
-        {(
-          [
-            ['email', 'Email'],
-            ['linkedin', 'LinkedIn note'],
-            ['followUp', 'Follow-up'],
-          ] as const
-        ).map(([k, label]) => (
-          <button
-            key={k}
-            type="button"
-            role="tab"
-            aria-selected={tab === k}
-            className={tab === k ? 'on' : ''}
-            onClick={() => setTab(k)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {tab === 'email' && <p className="msg-subject">{m.email.subject}</p>}
-      <pre className="msg">{tab === 'email' ? m.email.body : text}</pre>
-      <div className="actions">
-        <Copy text={tab === 'email' ? m.email.body : text} label="Copy message" />
-        {tab === 'email' && <Copy text={m.email.subject} label="Copy subject" />}
-        {tab === 'linkedin' && (
-          <span className="muted small">{m.linkedin.length} of 300 characters</span>
-        )}
-      </div>
-      <p className="muted small">Replace [First name], read it once, and it's ready to send.</p>
-    </section>
-  )
-}
-
-/** What happened after sending it. Counted into the reply rate at the top of the page. */
-function Replied({ id, status }: { id: string; status: OutreachStatus | null }) {
-  const qc = useQueryClient()
-  const mark = useMutation({
-    mutationFn: (s: OutreachStatus | null) =>
-      send('PUT', `/v1/films/${id}/outreach`, { status: s }),
-    onSuccess: () => void qc.invalidateQueries(),
-  })
-  const shown = mark.isPending ? (mark.variables ?? null) : status
-  return (
-    <section>
-      <h3>Did they reply?</h3>
-      <fieldset className="segmented outreach" aria-label="What happened">
-        {(Object.keys(OUTREACH_LABEL) as OutreachStatus[]).map((k) => (
-          <button
-            key={k}
-            type="button"
-            aria-pressed={shown === k}
-            className={shown === k ? 'on' : ''}
-            onClick={() => mark.mutate(shown === k ? null : k)}
-          >
-            {OUTREACH_LABEL[k]}
-          </button>
-        ))}
-      </fieldset>
-      <p className="muted small">
-        {shown
-          ? 'Click it again to clear.'
-          : 'Mark it sent once it’s out, and come back when they answer. Your reply rate shows at the top.'}
+  if (s.opens === 0)
+    return (
+      <p className="small muted">
+        Nobody has opened the share link yet. Link previews, email scanners and your own visits from
+        here aren’t counted.
       </p>
-    </section>
-  )
-}
-
-/**
- * Who to send it to: LinkedIn searches the person runs themselves, and anyone they already
- * know there, from the connections export they uploaded. Nothing is scraped or sent.
- */
-function WhoToSend({ id }: { id: string }) {
-  const qc = useQueryClient()
-  const q = useQuery({
-    queryKey: ['people', id],
-    queryFn: () => api<People>(`/v1/films/${id}/people`),
-  })
-  const upload = useMutation({
-    mutationFn: async (file: File) =>
-      send<{ count: number }>('PUT', '/v1/connections', { csv: await file.text() }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['people'] }),
-  })
-  const remove = useMutation({
-    mutationFn: () => send('DELETE', '/v1/connections'),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['people'] }),
-  })
-  const p = q.data
-  if (!p) return null
+    )
   return (
-    <section>
-      <h3>Who to send it to</h3>
-      {p.known.length > 0 && (
-        <>
-          <p className="small">
-            You know {p.known.length === 1 ? 'one person' : `${p.known.length} people`} at{' '}
-            {p.company}. A warm intro beats a cold note.
-          </p>
-          <ul className="people">
-            {p.known.map((c) => (
-              <li key={`${c.name}-${c.url}`}>
-                {c.url ? (
-                  <a href={c.url} target="_blank" rel="noreferrer">
-                    {c.name}
-                  </a>
-                ) : (
-                  <span>{c.name}</span>
-                )}
-                <span className="muted">{c.position ?? c.company}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      <div className="searches">
-        {p.searches.map((s) => (
-          <a
-            key={s.url}
-            className="button"
-            href={s.url}
-            target="_blank"
-            rel="noreferrer"
-            title={s.hint}
-          >
-            {s.label}
-          </a>
-        ))}
-      </div>
-      <p className="muted small">
-        Each opens a LinkedIn search for {p.company}. Send to one or two people, not the whole list.
-      </p>
-      {p.connections === 0 ? (
-        <div className="connections">
-          <label className="button">
-            {upload.isPending ? 'Reading…' : 'Upload your LinkedIn connections'}
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              hidden
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) upload.mutate(file)
-                e.target.value = ''
-              }}
-            />
-          </label>
-          <p className="muted small">
-            See who you already know at each company. On LinkedIn: Settings → Data privacy → Get a
-            copy of your data → Connections. It arrives by email in about 10 minutes; upload the
-            Connections.csv. Emails in it aren't kept.
-          </p>
-          {upload.error && <p className="error small">{upload.error.message}</p>}
+    <section className="block">
+      <dl className="tally">
+        <div>
+          <dt>Opened</dt>
+          <dd>{s.opens}</dd>
         </div>
-      ) : (
-        <p className="muted small">
-          Checked against your {p.connections.toLocaleString()} LinkedIn connections.{' '}
-          <button type="button" className="text" onClick={() => remove.mutate()}>
-            Remove them
-          </button>
+        <div>
+          <dt>Played</dt>
+          <dd>{s.plays}</dd>
+        </div>
+        <div>
+          <dt>Watched to the end</dt>
+          <dd>{s.finishes}</dd>
+        </div>
+        <div>
+          <dt>People</dt>
+          <dd>{s.viewers}</dd>
+        </div>
+      </dl>
+      <ol className="log">
+        {v.sessions.slice(0, 12).map((x) => (
+          <li key={x.session}>
+            <span>
+              {x.finished
+                ? 'Watched to the end'
+                : x.played
+                  ? `Watched ${Math.round(x.seconds)} seconds`
+                  : 'Opened it, didn’t play'}
+            </span>
+            <small>
+              {[
+                x.device === 'mobile' ? 'Phone' : 'Computer',
+                x.referrer ? `from ${x.referrer}` : null,
+                x.country,
+                ago(x.lastSeen),
+              ]
+                .filter(Boolean)
+                .join(', ')}
+            </small>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
+function Details({ film }: { film: FilmDetail }) {
+  return (
+    <section className="block">
+      <ol className="log">
+        {film.steps.map((s) => (
+          <li key={s.key} className={s.status}>
+            <span>{stepLabel(s.key)}</span>
+            <small>
+              {s.replays > 0
+                ? 'kept after a restart'
+                : s.durationMs != null
+                  ? `${(s.durationMs / 1000).toFixed(1)} s`
+                  : s.status}
+            </small>
+          </li>
+        ))}
+      </ol>
+      {film.attempts > 1 && (
+        <p className="small muted">
+          A renderer restarted during this film. Finished work was kept, and only the remaining
+          scenes were rendered.
         </p>
       )}
     </section>

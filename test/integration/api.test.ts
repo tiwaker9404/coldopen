@@ -378,6 +378,68 @@ describe('films', () => {
     expect((await app.inject({ url: '/v1/outreach', headers: auth })).json().sent).toBe(1)
   })
 
+  it('re-renders a film with edited lines, and keeps numbers honest', async () => {
+    const a = (
+      await app.inject({
+        method: 'POST',
+        url: '/v1/films',
+        headers: auth,
+        payload: { url: 'editco.example', profileId: 'maya' },
+      })
+    ).json().id
+    const edit = (id: string, body: object) =>
+      app.inject({ method: 'POST', url: `/v1/films/${id}/edit`, headers: auth, payload: body })
+
+    expect((await edit(a, { hook: 'Hello there' })).statusCode).toBe(409)
+    await finish(a, 'Editco')
+
+    // too long for the screen, and a number from nowhere
+    const bad = await edit(a, { hook: 'Hello Editco team, we grew 97% last year' })
+    expect(bad.statusCode).toBe(422)
+    expect(bad.json().error.issues).toEqual([
+      'The greeting has 8 words; it fits 6 on screen',
+      'The greeting says "97%", which isn\'t in your profile or the film. Numbers have to come from one of those',
+    ])
+
+    const ok = await edit(a, { hook: 'Hello Editco team', points: ['first point', 'second point'] })
+    expect(ok.statusCode).toBe(202)
+    expect(ok.json()).toMatchObject({ status: 'queued', editOf: a, url: 'https://editco.example' })
+    const [run] = await sql<
+      { input: { script: { hook: string; pitch: { points: string[] } }; editOf: string } }[]
+    >`
+      select input from runs where id = ${ok.json().id}`
+    expect(run!.input.script.hook).toBe('Hello Editco team')
+    expect(run!.input.script.pitch.points).toEqual(['first point', 'second point'])
+
+    // an edit of an edit still counts against the first film: 5 in all
+    const second = ok.json().id
+    await finish(second, 'Editco')
+    expect((await edit(second, { cta: 'Talk this week?' })).json().editOf).toBe(a)
+    for (let i = 0; i < 3; i++)
+      expect((await edit(a, { cta: `Talk soon ${'x'.repeat(i)}?` })).statusCode).toBe(202)
+    expect((await edit(a, { cta: 'One more?' })).statusCode).toBe(429)
+  })
+
+  it('saves downloads under the name asked for', async () => {
+    const id = (
+      await app.inject({
+        method: 'POST',
+        url: '/v1/films',
+        headers: auth,
+        payload: { url: 'nameco.example', profileId: 'maya' },
+      })
+    ).json().id
+    await finish(id, 'Nameco')
+    const r = await app.inject({
+      url: `/f/${id}/poster.jpg?download=${encodeURIComponent('Nameco - Maya "Chen"')}`,
+    })
+    expect(r.statusCode).toBe(200)
+    expect(r.headers['content-disposition']).toBe('attachment; filename="Nameco - Maya Chen.jpg"')
+    expect(
+      (await app.inject({ url: `/f/${id}/poster.jpg` })).headers['content-disposition'],
+    ).toBeUndefined()
+  })
+
   it('suggests who to send it to, and who you already know there', async () => {
     const id = (
       await app.inject({

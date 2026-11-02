@@ -39,8 +39,10 @@ import {
   type Run,
   retryRun,
 } from '../runtime/store.ts'
+import { applyEdit, precheckEdit } from '../script/checks.ts'
 import { ProfileSchema } from '../script/types.ts'
 import { oneFilmViews, shareViews, unshare } from '../share/client.ts'
+import { attachment } from '../share/download.ts'
 import { sharePage, viewFromRun } from '../share/page.ts'
 import { filmViews, NO_VIEWS, pgViewStore, viewSummaries } from '../share/pg.ts'
 import { recordBeacon, type ViewSummary } from '../share/views.ts'
@@ -119,6 +121,8 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
     views: out ? (views ?? NO_VIEWS) : null,
     /** what happened after it was sent, as the sender marked it */
     outreach: r.outreach ?? null,
+    /** the first film, when this one re-renders it with an edited script */
+    editOf: r.input.editOf ?? null,
   }
 }
 
@@ -357,6 +361,8 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       const s = cfg.HOSTED ? readSession(cfg, req) : null
       const free = unlimited(req)
       const limit = free ? null : filmLimit(cfg, req.owner)
+      // one row per visitor per day, for the owner's funnel (ids are random, nothing personal)
+      if (cfg.HOSTED && !free) await consume(sql, `visit:${req.owner}`, Number.MAX_SAFE_INTEGER)
       return {
         hosted: cfg.HOSTED,
         signIn: cfg.HOSTED && !!cfg.GITHUB_CLIENT_ID,
@@ -364,6 +370,64 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
         films: limit === null ? null : { used: await used(sql, `films:${req.owner}`), limit },
         // a visitor's work is kept 7 days; an account's, 30; an unlimited user's, until deleted
         keepsDays: free ? null : s ? 30 : 7,
+        /** can see the app-wide funnel at GET /v1/funnel */
+        stats: cfg.HOSTED && free,
+      }
+    },
+  )
+
+  app.get(
+    '/v1/funnel',
+    {
+      schema: {
+        tags: ['account'],
+        summary: "The hosted app's funnel: visitors, sign-ups, films, sent, watched, replied",
+        description: 'For the owner (an API key or an UNLIMITED_GITHUB_USERS login).',
+        querystring: z.object({ days: z.coerce.number().int().min(1).max(90).default(7) }),
+      },
+    },
+    async (req, reply) => {
+      if (!unlimited(req))
+        return reply
+          .status(403)
+          .send({ error: { code: 'forbidden', message: 'only the owner can see stats' } })
+      const days = req.query.days
+      const since = sql`now() - make_interval(days => ${days})`
+      const [[v], [u], [f], fails, sentRows] = await Promise.all([
+        sql<{ n: number }[]>`
+          select count(distinct key)::int as n from usage
+          where key like 'visit:%' and day > current_date - ${days}::int`,
+        sql<{ n: number }[]>`select count(*)::int as n from users where created_at > ${since}`,
+        sql<{ makers: number; films: number; ok: number; failed: number; edits: number }[]>`
+          select count(distinct owner)::int as makers, count(*)::int as films,
+            count(*) filter (where status = 'succeeded')::int as ok,
+            count(*) filter (where status = 'failed')::int as failed,
+            count(*) filter (where input ? 'editOf')::int as edits
+          from runs where agent = 'film' and created_at > ${since}`,
+        sql<{ error: string; n: number }[]>`
+          select left(coalesce(error, 'unknown'), 140) as error, count(*)::int as n from runs
+          where agent = 'film' and status = 'failed' and created_at > ${since}
+          group by 1 order by 2 desc limit 5`,
+        sql<FilmRow[]>`
+          select * from runs where agent = 'film' and outreach is not null
+            and created_at > ${since} order by id desc limit 300`,
+      ])
+      const views = await summariesFor(sentRows)
+      const st = (r: FilmRow) => r.outreach?.status
+      return {
+        days,
+        visitors: v?.n ?? 0,
+        signups: u?.n ?? 0,
+        makers: f?.makers ?? 0,
+        films: f?.films ?? 0,
+        succeeded: f?.ok ?? 0,
+        failed: f?.failed ?? 0,
+        edits: f?.edits ?? 0,
+        sent: sentRows.length,
+        watched: sentRows.filter((r) => (views.get(r.id)?.plays ?? 0) > 0).length,
+        replied: sentRows.filter((r) => st(r) === 'replied' || st(r) === 'interview').length,
+        interviews: sentRows.filter((r) => st(r) === 'interview').length,
+        failures: fails,
       }
     },
   )
@@ -676,6 +740,8 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
         ...filmDto(run, publicUrl, views.get(run.id)),
         script: run.output?.script ?? null,
         scriptMeta: run.output?.scriptMeta ?? null,
+        /** the line quoted from their site or job post, and the proof shown */
+        highlights: run.output?.highlights ?? null,
         qa: run.output?.qa ?? null,
         render: run.output?.render ?? null,
         steps: steps.map((s) => ({
@@ -741,6 +807,64 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
               message: 'only failed or cancelled films can be retried',
             },
           })
+    },
+  )
+
+  app.post(
+    '/v1/films/:id/edit',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Re-render a film with lines you rewrote',
+        description:
+          "Makes a new film from the same company and profile with your wording. Lines you leave out stay as they were. Every number must still come from your profile or the company, and each line must fit on screen. Doesn't count against the daily limit; up to 5 edits per film.",
+        params: z.object({ id: RunId }),
+        body: z
+          .object({
+            hook: z.string().max(200),
+            noticed: z.string().max(200),
+            why: z.string().max(200),
+            headline: z.string().max(200),
+            points: z.array(z.string().max(200)).max(3),
+            cta: z.string().max(200),
+          })
+          .partial(),
+      },
+    },
+    async (req, reply) => {
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run) return notFound(reply)
+      if (run.status !== 'succeeded' || !run.output?.script)
+        return reply
+          .status(409)
+          .send({ error: { code: 'not_finished', message: 'only a finished film can be edited' } })
+      const script = applyEdit(run.output.script, req.body)
+      const o = run.output
+      const known = [
+        o.script.hook,
+        o.script.noticed,
+        o.script.insight.why,
+        o.script.pitch.headline,
+        ...o.script.pitch.points,
+        o.script.cta,
+        o.highlights?.quote.text ?? '',
+      ].join(' ')
+      const bad = precheckEdit(script, run.input.profile, known)
+      if (bad.length)
+        return reply
+          .status(422)
+          .send({ error: { code: 'edit_invalid', message: `${bad.join('. ')}.`, issues: bad } })
+      const root = run.input.editOf ?? run.id
+      const [edits] = await sql<{ n: number }[]>`
+        select count(*)::int as n from runs
+        where agent = 'film' and owner = ${req.owner} and input->>'editOf' = ${root}`
+      if ((edits?.n ?? 0) >= 5)
+        return limited(reply, 'That film has been edited 5 times. Make a new film to keep going.')
+      const { proof: _picked, ...rest } = run.input
+      const input = FilmInputSchema.parse({ ...rest, script, editOf: root })
+      const r = await createRun(sql, { agent: 'film', input, owner: req.owner })
+      kick()
+      return reply.status(202).send(filmDto(r.run as FilmRow, publicUrl))
     },
   )
 
@@ -1094,6 +1218,11 @@ export async function buildApi({ sql, cfg, log, slack, llm = null }: ApiDeps) {
       if (!ok || !existsSync(join(filmsDir, req.params.id, req.params.name)))
         return reply.status(404).send('not found')
       reply.header('cache-control', 'public, max-age=86400')
+      const dl = attachment(
+        new URL(req.url, 'http://x').searchParams.get('download'),
+        req.params.name,
+      )
+      if (dl) reply.header('content-disposition', dl)
       return reply.sendFile(`${req.params.id}/${req.params.name}`)
     },
   )

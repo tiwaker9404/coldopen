@@ -184,6 +184,29 @@ describe('signing in with GitHub', () => {
 })
 
 describe('the owner', () => {
+  it('shows the funnel to the operator only, counting each visitor once a day', async () => {
+    const visit = await app.inject({ url: '/v1/me' })
+    const cookie = String(visit.headers['set-cookie']).split(';')[0]!
+    await app.inject({ url: '/v1/me', headers: { cookie } })
+    expect(visit.json().stats).toBe(false)
+    expect((await app.inject({ url: '/v1/funnel', headers: { cookie } })).statusCode).toBe(403)
+
+    const f = await app.inject({
+      url: '/v1/funnel?days=7',
+      headers: { authorization: 'Bearer operator-key' },
+    })
+    expect(f.statusCode).toBe(200)
+    const body = f.json()
+    expect(body.visitors).toBeGreaterThanOrEqual(1)
+    const [{ n }] = (await sql`
+      select count(*)::int as n from usage where key = ${`visit:${cookie.split('=')[1]}`}`) as unknown as [
+      { n: number },
+    ]
+    expect(n).toBeLessThanOrEqual(1)
+    for (const k of ['signups', 'makers', 'films', 'sent', 'watched', 'replied', 'failures'])
+      expect(body).toHaveProperty(k)
+  })
+
   it('has no daily limits once signed in with a listed GitHub account', async () => {
     const boss = browser()
     const start = await boss.req('GET', '/auth/github')

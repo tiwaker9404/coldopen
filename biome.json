@@ -48,6 +48,16 @@
           }
         }
       }
+    },
+    {
+      "includes": ["dashboard/src/styles.css"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDescendingSpecificity": "off"
+          }
+        }
+      }
     }
   ]
 }

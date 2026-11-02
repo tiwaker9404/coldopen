@@ -21,6 +21,7 @@ import {
 import { buildTheme } from './render/theme.ts'
 import { NonRetryableError } from './runtime/errors.ts'
 import { defineAgent } from './runtime/types.ts'
+import { editViolations } from './script/checks.ts'
 import { buildStoryboard, type Storyboard } from './script/storyboard.ts'
 import { ProfileSchema, type Script, type ScriptMeta, ScriptSchema } from './script/types.ts'
 import { deterministicScript, writeScript } from './script/writer.ts'
@@ -53,6 +54,10 @@ export const FilmInputSchema = z.object({
     })
     .refine((j) => j.url || j.text || j.post, 'job needs a url, text, or post')
     .optional(),
+  /** a script the person edited: used as written (after the hard checks) instead of writing one */
+  script: ScriptSchema.optional(),
+  /** the film this one re-renders with an edited script */
+  editOf: z.string().max(64).optional(),
   /** with a share worker: the share link expires after this many days (hosted app visitors) */
   keepDays: z.number().int().min(1).max(365).optional(),
 })
@@ -205,7 +210,30 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           } as ScriptMeta,
         }))
       let written: { script: Script; meta: ScriptMeta }
-      if (!opts.llmModel) written = await builtIn(false)
+      if (input.script) {
+        // the person's own words. The site may have changed since the first film: if the fact it
+        // featured is gone, feature the one the built-in writer would pick.
+        let s = input.script
+        if (!kit.facts.some((f) => f.id === s.insight.factId))
+          s = {
+            ...s,
+            insight: { ...s.insight, factId: deterministicScript(kit, profile).insight.factId },
+          }
+        const bad = editViolations(s, kit, profile)
+        if (bad.length)
+          throw new NonRetryableError(`the edited script can't be used: ${bad.join('; ')}`)
+        const edited = s
+        written = await ctx.step('script', async () => ({
+          script: edited,
+          meta: {
+            model: 'edited',
+            rounds: 1,
+            violations: [[]],
+            usedFallback: false,
+            replaced: [],
+          } as ScriptMeta,
+        }))
+      } else if (!opts.llmModel) written = await builtIn(false)
       else {
         try {
           written = await writeScript({

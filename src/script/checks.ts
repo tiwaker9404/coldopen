@@ -6,7 +6,7 @@ export const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length
 
 const NUMBER = /\d[\d,.]*\s?(%|x|k|m|min|minutes|hours|days)?/gi
 
-function numbersIn(s: string): string[] {
+export function numbersIn(s: string): string[] {
   return (s.match(NUMBER) ?? []).map((n) =>
     n.replace(/[,\s]/g, '').toLowerCase().replace(/\.$/, ''),
   )
@@ -243,4 +243,82 @@ export function clampScript(script: Script, profile: Profile): Script {
     proof: [...new Set(script.proof.filter((i) => i < profile.proof.length))].slice(0, 3),
     cta: cut(script.cta, LIMITS.cta),
   }
+}
+
+/**
+ * The rules a person's own edit must still pass: lines fit on screen, nothing is empty, and
+ * every number comes from their profile or the company's site. Taste rules are theirs to break.
+ */
+export function editViolations(script: Script, kit: BrandKit, profile: Profile): string[] {
+  return checkScript(script, kit, profile).filter((v) =>
+    /mentions "|words; the limit|is empty|out of range|proof indices repeat/.test(v),
+  )
+}
+
+const sameNumber = (a: string, b: string) => {
+  const [long, short] = a.length >= b.length ? [a, b] : [b, a]
+  return long.startsWith(short) && !/\d/.test(long.slice(short.length))
+}
+
+/** The lines a person can rewrite before re-rendering, by name. */
+export const EDITABLE = ['hook', 'noticed', 'why', 'headline', 'points', 'cta'] as const
+export interface ScriptEdit {
+  hook?: string
+  noticed?: string
+  why?: string
+  headline?: string
+  points?: string[]
+  cta?: string
+}
+
+/** Applies an edit to a script; lines left out stay as they were. */
+export function applyEdit(script: Script, e: ScriptEdit): Script {
+  const t = (v: string | undefined, was: string) => (v === undefined ? was : v.trim())
+  return {
+    ...script,
+    hook: t(e.hook, script.hook),
+    noticed: t(e.noticed, script.noticed),
+    insight: { ...script.insight, why: t(e.why, script.insight.why) },
+    pitch: {
+      headline: t(e.headline, script.pitch.headline),
+      points: e.points ? e.points.map((p) => p.trim()).filter(Boolean) : script.pitch.points,
+    },
+    cta: t(e.cta, script.cta),
+  }
+}
+
+/**
+ * What can be checked before a film is re-rendered, without the company's site at hand:
+ * lengths, and numbers that appear nowhere the person or the original film got them from.
+ * The renderer checks again against the full site.
+ */
+export function precheckEdit(script: Script, profile: Profile, known: string): string[] {
+  const v: string[] = []
+  const lines: [string, string, number][] = [
+    ['The greeting', script.hook, LIMITS.hook],
+    ['What you noticed', script.noticed, LIMITS.noticed],
+    ['Why it matters', script.insight.why, LIMITS.why],
+    ['The headline', script.pitch.headline, LIMITS.headline],
+    ...script.pitch.points.map(
+      (p, i) => [`Point ${i + 1}`, p, LIMITS.point] as [string, string, number],
+    ),
+    ['The ask', script.cta, LIMITS.cta],
+  ]
+  if (script.pitch.points.length < 2) v.push('Keep at least 2 points')
+  if (script.pitch.points.length > 3) v.push('Use at most 3 points')
+  const pool = numbersIn(
+    `${known} ${profileText(profile)} ${profile.cta.line} ${profile.cta.contact}`,
+  )
+  for (const [name, text, max] of lines) {
+    const n = words(text)
+    if (n === 0) v.push(`${name} is empty`)
+    else if (n > max) v.push(`${name} has ${n} words; it fits ${max} on screen`)
+    // "40,000+" may stand for "40,000", but "12x" may not stand for "1"
+    for (const num of numbersIn(text))
+      if (!pool.some((s) => sameNumber(s, num)))
+        v.push(
+          `${name} says "${num}", which isn't in your profile or the film. Numbers have to come from one of those`,
+        )
+  }
+  return v
 }

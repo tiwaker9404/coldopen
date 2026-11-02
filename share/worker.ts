@@ -13,6 +13,7 @@
  * Films live in Workers KV, views in D1. The page and the tracking rules are the same code
  * the API server uses (src/share), so a film looks and counts the same wherever it's hosted.
  */
+import { attachment } from '../src/share/download.ts'
 import { type ShareView, sharePage } from '../src/share/page.ts'
 import { recordBeacon, type ViewRow, type ViewStore, type ViewSummary } from '../src/share/views.ts'
 
@@ -111,11 +112,17 @@ function parseView(body: unknown): ShareView | null {
 }
 
 /** Serves a stored file, honouring Range so iOS Safari will play the video. */
-function fileResponse(buf: ArrayBuffer, type: string, range: string | null): Response {
+function fileResponse(
+  buf: ArrayBuffer,
+  type: string,
+  range: string | null,
+  disposition: string | null = null,
+): Response {
   const headers: Record<string, string> = {
     'content-type': type,
     'accept-ranges': 'bytes',
     'cache-control': 'public, max-age=86400',
+    ...(disposition ? { 'content-disposition': disposition } : {}),
   }
   const m = range?.match(/^bytes=(\d*)-(\d*)$/)
   if (m && (m[1] || m[2])) {
@@ -308,7 +315,12 @@ export async function handle(req: Request, env: Env, ctx: Ctx): Promise<Response
       if (!type) return err(404, 'not found')
       const value = await env.FILMS.get(fileKey(id, parts[2]!), 'arrayBuffer')
       if (!value) return err(404, 'not found')
-      const res = fileResponse(value, type, req.headers.get('range'))
+      const res = fileResponse(
+        value,
+        type,
+        req.headers.get('range'),
+        attachment(url.searchParams.get('download'), parts[2]!),
+      )
       return req.method === 'HEAD' ? new Response(null, res) : res
     }
     if (req.method === 'POST' && parts.length === 3 && parts[2] === 'v') {

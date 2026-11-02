@@ -22,6 +22,38 @@ export interface Film {
   job: { title: string | null; url: string | null } | null
   views: ViewSummary | null
   outreach: { status: OutreachStatus; at: string; sentAt: string } | null
+  /** the first film, when this one re-renders it with edited lines */
+  editOf: string | null
+}
+
+/** lines that can be rewritten before re-rendering */
+export interface ScriptEdit {
+  hook?: string
+  noticed?: string
+  why?: string
+  headline?: string
+  points?: string[]
+  cta?: string
+}
+
+/** on-screen word limits: the same ones the renderer enforces */
+export { LIMITS } from '../../src/script/taste.ts'
+
+/** the hosted app's funnel, for its owner */
+export interface Stats {
+  days: number
+  visitors: number
+  signups: number
+  makers: number
+  films: number
+  succeeded: number
+  failed: number
+  edits: number
+  sent: number
+  watched: number
+  replied: number
+  interviews: number
+  failures: { error: string; n: number }[]
 }
 
 export type OutreachStatus = 'sent' | 'replied' | 'interview' | 'no_reply'
@@ -111,6 +143,10 @@ export interface FilmDetail extends Film {
     violations: string[][]
     usedFallback: boolean
   } | null
+  highlights: {
+    quote: { text: string; source: string }
+    proof: { value: string; label: string; where?: string }[]
+  } | null
   qa: { issues: { kind: string; text?: string }[]; fonts: string[] } | null
   render: { frames: number; ms: number } | null
   steps: {
@@ -150,6 +186,8 @@ export interface Me {
   user: { login: string; name: string | null; avatar: string | null } | null
   films: { used: number; limit: number } | null
   keepsDays: number | null
+  /** the owner: can see the app-wide funnel */
+  stats?: boolean
 }
 
 export class ApiError extends Error {
@@ -230,4 +268,30 @@ export async function draftFromResume(
     role,
     exclude,
   })
+}
+
+/** "Linear - Product Engineer - Alex Rivera": what a downloaded film is saved as */
+export function fileName(film: Film): string {
+  const company = film.company ?? film.host ?? 'coldopen film'
+  return [company, film.job?.title, film.sender].filter(Boolean).join(' - ')
+}
+
+/** a link that saves the film or GIF under the company's name instead of playing it */
+export function downloadUrl(film: Film, name: 'film' | 'preview.gif'): string {
+  const ext = name === 'film' ? '.mp4' : '.gif'
+  return `${media(film, name)}?download=${encodeURIComponent(fileName(film) + ext)}`
+}
+
+/** what kind of link was pasted, so the page can say what the film will be about */
+export function linkKind(text: string): 'job' | 'site' | null {
+  const t = text.trim()
+  if (!t) return null
+  if (
+    /(greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com|myworkdayjobs\.com|smartrecruiters\.com|jobvite\.com|bamboohr\.com|rippling\.com|wellfound\.com|ycombinator\.com\/companies\/[^/]+\/jobs|linkedin\.com\/jobs)/i.test(
+      t,
+    ) ||
+    /\/(jobs?|careers?|positions?|openings?|roles?)\/[^/\s]+/i.test(t)
+  )
+    return 'job'
+  return /\.[a-z]{2,}/i.test(t) ? 'site' : null
 }
