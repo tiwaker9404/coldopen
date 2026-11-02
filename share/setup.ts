@@ -11,6 +11,7 @@ import { spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { ensureR2 } from './r2.ts'
 
 const WRANGLER = 'wrangler@4.149.0'
 const dir = import.meta.dirname
@@ -85,6 +86,8 @@ if (!has('KV_NAMESPACE_ID') || !has('D1_DATABASE_ID')) {
 }
 
 wrangler(['d1', 'execute', 'coldopen-views', '--remote', '--yes', '--file', 'schema.sql'])
+
+ensureR2(dir, WRANGLER)
 
 say('4/5  Deploying the share worker')
 let deployed: string

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import worker, { type D1, type Env, handle, type KV } from '../../share/worker.ts'
+import worker, { type D1, type Env, handle, type KV, media, type R2 } from '../../share/worker.ts'
 
 const ttls = new Map<string, number>()
 /** Workers KV, in memory. */
@@ -234,6 +234,74 @@ describe('share worker', () => {
     await upload()
     const r = await call(`/f/${ID}/film-square.mp4?download=${encodeURIComponent('Deel - Ashwin')}`)
     expect(r.headers.get('content-disposition')).toBe('attachment; filename="Deel - Ashwin.mp4"')
+  })
+})
+
+function memoryR2(): R2 & {
+  store: Map<string, { buf: ArrayBuffer; meta: Record<string, string> }>
+} {
+  const store = new Map<string, { buf: ArrayBuffer; meta: Record<string, string> }>()
+  return {
+    store,
+    put: async (k, v, o) => void store.set(k, { buf: v, meta: o?.customMetadata ?? {} }),
+    get: async (k) => {
+      const o = store.get(k)
+      return o ? { arrayBuffer: async () => o.buf, customMetadata: o.meta } : null
+    },
+    delete: async (keys) => {
+      for (const k of [keys].flat()) store.delete(k)
+    },
+    list: async ({ prefix = '' }) => ({
+      objects: [...store]
+        .filter(([k]) => k.startsWith(prefix))
+        .map(([key, o]) => ({ key, customMetadata: o.meta })),
+      truncated: false,
+    }),
+  }
+}
+
+describe('share worker with R2 for the videos', () => {
+  it('stores new files in R2, still plays older ones from KV, and honours expiry', async () => {
+    const r2 = memoryR2()
+    env = { ...env, MEDIA: r2 }
+    // a film uploaded before R2 was set up
+    await env.FILMS.put(`file:old-film-1:film-square.mp4`, film.buffer.slice(0) as ArrayBuffer)
+    expect((await call('/f/old-film-1/film-square.mp4')).status).toBe(200)
+
+    await call(`/api/films/${ID}?ttl=3600`, {
+      method: 'PUT',
+      headers: auth,
+      body: JSON.stringify(view),
+    })
+    await call(`/api/films/${ID}/film-square.mp4?ttl=3600`, {
+      method: 'PUT',
+      headers: auth,
+      body: film,
+    })
+    expect(r2.store.has(`file:${ID}:film-square.mp4`)).toBe(true)
+    expect(await env.FILMS.get(`file:${ID}:film-square.mp4`, 'arrayBuffer')).toBeNull()
+
+    const part = await call(`/f/${ID}/film-square.mp4`, { headers: { range: 'bytes=0-99' } })
+    expect(part.status).toBe(206)
+    expect(part.headers.get('content-range')).toBe('bytes 0-99/1000')
+
+    // an hour and a bit later: gone from the link, and the daily sweep deletes it
+    const later = Date.now() + 3_700_000
+    vi.spyOn(Date, 'now').mockReturnValue(later)
+    expect((await call(`/f/${ID}/film-square.mp4`)).status).toBe(404)
+    expect(await media.sweep(env, later)).toBe(1)
+    expect(r2.store.size).toBe(0)
+    vi.restoreAllMocks()
+  })
+
+  it('deletes a film from R2 and KV alike', async () => {
+    const r2 = memoryR2()
+    env = { ...env, MEDIA: r2 }
+    await upload()
+    expect(r2.store.size).toBe(1)
+    await call(`/api/films/${ID}`, { method: 'DELETE', headers: auth })
+    expect(r2.store.size).toBe(0)
+    expect((await call(`/f/${ID}/film-square.mp4`)).status).toBe(404)
   })
 })
 

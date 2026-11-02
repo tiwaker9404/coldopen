@@ -2,12 +2,13 @@
  * Deploys the share worker:  pnpm share:deploy
  *
  * Adds anything newer versions of coldopen expect to an existing share/wrangler.toml first
- * (the 10-minute keep-awake schedule), so an older setup keeps working without re-running
- * share:setup.
+ * (the 10-minute keep-awake schedule, and R2 for videos when it's switched on), so an older
+ * setup keeps working without re-running share:setup.
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { ensureR2 } from './r2.ts'
 
 const dir = import.meta.dirname
 const toml = join(dir, 'wrangler.toml')
@@ -23,5 +24,6 @@ if (!/^\[triggers\]/m.test(text)) {
   )
   console.log('Added the keep-awake schedule to share/wrangler.toml')
 }
+ensureR2(dir)
 const r = spawnSync('npx', ['--yes', 'wrangler@4.149.0', 'deploy'], { cwd: dir, stdio: 'inherit' })
 process.exit(r.status ?? 1)

@@ -38,9 +38,29 @@ interface D1Statement {
 export interface D1 {
   prepare(sql: string): D1Statement
 }
+/** Cloudflare R2: object storage for the videos, 10 GB free (KV holds 1 GB in all) */
+export interface R2 {
+  put(
+    key: string,
+    value: ArrayBuffer,
+    opts?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> },
+  ): Promise<unknown>
+  get(key: string): Promise<{
+    arrayBuffer(): Promise<ArrayBuffer>
+    customMetadata?: Record<string, string>
+  } | null>
+  delete(keys: string | string[]): Promise<void>
+  list(opts: { prefix?: string; cursor?: string; include?: 'customMetadata'[] }): Promise<{
+    objects: { key: string; customMetadata?: Record<string, string> }[]
+    truncated: boolean
+    cursor?: string
+  }>
+}
 export interface Env {
   FILMS: KV
   VIEWS: D1
+  /** when bound, videos and images go here instead of KV; files already in KV still serve */
+  MEDIA?: R2
   SHARE_TOKEN: string
   VIEW_SALT?: string
   NOTIFY_WEBHOOK_URL?: string
@@ -109,6 +129,68 @@ function parseView(body: unknown): ShareView | null {
     contact: v.contact as string,
     film: v.film,
   }
+}
+
+/**
+ * Where a film's files live: R2 when the worker has it (MEDIA), else KV. R2 has no expiry per
+ * object, so the expiry is stored with each file, checked on every read, and the daily sweep
+ * deletes what's past it.
+ */
+const media = {
+  async put(env: Env, id: string, name: string, buf: ArrayBuffer, ttlSeconds?: number) {
+    if (env.MEDIA)
+      await env.MEDIA.put(fileKey(id, name), buf, {
+        httpMetadata: { contentType: FILES[name]! },
+        customMetadata: ttlSeconds ? { expires: String(Date.now() + ttlSeconds * 1000) } : {},
+      })
+    else
+      await env.FILMS.put(
+        fileKey(id, name),
+        buf,
+        ttlSeconds ? { expirationTtl: ttlSeconds } : undefined,
+      )
+  },
+  async get(env: Env, id: string, name: string): Promise<ArrayBuffer | null> {
+    if (env.MEDIA) {
+      const o = await env.MEDIA.get(fileKey(id, name))
+      if (o) {
+        const expires = Number(o.customMetadata?.expires)
+        return expires && expires < Date.now() ? null : o.arrayBuffer()
+      }
+    }
+    // uploaded before R2 was set up
+    return env.FILMS.get(fileKey(id, name), 'arrayBuffer')
+  },
+  async remove(env: Env, id: string) {
+    const keys = Object.keys(FILES).map((f) => fileKey(id, f))
+    await Promise.all([
+      ...keys.map((k) => env.FILMS.delete(k)),
+      env.MEDIA ? env.MEDIA.delete(keys) : Promise.resolve(),
+    ])
+  },
+  /** deletes R2 files past their expiry; returns how many */
+  async sweep(env: Env, now = Date.now()): Promise<number> {
+    if (!env.MEDIA) return 0
+    let n = 0
+    let cursor: string | undefined
+    do {
+      const page = await env.MEDIA.list({
+        prefix: 'file:',
+        include: ['customMetadata'],
+        ...(cursor ? { cursor } : {}),
+      })
+      const gone = page.objects
+        .filter((o) => {
+          const e = Number(o.customMetadata?.expires)
+          return e && e < now
+        })
+        .map((o) => o.key)
+      if (gone.length) await env.MEDIA.delete(gone)
+      n += gone.length
+      cursor = page.truncated ? page.cursor : undefined
+    } while (cursor)
+    return n
+  },
 }
 
 /** Serves a stored file, honouring Range so iOS Safari will play the video. */
@@ -313,7 +395,7 @@ export async function handle(req: Request, env: Env, ctx: Ctx): Promise<Response
     if ((req.method === 'GET' || req.method === 'HEAD') && parts.length === 3) {
       const type = FILES[parts[2]!]
       if (!type) return err(404, 'not found')
-      const value = await env.FILMS.get(fileKey(id, parts[2]!), 'arrayBuffer')
+      const value = await media.get(env, id, parts[2]!)
       if (!value) return err(404, 'not found')
       const res = fileResponse(
         value,
@@ -435,13 +517,13 @@ export async function handle(req: Request, env: Env, ctx: Ctx): Promise<Response
         const buf = await req.arrayBuffer()
         if (buf.byteLength === 0 || buf.byteLength > MAX_FILE)
           return err(413, `${name} must be between 1 byte and 24 MB`)
-        await env.FILMS.put(fileKey(id, name), buf, ttl)
+        await media.put(env, id, name, buf, ttl?.expirationTtl)
         return json({ id, file: name, bytes: buf.byteLength })
       }
       if (parts.length === 3 && req.method === 'DELETE') {
         await Promise.all([
           env.FILMS.delete(metaKey(id)),
-          ...Object.keys(FILES).map((f) => env.FILMS.delete(fileKey(id, f))),
+          media.remove(env, id),
           env.VIEWS.prepare('delete from film_views where film_id = ?').bind(id).run(),
         ])
         return json({ id, deleted: true })
@@ -476,5 +558,13 @@ async function keepAwake(env: Env): Promise<void> {
 
 export default {
   fetch: handle,
-  scheduled: (_event: unknown, env: Env, ctx: Ctx) => ctx.waitUntil(keepAwake(env)),
+  /** every 10 minutes: keep the app awake; once a day (the 04:00 UTC tick): delete expired files */
+  scheduled: (event: { scheduledTime?: number }, env: Env, ctx: Ctx) => {
+    ctx.waitUntil(keepAwake(env))
+    const at = new Date(event.scheduledTime ?? Date.now())
+    if (at.getUTCHours() === 4 && at.getUTCMinutes() < 10)
+      ctx.waitUntil(media.sweep(env).catch(() => 0))
+  },
 }
+
+export { media }
