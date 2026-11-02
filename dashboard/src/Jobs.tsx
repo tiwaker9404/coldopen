@@ -135,6 +135,7 @@ export function Jobs({
             {r.failed.length > 0 && `. Couldn’t read ${r.failed.join(', ')}`}.
           </p>
           {r.gaps.length > 0 && <Gaps gaps={r.gaps} />}
+          {!visitor && <KnowNudge />}
           {r.data.length === 0 ? (
             <p className="jobs-empty">
               No open roles fit right now. Try another title for the same job (“Solutions Engineer”,
@@ -407,6 +408,49 @@ function Gaps({ gaps }: { gaps: FitGap[] }) {
       </ul>
       {answer.error && <p className="error">{answer.error.message}</p>}
     </section>
+  )
+}
+
+/**
+ * Until they upload LinkedIn's connections export, a one-line offer to show who they know at
+ * each company, with the upload right there.
+ */
+function KnowNudge() {
+  const qc = useQueryClient()
+  const conn = useQuery({
+    queryKey: ['connections'],
+    queryFn: () => api<{ count: number }>('/v1/connections'),
+  })
+  const upload = useMutation({
+    mutationFn: async (file: File) =>
+      send<{ count: number }>('PUT', '/v1/connections', { csv: await file.text() }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['connections'] })
+      await qc.invalidateQueries({ queryKey: ['jobs'] })
+    },
+  })
+  if (!conn.data || conn.data.count > 0) return null
+  return (
+    <div className="know-nudge">
+      <span>
+        <b>See who you know at each company.</b> Upload LinkedIn’s connections export (Settings,
+        Data privacy, Get a copy of your data, Connections) and every job shows them.
+      </span>
+      <label className="button">
+        {upload.isPending ? 'Reading…' : 'Upload Connections.csv'}
+        <input
+          type="file"
+          accept=".csv,text/csv"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) upload.mutate(file)
+            e.target.value = ''
+          }}
+        />
+      </label>
+      {upload.error && <p className="error">{upload.error.message}</p>}
+    </div>
   )
 }
 

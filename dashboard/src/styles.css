@@ -932,6 +932,10 @@ small,
   color: #ffb183;
 }
 
+.job-checks .sort {
+  white-space: nowrap;
+}
+
 .job-checks .sort select {
   font: inherit;
   padding: 2px 6px;
@@ -3055,4 +3059,17 @@ kbd {
   padding-left: 20px;
   display: grid;
   gap: 4px;
+}
+
+.know-nudge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+  font-size: 14px;
 }

@@ -40,6 +40,8 @@ interface PostLike {
 
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s)
 const clean = (s: string | undefined) => (s ?? '').replace(/\s+/g, ' ').trim()
+/** a sentence's own closing punctuation, so it can sit inside another sentence */
+const bare = (s: string) => s.replace(/[\s.!?;:,]+$/, '')
 
 export function briefOf(
   company: string,
@@ -69,26 +71,24 @@ export function briefOf(
 
   const proof = (profile?.proof ?? [])
     .slice(0, 2)
-    .map((p) => `${p.value} ${p.label}${p.where ? ` at ${p.where}` : ''}`)
+    .map((p) => bare(`${p.value} ${p.label}${p.where ? ` at ${p.where}` : ''}`))
   const pitch = profile
-    ? `${profile.offer}${proof.length ? `. For example: ${proof.join('; ')}.` : '.'}`
+    ? `${bare(profile.offer)}.${proof.length ? ` For example: ${proof.join('; ')}.` : ''}`
     : ''
 
   const questions: string[] = []
-  const stat = facts[0]
+  // a fact short enough to quote back whole, numbers first
+  const stat =
+    facts.find((f) => /\d/.test(f) && f.length <= 110) ?? facts.find((f) => f.length <= 110)
   if (stat)
     questions.push(
-      `Your site says “${clip(stat, 90)}”. What does the team need to get to the next milestone on that?`,
+      `Your site says “${bare(stat)}.” What does the team need to reach the next milestone on that?`,
     )
   questions.push(
     role
       ? `What does a great first 90 days look like for the ${role.title}?`
       : `What is the team's biggest priority for the next 90 days?`,
   )
-  questions.push(
-    role?.prepare[0]
-      ? `How much of the day-to-day is “${clip(role.prepare[0], 70)}”, and how do new people ramp up on it?`
-      : 'What separates someone who is good in this role from someone who is great?',
-  )
+  questions.push('What separates someone who is good in this role from someone who is great?')
   return { company, what: what ? clip(what, 240) : null, facts, role, pitch, questions }
 }
