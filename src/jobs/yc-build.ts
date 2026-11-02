@@ -87,6 +87,22 @@ export function mentions(page: string, site: string | undefined): boolean {
   return page.toLowerCase().includes(host)
 }
 
+/**
+ * Clear without fetching the page: a job links to the company's own domain, or the board uses
+ * the company's exact YC name and that name is long enough not to be someone else's ("instacart",
+ * not "hive").
+ */
+export function trusted(
+  token: string,
+  c: Pick<YcCompany, 'slug' | 'website'>,
+  jobs: { url: string }[],
+): boolean {
+  const host = hostOf(c.website)
+  if (host && jobs.some((j) => hostOf(j.url) === host || hostOf(j.url).endsWith(`.${host}`)))
+    return true
+  return token.length >= 7 && (token === c.slug || token === c.slug.replace(/-/g, ''))
+}
+
 async function owns(b: Board, site: string | undefined): Promise<boolean> {
   const url =
     b.ats === 'greenhouse'
@@ -113,7 +129,7 @@ async function find(c: YcCompany): Promise<YcBoard | null> {
       try {
         const jobs = readBoard(b, await fetchBoardBody(b, { timeoutMs: 20_000 }))
         if (jobs.length === 0) continue
-        if (!(await owns(b, c.website))) {
+        if (!trusted(token, c, jobs) && !(await owns(b, c.website))) {
           rejected++
           continue
         }

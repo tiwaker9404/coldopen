@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Job } from '../../src/jobs/boards.ts'
 import { SearchSchema } from '../../src/jobs/rank.ts'
 import { momentum } from '../../src/jobs/service.ts'
-import { mentions, shortBatch, tokensFor } from '../../src/jobs/yc-build.ts'
+import { mentions, shortBatch, tokensFor, trusted } from '../../src/jobs/yc-build.ts'
 import { peopleSearches } from '../../src/outreach/people.ts'
 
 const NOW = Date.parse('2026-11-02T12:00:00Z')
@@ -41,6 +41,17 @@ describe('board ownership', () => {
     )
     expect(mentions('<a href="https://hive.com">Hive</a>', 'https://thehive.ai')).toBe(false)
     expect(mentions('anything', undefined)).toBe(false)
+  })
+
+  it('trusts distinctive YC names and jobs on the company domain', () => {
+    const c = { slug: 'instacart', website: 'https://www.instacart.com' }
+    expect(trusted('instacart', c, [])).toBe(true)
+    expect(trusted('hive', { slug: 'hive', website: 'https://hive.co' }, [])).toBe(false)
+    expect(
+      trusted('hive', { slug: 'hive', website: 'https://hive.co' }, [
+        { url: 'https://careers.hive.co/jobs/1' },
+      ]),
+    ).toBe(true)
   })
 })
 
