@@ -89,7 +89,7 @@ export function ProfileEditor({
         <header className="drawer-head">
           <div>
             <h2>{profile ? 'Your profile' : draft ? 'Check your profile' : 'Your profile'}</h2>
-            <p>What every film says about you. Nothing here is invented for you.</p>
+            <p>What every film says about you, in your own words.</p>
           </div>
           <button type="button" className="x" onClick={onClose} aria-label="Close">
             <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">

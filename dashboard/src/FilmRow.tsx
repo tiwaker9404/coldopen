@@ -55,7 +55,7 @@ export function FilmRow({
           ) : film.status === 'succeeded' ? (
             watched(film)
           ) : film.status === 'failed' ? (
-            'Didn’t finish. Open for why'
+            'Needs another try. Open to see why'
           ) : (
             'Cancelled'
           )}

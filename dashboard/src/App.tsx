@@ -77,7 +77,7 @@ export function App() {
           notify(`${name} film is ready`, 'Open coldopen to send it.')
         } else if (f.status === 'failed')
           toast({
-            text: `${name} film didn’t finish.`,
+            text: `${name} film needs another try.`,
             action: { label: 'See why', run: () => setOpen(f.id) },
           })
       }
@@ -494,7 +494,7 @@ function Films({
   if (list.length === 0)
     return (
       <section className="films empty">
-        <p>No films yet. Your first one shows up here while it’s being made.</p>
+        <p>Your first film will appear here as it’s made.</p>
       </section>
     )
   return (

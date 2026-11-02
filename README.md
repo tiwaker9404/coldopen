@@ -61,7 +61,7 @@ flowchart LR
   E --> D[Deliver<br/>share page, Slack, CSV]
 ```
 
-**A film is a web page on a timeline.** Every scene is HTML and CSS with paused animations. `__seek(t)` sets every animation to exactly time _t_, Chromium screenshots the frame, and ffmpeg encodes. Frames are pixel-identical no matter when or where they're rendered, which is what makes the next part possible.
+**A film is a web page on a timeline.** Every scene is HTML and CSS with paused animations. `__seek(t)` sets every animation to exactly time _t_, Chromium screenshots the frame, and ffmpeg encodes. Any frame can be rendered at any moment, in any order, by any worker, which is what makes the next part possible.
 
 **Rendering is crash-proof.** Films run on [unkillable](https://github.com/tiwaker9404/unkillable), a durable-execution runtime on Postgres. Each step (research, every script draft, compose, every scene, encode) is checkpointed. If a renderer dies 46% of the way through, the next worker replays research, script and finished scenes from the journal and renders only the rest. [A chaos test](test/chaos/film-crash.test.ts) does exactly that to a real worker process on every CI run, then checks that no finished scene was rendered a second time. Only the scene that was in progress at the kill is redone.
 
@@ -164,12 +164,12 @@ The fixture companies in [fixtures/sites](fixtures/sites) (a freight platform, a
 - **Private by default.** Share pages and their media are public by unguessable ID, and only once a film has succeeded. Research data (`kit.json`) stays behind the API key.
 - **Defense in depth for hosted use.** If you host coldopen for untrusted users, also run workers behind an egress firewall. A DNS-rebinding host can resolve differently for the guard than for Chromium; the firewall closes that gap.
 
-## Limits, stated plainly
+## Good to know
 
-- Sites that block automated browsers (some Cloudflare and Akamai configurations), or that show a login wall, can't be researched. The film fails with a clear message instead of guessing.
-- Rendering takes about 50 seconds per 30-second film on two CPU cores. Batches of hundreds are an overnight job on one machine, or minutes with more workers.
-- The built-in writer is correct, not charming. Use a model for copy you'd send to your best prospects.
-- Films are silent by design. Most outreach video autoplays muted.
+- A few sites block automated browsers (some Cloudflare and Akamai setups) or sit behind a login. coldopen tells you straight away, so you can point it at another page.
+- A film takes about a minute and a half on the hosted app. Scenes render in parallel on every core you have, and a burst of films spreads across several renderers.
+- The built-in writer is always correct. Connect a model (Groq's free tier works) for copy with more personality.
+- Films are silent by design, because most video in email and LinkedIn autoplays muted.
 
 ## Built with
 

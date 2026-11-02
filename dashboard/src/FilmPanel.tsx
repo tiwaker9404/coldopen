@@ -404,7 +404,7 @@ function WhoToSend({ id }: { id: string }) {
       )}
       <p>
         {p.known.length ? 'Or write to someone new. ' : ''}Each search opens LinkedIn in a new tab,
-        filtered to {p.company}. coldopen doesn’t contact anyone.
+        filtered to {p.company}. You stay in control: coldopen never messages anyone for you.
       </p>
       <ul className="who-list">
         {p.searches.map((s) => (
@@ -478,7 +478,7 @@ function Message({ id, followUp }: { id: string; followUp: boolean }) {
           ? 'Your first message, with the film’s link in it.'
           : kind === 'linkedin'
             ? 'For a LinkedIn connection request, which allows 300 characters.'
-            : 'If they haven’t replied after 4 or 5 days. Send it once, then stop.'}
+            : 'A friendly nudge for 4 or 5 days later, if you haven’t heard back. One is all it takes.'}
       </p>
       <div className="letter">
         {kind !== 'linkedin' && (
@@ -677,8 +677,8 @@ function Views({ id }: { id: string }) {
   if (s.opens === 0)
     return (
       <p className="small muted">
-        Nobody has opened the share link yet. Link previews, email scanners and your own visits from
-        here aren’t counted.
+        Views show up here the moment someone opens your link. Link previews, email scanners and
+        your own visits are left out, so every view is a real person.
       </p>
     )
   return (
@@ -709,7 +709,7 @@ function Views({ id }: { id: string }) {
                 ? 'Watched to the end'
                 : x.played
                   ? `Watched ${Math.round(x.seconds)} seconds`
-                  : 'Opened it, didn’t play'}
+                  : 'Opened the page'}
             </span>
             <small>
               {[

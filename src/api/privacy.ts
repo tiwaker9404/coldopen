@@ -77,8 +77,8 @@ tr:last-child th,tr:last-child td{border-bottom:0}
 <ul>
 <li>It's free, with daily limits so it stays free. Features and limits may change.</li>
 <li>You're responsible for what you send. Check every line of your film and message first.</li>
-<li>Don't use it to pretend to be someone else, to claim results that aren't yours, or to send the same film to large lists of people who didn't ask for it.</li>
-<li>It's provided as is. Sites that block automated browsers can't be filmed, and a film can fail.</li>
+<li>Use it the way it works best: your own name, your own results, and each film sent to a person you chose.</li>
+<li>It's offered as is, and it gets better every week. A few sites block automated browsers; for those, paste the job post's link instead.</li>
 <li>The software is open source under the MIT license; you can <a href="${repo}">run your own copy</a>.</li>
 </ul>
 
