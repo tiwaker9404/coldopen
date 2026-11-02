@@ -12,7 +12,7 @@ import {
   type Job,
   readBoard,
 } from './boards.ts'
-import { DEFAULT_BOARDS, ycOf } from './companies.ts'
+import { DEFAULT_BOARDS, visaOf, ycOf } from './companies.ts'
 import { detailsFromBoard, greenhouseRequirements } from './details.ts'
 import { defaultSearch, rank, type Search, SearchSchema, type Suggestion, spread } from './rank.ts'
 
@@ -377,7 +377,11 @@ export async function suggestions(
     }
   const { jobs: all, failed, updatedAt } = await listings(sql, boards, opts)
   const hidden = new Set(state.hidden)
-  const jobs = state.search.ycOnly ? all.filter((j) => ycOf({ site: j.site }) || ycBoard(j)) : all
+  const jobs = all.filter(
+    (j) =>
+      (!state.search.ycOnly || ycOf({ site: j.site }) || ycBoard(j)) &&
+      (!state.search.visaOnly || visaOf(j.board)),
+  )
   const pace = momentum(all, opts.now)
   // the best title matches, then how well the person's record answers each one's requirements
   const candidates = spread(
@@ -393,11 +397,13 @@ export async function suggestions(
     const fit = profile ? fitOf(reqs.get(j.id) ?? [], profile) : null
     const yc = ycBoard(j) ?? ycOf({ site: j.site })
     const hiring = pace.get(j.board)
+    const visa = visaOf(j.board)
     return {
       ...j,
       ...(fit ? { fit, score: j.score + FIT_BONUS[fit.level] } : {}),
       ...(yc?.batch ? { yc: yc.batch } : {}),
       ...(hiring ? { hiring } : {}),
+      ...(visa ? { visa } : {}),
     }
   })
   const fastest = state.search.sort === 'fastest'

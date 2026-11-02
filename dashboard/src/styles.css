@@ -976,6 +976,12 @@ small,
   align-items: center;
 }
 
+.tag.visa {
+  background: var(--go-soft);
+  color: var(--go);
+  font-weight: 600;
+}
+
 .tag.pay {
   background: none;
   box-shadow: inset 0 0 0 1px var(--rule);

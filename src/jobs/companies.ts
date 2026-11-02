@@ -129,3 +129,18 @@ export const DEFAULT_BOARDS: Board[] = [
 
 /** The curated list alone, for the weekly board check */
 export const CURATED_BOARDS = CURATED
+
+/** H-1B approvals per board, from src/jobs/visa.json (rebuilt monthly from USCIS's data) */
+const VISA: Record<string, { approvals: number; year: number }> = (() => {
+  try {
+    const raw = JSON.parse(readFileSync(new URL('./visa.json', import.meta.url), 'utf8'))
+    return raw && typeof raw === 'object' ? raw : {}
+  } catch {
+    return {}
+  }
+})()
+
+/** The company's H-1B approvals in the latest fiscal year, when it had any */
+export function visaOf(board: string): { approvals: number; year: number } | null {
+  return VISA[board] ?? null
+}

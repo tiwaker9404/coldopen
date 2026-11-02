@@ -357,6 +357,8 @@ export interface JobSuggestion {
   yc?: string
   /** the company's open roles, and how many went up in the last 30 days */
   hiring?: { open: number; recent: number }
+  /** H-1B petitions the company had approved in the latest fiscal year */
+  visa?: { approvals: number; year: number }
   /** yearly base pay the post lists */
   pay?: { min: number; max: number; currency: string }
   /** people you know there, from your LinkedIn connections */
@@ -381,6 +383,8 @@ export interface JobSearch {
   ycOnly: boolean
   /** best fit first, or the companies hiring fastest first */
   sort: 'best' | 'fastest'
+  /** only companies with H-1B approvals last year */
+  visaOnly: boolean
   /** only roles posted in the last week or month */
   within: 'any' | 'week' | 'month'
   /** companies to leave out */

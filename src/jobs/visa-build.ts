@@ -96,6 +96,8 @@ async function get(url: string): Promise<Response> {
 
 async function main() {
   const page = await (await get(HUB)).text()
+  if (process.env.VISA_DEBUG)
+    for (const m of page.matchAll(/href="([^"]*(?:data|hub|export|20\d\d)[^"]*)"/gi)) console.log('link', m[1])
   const links = [...page.matchAll(/href="([^"]+?\.csv)"/gi)].map((m) =>
     new URL(m[1]!, HUB).toString(),
   )

@@ -18,6 +18,8 @@ export const SearchSchema = z.object({
   skipSenior: z.boolean().default(false),
   /** only YC companies */
   ycOnly: z.boolean().default(false),
+  /** only companies with H-1B approvals last year */
+  visaOnly: z.boolean().default(false),
   /** best fit first, or the companies adding the most roles lately first */
   sort: z.enum(['best', 'fastest']).default('best'),
   /** only roles posted in the last week or month */
@@ -35,6 +37,8 @@ export interface Suggestion extends Job {
   yc?: string
   /** how fast the company is hiring: open roles on its board, and how many went up in 30 days */
   hiring?: { open: number; recent: number }
+  /** H-1B petitions the company had approved in the latest fiscal year */
+  visa?: { approvals: number; year: number }
   /** short reasons, shown as chips: "Forward Deployed Engineer", "San Francisco", "New this week" */
   why: string[]
 }

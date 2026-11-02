@@ -128,6 +128,7 @@ export function Jobs({
             {r.search.remote &&
               (r.search.locations.length ? ', or remote' : ', anywhere or remote')}
             {r.search.ycOnly && ' at YC companies'}
+            {r.search.visaOnly && ' that sponsor H-1B visas'}
             {r.search.sort === 'fastest' && ', hiring fastest first'}
             {`. ${r.data.length} matches across ${r.companies} companies`}
             {r.updatedAt && `, checked ${ago(r.updatedAt)}`}
@@ -279,6 +280,14 @@ function JobRow({
               {job.hiring.recent} new {job.hiring.recent === 1 ? 'role' : 'roles'} this month
             </span>
           )}
+          {job.visa && (
+            <span
+              className="tag visa"
+              title={`USCIS approved ${job.visa.approvals} H-1B petitions for this company in fiscal year ${job.visa.year}`}
+            >
+              Sponsors H-1B · {job.visa.approvals} in FY{String(job.visa.year).slice(2)}
+            </span>
+          )}
           {job.pay && (
             <span className="tag pay" title="Base pay this post lists, per year">
               {money(job.pay)}
@@ -424,6 +433,7 @@ function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
   const [ycOnly, setYcOnly] = useState(search.ycOnly)
   const [sort, setSort] = useState(search.sort)
   const [within, setWithin] = useState(search.within)
+  const [visaOnly, setVisaOnly] = useState(search.visaOnly)
   const [exclude, setExclude] = useState(search.exclude.join(', '))
   const [minPay, setMinPay] = useState(
     search.minPay ? String(Math.round(search.minPay / 1000)) : '',
@@ -451,6 +461,7 @@ function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
         ycOnly,
         sort,
         within,
+        visaOnly,
         exclude: list(exclude).slice(0, 50),
         minPay: minPay.trim() ? Math.max(0, Math.round(Number(minPay) || 0)) * 1000 || null : null,
         boards: list(boards),
@@ -505,6 +516,14 @@ function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
         <label className="check">
           <input type="checkbox" checked={ycOnly} onChange={(e) => setYcOnly(e.target.checked)} />
           YC companies only
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={visaOnly}
+            onChange={(e) => setVisaOnly(e.target.checked)}
+          />
+          Sponsors H-1B visas
         </label>
         <label className="check sort">
           Sort by
