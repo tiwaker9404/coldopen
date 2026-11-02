@@ -1,0 +1,23 @@
+name: Job boards
+
+# Checks every default job board in src/jobs/companies.ts against its live public API, so a
+# company that moves to another applicant tracking system (and its dead board) gets noticed.
+on:
+  push:
+    branches: [suggested-jobs]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 15 * * 1'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile --prod
+        env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
+      - run: node src/jobs/check.ts
