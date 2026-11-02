@@ -5,6 +5,9 @@ name: Render speed
 # Run it by hand (Actions, Render speed, Run workflow). Uses only the fictional fixture sites and
 # the built-in writer, so it needs no secrets.
 on:
+  # also on pushes to this branch, until the workflow is on main (manual runs need it there)
+  push:
+    branches: [faster-renders]
   workflow_dispatch:
     inputs:
       pages:
@@ -50,7 +53,7 @@ jobs:
             echo "| --- | --- | --- | --- | --- |"
           } >> "$GITHUB_STEP_SUMMARY"
           i=0
-          for p in ${{ inputs.pages }}; do
+          for p in ${{ inputs.pages || '1 3 1 3' }}; do
             i=$((i + 1))
             out="speed-$i"
             log=$(RENDER_PAGES=$p node src/cli.ts http://127.0.0.1:4100/parcelpine/ \
