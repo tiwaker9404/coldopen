@@ -7,6 +7,7 @@ import {
   type JobSearch,
   type JobSuggestion,
   type JobSuggestions,
+  type Me,
   send,
 } from './api.ts'
 
@@ -28,10 +29,36 @@ export function Jobs({ onMade }: { onMade: (id: string) => void }) {
     queryFn: () => api<JobSuggestions>('/v1/jobs/suggested?limit=24'),
     staleTime: 10 * 60_000,
   })
+  const me = useQuery({ queryKey: ['me'], queryFn: () => api<Me>('/v1/me') })
+  const qc = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [all, setAll] = useState(false)
+  const [picked, setPicked] = useState<string[]>([])
+  const [started, setStarted] = useState<number | null>(null)
   const r = q.data
   const noRoles = !!r && r.search.roles.length === 0
+  // a visitor makes one film at a time; an account several, up to what's left today
+  const visitor = !!me.data?.hosted && !me.data.user
+  const left = me.data?.films ? Math.max(0, me.data.films.limit - me.data.films.used) : null
+  const max = visitor ? 1 : Math.min(25, left ?? 25)
+  const chosen = (r?.data ?? []).filter((j) => picked.includes(j.id))
+  const toggle = (id: string) => {
+    setStarted(null)
+    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
+  }
+  const makeMany = useMutation({
+    mutationFn: () =>
+      send<{ batch: string; films: number }>('POST', '/v1/batches', {
+        jobs: chosen.map((j) => ({ url: j.url, ...(j.site ? { site: j.site } : {}) })),
+      }),
+    onSuccess: (b) => {
+      setPicked([])
+      setStarted(b.films)
+      void qc.invalidateQueries({ queryKey: ['films'] })
+      void qc.invalidateQueries({ queryKey: ['me'] })
+      void qc.invalidateQueries({ queryKey: ['jobs'] })
+    },
+  })
 
   return (
     <section className="jobs" aria-labelledby="jobs-title">
@@ -78,10 +105,51 @@ export function Jobs({ onMade }: { onMade: (id: string) => void }) {
             </p>
           ) : (
             <>
+              {!visitor && (
+                <div className="job-bar" aria-live="polite">
+                  {chosen.length > 0 ? (
+                    <>
+                      <span>
+                        {chosen.length} selected
+                        {chosen.length > max && ` · ${max} left today`}
+                      </span>
+                      <span className="job-bar-do">
+                        <button type="button" className="link" onClick={() => setPicked([])}>
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          className="primary"
+                          disabled={makeMany.isPending || chosen.length > max}
+                          onClick={() => makeMany.mutate()}
+                        >
+                          {makeMany.isPending
+                            ? 'Starting…'
+                            : `Make ${chosen.length} film${chosen.length === 1 ? '' : 's'}`}
+                        </button>
+                      </span>
+                    </>
+                  ) : started ? (
+                    <span>
+                      Making {started} film{started === 1 ? '' : 's'}. They appear in Your films
+                      below as they finish, about a minute and a half each.
+                    </span>
+                  ) : (
+                    <span className="quiet">Tick several jobs to make their films in one go.</span>
+                  )}
+                </div>
+              )}
+              {makeMany.error && <p className="error">{makeMany.error.message}</p>}
               <ul className="job-list">
                 {(all ? r.data : r.data.slice(0, SHOWN)).map((j) => (
                   <li key={j.id}>
-                    <JobRow job={j} onMade={onMade} />
+                    <JobRow
+                      job={j}
+                      onMade={onMade}
+                      {...(visitor
+                        ? {}
+                        : { picked: picked.includes(j.id), onPick: () => toggle(j.id) })}
+                    />
                   </li>
                 ))}
               </ul>
@@ -98,7 +166,18 @@ export function Jobs({ onMade }: { onMade: (id: string) => void }) {
   )
 }
 
-function JobRow({ job, onMade }: { job: JobSuggestion; onMade: (id: string) => void }) {
+function JobRow({
+  job,
+  onMade,
+  picked,
+  onPick,
+}: {
+  job: JobSuggestion
+  onMade: (id: string) => void
+  /** ticked for making several films at once (accounts only) */
+  picked?: boolean
+  onPick?: () => void
+}) {
   const qc = useQueryClient()
   const make = useMutation({
     mutationFn: () =>
@@ -124,7 +203,19 @@ function JobRow({ job, onMade }: { job: JobSuggestion; onMade: (id: string) => v
   })
   const why = job.why.slice(1)
   return (
-    <div className="job">
+    <div className={`job${onPick ? ' pickable' : ''}${picked ? ' picked' : ''}`}>
+      {onPick &&
+        (job.filmId ? (
+          <span className="job-pick" aria-hidden="true" />
+        ) : (
+          <input
+            type="checkbox"
+            className="job-pick"
+            checked={!!picked}
+            onChange={onPick}
+            aria-label={`Select ${job.title} at ${job.company}`}
+          />
+        ))}
       <div className="job-what">
         <b>{job.company}</b>
         <a href={job.url} target="_blank" rel="noreferrer">

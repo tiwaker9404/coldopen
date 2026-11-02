@@ -790,33 +790,56 @@ export async function buildApi({ sql, cfg, log, slack, llm = null, jobsFetch }: 
     {
       schema: {
         tags: ['films'],
-        summary: 'Make one film per prospect',
-        body: z.object({
-          urls: z.array(z.string().min(3)).min(1).max(1000),
-          profileId: z.string().optional(),
-          profile: ProfileSchema.optional(),
-          format: z.enum(['square', 'landscape', 'portrait']).default('square'),
-          proof: z.array(z.number().int().min(0)).min(1).max(3).optional(),
-        }),
+        summary: 'Make one film per prospect, or per job post',
+        description:
+          'Send `urls` (company websites) for one film each, or `jobs` (job post links, each with the company website when you know it) for one film per job post, each answering that post.',
+        body: z
+          .object({
+            urls: z.array(z.string().min(3)).min(1).max(1000).optional(),
+            jobs: z
+              .array(
+                z.object({
+                  /** the job post */
+                  url: z.string().url(),
+                  /** the company's own website; without it, the post's link to it is used */
+                  site: z.string().url().optional(),
+                }),
+              )
+              .min(1)
+              .max(25)
+              .optional(),
+            profileId: z.string().optional(),
+            profile: ProfileSchema.optional(),
+            format: z.enum(['square', 'landscape', 'portrait']).default('square'),
+            proof: z.array(z.number().int().min(0)).min(1).max(3).optional(),
+          })
+          .refine((b) => !!b.urls !== !!b.jobs, 'send urls or jobs, not both'),
       },
     },
     async (req, reply) => {
       const profile = await resolveProfile(req.body, req.owner)
       const batch = newId('bat')
-      const urls = [...new Set(req.body.urls.map(normalizeUrl))]
+      // one film per company website, or per job post (a job without a known site is filmed from
+      // its link, which names the company)
+      const items: { url: string; job?: { url: string } }[] = req.body.jobs
+        ? [...new Map(req.body.jobs.map((j) => [j.url, j])).values()].map((j) => ({
+            url: j.site ?? j.url,
+            ...(j.site ? { job: { url: j.url } } : {}),
+          }))
+        : [...new Set(req.body.urls!.map(normalizeUrl))].map((url) => ({ url }))
       if (!unlimited(req)) {
         if (!req.owner.startsWith('u:'))
           return reply
             .status(403)
             .send({ error: { code: 'sign_in', message: 'Sign in to make several films at once' } })
-        const quota = await takeFilms(req, urls.length)
+        const quota = await takeFilms(req, items.length)
         if (quota) return limited(reply, quota)
       }
       const created = await sql.begin(async (tx) => {
         const out = []
-        for (const [i, url] of urls.entries()) {
+        for (const [i, item] of items.entries()) {
           const input = FilmInputSchema.parse({
-            url,
+            ...item,
             profile,
             format: req.body.format,
             ...(req.body.proof ? { proof: req.body.proof } : {}),

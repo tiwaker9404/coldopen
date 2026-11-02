@@ -211,4 +211,34 @@ describe('suggested jobs', () => {
     const [b] = await sql`select ok, error from job_boards where board = 'greenhouse:anthropic'`
     expect(b).toMatchObject({ ok: false })
   })
+  it('makes one film per job post in a batch, answering each post', async () => {
+    const b = await app.inject({
+      method: 'POST',
+      url: '/v1/batches',
+      headers: auth,
+      payload: {
+        jobs: [
+          { url: 'https://jobs.ashbyhq.com/ramp/r1', site: 'https://ramp.com/' },
+          { url: 'https://jobs.lever.co/acme-labs/a1' },
+          { url: 'https://jobs.ashbyhq.com/ramp/r1', site: 'https://ramp.com/' },
+        ],
+      },
+    })
+    expect(b.statusCode).toBe(202)
+    expect(b.json().films).toBe(2)
+    const runs = await sql<{ input: { url: string; job?: { url: string }; batch: string } }[]>`
+      select input from runs where input->>'batch' = ${b.json().batch} order by id`
+    expect(runs.map((r) => [r.input.url, r.input.job?.url ?? null])).toEqual([
+      ['https://ramp.com/', 'https://jobs.ashbyhq.com/ramp/r1'],
+      // no website known: the job link is the film's link, and names the company
+      ['https://jobs.lever.co/acme-labs/a1', null],
+    ])
+    const both = await app.inject({
+      method: 'POST',
+      url: '/v1/batches',
+      headers: auth,
+      payload: { urls: ['acme.com'], jobs: [{ url: 'https://jobs.lever.co/acme-labs/a1' }] },
+    })
+    expect(both.statusCode).toBe(400)
+  })
 })

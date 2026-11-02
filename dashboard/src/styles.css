@@ -742,6 +742,40 @@ small,
   padding: 12px 16px;
 }
 
+.job.pickable {
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+}
+
+.job.picked {
+  background: var(--go-soft);
+}
+
+.job-pick {
+  align-self: start;
+  margin-top: 22px;
+}
+
+.job-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  min-height: 44px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.job-bar .quiet {
+  color: var(--muted);
+}
+
+.job-bar-do {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .job-what {
   display: grid;
   gap: 3px;
@@ -844,6 +878,12 @@ small,
 @media (max-width: 560px) {
   .job {
     grid-template-columns: 1fr;
+  }
+  .job.pickable {
+    grid-template-columns: 18px minmax(0, 1fr);
+  }
+  .job.pickable .job-do {
+    grid-column: 2;
   }
   .job-do {
     justify-content: space-between;
