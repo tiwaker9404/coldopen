@@ -2,7 +2,7 @@
 /**
  * Checks every default job board against its live API: how many roles it lists, or why it
  * failed. Run by the "Job boards" workflow (and by hand: node src/jobs/check.ts).
- * Exits non-zero when a board is gone, so a dead entry in companies.ts gets noticed.
+ * Exits non-zero when a board is gone (an empty one is fine), so a dead entry in companies.ts gets noticed.
  */
 import { type Board, boardKey, fetchBoard, prettyToken } from './boards.ts'
 import { DEFAULT_BOARDS } from './companies.ts'
@@ -28,7 +28,8 @@ const results = await Promise.all(
 )
 let bad = 0
 for (const r of results) {
-  if (r.n <= 0) bad++
+  // a board with no openings this week is fine; one that's gone is not
+  if (r.n < 0) bad++
   const line =
     r.n < 0
       ? `FAIL  ${boardKey(r.b)}  ${r.error}`

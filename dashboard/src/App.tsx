@@ -18,6 +18,7 @@ import {
 import { FilmPanel } from './FilmPanel.tsx'
 import { FilmRow } from './FilmRow.tsx'
 import { GettingStarted, GuidePanel, ToolsPanel } from './Guide.tsx'
+import { Jobs } from './Jobs.tsx'
 import { Onboarding } from './Onboarding.tsx'
 import { ProfileEditor } from './ProfileEditor.tsx'
 import { notify, useToast } from './ui.tsx'
@@ -128,6 +129,7 @@ export function App() {
               onNew={() => setEditing({ profile: null })}
             />
             <GettingStarted films={list} onOpen={setOpen} onGuide={() => setSide('guide')} />
+            <Jobs onMade={setOpen} />
             <Films list={list} open={open} onOpen={setOpen} />
           </>
         )}

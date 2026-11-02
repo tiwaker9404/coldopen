@@ -706,6 +706,150 @@ small,
   color: var(--faint);
 }
 
+/* -------------------------------------------------------------------- jobs */
+
+.jobs {
+  display: grid;
+  gap: 10px;
+}
+
+.jobs-note,
+.jobs-empty {
+  font-size: 14px;
+  color: var(--muted);
+  max-width: 70ch;
+}
+
+.job-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.job-list li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.job {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 16px;
+  padding: 12px 16px;
+}
+
+.job-what {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.job-what b {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.job-what a {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.job-what a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.job-why {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.tag {
+  padding: 1px 8px;
+  border-radius: 99px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.tag.new {
+  background: var(--go-soft);
+  color: var(--go);
+  font-weight: 600;
+}
+
+.tag.quiet {
+  background: none;
+  padding-left: 0;
+  color: var(--faint);
+}
+
+.job-do {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.job-do .quiet {
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.more-jobs {
+  justify-self: start;
+  font-size: 14px;
+}
+
+.job-search {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.job-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.job-checks .check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.job-search-do {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 560px) {
+  .job {
+    grid-template-columns: 1fr;
+  }
+  .job-do {
+    justify-content: space-between;
+  }
+}
+
 /* ------------------------------------------------------------------- films */
 
 .films {

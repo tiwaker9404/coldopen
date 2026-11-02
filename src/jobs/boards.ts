@@ -123,7 +123,9 @@ export function readBoard(b: Board, body: unknown): Job[] {
         ...((j.departments as Raw[] | undefined)?.[0]
           ? { team: str((j.departments as Raw[])[0]!.name) }
           : {}),
-        ...(iso(j.first_published ?? j.updated_at) ? { posted: iso(j.first_published ?? j.updated_at) } : {}),
+        ...(iso(j.first_published ?? j.updated_at)
+          ? { posted: iso(j.first_published ?? j.updated_at) }
+          : {}),
       })
     }
   } else if (b.ats === 'lever') {
@@ -172,7 +174,10 @@ export async function fetchBoard(
 ): Promise<Job[]> {
   const f = opts.fetch ?? fetch
   const res = await f(apiUrl(b), {
-    headers: { accept: 'application/json', 'user-agent': 'coldopen/1.0 (+https://github.com/tiwaker9404/coldopen)' },
+    headers: {
+      accept: 'application/json',
+      'user-agent': 'coldopen/1.0 (+https://github.com/tiwaker9404/coldopen)',
+    },
     signal: AbortSignal.timeout(opts.timeoutMs ?? 12_000),
   })
   if (!res.ok) throw new Error(`${b.name}: ${b.ats} board returned HTTP ${res.status}`)

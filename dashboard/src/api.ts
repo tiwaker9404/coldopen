@@ -295,3 +295,38 @@ export function linkKind(text: string): 'job' | 'site' | null {
     return 'job'
   return /\.[a-z]{2,}/i.test(t) ? 'site' : null
 }
+
+/** a role from a company's public job board that fits what they're looking for */
+export interface JobSuggestion {
+  id: string
+  company: string
+  site?: string
+  title: string
+  url: string
+  location: string
+  remote: boolean
+  team?: string
+  posted?: string
+  /** why it was picked: the role it fits, the place, "New this week" */
+  why: string[]
+  /** the film already made for it */
+  filmId?: string
+}
+
+export interface JobSearch {
+  roles: string[]
+  locations: string[]
+  remote: boolean
+  skipSenior: boolean
+  boards: { ats: 'greenhouse' | 'lever' | 'ashby'; token: string; name: string }[]
+  /** nothing saved yet: the roles came from the profile */
+  suggested: boolean
+}
+
+export interface JobSuggestions {
+  data: JobSuggestion[]
+  companies: number
+  failed: string[]
+  updatedAt: string | null
+  search: JobSearch
+}

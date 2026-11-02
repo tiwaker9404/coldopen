@@ -1,0 +1,205 @@
+import type { Sql } from '../db/index.ts'
+import { type Board, BoardSchema, boardKey, type FetchFn, fetchBoard, type Job } from './boards.ts'
+import { DEFAULT_BOARDS } from './companies.ts'
+import { defaultSearch, rank, type Search, SearchSchema, type Suggestion, spread } from './rank.ts'
+
+/**
+ * Suggested jobs for one person: their search, the default boards plus any they added, read
+ * from a shared cache that refreshes each board at most every few hours.
+ */
+
+const FRESH_MS = 6 * 3_600_000
+/** a board that failed is tried again sooner, but not on every page load */
+const RETRY_MS = 30 * 60_000
+const CONCURRENCY = 8
+/** how many boards one person may add */
+export const MAX_OWN_BOARDS = 30
+
+export interface SearchState {
+  search: Search
+  boards: Board[]
+  hidden: string[]
+  /** true when nothing was saved yet and the search came from their profile */
+  suggested: boolean
+}
+
+export async function getSearch(
+  sql: Sql,
+  owner: string,
+  profileRole: string | undefined,
+): Promise<SearchState> {
+  const [row] = await sql<{ search: unknown; boards: unknown; hidden: string[] }[]>`
+    select search, boards, hidden from job_searches where owner = ${owner}`
+  if (!row) return { search: defaultSearch(profileRole), boards: [], hidden: [], suggested: true }
+  const boards = Array.isArray(row.boards)
+    ? row.boards.flatMap((b) => {
+        const p = BoardSchema.safeParse(b)
+        return p.success ? [p.data] : []
+      })
+    : []
+  return { search: SearchSchema.parse(row.search), boards, hidden: row.hidden, suggested: false }
+}
+
+export async function saveSearch(
+  sql: Sql,
+  owner: string,
+  search: Search,
+  boards: Board[],
+): Promise<void> {
+  await sql`
+    insert into job_searches (owner, search, boards) values (${owner}, ${sql.json(search as never)}, ${sql.json(boards as never)})
+    on conflict (owner) do update set search = excluded.search, boards = excluded.boards, updated_at = now()`
+}
+
+export async function hideJob(sql: Sql, owner: string, jobId: string, profileRole?: string) {
+  const s = await getSearch(sql, owner, profileRole)
+  // keep the last 500: old posts close on their own
+  const hidden = [...s.hidden.filter((h) => h !== jobId), jobId].slice(-500)
+  await sql`
+    insert into job_searches (owner, search, boards, hidden) values (${owner}, ${sql.json(s.search as never)}, ${sql.json(s.boards as never)}, ${hidden})
+    on conflict (owner) do update set hidden = excluded.hidden, updated_at = now()`
+}
+
+interface Cached {
+  board: string
+  fetchedAt: Date
+  ok: boolean
+  lastOkAt: Date | null
+  error: string | null
+  jobs: Job[]
+}
+
+/** In-flight refreshes, so two people loading at once fetch a board once */
+const inflight = new Map<string, Promise<void>>()
+
+async function refresh(sql: Sql, b: Board, fetchFn?: FetchFn): Promise<void> {
+  const key = boardKey(b)
+  const running = inflight.get(key)
+  if (running) return running
+  const p = (async () => {
+    try {
+      const jobs = await fetchBoard(b, fetchFn ? { fetch: fetchFn } : {})
+      await sql`
+        insert into job_boards (board, fetched_at, ok, last_ok_at, error, jobs) values (${key}, now(), true, now(), null, ${sql.json(jobs as never)})
+        on conflict (board) do update set fetched_at = now(), ok = true, last_ok_at = now(), error = null, jobs = excluded.jobs`
+    } catch (err) {
+      const msg = (err instanceof Error ? err.message : String(err)).slice(0, 300)
+      // keep the last good listing: a board that hiccups shouldn't empty the suggestions
+      await sql`
+        insert into job_boards (board, fetched_at, ok, error) values (${key}, now(), false, ${msg})
+        on conflict (board) do update set fetched_at = now(), ok = false, error = excluded.error`
+    }
+  })().finally(() => inflight.delete(key))
+  inflight.set(key, p)
+  return p
+}
+
+async function pool<T>(items: T[], n: number, fn: (x: T) => Promise<void>) {
+  const queue = [...items]
+  await Promise.all(
+    Array.from({ length: Math.min(n, queue.length) }, async () => {
+      for (let x = queue.shift(); x !== undefined; x = queue.shift()) await fn(x)
+    }),
+  )
+}
+
+/** The boards' listings, refreshing the stale ones first */
+export async function listings(
+  sql: Sql,
+  boards: Board[],
+  opts: { fetch?: FetchFn; now?: number } = {},
+): Promise<{ jobs: Job[]; failed: Board[]; updatedAt: Date | null }> {
+  const now = opts.now ?? Date.now()
+  const keys = boards.map(boardKey)
+  const rows = async () =>
+    new Map(
+      (await sql<Cached[]>`select * from job_boards where board in ${sql(keys)}`).map((r) => [
+        r.board,
+        r,
+      ]),
+    )
+  let cache = await rows()
+  const stale = boards.filter((b) => {
+    const c = cache.get(boardKey(b))
+    if (!c) return true
+    const age = now - c.fetchedAt.getTime()
+    return age > (c.ok ? FRESH_MS : RETRY_MS)
+  })
+  if (stale.length) {
+    await pool(stale, CONCURRENCY, (b) => refresh(sql, b, opts.fetch))
+    cache = await rows()
+  }
+  const jobs: Job[] = []
+  const failed: Board[] = []
+  let updatedAt: Date | null = null
+  for (const b of boards) {
+    const c = cache.get(boardKey(b))
+    if (!c?.lastOkAt) {
+      failed.push(b)
+      continue
+    }
+    // the person's own name and website for the company win over what the cache was saved with
+    for (const j of c.jobs)
+      jobs.push({ ...j, company: b.name, ...(b.site ? { site: b.site } : {}) })
+    if (!updatedAt || c.fetchedAt < updatedAt) updatedAt = c.fetchedAt
+  }
+  return { jobs, failed, updatedAt }
+}
+
+/** default boards and theirs, without the same board twice */
+export function boardsFor(own: Board[]): Board[] {
+  const seen = new Set<string>()
+  return [...own, ...DEFAULT_BOARDS].filter((b) => {
+    const k = boardKey(b)
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+}
+
+export interface Suggested {
+  data: (Suggestion & { filmId?: string })[]
+  companies: number
+  failed: string[]
+  updatedAt: string | null
+  search: SearchState
+}
+
+export async function suggestions(
+  sql: Sql,
+  owner: string,
+  profileRole: string | undefined,
+  opts: { limit?: number; fetch?: FetchFn; now?: number } = {},
+): Promise<Suggested> {
+  const state = await getSearch(sql, owner, profileRole)
+  const boards = boardsFor(state.boards)
+  if (state.search.roles.length === 0)
+    return { data: [], companies: boards.length, failed: [], updatedAt: null, search: state }
+  const { jobs, failed, updatedAt } = await listings(sql, boards, opts)
+  const hidden = new Set(state.hidden)
+  const ranked = spread(
+    rank(
+      jobs.filter((j) => !hidden.has(j.id)),
+      state.search,
+      opts.now,
+    ),
+    3,
+  ).slice(0, opts.limit ?? 24)
+  // which of these already have a film: the job link, given as the job post or as the website
+  const urls = ranked.map((j) => j.url)
+  const made = urls.length
+    ? await sql<{ id: string; url: string }[]>`
+        select distinct on (u) id, u as url from (
+          select id, coalesce(input->'job'->>'url', input->>'url') as u from runs
+          where agent = 'film' and owner = ${owner}
+        ) r where u in ${sql(urls)} order by u, id desc`
+    : []
+  const film = new Map(made.map((m) => [m.url, m.id]))
+  return {
+    data: ranked.map((j) => (film.has(j.url) ? { ...j, filmId: film.get(j.url)! } : j)),
+    companies: boards.length,
+    failed: failed.map((b) => b.name),
+    updatedAt: updatedAt?.toISOString() ?? null,
+    search: state,
+  }
+}

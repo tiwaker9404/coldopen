@@ -16,6 +16,9 @@ import type { Config } from '../config.ts'
 import type { Sql } from '../db/index.ts'
 import { FilmInputSchema, type FilmResult } from '../film.ts'
 import { newId } from '../ids.ts'
+import { type BoardSchema, type FetchFn, parseBoardLink } from '../jobs/boards.ts'
+import { SearchSchema } from '../jobs/rank.ts'
+import { getSearch, hideJob, MAX_OWN_BOARDS, saveSearch, suggestions } from '../jobs/service.ts'
 import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
@@ -27,15 +30,6 @@ import {
   parseConnections,
   peopleSearches,
 } from '../outreach/people.ts'
-import { BoardSchema, type FetchFn, parseBoardLink } from '../jobs/boards.ts'
-import { SearchSchema } from '../jobs/rank.ts'
-import {
-  getSearch,
-  hideJob,
-  MAX_OWN_BOARDS,
-  saveSearch,
-  suggestions,
-} from '../jobs/service.ts'
 import { draftProfile } from '../profile/draft.ts'
 import { parseResume } from '../profile/parse.ts'
 import { resumeText } from '../profile/read.ts'
@@ -704,7 +698,11 @@ export async function buildApi({ sql, cfg, log, slack, llm = null, jobsFetch }: 
         companies: r.companies,
         failed: r.failed,
         updatedAt: r.updatedAt,
-        search: { ...r.search.search, boards: r.search.boards.map(boardDto), suggested: r.search.suggested },
+        search: {
+          ...r.search.search,
+          boards: r.search.boards.map(boardDto),
+          suggested: r.search.suggested,
+        },
       }
     },
   )
