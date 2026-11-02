@@ -223,7 +223,7 @@ fetch('https://coldopen-share.tiwaker9404.workers.dev/stats')
     if (!s || s.films < 10) return // a counter only helps once there's something to count
     const n = (x) => x.toLocaleString('en-US')
     const el = document.getElementById('count')
-    el.textContent = `${n(s.films)} reels made so far.`
+    el.textContent = `${n(s.films)} films made so far.`
     el.hidden = false
   })
   .catch(() => {})
