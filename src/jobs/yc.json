@@ -363,6 +363,7 @@
 {"ats":"lever","token":"thunkable","name":"Thunkable","site":"https://thunkable.com/","batch":"W16","slug":"thunkable","size":40},
 {"ats":"ashby","token":"titan","name":"Titan","site":"https://www.titan.com/","batch":"S18","slug":"titan","size":40},
 {"ats":"ashby","token":"topline-pro","name":"Topline Pro","site":"https://www.toplinepro.com/","batch":"W21","slug":"topline-pro","size":28},
+{"ats":"lever","token":"tovala","name":"Tovala","site":"https://www.tovala.com/","batch":"W16","slug":"tovala","size":375},
 {"ats":"ashby","token":"runtrellis","name":"Trellis AI","site":"https://runtrellis.com/","batch":"W24","slug":"trellis-ai","size":34},
 {"ats":"ashby","token":"triomics","name":"Triomics","site":"https://triomics.com/","batch":"W21","slug":"triomics","size":50},
 {"ats":"ashby","token":"trm-labs","name":"TRM Labs","site":"https://trmlabs.com/","batch":"S19","slug":"trm-labs","size":400},
