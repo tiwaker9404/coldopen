@@ -207,6 +207,8 @@ export interface ProfileData {
   points: string[]
   proof: { value: string; label: string; where?: string }[]
   cta: { line: string; contact: string; book?: string }
+  /** skills and tools, counted by Fit check */
+  skills?: string[]
   color?: string
 }
 
@@ -355,6 +357,10 @@ export interface JobSuggestion {
   yc?: string
   /** the company's open roles, and how many went up in the last 30 days */
   hiring?: { open: number; recent: number }
+  /** yearly base pay the post lists */
+  pay?: { min: number; max: number; currency: string }
+  /** people you know there, from your LinkedIn connections */
+  known?: { count: number; people: { name: string; position: string | null; url: string | null }[] }
   /** the film already made for it */
   filmId?: string
   /** how well your profile answers the post's requirements; absent when it lists none we read */
@@ -375,13 +381,28 @@ export interface JobSearch {
   ycOnly: boolean
   /** best fit first, or the companies hiring fastest first */
   sort: 'best' | 'fastest'
+  /** only roles posted in the last week or month */
+  within: 'any' | 'week' | 'month'
+  /** companies to leave out */
+  exclude: string[]
+  /** hide roles whose listed pay tops out below this, yearly in dollars */
+  minPay: number | null
   boards: { ats: 'greenhouse' | 'lever' | 'ashby'; token: string; name: string }[]
   /** nothing saved yet: the roles came from the profile */
   suggested: boolean
 }
 
+/** a skill your best matches keep asking for that your profile doesn't show */
+export interface FitGap {
+  term: string
+  label: string
+  jobs: number
+  example: string
+}
+
 export interface JobSuggestions {
   data: JobSuggestion[]
+  gaps: FitGap[]
   companies: number
   /** how many of them are YC companies */
   ycCompanies: number

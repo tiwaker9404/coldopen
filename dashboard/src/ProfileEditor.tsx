@@ -49,6 +49,9 @@ export function ProfileEditor({
           ...(d.sender.role?.trim() ? { role: d.sender.role.trim() } : {}),
         },
         points: d.points.map((p) => p.trim()).filter(Boolean),
+        ...(d.skills
+          ? { skills: [...new Set(d.skills.map((k) => k.trim()).filter(Boolean))].slice(0, 40) }
+          : {}),
         proof: d.proof
           .filter((p) => p.value.trim() && p.label.trim())
           .map((p) => ({
@@ -212,6 +215,27 @@ export function ProfileEditor({
               Add a line
             </button>
           )}
+        </fieldset>
+
+        <fieldset>
+          <legend>Skills and tools</legend>
+          <p className="hint">
+            Comma-separated, like SQL, Salesforce, Kubernetes. Fit check counts a job’s requirement
+            as answered when it names one of these.
+          </p>
+          <input
+            aria-label="Skills and tools"
+            value={(d.skills ?? []).join(', ')}
+            onChange={(e) =>
+              set({
+                skills: e.target.value
+                  .split(',')
+                  .map((x) => x.trimStart())
+                  .slice(0, 40),
+              })
+            }
+            placeholder="SQL, Python, Salesforce"
+          />
         </fieldset>
 
         <fieldset>

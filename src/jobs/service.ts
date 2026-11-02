@@ -1,6 +1,7 @@
 import type { Sql } from '../db/index.ts'
 import type { Fit } from '../job/fit.ts'
-import { fitOf } from '../job/fit.ts'
+import { fitOf, type Gap, gapsOf, stemOf } from '../job/fit.ts'
+import { type Connection, companyKey, knownAt } from '../outreach/people.ts'
 import type { Profile } from '../script/types.ts'
 import {
   type Board,
@@ -31,6 +32,8 @@ export interface SearchState {
   search: Search
   boards: Board[]
   hidden: string[]
+  /** fit gaps they marked not relevant */
+  ignoredGaps: string[]
   /** true when nothing was saved yet and the search came from their profile */
   suggested: boolean
 }
@@ -40,16 +43,31 @@ export async function getSearch(
   owner: string,
   profileRole: string | undefined,
 ): Promise<SearchState> {
-  const [row] = await sql<{ search: unknown; boards: unknown; hidden: string[] }[]>`
-    select search, boards, hidden from job_searches where owner = ${owner}`
-  if (!row) return { search: defaultSearch(profileRole), boards: [], hidden: [], suggested: true }
+  const [row] = await sql<
+    { search: unknown; boards: unknown; hidden: string[]; ignoredGaps: string[] }[]
+  >`
+    select search, boards, hidden, ignored_gaps from job_searches where owner = ${owner}`
+  if (!row)
+    return {
+      search: defaultSearch(profileRole),
+      boards: [],
+      hidden: [],
+      ignoredGaps: [],
+      suggested: true,
+    }
   const boards = Array.isArray(row.boards)
     ? row.boards.flatMap((b) => {
         const p = BoardSchema.safeParse(b)
         return p.success ? [p.data] : []
       })
     : []
-  return { search: SearchSchema.parse(row.search), boards, hidden: row.hidden, suggested: false }
+  return {
+    search: SearchSchema.parse(row.search),
+    boards,
+    hidden: row.hidden,
+    ignoredGaps: row.ignoredGaps,
+    suggested: false,
+  }
 }
 
 export async function saveSearch(
@@ -222,10 +240,19 @@ const FIT_BONUS: Record<Fit['level'], number> = { strong: 1.5, good: 0.75, stret
 /** how many of the best title matches get their requirements read and a fit worked out */
 const FIT_POOL = 60
 
-export type JobWithFit = Suggestion & { filmId?: string; fit?: Fit }
+/** people they know at the company, from their LinkedIn connections export */
+export interface Known {
+  count: number
+  /** up to three, recruiters and likely managers first */
+  people: { name: string; position: string | null; url: string | null }[]
+}
+
+export type JobWithFit = Suggestion & { filmId?: string; fit?: Fit; known?: Known }
 
 export interface Suggested {
   data: JobWithFit[]
+  /** skills their best matches keep asking for that the profile doesn't show */
+  gaps: Gap[]
   companies: number
   failed: string[]
   updatedAt: string | null
@@ -293,6 +320,44 @@ export function momentum(
   return out
 }
 
+const hostOf = (url: string | undefined) => {
+  try {
+    return new URL(url ?? '').hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
+}
+
+/** Who they know at each of these jobs' companies, by board */
+export async function knownFor(
+  sql: Sql,
+  owner: string,
+  jobs: Pick<Job, 'board' | 'company' | 'site'>[],
+): Promise<Map<string, Known>> {
+  const out = new Map<string, Known>()
+  if (jobs.length === 0) return out
+  const keys = new Set<string>()
+  for (const j of jobs)
+    for (const k of [companyKey(j.company), companyKey(hostOf(j.site) ?? '')]) if (k) keys.add(k)
+  if (keys.size === 0) return out
+  const first = [...new Set([...keys].map((k) => k.split(' ')[0]!))]
+  const rows = await sql<Connection[]>`
+    select name, url, company, position, connected_on from connections
+    where owner = ${owner} and (company_key = any(${[...keys]}) or split_part(company_key, ' ', 1) = any(${first}))
+    limit 2000`
+  if (rows.length === 0) return out
+  for (const j of jobs) {
+    if (out.has(j.board)) continue
+    const at = knownAt(rows, j.company, hostOf(j.site))
+    if (at.length)
+      out.set(j.board, {
+        count: at.length,
+        people: at.slice(0, 3).map((c) => ({ name: c.name, position: c.position, url: c.url })),
+      })
+  }
+  return out
+}
+
 export async function suggestions(
   sql: Sql,
   owner: string,
@@ -302,7 +367,14 @@ export async function suggestions(
   const state = await getSearch(sql, owner, profile?.sender.role)
   const boards = boardsFor(state.boards)
   if (state.search.roles.length === 0)
-    return { data: [], companies: boards.length, failed: [], updatedAt: null, search: state }
+    return {
+      data: [],
+      gaps: [],
+      companies: boards.length,
+      failed: [],
+      updatedAt: null,
+      search: state,
+    }
   const { jobs: all, failed, updatedAt } = await listings(sql, boards, opts)
   const hidden = new Set(state.hidden)
   const jobs = state.search.ycOnly ? all.filter((j) => ycOf({ site: j.site }) || ycBoard(j)) : all
@@ -347,11 +419,34 @@ export async function suggestions(
         ) r where u in ${sql(urls)} order by u, id desc`
     : []
   const film = new Map(made.map((m) => [m.url, m.id]))
+  const known = await knownFor(sql, owner, ranked)
+  const gaps = profile
+    ? gapsOf(
+        candidates.map((j) => ({ id: j.id, requirements: reqs.get(j.id) ?? [] })),
+        profile,
+        { ignore: state.ignoredGaps },
+      )
+    : []
   return {
-    data: ranked.map((j) => (film.has(j.url) ? { ...j, filmId: film.get(j.url)! } : j)),
+    gaps,
+    data: ranked.map((j) => ({
+      ...j,
+      ...(film.has(j.url) ? { filmId: film.get(j.url)! } : {}),
+      ...(known.has(j.board) ? { known: known.get(j.board)! } : {}),
+    })),
     companies: boards.length,
     failed: failed.map((b) => b.name),
     updatedAt: updatedAt?.toISOString() ?? null,
     search: state,
   }
+}
+
+/** Stop suggesting a fit gap */
+export async function ignoreGap(sql: Sql, owner: string, word: string, profileRole?: string) {
+  const s = await getSearch(sql, owner, profileRole)
+  const t = stemOf(word)
+  const ignored = [...s.ignoredGaps.filter((g) => g !== t), t].slice(-200)
+  await sql`
+    insert into job_searches (owner, search, boards, ignored_gaps) values (${owner}, ${sql.json(s.search as never)}, ${sql.json(s.boards as never)}, ${ignored})
+    on conflict (owner) do update set ignored_gaps = excluded.ignored_gaps, updated_at = now()`
 }

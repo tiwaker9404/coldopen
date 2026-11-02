@@ -4,6 +4,7 @@ import {
   ago,
   api,
   type Film,
+  type FitGap,
   type JobSearch,
   type JobSuggestion,
   type JobSuggestions,
@@ -132,6 +133,7 @@ export function Jobs({
             {r.updatedAt && `, checked ${ago(r.updatedAt)}`}
             {r.failed.length > 0 && `. Couldn’t read ${r.failed.join(', ')}`}.
           </p>
+          {r.gaps.length > 0 && <Gaps gaps={r.gaps} />}
           {r.data.length === 0 ? (
             <p className="jobs-empty">
               No open roles fit right now. Try another title for the same job (“Solutions Engineer”,
@@ -277,6 +279,11 @@ function JobRow({
               {job.hiring.recent} new {job.hiring.recent === 1 ? 'role' : 'roles'} this month
             </span>
           )}
+          {job.pay && (
+            <span className="tag pay" title="Base pay this post lists, per year">
+              {money(job.pay)}
+            </span>
+          )}
           {why.map((w) => (
             <span key={w} className={w === 'New this week' ? 'tag new' : 'tag'}>
               {w}
@@ -286,6 +293,25 @@ function JobRow({
             <span className="tag quiet">Posted {ago(job.posted)}</span>
           )}
         </span>
+        {job.known && (
+          <span className="job-known">
+            You know{' '}
+            {job.known.people.slice(0, 2).map((p, i) => (
+              <span key={p.name}>
+                {i > 0 && ' and '}
+                {p.url ? (
+                  <a href={p.url} target="_blank" rel="noreferrer">
+                    {p.name}
+                  </a>
+                ) : (
+                  p.name
+                )}
+                {p.position && <span className="quiet"> ({p.position})</span>}
+              </span>
+            ))}
+            {job.known.count > 2 && ` and ${job.known.count - 2} more`} at {job.company}
+          </span>
+        )}
         {job.fit?.best && (
           <span className="job-match">
             <span>They ask: “{job.fit.best.requirement}”</span>
@@ -322,6 +348,73 @@ function JobRow({
   )
 }
 
+/**
+ * The skills their best matches keep asking for that the profile doesn't show. "I have this"
+ * adds it to the profile (Fit check counts it from then on); "Not relevant" stops suggesting it.
+ */
+function Gaps({ gaps }: { gaps: FitGap[] }) {
+  const qc = useQueryClient()
+  const answer = useMutation({
+    mutationFn: (v: { skill: string; action: 'have' | 'ignore' }) =>
+      send('POST', '/v1/jobs/gaps', v),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['jobs'] })
+      await qc.invalidateQueries({ queryKey: ['profiles'] })
+    },
+  })
+  return (
+    <section className="gaps" aria-label="Fit gaps">
+      <h3>Fit more of these jobs</h3>
+      <p className="quiet">
+        Your best matches keep asking for these, and your profile doesn’t show them yet. If you have
+        one, add it and every fit updates.
+      </p>
+      <ul>
+        {gaps.map((g) => (
+          <li key={g.term}>
+            <span className="gap-what" title={g.example}>
+              <b>{g.label}</b>
+              <span className="quiet"> · {g.jobs} jobs</span>
+            </span>
+            <span className="gap-do">
+              <button
+                type="button"
+                disabled={answer.isPending}
+                onClick={() => answer.mutate({ skill: g.label, action: 'have' })}
+              >
+                I have this
+              </button>
+              <button
+                type="button"
+                className="link quiet"
+                disabled={answer.isPending}
+                onClick={() => answer.mutate({ skill: g.label, action: 'ignore' })}
+              >
+                Not relevant
+              </button>
+            </span>
+          </li>
+        ))}
+      </ul>
+      {answer.error && <p className="error">{answer.error.message}</p>}
+    </section>
+  )
+}
+
+/** $150k–$200k */
+function money(p: { min: number; max: number; currency: string }) {
+  const sym =
+    p.currency === 'USD'
+      ? '$'
+      : p.currency === 'EUR'
+        ? '€'
+        : p.currency === 'GBP'
+          ? '£'
+          : `${p.currency} `
+  const k = (n: number) => `${sym}${Math.round(n / 1000)}k`
+  return p.min === p.max ? k(p.min) : `${k(p.min)}–${k(p.max)}`
+}
+
 function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
   const qc = useQueryClient()
   const [roles, setRoles] = useState(search.roles.join(', '))
@@ -330,6 +423,11 @@ function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
   const [skipSenior, setSkipSenior] = useState(search.skipSenior)
   const [ycOnly, setYcOnly] = useState(search.ycOnly)
   const [sort, setSort] = useState(search.sort)
+  const [within, setWithin] = useState(search.within)
+  const [exclude, setExclude] = useState(search.exclude.join(', '))
+  const [minPay, setMinPay] = useState(
+    search.minPay ? String(Math.round(search.minPay / 1000)) : '',
+  )
   const [boards, setBoards] = useState(
     search.boards
       .map((b) =>
@@ -352,6 +450,9 @@ function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
         skipSenior,
         ycOnly,
         sort,
+        within,
+        exclude: list(exclude).slice(0, 50),
+        minPay: minPay.trim() ? Math.max(0, Math.round(Number(minPay) || 0)) * 1000 || null : null,
         boards: list(boards),
       })
     },
@@ -411,6 +512,42 @@ function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
             <option value="best">Best fit</option>
             <option value="fastest">Hiring fastest</option>
           </select>
+        </label>
+        <label className="check sort">
+          Posted
+          <select value={within} onChange={(e) => setWithin(e.target.value as JobSearch['within'])}>
+            <option value="any">Any time</option>
+            <option value="month">This month</option>
+            <option value="week">This week</option>
+          </select>
+        </label>
+      </div>
+      <div className="search-grid">
+        <label>
+          <span>Minimum pay</span>
+          <span className="pay-input">
+            $
+            <input
+              inputMode="numeric"
+              value={minPay}
+              onChange={(e) => setMinPay(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="120"
+              aria-label="Minimum pay in thousands of dollars a year"
+            />
+            k a year
+          </span>
+          <small>
+            Hides roles whose listed pay tops out lower. Roles that don’t list pay stay.
+          </small>
+        </label>
+        <label>
+          <span>Leave out</span>
+          <input
+            value={exclude}
+            onChange={(e) => setExclude(e.target.value)}
+            placeholder="Companies you’ve applied to or don’t want"
+          />
+          <small>Company names, separated by commas.</small>
         </label>
       </div>
       <details className="more-companies" open={search.boards.length > 0}>

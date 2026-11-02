@@ -35,6 +35,40 @@ export interface Job {
   team?: string
   /** ISO date the post went up (or was last updated, when that's all the board gives) */
   posted?: string
+  /** yearly base pay the post lists, in its currency (Ashby and Lever boards publish it) */
+  pay?: Pay
+}
+
+export interface Pay {
+  min: number
+  max: number
+  currency: string
+}
+
+/** A yearly figure from an amount and its interval; hourly and monthly pay scaled up */
+function yearly(v: unknown, interval: string): number | null {
+  const n = typeof v === 'number' ? v : Number.NaN
+  if (!Number.isFinite(n) || n <= 0) return null
+  const i = interval.toLowerCase()
+  if (/hour/.test(i)) return Math.round(n * 2080)
+  if (/month/.test(i)) return Math.round(n * 12)
+  if (/week/.test(i)) return Math.round(n * 52)
+  return Math.round(n)
+}
+
+/** A pay range that makes sense as a yearly salary, or nothing */
+export function payOf(
+  min: unknown,
+  max: unknown,
+  currency: unknown,
+  interval: unknown,
+): Pay | null {
+  const iv = typeof interval === 'string' ? interval : 'year'
+  const lo = yearly(min, iv)
+  const hi = yearly(max, iv) ?? lo
+  const cur = typeof currency === 'string' && /^[A-Z]{3}$/.test(currency) ? currency : 'USD'
+  if (!lo || !hi || hi < lo || lo < 10_000 || hi > 5_000_000) return null
+  return { min: lo, max: hi, currency: cur }
 }
 
 /** "acme-labs" -> "Acme Labs" */
@@ -84,7 +118,7 @@ export function apiUrl(b: Pick<Board, 'ats' | 'token'>): string {
   const t = encodeURIComponent(b.token)
   if (b.ats === 'greenhouse') return `https://boards-api.greenhouse.io/v1/boards/${t}/jobs`
   if (b.ats === 'lever') return `https://api.lever.co/v0/postings/${t}?mode=json`
-  return `https://api.ashbyhq.com/posting-api/job-board/${t}`
+  return `https://api.ashbyhq.com/posting-api/job-board/${t}?includeCompensation=true`
 }
 
 const REMOTE = /\bremote\b|\banywhere\b|\bdistributed\b/i
@@ -98,6 +132,24 @@ const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
 const clean = (s: string) => s.replace(/\s+/g, ' ').trim()
 
 type Raw = Record<string, unknown>
+
+const pay = (raw: Raw | undefined, read: (r: Raw) => Pay | null): { pay?: Pay } => {
+  if (!raw || typeof raw !== 'object') return {}
+  const p = read(raw)
+  return p ? { pay: p } : {}
+}
+
+/** Ashby's base salary component (equity and bonus left out) */
+function ashbyPay(c: Raw): Pay | null {
+  const parts = [
+    ...((c.summaryComponents as Raw[] | undefined) ?? []),
+    ...((c.compensationTiers as Raw[] | undefined) ?? []).flatMap(
+      (t) => (t.components as Raw[] | undefined) ?? [],
+    ),
+  ]
+  const base = parts.find((p) => /salary/i.test(String(p.compensationType ?? '')))
+  return base ? payOf(base.minValue, base.maxValue, base.currencyCode, base.interval) : null
+}
 
 /** The board's JSON, as jobs. Unknown shapes give no jobs rather than throwing. */
 export function readBoard(b: Board, body: unknown): Job[] {
@@ -141,6 +193,9 @@ export function readBoard(b: Board, body: unknown): Job[] {
         remote: str(j.workplaceType) === 'remote' || REMOTE.test(location),
         ...(str(c.team) ? { team: str(c.team) } : {}),
         ...(iso(j.createdAt) ? { posted: iso(j.createdAt) } : {}),
+        ...pay(j.salaryRange as Raw | undefined, (r) =>
+          payOf(r.min, r.max, r.currency, r.interval),
+        ),
       })
     }
   } else {
@@ -159,6 +214,7 @@ export function readBoard(b: Board, body: unknown): Job[] {
         remote: j.isRemote === true || str(j.workplaceType) === 'Remote' || REMOTE.test(location),
         ...(str(j.department) || str(j.team) ? { team: str(j.department) || str(j.team) } : {}),
         ...(iso(j.publishedAt) ? { posted: iso(j.publishedAt) } : {}),
+        ...pay(j.compensation as Raw | undefined, ashbyPay),
       })
     }
   }

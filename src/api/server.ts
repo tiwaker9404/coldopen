@@ -22,6 +22,7 @@ import { SearchSchema } from '../jobs/rank.ts'
 import {
   getSearch,
   hideJob,
+  ignoreGap,
   MAX_OWN_BOARDS,
   saveSearch,
   suggestions,
@@ -782,6 +783,7 @@ export async function buildApi({
       })
       return {
         data: r.data.map(({ score: _s, board: _b, ...j }) => j),
+        gaps: r.gaps,
         companies: r.companies,
         ycCompanies: YC_BOARDS.length,
         failed: r.failed,
@@ -792,6 +794,40 @@ export async function buildApi({
           suggested: r.search.suggested,
         },
       }
+    },
+  )
+
+  app.post(
+    '/v1/jobs/gaps',
+    {
+      schema: {
+        tags: ['jobs'],
+        summary: 'Answer a fit gap: add the skill to your profile, or stop suggesting it',
+        body: z.object({
+          skill: z.string().trim().min(1).max(40),
+          action: z.enum(['have', 'ignore']),
+        }),
+      },
+    },
+    async (req, reply) => {
+      if (req.body.action === 'ignore') {
+        await ignoreGap(sql, req.owner, req.body.skill)
+        return { ignored: true }
+      }
+      const [p] = await sql<{ id: string; data: unknown }[]>`
+        select id, data from profiles where owner = ${req.owner} order by updated_at desc limit 1`
+      const parsed = p ? ProfileSchema.safeParse(p.data) : null
+      if (!p || !parsed?.success)
+        return reply
+          .status(409)
+          .send({ error: { code: 'no_profile', message: 'make a profile first' } })
+      const have = parsed.data.skills ?? []
+      if (!have.some((k) => k.toLowerCase() === req.body.skill.toLowerCase()))
+        have.push(req.body.skill)
+      const data = { ...parsed.data, skills: have.slice(-40) }
+      await sql`update profiles set data = ${sql.json(data as never)}, updated_at = now()
+        where owner = ${req.owner} and id = ${p.id}`
+      return { profile: p.id, skills: data.skills }
     },
   )
 
