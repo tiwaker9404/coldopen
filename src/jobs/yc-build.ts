@@ -9,7 +9,7 @@
  * Run by the "YC boards" workflow (weekly), or by hand: node src/jobs/yc-build.ts
  */
 import { writeFile } from 'node:fs/promises'
-import { type Ats, type Board, fetchBoardBody, readBoard } from './boards.ts'
+import { type Ats, type Board, boardPage, fetchBoardBody, readBoard } from './boards.ts'
 
 const SOURCE = 'https://yc-oss.github.io/api/companies/hiring.json'
 const OUT = new URL('./yc.json', import.meta.url)
@@ -67,6 +67,44 @@ export function tokensFor(c: Pick<YcCompany, 'name' | 'slug' | 'website'>): stri
 
 const ORDER: Ats[] = ['ashby', 'greenhouse', 'lever']
 
+/** acme.com from https://www.acme.com/about */
+export function hostOf(url: string | undefined): string {
+  try {
+    return new URL(url ?? '').hostname.toLowerCase().replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Is this board the company's own? A board name like "hive" or "mesh" can belong to another
+ * company, so the board's careers page (or Greenhouse's board details) must link to the
+ * company's website.
+ */
+export function mentions(page: string, site: string | undefined): boolean {
+  const host = hostOf(site)
+  if (!host) return false
+  return page.toLowerCase().includes(host)
+}
+
+async function owns(b: Board, site: string | undefined): Promise<boolean> {
+  const url =
+    b.ats === 'greenhouse'
+      ? `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(b.token)}`
+      : boardPage(b)
+  try {
+    const res = await fetch(url, {
+      headers: { 'user-agent': 'coldopen/1.0 (+https://github.com/tiwaker9404/coldopen)' },
+      signal: AbortSignal.timeout(20_000),
+    })
+    return res.ok && mentions(await res.text(), site)
+  } catch {
+    return false
+  }
+}
+
+let rejected = 0
+
 async function find(c: YcCompany): Promise<YcBoard | null> {
   const tokens = tokensFor(c)
   for (const ats of ORDER)
@@ -75,6 +113,10 @@ async function find(c: YcCompany): Promise<YcBoard | null> {
       try {
         const jobs = readBoard(b, await fetchBoardBody(b, { timeoutMs: 20_000 }))
         if (jobs.length === 0) continue
+        if (!(await owns(b, c.website))) {
+          rejected++
+          continue
+        }
         let site: string | undefined
         try {
           site = c.website ? new URL(c.website).toString() : undefined
@@ -119,7 +161,7 @@ async function main() {
     .filter((b) => count.get(`${b.ats}:${b.token}`) === 1)
     .sort((a, b) => a.name.localeCompare(b.name))
   await writeFile(OUT, `${JSON.stringify(boards, null, 0).replace(/},{/g, '},\n{')}\n`)
-  const line = `${boards.length} of ${all.length} hiring YC companies have a Greenhouse, Lever or Ashby board`
+  const line = `${boards.length} of ${all.length} hiring YC companies have a Greenhouse, Lever or Ashby board (${rejected} boards with a matching name belonged to another company, or didn't link to the company's site)`
   console.log(line)
   if (process.env.GITHUB_STEP_SUMMARY) {
     const { appendFile } = await import('node:fs/promises')

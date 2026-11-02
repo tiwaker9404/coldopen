@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Job } from '../../src/jobs/boards.ts'
 import { SearchSchema } from '../../src/jobs/rank.ts'
 import { momentum } from '../../src/jobs/service.ts'
-import { shortBatch, tokensFor } from '../../src/jobs/yc-build.ts'
+import { mentions, shortBatch, tokensFor } from '../../src/jobs/yc-build.ts'
 import { peopleSearches } from '../../src/outreach/people.ts'
 
 const NOW = Date.parse('2026-11-02T12:00:00Z')
@@ -31,6 +31,16 @@ describe('YC boards', () => {
       tokensFor({ name: 'Acme Labs', slug: 'acme-labs', website: 'https://www.getacme.com' }),
     ).toEqual(['acme-labs', 'acmelabs', 'getacme'])
     expect(tokensFor({ name: 'Zo', slug: 'zo', website: '' })).toEqual([])
+  })
+})
+
+describe('board ownership', () => {
+  it('needs the board page to link to the company website', () => {
+    expect(mentions('<a href="https://www.getacme.com">Acme</a>', 'https://getacme.com/')).toBe(
+      true,
+    )
+    expect(mentions('<a href="https://hive.com">Hive</a>', 'https://thehive.ai')).toBe(false)
+    expect(mentions('anything', undefined)).toBe(false)
   })
 })
 
