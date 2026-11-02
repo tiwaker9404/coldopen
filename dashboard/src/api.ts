@@ -421,6 +421,8 @@ export interface NextStep {
   step: 1 | 2 | null
   dueAt: string
   due: boolean
+  /** brought forward: they watched it since you last wrote */
+  watched?: { at: string; finished: boolean }
 }
 
 export interface FollowUps {
@@ -432,4 +434,18 @@ export interface FollowUps {
   /** sent films not due yet */
   waiting: number
   nextDueAt: string | null
+}
+
+/** a brief for the call once they reply, from the film's own research */
+export interface Brief {
+  company: string
+  what: string | null
+  facts: string[]
+  role: {
+    title: string
+    matches: { asks: string; you: string }[]
+    prepare: string[]
+  } | null
+  pitch: string
+  questions: string[]
 }

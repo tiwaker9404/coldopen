@@ -31,6 +31,7 @@ import {
 import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
+import { briefOf } from '../outreach/brief.ts'
 import {
   checkHunterKey,
   domainOf,
@@ -45,6 +46,7 @@ import {
   OUTREACH,
   type Outreach,
   type OutreachStatus,
+  watchedFrom,
 } from '../outreach/followup.ts'
 import { addressed, draftMessages } from '../outreach/messages.ts'
 import {
@@ -155,7 +157,9 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
     /** what people did on the share page; null until the film is finished */
     views: out ? (views ?? NO_VIEWS) : null,
     /** what happened after it was sent, as the sender marked it, and what to do next */
-    outreach: r.outreach ? { ...r.outreach, next: nextStep(r.outreach) } : null,
+    outreach: r.outreach
+      ? { ...r.outreach, next: nextStep(r.outreach, Date.now(), watchedFrom(views)) }
+      : null,
     /** who it's going to (or went to), when the sender said */
     recipient: r.recipient ?? null,
     /** the first film, when this one re-renders it with an edited script */
@@ -1308,7 +1312,14 @@ export async function buildApi({
           and outreach->>'status' = 'sent'
         order by id desc limit 500`
       const now = Date.now()
-      const steps = rows.map((r) => ({ r, next: nextStep(r.outreach, now)! }))
+      const seen = await viewSummaries(
+        sql,
+        rows.map((r) => r.id),
+      )
+      const steps = rows.map((r) => ({
+        r,
+        next: nextStep(r.outreach, now, watchedFrom(seen.get(r.id)))!,
+      }))
       const due = steps
         .filter((s) => s.next.due)
         .sort((a, b) => a.next.dueAt.localeCompare(b.next.dueAt))
@@ -1318,7 +1329,7 @@ export async function buildApi({
         .sort()
       return {
         data: due.map(({ r, next }) => {
-          const film = filmDto(r, publicUrl)
+          const film = filmDto(r, publicUrl, seen.get(r.id))
           const m =
             r.output && film.share
               ? addressed(draftMessages(r.output, r.input.profile, film.share), r.recipient?.name)
@@ -1558,6 +1569,29 @@ export async function buildApi({
       if (!run?.output) return notFound(reply)
       const link = filmDto(run, publicUrl).share!
       return addressed(draftMessages(run.output, run.input.profile, link), run.recipient?.name)
+    },
+  )
+
+  app.get(
+    '/v1/films/:id/brief',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'A brief for the call once they reply: the company, the role and questions to ask',
+        description:
+          "Built from the film's own research (the company's site and the job post) and your profile; nothing new is fetched.",
+        params: z.object({ id: RunId }),
+      },
+    },
+    async (req, reply) => {
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run?.output) return notFound(reply)
+      const steps = await sql<{ key: string; output: unknown }[]>`
+        select key, output from steps
+        where run_id = any(${[run.id, run.input.editOf].filter(Boolean) as string[]})
+          and key in ('research', 'job') and status = 'completed'`
+      const out = (k: string) => (steps.find((s) => s.key === k)?.output ?? null) as never
+      return briefOf(run.output.company, out('research'), out('job'), run.input.profile)
     },
   )
 

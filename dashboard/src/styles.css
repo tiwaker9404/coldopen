@@ -3034,3 +3034,25 @@ kbd {
   font-size: 18px;
   font-weight: 750;
 }
+
+.brief {
+  margin-bottom: 16px;
+  border-left: 3px solid var(--go);
+  padding-left: 14px;
+}
+
+.brief h4 {
+  margin: 12px 0 4px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.brief ul,
+.brief ol {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+}
