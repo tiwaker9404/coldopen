@@ -34,7 +34,9 @@ export function answers(record: string, requirement: string): number {
   if (!a.size || !b.size) return 0
   let n = 0
   for (const w of a) if (b.has(w)) n++
-  return n / Math.min(a.size, b.size)
+  const share = n / Math.min(a.size, b.size)
+  // one shared word between two longer lines is a coincidence more often than a match
+  return n === 1 && Math.min(a.size, b.size) > 2 ? share / 2 : share
 }
 
 type ProofItem = Profile['proof'][number]
@@ -88,8 +90,10 @@ export function fitOf(requirements: string[], profile: Profile): Fit | null {
       best = { requirement: r, with: top.with, score }
   }
   const share = answered / requirements.length
+  // a post that lists one or two requirements can't show a strong fit, only a good one
+  const level = share >= 0.5 ? 'strong' : share >= 0.25 ? 'good' : 'stretch'
   return {
-    level: share >= 0.5 ? 'strong' : share >= 0.25 ? 'good' : 'stretch',
+    level: level === 'strong' && requirements.length < 3 ? 'good' : level,
     answered,
     of: requirements.length,
     best:

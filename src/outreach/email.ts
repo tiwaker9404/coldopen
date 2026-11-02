@@ -118,3 +118,43 @@ export async function hunterFind(
     ...(v.status ? { status: v.status } : {}),
   }
 }
+
+export interface Leader {
+  name: string
+  position: string | null
+  email: string
+  score?: number
+  status?: string
+}
+
+const FOUNDER = /founder|\bceo\b|chief executive|\bcto\b|chief technology|president/i
+
+/**
+ * The company's founders and executives Hunter knows, with their emails: one domain search.
+ * Founders, CEOs and CTOs first.
+ */
+export async function hunterLeaders(
+  key: string,
+  domain: string,
+  f: FetchFn = fetch,
+): Promise<Leader[]> {
+  const q = new URLSearchParams({ domain, seniority: 'executive', limit: '10' })
+  const d = await hunter(`/domain-search?${q}`, key, f)
+  const rows = Array.isArray(d.emails) ? (d.emails as Record<string, unknown>[]) : []
+  const out: Leader[] = []
+  for (const r of rows) {
+    const email = typeof r.value === 'string' ? r.value : null
+    const name = [r.first_name, r.last_name].filter((x) => typeof x === 'string' && x).join(' ')
+    if (!email || !name) continue
+    const v = (r.verification ?? {}) as { status?: string }
+    out.push({
+      name,
+      position: typeof r.position === 'string' && r.position ? r.position : null,
+      email,
+      ...(typeof r.confidence === 'number' ? { score: r.confidence } : {}),
+      ...(v.status ? { status: v.status } : {}),
+    })
+  }
+  const rank = (l: Leader) => (l.position && FOUNDER.test(l.position) ? 0 : 1)
+  return out.sort((a, b) => rank(a) - rank(b) || (b.score ?? 0) - (a.score ?? 0)).slice(0, 5)
+}

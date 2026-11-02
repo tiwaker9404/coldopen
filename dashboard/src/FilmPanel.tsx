@@ -521,18 +521,75 @@ function WhoToSend({ film }: { film: FilmDetail }) {
               <small>{s.hint}</small>
             </span>
             <a className="button" href={s.url} target="_blank" rel="noreferrer">
-              Search LinkedIn <Out />
+              {s.url.includes('ycombinator.com') ? 'Open YC page' : 'Search LinkedIn'} <Out />
             </a>
           </li>
         ))}
       </ul>
+      {p.searches.some((s) => s.url.includes('ycombinator.com')) && <Founders film={film} />}
       {p.connections === 0 && (
         <p className="small muted">
           Upload your LinkedIn connections on your Profile page to see who you already know here.
         </p>
       )}
-      <Recipient film={film} />
+      <Recipient key={film.recipient?.email ?? film.recipient?.name ?? 'none'} film={film} />
     </section>
+  )
+}
+
+/** A YC startup's founders and their emails, from one Hunter search; one click sends it to one */
+function Founders({ film }: { film: FilmDetail }) {
+  const qc = useQueryClient()
+  const find = useMutation({
+    mutationFn: () =>
+      send<{
+        domain: string
+        people: { name: string; position: string | null; email: string; status?: string }[]
+      }>('POST', `/v1/films/${film.id}/founders`, {}),
+  })
+  const pick = useMutation({
+    mutationFn: (p: { name: string; email: string }) =>
+      send<Film>('PUT', `/v1/films/${film.id}/recipient`, p),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['film', film.id] })
+      void qc.invalidateQueries({ queryKey: ['messages', film.id] })
+    },
+  })
+  const people = find.data?.people
+  return (
+    <div className="founders">
+      {!people ? (
+        <button type="button" onClick={() => find.mutate()} disabled={find.isPending}>
+          {find.isPending ? 'Looking them up…' : 'Find the founders’ emails'}
+        </button>
+      ) : people.length === 0 ? (
+        <p className="small muted">Hunter has no founders’ emails for {find.data?.domain}.</p>
+      ) : (
+        <ul className="people">
+          {people.map((p) => (
+            <li key={p.email}>
+              <span>
+                <b>{p.name}</b>
+                <small>
+                  {p.position ?? 'Executive'} · {p.email}
+                  {p.status === 'valid' ? ' · verified' : ''}
+                </small>
+              </span>
+              <button
+                type="button"
+                className="link"
+                disabled={pick.isPending}
+                onClick={() => pick.mutate({ name: p.name, email: p.email })}
+              >
+                {film.recipient?.email === p.email ? 'Sending to them' : 'Send it to them'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!people && <small className="muted"> Uses one search from your free Hunter key.</small>}
+      {find.error && <p className="error">{find.error.message}</p>}
+    </div>
   )
 }
 

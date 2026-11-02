@@ -35,6 +35,8 @@ export interface SearchState {
   hidden: string[]
   /** fit gaps they marked not relevant */
   ignoredGaps: string[]
+  /** when they last looked at their matches */
+  seenAt: Date | null
   /** true when nothing was saved yet and the search came from their profile */
   suggested: boolean
 }
@@ -45,15 +47,22 @@ export async function getSearch(
   profileRole: string | undefined,
 ): Promise<SearchState> {
   const [row] = await sql<
-    { search: unknown; boards: unknown; hidden: string[]; ignoredGaps: string[] }[]
+    {
+      search: unknown
+      boards: unknown
+      hidden: string[]
+      ignoredGaps: string[]
+      seenAt: Date | null
+    }[]
   >`
-    select search, boards, hidden, ignored_gaps from job_searches where owner = ${owner}`
+    select search, boards, hidden, ignored_gaps, seen_at from job_searches where owner = ${owner}`
   if (!row)
     return {
       search: defaultSearch(profileRole),
       boards: [],
       hidden: [],
       ignoredGaps: [],
+      seenAt: null,
       suggested: true,
     }
   const boards = Array.isArray(row.boards)
@@ -67,6 +76,7 @@ export async function getSearch(
     boards,
     hidden: row.hidden,
     ignoredGaps: row.ignoredGaps,
+    seenAt: row.seenAt,
     suggested: false,
   }
 }
@@ -269,8 +279,18 @@ export interface Known {
 
 export type JobWithFit = Suggestion & { filmId?: string; fit?: Fit; known?: Known }
 
+export interface Alerts {
+  /** when they last looked at their matches; null on a first visit */
+  since: string | null
+  /** matches posted since then */
+  newMatches: number
+  /** new roles that fit their search, at companies they already made a film for */
+  filmed: Suggestion[]
+}
+
 export interface Suggested {
   data: JobWithFit[]
+  alerts: Alerts
   /** skills their best matches keep asking for that the profile doesn't show */
   gaps: Gap[]
   companies: number
@@ -384,7 +404,14 @@ export async function knownFor(
 const RANKED_MS = 90_000
 const RANKED = new Map<
   string,
-  { at: number; ranked: JobWithFit[]; gaps: Gap[]; failed: Board[]; updatedAt: Date | null }
+  {
+    at: number
+    ranked: JobWithFit[]
+    gaps: Gap[]
+    failed: Board[]
+    updatedAt: Date | null
+    recent: Suggestion[]
+  }
 >()
 
 export async function suggestions(
@@ -398,6 +425,7 @@ export async function suggestions(
   if (state.search.roles.length === 0)
     return {
       data: [],
+      alerts: { since: null, newMatches: 0, filmed: [] },
       gaps: [],
       companies: boards.length,
       failed: [],
@@ -418,14 +446,17 @@ export async function suggestions(
       )
       const pace = momentum(all, opts.now)
       // the best title matches, then how well the person's record answers each one's requirements
-      const candidates = spread(
-        rank(
-          jobs.filter((j) => !hidden.has(j.id)),
-          state.search,
-          opts.now,
-        ),
-        6,
-      ).slice(0, FIT_POOL)
+      const matched = rank(
+        jobs.filter((j) => !hidden.has(j.id)),
+        state.search,
+        opts.now,
+      )
+      // every match, newest first, for what's new since their last visit
+      const recent = matched
+        .filter((j) => j.posted)
+        .sort((a, b) => b.posted!.localeCompare(a.posted!))
+        .slice(0, 400)
+      const candidates = spread(matched, 6).slice(0, FIT_POOL)
       const paid = new Map<string, Pay>()
       const reqs = profile
         ? await requirementsFor(sql, candidates, { ...opts, pay: paid })
@@ -461,14 +492,14 @@ export async function suggestions(
           )
         : []
 
-      return { at: Date.now(), ranked, gaps, failed, updatedAt }
+      return { at: Date.now(), ranked, gaps, failed, updatedAt, recent }
     })()
     if (!opts.fetch && !opts.now) {
       RANKED.set(key, hit)
       if (RANKED.size > 200) RANKED.delete(RANKED.keys().next().value!)
     }
   }
-  const { ranked, gaps, failed, updatedAt } = hit
+  const { ranked, gaps, failed, updatedAt, recent } = hit
   // which of these already have a film: the job link, given as the job post or as the website
   const urls = ranked.map((j) => j.url)
   const made = urls.length
@@ -480,7 +511,9 @@ export async function suggestions(
     : []
   const film = new Map(made.map((m) => [m.url, m.id]))
   const known = await knownFor(sql, owner, ranked)
+  const alerts = await alertsFor(sql, owner, state.seenAt, recent)
   return {
+    alerts,
     gaps,
     data: ranked.map((j) => ({
       ...j,
@@ -502,4 +535,40 @@ export async function ignoreGap(sql: Sql, owner: string, word: string, profileRo
   await sql`
     insert into job_searches (owner, search, boards, ignored_gaps) values (${owner}, ${sql.json(s.search as never)}, ${sql.json(s.boards as never)}, ${ignored})
     on conflict (owner) do update set ignored_gaps = excluded.ignored_gaps, updated_at = now()`
+}
+
+/** They looked at their matches: what's new is counted from now */
+export async function markSeen(sql: Sql, owner: string, profileRole?: string) {
+  const s = await getSearch(sql, owner, profileRole)
+  await sql`
+    insert into job_searches (owner, search, boards, seen_at) values (${owner}, ${sql.json(s.search as never)}, ${sql.json(s.boards as never)}, now())
+    on conflict (owner) do update set seen_at = now()`
+}
+
+/**
+ * What's new for them: matches posted since their last look, and new roles that fit their search
+ * at companies they already made a film for (posted after that film).
+ */
+export async function alertsFor(
+  sql: Sql,
+  owner: string,
+  seenAt: Date | null,
+  recent: Suggestion[],
+): Promise<Alerts> {
+  const since = seenAt?.toISOString() ?? null
+  const newMatches = since ? recent.filter((j) => j.posted! > since).length : 0
+  const films = await sql<{ host: string; createdAt: Date }[]>`
+    select output->>'host' as host, min(created_at) as created_at from runs
+    where agent = 'film' and owner = ${owner} and status = 'succeeded' and output->>'host' is not null
+    group by output->>'host'`
+  const made = new Map(films.map((f) => [f.host.replace(/^www\./, ''), f.createdAt.toISOString()]))
+  const filmed = made.size
+    ? recent
+        .filter((j) => {
+          const at = made.get(hostOf(j.site) ?? '')
+          return at !== undefined && j.posted! > at
+        })
+        .slice(0, 5)
+    : []
+  return { since, newMatches, filmed }
 }
