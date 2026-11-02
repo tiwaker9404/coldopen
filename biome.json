@@ -12,7 +12,8 @@
       "!**/node_modules",
       "!bench/results",
       "!evals/results.md",
-      "!pnpm-lock.yaml"
+      "!pnpm-lock.yaml",
+      "!src/jobs/yc.json"
     ]
   },
   "formatter": {

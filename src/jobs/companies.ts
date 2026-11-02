@@ -89,7 +89,11 @@ const LIST: [Board['ats'], string, string, string][] = [
 export const YC_BOARDS: YcBoard[] = (() => {
   try {
     const raw = JSON.parse(readFileSync(new URL('./yc.json', import.meta.url), 'utf8'))
-    return Array.isArray(raw) ? (raw as YcBoard[]) : []
+    return Array.isArray(raw)
+      ? (raw as YcBoard[]).map((y) =>
+          y.site ? { ...y, site: y.site.replace(/^http:/, 'https:') } : y,
+        )
+      : []
   } catch {
     return []
   }

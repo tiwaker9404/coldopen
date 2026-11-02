@@ -135,7 +135,7 @@ async function find(c: YcCompany): Promise<YcBoard | null> {
         }
         let site: string | undefined
         try {
-          site = c.website ? new URL(c.website).toString() : undefined
+          site = c.website ? new URL(c.website).toString().replace(/^http:/, 'https:') : undefined
         } catch {}
         return {
           ats,
