@@ -16,6 +16,7 @@ coldopen is an open-source agent for personalized video outreach. Give it a pros
 - **Fit it.** Fit check scores how well your profile answers each post. Fit gaps shows the skills your best matches keep asking for, one click to add.
 - **Make the film.** One click per job, or tick ten and make them all. Each film quotes a requirement from the post and answers it with your own numbers.
 - **Reach the right person.** For YC startups, the founders come first. Find their email with your own free Hunter key, and the message opens as a ready draft.
+- **From any job post.** The [Chrome extension](extension/README.md) adds a Make film button to Greenhouse, Lever, Ashby, LinkedIn and YC job posts.
 - **Follow up, then prepare.** A follow-up comes due 4 days later, or sooner when they watch without replying. When they reply, you get a brief for the call: the company, where you fit, what to prepare and three questions to ask.
 
 ## See it work

@@ -370,7 +370,15 @@ function Composer({
   onEdit: (p: Profile) => void
 }) {
   const qc = useQueryClient()
-  const [text, setText] = useState('')
+  // a link sent from the Chrome extension (?make=…) arrives ready to make
+  const [text, setText] = useState(() => {
+    const sent = new URLSearchParams(window.location.search).get('make')
+    if (!sent || !/^https?:\/\//.test(sent)) return ''
+    const u = new URL(window.location.href)
+    u.searchParams.delete('make')
+    window.history.replaceState(null, '', u.toString())
+    return sent.slice(0, 600)
+  })
   const [more, setMore] = useState(false)
   const [many, setMany] = useState(false)
   const [format, setFormat] = useState<Format>('square')

@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "coldopen: make a film for this job",
+  "short_name": "coldopen",
+  "version": "1.0.0",
+  "description": "On any job post, one click opens coldopen with the post ready to turn into a 30-second film in the company's brand.",
+  "icons": { "16": "icon-16.png", "32": "icon-32.png", "48": "icon-48.png", "128": "icon-128.png" },
+  "action": {
+    "default_title": "Make a coldopen film for this page",
+    "default_icon": { "16": "icon-16.png", "32": "icon-32.png" }
+  },
+  "background": { "service_worker": "background.js" },
+  "permissions": ["activeTab", "contextMenus"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://boards.greenhouse.io/*",
+        "https://job-boards.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://jobs.ashbyhq.com/*",
+        "https://www.linkedin.com/jobs/*",
+        "https://apply.workable.com/*",
+        "https://wellfound.com/*",
+        "https://www.ycombinator.com/companies/*"
+      ],
+      "js": ["button.js"],
+      "css": ["button.css"]
+    }
+  ]
+}
