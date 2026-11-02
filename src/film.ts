@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { availableParallelism } from 'node:os'
 import { join, relative } from 'node:path'
 import { z } from 'zod'
 import { extractBrand } from './brand/extract.ts'
@@ -105,6 +106,16 @@ export interface FilmAgentOptions {
   allowPrivateNetworks?: boolean
   /** publish each finished film to a share worker, so it outlives this machine's disk */
   share?: ShareConfig | null
+  /**
+   * scenes rendered at once, each in its own Chromium page (its own renderer process). Defaults
+   * to one fewer than the CPU count, between 1 and 4: rendering is CPU-bound.
+   */
+  renderPages?: number
+}
+
+/** how many scenes to render at once on this machine */
+export function defaultRenderPages(cpus = availableParallelism()): number {
+  return Math.max(1, Math.min(4, cpus - 1))
 }
 
 const exists = (p: string) =>
@@ -284,51 +295,98 @@ export function createFilmAgent(opts: FilmAgentOptions) {
         return { file: rel(file), fontsEmbedded: theme.fontsEmbedded }
       })
 
-      // One Chromium page per execution, opened only if something still needs rendering.
-      let comp: OpenComposition | null = null
-      const page = async () => {
-        if (!comp)
-          comp = await openComposition(
-            await readFile(join(opts.filmsDir, composed.file), 'utf8'),
-            format,
-          )
-        return comp
+      // Chromium pages, opened only if something still needs rendering. Scenes render in
+      // parallel, one per page; each scene is still its own checkpoint, so a crash redoes only
+      // the scenes that were in progress.
+      const html = () => readFile(join(opts.filmsDir, composed.file), 'utf8')
+      const pool: OpenComposition[] = []
+      const idle: OpenComposition[] = []
+      const waiting: ((c: OpenComposition) => void)[] = []
+      const width = Math.max(
+        1,
+        Math.min(opts.renderPages ?? defaultRenderPages(), board.scenes.length),
+      )
+      let opening = 0
+      const acquire = async (): Promise<OpenComposition> => {
+        const free = idle.pop()
+        if (free) return free
+        if (pool.length + opening < width) {
+          opening++
+          try {
+            const c = await openComposition(await html(), format)
+            pool.push(c)
+            return c
+          } finally {
+            opening--
+          }
+        }
+        return new Promise((r) => waiting.push(r))
+      }
+      const release = (c: OpenComposition) => {
+        const next = waiting.shift()
+        if (next) next(c)
+        else idle.push(c)
+      }
+      const withPage = async <T>(fn: (c: OpenComposition) => Promise<T>): Promise<T> => {
+        const c = await acquire()
+        try {
+          return await fn(c)
+        } finally {
+          release(c)
+        }
       }
 
       try {
-        const segments: string[] = []
-        let frames = 0
-        let ms = 0
-        let t = 0
         const totalFrames = Math.round(board.duration * 30)
-        for (const [i, scene] of board.scenes.entries()) {
-          const [f0, f1] = frameRange(t, t + scene.dur)
+        const doneFrames = new Map<number, number>()
+        let t = 0
+        const ranges = board.scenes.map((scene) => {
+          const r = frameRange(t, t + scene.dur)
           t += scene.dur
+          return r
+        })
+        // every step is started here, in scene order, before any is awaited: replays see the
+        // same sequence of steps whatever order they finish in
+        const renders = ranges.map(([f0, f1], i) => {
           const file = join(dir, `scene-${i}-${format}.mp4`)
-          const seg = await ctx.step(`render:${i}`, async () => {
-            const c = await page()
-            const r = await renderSegment(c.page, {
-              f0,
-              f1,
-              file,
-              onFrame: (done) =>
-                ctx.progress({
-                  stage: 'render',
-                  label: `Rendering scene ${i + 1} of ${board.scenes.length}`,
-                  scene: i,
-                  percent: Math.round(((f0 + done) / totalFrames) * 100),
-                }),
+          return ctx
+            .step(`render:${i}`, () =>
+              withPage(async (c) => {
+                const r = await renderSegment(c.page, {
+                  f0,
+                  f1,
+                  file,
+                  onFrame: (done) => {
+                    doneFrames.set(i, done)
+                    const all = [...doneFrames.values()].reduce((a, b) => a + b, 0)
+                    ctx.progress({
+                      stage: 'render',
+                      label: `Rendering ${board.scenes.length} scenes`,
+                      scene: i,
+                      percent: Math.min(99, Math.round((all / totalFrames) * 100)),
+                    })
+                  },
+                })
+                return { file: rel(file), ...r }
+              }),
+            )
+            .then(async (seg) => {
+              // replayed on another machine without a shared volume: render that scene here
+              if (!(await exists(join(opts.filmsDir, seg.file))))
+                await withPage((c) => renderSegment(c.page, { f0, f1, file }))
+              return seg
             })
-            return { file: rel(file), ...r }
-          })
-          // replayed from another machine without a shared volume: re-render that scene locally
-          if (!(await exists(join(opts.filmsDir, seg.file)))) {
-            await renderSegment((await page()).page, { f0, f1, file })
-          }
-          segments.push(join(opts.filmsDir, seg.file))
-          frames += seg.frames
-          ms += seg.ms
-        }
+        })
+        const settled = await Promise.allSettled(renders)
+        const failed = settled.find((r) => r.status === 'rejected')
+        if (failed) throw (failed as PromiseRejectedResult).reason
+        const segs = settled.map(
+          (r) => (r as PromiseFulfilledResult<{ file: string; frames: number; ms: number }>).value,
+        )
+        const segments = segs.map((g) => join(opts.filmsDir, g.file))
+        const frames = segs.reduce((a, g) => a + g.frames, 0)
+        // CPU time across pages; the film's wall clock is in the step timings
+        const ms = segs.reduce((a, g) => a + g.ms, 0)
 
         ctx.progress({ stage: 'encode', label: 'Encoding the film, GIF and poster', percent: 100 })
         const out = await ctx.step('encode', async () => {
@@ -337,7 +395,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           const sceneStarts = board.scenes.map((_, i) =>
             board.scenes.slice(0, i).reduce((a, x) => a + x.dur, 0),
           )
-          const c = await page()
+          const c = await acquire()
           const extras = await renderExtras(c.page, {
             outDir: dir,
             film,
@@ -428,7 +486,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           highlights: highlightsOf(board),
         }
       } finally {
-        if (comp) await (comp as OpenComposition).close()
+        await Promise.all(pool.map((c) => c.close()))
       }
     },
   })

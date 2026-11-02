@@ -53,9 +53,17 @@ export class LocalContext implements AgentContext {
     return Object.keys(this.#journal)
   }
 
+  /** writes happen one at a time, so steps that finish together can't interleave the file */
+  #writing: Promise<unknown> = Promise.resolve()
+
   async #save(key: string, value: unknown) {
     this.#journal[key] = value === undefined ? null : JSON.parse(JSON.stringify(value))
-    if (this.#file) await writeFile(this.#file, JSON.stringify(this.#journal, null, 1))
+    const file = this.#file
+    if (file) {
+      const done = this.#writing.then(() => writeFile(file, JSON.stringify(this.#journal, null, 1)))
+      this.#writing = done.catch(() => {})
+      await done
+    }
     return this.#journal[key]
   }
 

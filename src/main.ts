@@ -67,6 +67,7 @@ async function main() {
             : null,
         publicUrl: cfg.PUBLIC_URL,
         allowPrivateNetworks: cfg.ALLOW_PRIVATE_NETWORKS,
+        ...(cfg.RENDER_PAGES ? { renderPages: cfg.RENDER_PAGES } : {}),
       }) as never,
     )
     const worker = new Worker(sql, cfg, log, agents, llm)

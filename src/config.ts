@@ -27,6 +27,8 @@ const schema = z.object({
 
   /** films rendered at once per worker; each holds a Chromium page */
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
+  /** scenes of one film rendered at once (one Chromium page each); default: CPUs - 1, max 4 */
+  RENDER_PAGES: z.coerce.number().int().min(1).max(8).optional(),
   POLL_INTERVAL_MS: z.coerce.number().int().positive().default(1000),
   LEASE_MS: z.coerce.number().int().min(1000).default(60_000),
   RUN_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(5),
