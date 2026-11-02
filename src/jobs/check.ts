@@ -4,11 +4,16 @@
  * failed. Run by the "Job boards" workflow (and by hand: node src/jobs/check.ts).
  * Exits non-zero when a board is gone, so a dead entry in companies.ts gets noticed.
  */
-import { boardKey, fetchBoard } from './boards.ts'
+import { type Board, boardKey, fetchBoard, prettyToken } from './boards.ts'
 import { DEFAULT_BOARDS } from './companies.ts'
 
+// `node src/jobs/check.ts ashby:acme greenhouse:acme` checks those boards instead
+const asked: Board[] = process.argv.slice(2).map((a) => {
+  const [ats, token] = a.split(':') as [Board['ats'], string]
+  return { ats, token, name: prettyToken(token) }
+})
 const results = await Promise.all(
-  DEFAULT_BOARDS.map(async (b) => {
+  (asked.length ? asked : DEFAULT_BOARDS).map(async (b) => {
     try {
       const jobs = await fetchBoard(b, { timeoutMs: 20_000 })
       const newest = jobs
