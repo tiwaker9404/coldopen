@@ -104,7 +104,7 @@ const T = {
   crash: 9.0 + CLIP_DUR * CLIPS.length + 5.0,
   outro: 9.0 + CLIP_DUR * CLIPS.length + 9.4,
 }
-const END = T.outro + 4.6
+const END = T.outro + 5.2
 const scenes = [
   ['title', T.title, T.composer],
   ['composer', T.composer, T.clips],
@@ -124,42 +124,43 @@ const clipHtml = CLIPS.map((c, i) => {
 }).join('')
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
-@font-face{font-family:Display;src:url(${font('bricolage-grotesque', 'bricolage-grotesque-latin-wght-normal.woff2')});font-weight:200 800}
-@font-face{font-family:Body;src:url(${font('instrument-sans', 'instrument-sans-latin-wght-normal.woff2')});font-weight:400 700}
-:root{--paper:#ecedf0;--ink:#14161b;--muted:#5e6370;--tally:#e5322d;--u:10.8px}
+@font-face{font-family:Archivo;src:url(${font('archivo', 'archivo-latin-wdth-normal.woff2')});font-weight:100 900;font-stretch:62% 125%}
+:root{--paper:#eceee9;--ink:#17201c;--muted:#5b6661;--rule:#d4d9d3;--tally:#d6362a;--u:10.8px}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:${W}px;height:${H}px;overflow:hidden;background:var(--paper)}
-body{font-family:Body;color:var(--ink);-webkit-font-smoothing:antialiased}
+body{font-family:Archivo;color:var(--ink);-webkit-font-smoothing:antialiased}
 .s{position:absolute;inset:0;padding:calc(var(--u)*9) calc(var(--u)*8);display:none;flex-direction:column}
 .s.on{display:flex}
-.display{font-family:Display;font-weight:780;letter-spacing:-0.035em;line-height:.98}
+#title,#composer,#outro{justify-content:center;padding-bottom:calc(var(--u)*16)}
+.display{font-family:Archivo;font-stretch:66%;font-weight:720;letter-spacing:-0.01em;line-height:.96}
 .a{animation-play-state:paused;animation-fill-mode:both}
 .up{animation:up 800ms cubic-bezier(.16,1,.3,1) both}
 .fade{animation:fade 600ms ease-out both}
 @keyframes up{from{opacity:0;transform:translateY(calc(var(--u)*4))}to{opacity:1;transform:none}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 .mark{display:flex;align-items:center;gap:calc(var(--u)*3)}
-.lens{width:calc(var(--u)*13);height:calc(var(--u)*9);border-radius:calc(var(--u)*2);background:var(--ink);position:relative;flex:none}
-.lens i{position:absolute;right:calc(var(--u)*2);top:calc(var(--u)*2);width:calc(var(--u)*2.6);height:calc(var(--u)*2.6);border-radius:50%;background:var(--tally)}
-.word{font-size:calc(var(--u)*17)}
-.lines{margin-top:calc(var(--u)*9);font-size:calc(var(--u)*6);line-height:1.12;font-family:Display;font-weight:650;letter-spacing:-0.02em}
-.lines p+p{margin-top:calc(var(--u)*1.5);color:var(--muted)}
+/* the tally light: the mark is just the red dot that means "recording" */
+.lens{width:calc(var(--u)*4.2);height:calc(var(--u)*4.2);border-radius:50%;background:var(--tally);flex:none}
+.lens i{display:none}
+.word{font-size:calc(var(--u)*17);font-stretch:78%;font-weight:780}
+.lines{margin-top:calc(var(--u)*8);font-size:calc(var(--u)*10);line-height:1;font-family:Archivo;font-stretch:66%;font-weight:700;letter-spacing:-0.01em}
+.lines p+p{margin-top:calc(var(--u)*1);color:var(--muted)}
 /* composer */
-.card{background:#fff;border-radius:calc(var(--u)*2.6);padding:calc(var(--u)*3);box-shadow:0 calc(var(--u)*1) calc(var(--u)*4) rgba(0,0,0,.08);margin-top:calc(var(--u)*22)}
+.card{background:#fff;border-radius:calc(var(--u)*2.6);padding:calc(var(--u)*3);box-shadow:0 calc(var(--u)*1) calc(var(--u)*4) rgba(0,0,0,.08);margin-top:calc(var(--u)*8)}
 .row{display:flex;gap:calc(var(--u)*1.6)}
-.input{flex:1;white-space:nowrap;overflow:hidden;border:1px solid #d5d8de;background:var(--paper);border-radius:calc(var(--u)*1.8);padding:calc(var(--u)*2.4) calc(var(--u)*2.8);font-size:calc(var(--u)*4.2);min-height:calc(var(--u)*10)}
+.input{flex:1;white-space:nowrap;overflow:hidden;border:1px solid var(--rule);background:var(--paper);border-radius:calc(var(--u)*1.8);padding:calc(var(--u)*2.4) calc(var(--u)*2.8);font-size:calc(var(--u)*4.2);min-height:calc(var(--u)*10)}
 .caret{display:inline-block;width:2px;height:1.1em;background:var(--ink);vertical-align:-.15em;margin-left:2px}
 .btn{background:var(--ink);color:var(--paper);border-radius:calc(var(--u)*1.8);padding:0 calc(var(--u)*3.6);font-size:calc(var(--u)*3.4);font-weight:600;display:flex;align-items:center;white-space:nowrap}
-.btn.pressed{transform:scale(.96);background:#2b2f37}
-.status{margin-top:calc(var(--u)*5);margin-bottom:auto;display:flex;gap:calc(var(--u)*2.4);align-items:center;font-size:calc(var(--u)*4);font-weight:600;opacity:0}
+.btn.pressed{transform:scale(.96);background:#2c3631}
+.status{margin-top:calc(var(--u)*5);display:flex;gap:calc(var(--u)*2.4);align-items:center;font-size:calc(var(--u)*4);font-weight:600;opacity:0}
 .status .dot{width:calc(var(--u)*2.2);height:calc(var(--u)*2.2);border-radius:50%;background:var(--tally)}
-.track{height:calc(var(--u)*.9);background:#d5d8de;border-radius:4px;margin-top:calc(var(--u)*2);overflow:hidden}
+.track{height:calc(var(--u)*.9);background:var(--rule);border-radius:4px;margin-top:calc(var(--u)*2);overflow:hidden}
 .track b{display:block;height:100%;background:var(--tally);width:0}
-.kicker{font-family:Display;font-weight:700;font-size:calc(var(--u)*6.4);letter-spacing:-0.02em;line-height:1.05}
+.kicker{font-family:Archivo;font-stretch:66%;font-weight:700;font-size:calc(var(--u)*8);letter-spacing:-0.01em;line-height:1}
 /* clips */
 .clip{position:absolute;inset:0;padding:calc(var(--u)*7) calc(var(--u)*8);display:none;flex-direction:column;align-items:center}
 .clip.on{display:flex}
-.for{align-self:flex-start;font-family:Display;font-weight:700;font-size:calc(var(--u)*5);letter-spacing:-0.02em;margin-bottom:calc(var(--u)*3)}
+.for{align-self:flex-start;font-family:Archivo;font-stretch:70%;font-weight:700;font-size:calc(var(--u)*6);margin-bottom:calc(var(--u)*3)}
 .player{position:relative;width:${860}px;height:${860}px;border-radius:calc(var(--u)*2);overflow:hidden;box-shadow:0 calc(var(--u)*2) calc(var(--u)*6) rgba(0,0,0,.18)}
 .player .f{position:absolute;inset:0;width:100%;height:100%;display:none}
 .player .f.on{display:block}
@@ -171,7 +172,7 @@ body{font-family:Body;color:var(--ink);-webkit-font-smoothing:antialiased}
 .small{font-size:calc(var(--u)*3.8);line-height:1.35;color:var(--muted);margin-top:calc(var(--u)*5);max-width:36ch}
 /* crash */
 .reel{display:flex;gap:calc(var(--u)*1.2);margin-top:calc(var(--u)*8)}
-.reel i{flex:1;height:calc(var(--u)*2.4);border-radius:calc(var(--u)*.8);background:#d5d8de;position:relative;overflow:hidden}
+.reel i{flex:1;height:calc(var(--u)*2.4);border-radius:calc(var(--u)*.8);background:var(--rule);position:relative;overflow:hidden}
 .reel b{position:absolute;inset:0;background:var(--ink);transform-origin:left;transform:scaleX(0)}
 .cut{margin-top:calc(var(--u)*3);display:flex;justify-content:space-between;font-size:calc(var(--u)*3.4);font-weight:600}
 .cut .x{color:var(--tally)}
@@ -181,10 +182,10 @@ body{font-family:Body;color:var(--ink);-webkit-font-smoothing:antialiased}
 </style></head><body>
 <section class="s" id="title">
   <div class="mark a up" style="animation-delay:100ms"><div class="lens"><i></i></div><h1 class="display word">coldopen</h1></div>
-  <div class="lines"><p class="a up" style="animation-delay:900ms">Paste a company’s website.</p><p class="a up" style="animation-delay:1700ms">Get a 30-second film made for them.</p></div>
+  <div class="lines"><p class="a up" style="animation-delay:900ms">A 30-second film</p><p class="a up" style="animation-delay:1500ms">for every company you apply to.</p></div>
 </section>
 <section class="s" id="composer">
-  <p class="kicker a up" style="animation-delay:100ms">One URL in.</p>
+  <p class="kicker a up" style="animation-delay:100ms">One job link in.</p>
   <div class="card a up" style="animation-delay:300ms"><div class="row"><div class="input"><span id="typed"></span><span class="caret"></span></div><div class="btn" id="btn">Make film</div></div></div>
   <div class="status" id="status"><span class="dot"></span><div style="flex:1"><span id="stage">Reading the site</span><div class="track"><b id="bar"></b></div></div></div>
 </section>
@@ -192,7 +193,7 @@ body{font-family:Body;color:var(--ink);-webkit-font-smoothing:antialiased}
 <section class="s" id="grid">
   <h2 class="display big a up" style="animation-delay:100ms">Every film looks like the company it’s for.</h2>
   <div class="posters">${CLIPS.map((c, i) => `<img class="a up" style="animation-delay:${500 + i * 180}ms" src="${c.id}-poster.jpg" alt="">`).join('')}</div>
-  <p class="small a fade" style="animation-delay:1400ms">Fonts, colors and logo come from their own site. Every fact on screen is quoted from it, and the script is checked against written taste rules before anything renders.</p>
+  <p class="small a fade" style="animation-delay:1400ms">Colors, logo and typeface come from their own site. Every fact on screen is quoted from it, and every number is checked in code.</p>
 </section>
 <section class="s" id="crash">
   <h2 class="display big a up" style="animation-delay:100ms">Kill the renderer halfway through.</h2>
@@ -202,12 +203,13 @@ body{font-family:Body;color:var(--ink);-webkit-font-smoothing:antialiased}
 </section>
 <section class="s" id="outro">
   <div class="mark a up" style="animation-delay:100ms"><div class="lens"><i></i></div><h1 class="display word">coldopen</h1></div>
-  <div class="lines"><p class="a up" style="animation-delay:700ms">Open source. Runs free on your own machine.</p></div>
-  <p class="repo a fade" style="animation-delay:1500ms">github.com/tiwaker9404/coldopen</p>
+  <div class="lines"><p class="a up" style="animation-delay:600ms">A 60% reply rate</p><p class="a up" style="animation-delay:1100ms">in my first week.</p></div>
+  <p class="small a fade" style="animation-delay:1800ms">Free and open source.</p>
+  <p class="repo a fade" style="animation-delay:2100ms">github.com/tiwaker9404/coldopen</p>
 </section>
 <script>
 const SC = ${JSON.stringify(scenes)};
-const URLTEXT = ${JSON.stringify(process.env.REEL_URL ?? 'northwindfreight.example')};
+const URLTEXT = ${JSON.stringify(process.env.REEL_URL ?? 'jobs.lever.co/acme/4821')};
 const STAGES = [['Reading the site', 2.0], ['Writing the script', 2.6], ['Matching their brand', 3.2], ['Rendering scene 1 of 6', 3.8], ['Rendering scene 4 of 6', 4.6]];
 const clips = [...document.querySelectorAll('.clip')];
 const CLIP = ${CLIP_DUR};
