@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { inSpan, SpanKind } from '../tracing.ts'
 
 /**
  * Open roles from the public job board APIs of Greenhouse, Lever and Ashby. All three publish a
@@ -285,7 +286,16 @@ export async function fetchBoard(
   b: Board,
   opts: { fetch?: FetchFn; timeoutMs?: number } = {},
 ): Promise<Job[]> {
-  return readBoard(b, await fetchBoardBody(b, opts))
+  return inSpan(
+    `board ${b.ats}`,
+    { 'coldopen.board.ats': b.ats, 'coldopen.board.name': b.name },
+    async (span) => {
+      const jobs = readBoard(b, await fetchBoardBody(b, opts))
+      span.setAttribute('coldopen.board.jobs', jobs.length)
+      return jobs
+    },
+    SpanKind.CLIENT,
+  )
 }
 
 /** The board's JSON as its API returns it */

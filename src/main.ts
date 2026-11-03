@@ -9,6 +9,7 @@ import type { LlmProvider } from './llm/types.ts'
 import { createLogger } from './logger.ts'
 import { registry, Worker } from './runtime/worker.ts'
 import { SlackClient } from './slack.ts'
+import { startTracing } from './tracing.ts'
 
 /**
  *   node src/main.ts migrate   apply schema migrations
@@ -21,6 +22,7 @@ import { SlackClient } from './slack.ts'
 const role = process.argv[2] ?? 'all'
 const cfg = loadConfig()
 const log = createLogger(cfg.LOG_LEVEL, `coldopen:${role}`)
+const tracing = startTracing(`coldopen-${role}`)
 const sql = connect(cfg.DATABASE_URL, cfg.DB_POOL_SIZE)
 const stoppers: (() => Promise<void>)[] = []
 
@@ -154,6 +156,7 @@ async function shutdown(signal: string) {
   log.info({ signal }, 'shutting down')
   for (const stop of stoppers)
     await stop().catch((err) => log.error({ err }, 'shutdown step failed'))
+  await tracing?.shutdown()
   await sql.end({ timeout: 5 })
   process.exit(0)
 }

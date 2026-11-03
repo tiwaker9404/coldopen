@@ -1,6 +1,7 @@
 # docker compose up --build        ->  http://localhost:8080
 # Scale renderers:                     docker compose up -d --scale worker=3
 # Use a local model (free):            docker compose --profile ollama up
+# See traces (Jaeger, :16686):          docker compose --profile tracing up
 name: coldopen
 
 x-env: &env
@@ -17,6 +18,8 @@ x-env: &env
   SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
   SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
   LOG_LEVEL: info
+  # traces go to Jaeger when it runs (--profile tracing); unreachable otherwise, and dropped
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
 
 services:
   postgres:
@@ -58,6 +61,11 @@ services:
     image: ollama/ollama:latest
     profiles: ["ollama"]
     volumes: [ollama:/root/.ollama]
+
+  jaeger:
+    image: jaegertracing/jaeger:2.11.0
+    profiles: ["tracing"]
+    ports: ["16686:16686"]
 
 volumes:
   pgdata:

@@ -1,5 +1,6 @@
 import type { Sql } from '../db/index.ts'
 import { newId } from '../ids.ts'
+import { carrier } from '../tracing.ts'
 import type { StepKind } from './types.ts'
 
 export const RUN_CHANNEL = 'coldopen_runs'
@@ -28,6 +29,8 @@ export interface Run {
   completedAt: Date | null
   /** 'team' on a private install; a user or visitor on the hosted app */
   owner?: string
+  /** the trace context it was created in (traceparent), when tracing is on */
+  trace?: Record<string, string> | null
 }
 
 export interface StepRow {
@@ -92,9 +95,10 @@ export async function createRun(
 ): Promise<CreateRunResult> {
   return atomically(sql, async (tx) => {
     const id = newId('run')
+    const t = carrier()
     const [run] = await tx<Run[]>`
-      insert into runs (id, agent, input, idempotency_key, owner)
-      values (${id}, ${input.agent}, ${tx.json(input.input as never)}, ${input.idempotencyKey ?? null}, ${input.owner ?? 'team'})
+      insert into runs (id, agent, input, idempotency_key, owner, trace)
+      values (${id}, ${input.agent}, ${tx.json(input.input as never)}, ${input.idempotencyKey ?? null}, ${input.owner ?? 'team'}, ${Object.keys(t).length ? tx.json(t) : null})
       on conflict (idempotency_key) do nothing
       returning *`
     if (run) {
