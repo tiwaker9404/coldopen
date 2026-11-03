@@ -75,12 +75,19 @@ export function bestAnswer(profile: Profile, r: string): { score: number; with: 
 }
 
 /** A job post's requirements against someone's profile */
-export function fitOf(requirements: string[], profile: Profile): Fit | null {
+export function fitOf(
+  requirements: string[],
+  profile: Profile,
+  /** scores by meaning, from semantic.ts; a requirement is answered by whichever reads closer */
+  semantic?: Map<string, { score: number; with: string }>,
+): Fit | null {
   if (requirements.length === 0) return null
   let answered = 0
   let best: { requirement: string; with: string; score: number } | null = null
   for (const r of requirements) {
-    const top = bestAnswer(profile, r)
+    const words = bestAnswer(profile, r)
+    const meaning = semantic?.get(r)
+    const top = meaning && meaning.score > words.score ? meaning : words
     if (top.score >= ANSWERED) answered++
     // the film quotes requirements up to 160 characters; prefer one it could show
     const score = top.score - (r.length > 160 ? 0.2 : 0)

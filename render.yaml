@@ -27,6 +27,9 @@ services:
         generateValue: true
       - key: DB_POOL_SIZE
         value: "4"
+      # fit by meaning (src/job/semantic.ts): a small embedding model on the CPU; "off" to skip
+      - key: FIT_SEMANTIC
+        value: "on"
       # shown on /privacy as the address for questions
       - key: CONTACT_EMAIL
         sync: false
