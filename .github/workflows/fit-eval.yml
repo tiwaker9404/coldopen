@@ -37,7 +37,7 @@ jobs:
           path: node_modules/@huggingface/transformers/.cache
           key: fit-models-v1
       - name: Run the fit eval
-        run: node evals/fit/run.ts >> "$GITHUB_STEP_SUMMARY"
+        run: node evals/fit/run.ts >> "$GITHUB_STEP_SUMMARY" && npx biome format --write evals/fit
       - name: Commit the results
         run: |
           git config user.name "github-actions[bot]"
