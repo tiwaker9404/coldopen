@@ -80,6 +80,7 @@ import { sharePage, viewFromRun } from '../share/page.ts'
 import { filmViews, NO_VIEWS, pgViewStore, viewSummaries } from '../share/pg.ts'
 import { recordBeacon, type ViewSummary } from '../share/views.ts'
 import { type SlackClient, urlFromMention, verifySlackSignature } from '../slack.ts'
+import { registerHttpTracing } from '../tracing.ts'
 import {
   consume,
   filmLimit,
@@ -238,6 +239,8 @@ export async function buildApi({
   }).withTypeProvider<ZodTypeProvider>()
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
+  // before any route, so every handler runs inside its request's span
+  registerHttpTracing(app as never)
 
   // keep the raw body for Slack signature verification
   app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {

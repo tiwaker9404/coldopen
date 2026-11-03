@@ -182,6 +182,10 @@ Run `pnpm evals --model <name>` to grade a real model's scripts the same way.
 
 The fixture companies in [fixtures/sites](fixtures/sites) (a freight platform, a health-tech startup and an e-commerce returns tool) are fictional, but they're built like real sites: web fonts, stat tiles, testimonials and CTAs.
 
+## Observability
+
+Logs, Prometheus metrics at `/metrics`, and OpenTelemetry traces: one trace follows a film from the API request to the finished video across processes, with a span per durable step, LLM call (GenAI conventions: model, tokens) and job board read. Point `OTEL_EXPORTER_OTLP_ENDPOINT` at any OTLP backend, or run `docker compose --profile tracing up` for Jaeger. See [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md).
+
 ## Security
 
 - **Network guard.** The research browser refuses private, loopback and link-local addresses: navigation, redirects and every sub-request. A hosted instance can't be pointed at cloud metadata or internal services. Allow them only for local development (`ALLOW_PRIVATE_NETWORKS=true`). The CLI allows them, since it's your own machine.

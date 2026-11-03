@@ -1,9 +1,11 @@
 import { hostname } from 'node:os'
+import type { Span } from '@opentelemetry/api'
 import type { Config } from '../config.ts'
 import type { Sql } from '../db/index.ts'
 import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import * as metrics from '../metrics.ts'
+import { fail, inSpan, SpanKind, withCarrier } from '../tracing.ts'
 import { backoffMs } from './backoff.ts'
 import { type ContextDeps, DurableContext, NaiveContext } from './context.ts'
 import { errorCode, isRetryable, LeaseLost, Suspend, UnknownAgentError } from './errors.ts'
@@ -148,7 +150,24 @@ export class Worker {
     }
   }
 
-  async #execute(run: Run): Promise<void> {
+  /** One execution, as a trace span joined to the request that created the run */
+  #execute(run: Run): Promise<void> {
+    return withCarrier(run.trace, () =>
+      inSpan(
+        `run ${run.agent}`,
+        {
+          'coldopen.run.id': run.id,
+          'coldopen.run.agent': run.agent,
+          'coldopen.run.attempt': run.attempts,
+          'coldopen.worker.id': this.id,
+        },
+        (span) => this.#executeIn(run, span),
+        SpanKind.CONSUMER,
+      ),
+    )
+  }
+
+  async #executeIn(run: Run, span: Span): Promise<void> {
     const cfg = this.#cfg
     const lease: Lease = { runId: run.id, token: run.leaseToken!, workerId: this.id }
     const controller = new AbortController()
@@ -175,7 +194,10 @@ export class Worker {
     )
 
     let ctx: DurableContext | NaiveContext | undefined
-    const outcome = (o: string) => metrics.outcomes.inc({ agent: run.agent, outcome: o })
+    const outcome = (o: string) => {
+      metrics.outcomes.inc({ agent: run.agent, outcome: o })
+      span.setAttribute('coldopen.run.outcome', o)
+    }
     try {
       const agent = this.#agents.get(run.agent)
       if (!agent) throw new UnknownAgentError(`no agent named "${run.agent}" is registered`)
@@ -210,7 +232,10 @@ export class Worker {
       await this.#handleError(run, lease, err, log)
       if (err instanceof Suspend) outcome('suspended')
       else if (err instanceof LeaseLost) outcome('lease_lost')
-      else outcome('error')
+      else {
+        outcome('error')
+        fail(span, err)
+      }
     } finally {
       clearInterval(beat)
       metrics.executionDuration.observe((performance.now() - started) / 1000)

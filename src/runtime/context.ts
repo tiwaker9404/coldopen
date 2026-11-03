@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { setTimeout as sleep } from 'node:timers/promises'
+import { trace } from '@opentelemetry/api'
 import { type ZodType, z } from 'zod'
 import type { Sql } from '../db/index.ts'
 import type { ChatMessage, LlmProvider } from '../llm/types.ts'
+import { inSpan } from '../tracing.ts'
 import { backoffMs } from './backoff.ts'
 import {
   AmbiguousEffectError,
@@ -123,6 +125,11 @@ export class DurableContext implements AgentContext {
 
   #replay<T>(s: StepRow): T {
     this.replayed.push(s.key)
+    // served from the journal, not re-run: shows on the run's span as an event
+    trace.getActiveSpan()?.addEvent('step replayed', {
+      'coldopen.step.key': s.key,
+      'coldopen.step.kind': s.kind,
+    })
     return s.output as T
   }
 
@@ -135,7 +142,7 @@ export class DurableContext implements AgentContext {
   }
 
   /** Run fn with in-process retries, then journal the result. */
-  async #execute<T>(
+  #execute<T>(
     key: string,
     seq: number,
     kind: StepKind,
@@ -143,6 +150,22 @@ export class DurableContext implements AgentContext {
     fn: () => Promise<T>,
     meta: () => Record<string, unknown> = () => ({}),
     recordFailure = true,
+  ): Promise<T> {
+    return inSpan(
+      `${kind} ${key}`,
+      { 'coldopen.step.key': key, 'coldopen.step.kind': kind, 'coldopen.step.seq': seq },
+      () => this.#executeStep(key, seq, kind, retries, fn, meta, recordFailure),
+    )
+  }
+
+  async #executeStep<T>(
+    key: string,
+    seq: number,
+    kind: StepKind,
+    retries: number,
+    fn: () => Promise<T>,
+    meta: () => Record<string, unknown>,
+    recordFailure: boolean,
   ): Promise<T> {
     const startedAt = new Date()
     let attempts = 0

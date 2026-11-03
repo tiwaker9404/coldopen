@@ -1,4 +1,5 @@
 import { NonRetryableError } from '../runtime/errors.ts'
+import { tracedLlm } from '../tracing.ts'
 import { LlmHttpError, OpenAICompatibleProvider } from './openai.ts'
 import type { LlmProvider, LlmRequest, LlmResponse } from './types.ts'
 
@@ -86,16 +87,26 @@ export function buildLlm(
       ]
     }),
   ]
-  const providers = endpoints.map(
-    (e, i) =>
+  const providers = endpoints.map((e, i) =>
+    tracedLlm(
       new OpenAICompatibleProvider({
         ...e,
         timeoutMs,
         // with somewhere to go next, move on quickly; the last option waits as long as it takes
         maxRateWaitMs: i < endpoints.length - 1 ? 20_000 : 300_000,
       }),
+      hostOf(e.baseUrl),
+    ),
   )
   return providers.length === 1 ? providers[0]! : new ChainProvider(providers)
+}
+
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
 }
 
 /** Gemini's OpenAI-compatible endpoint */
