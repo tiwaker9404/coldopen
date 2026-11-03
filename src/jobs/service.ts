@@ -16,7 +16,7 @@ import {
 import { DEFAULT_BOARDS, raisedOf, visaOf, ycOf } from './companies.ts'
 import { detailsFromBoard, greenhouseDetails } from './details.ts'
 import { defaultSearch, rank, type Search, SearchSchema, type Suggestion, spread } from './rank.ts'
-import { yearsAsked } from './where.ts'
+import { CITIZEN_ONLY, CLEARANCE, yearsAsked } from './where.ts'
 
 /**
  * Suggested jobs for one person: their search, the default boards plus any they added, read
@@ -342,6 +342,12 @@ export async function requirementsFor(
   return have
 }
 
+/** Does this text name the skill, as a whole word ("Go" not in "Google")? */
+function names(text: string, skill: string): boolean {
+  const k = skill.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return k.length > 0 && new RegExp(`(^|[^A-Za-z0-9])${k}($|[^A-Za-z0-9])`, 'i').test(text)
+}
+
 const ycBoard = (j: Pick<Job, 'board'>) => {
   const [ats, token] = j.board.split(':') as [Board['ats'], string]
   return ycOf({ board: { ats, token } })
@@ -454,19 +460,28 @@ export async function suggestions(
         .filter((j) => j.posted)
         .sort((a, b) => b.posted!.localeCompare(a.posted!))
         .slice(0, 400)
-      // a years limit drops posts only once their requirements are read: read more of them
-      const candidates = spread(matched, 6).slice(
-        0,
-        state.search.maxYears !== null ? FIT_POOL * 2 : FIT_POOL,
-      )
+      // filters on a post's requirements drop posts only once those are read: read more of them
+      const sq = state.search
+      const byReqs =
+        sq.maxYears !== null ||
+        sq.noClearance ||
+        sq.noCitizenOnly ||
+        sq.skills.length > 0 ||
+        sq.excludeSkills.length > 0
+      const candidates = spread(matched, 6).slice(0, byReqs ? FIT_POOL * 2 : FIT_POOL)
       const paid = new Map<string, Pay>()
-      const reqs = profile
-        ? await requirementsFor(sql, candidates, { ...opts, pay: paid })
-        : new Map<string, string[]>()
+      const reqs =
+        profile || byReqs
+          ? await requirementsFor(sql, candidates, { ...opts, pay: paid })
+          : new Map<string, string[]>()
       const fitted: JobWithFit[] = candidates.flatMap((j) => {
         const years = yearsAsked(reqs.get(j.id) ?? [])
-        if (state.search.maxYears !== null && years !== null && years > state.search.maxYears)
-          return []
+        if (sq.maxYears !== null && years !== null && years > sq.maxYears) return []
+        const text = `${j.title}\n${(reqs.get(j.id) ?? []).join('\n')}`
+        if (sq.noClearance && CLEARANCE.test(text)) return []
+        if (sq.noCitizenOnly && CITIZEN_ONLY.test(text)) return []
+        if (sq.skills.length && !sq.skills.some((k) => names(text, k))) return []
+        if (sq.excludeSkills.some((k) => names(text, k))) return []
         const fit = profile ? fitOf(reqs.get(j.id) ?? [], profile) : null
         const yc = ycBoard(j) ?? ycOf({ site: j.site })
         const hiring = pace.get(j.board)

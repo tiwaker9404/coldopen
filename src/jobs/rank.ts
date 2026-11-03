@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { Job } from './boards.ts'
-import { inUS, type Level, levelOf } from './where.ts'
+import { inUS, LEVELS, levelOf, managesOf } from './where.ts'
 
 /**
  * Which open roles to suggest, and why. Deliberately simple and explainable, like profile
@@ -14,10 +14,19 @@ export const SearchSchema = z.object({
   /** jobs in the US only (the default), or anywhere */
   country: z.enum(['us', 'any']).default('us'),
   /** how senior, read from the title. Empty: any level */
-  levels: z
-    .array(z.enum(['intern', 'entry', 'mid', 'senior']))
-    .max(4)
-    .default([]),
+  levels: z.array(z.enum(LEVELS)).max(6).default([]),
+  /** people managers, individual contributors, or both */
+  roleType: z.enum(['any', 'ic', 'manager']).default('any'),
+  /** words that rule a title out: "Sales", "Clinical" */
+  excludeTitles: z.array(z.string().trim().min(2).max(40)).max(20).default([]),
+  /** skills a post's requirements must name, any of them */
+  skills: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
+  /** skills that rule a post out when its requirements name them */
+  excludeSkills: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
+  /** leave out posts that require a security clearance */
+  noClearance: z.boolean().default(false),
+  /** leave out posts open to US citizens only */
+  noCitizenOnly: z.boolean().default(false),
   /** full time, part time, contract, internship. Empty: any */
   types: z
     .array(z.enum(['full_time', 'part_time', 'contract', 'intern']))
@@ -45,7 +54,7 @@ export const SearchSchema = z.object({
   /** best fit first, or the companies adding the most roles lately first */
   sort: z.enum(['best', 'fastest']).default('best'),
   /** only roles posted in the last week or month */
-  within: z.enum(['any', 'week', 'month']).default('any'),
+  within: z.enum(['any', 'day', '3days', 'week', 'month']).default('any'),
   /** companies to leave out, by name */
   exclude: z.array(z.string().trim().min(1).max(80)).max(50).default([]),
   /** leave out roles whose listed pay tops out below this (yearly, in dollars); unlisted pay stays */
@@ -247,6 +256,9 @@ export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
   const anyRole = s.roles.length === 0
   const wantsSenior = asksFor(s.roles, SENIOR)
   const excluded = s.exclude.map(nameKey).filter(Boolean)
+  const excludedTitles = s.excludeTitles.map(
+    (w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'),
+  )
   const out: Suggestion[] = []
   const seen = new Set<string>()
   for (const j of jobs) {
@@ -265,7 +277,9 @@ export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
     }
     if (fit === 0) continue
     if (s.country === 'us' && !inUS(j)) continue
-    if (s.levels.length && !s.levels.includes(levelOf(j.title) as Level)) continue
+    if (s.levels.length && !s.levels.includes(levelOf(j.title))) continue
+    if (s.roleType !== 'any' && managesOf(j.title) !== (s.roleType === 'manager')) continue
+    if (excludedTitles.some((w) => w.test(j.title))) continue
     if (s.types.length) {
       // a post that doesn't say is a full-time role, unless its title says intern
       const t = j.type ?? (levelOf(j.title) === 'intern' ? 'intern' : 'full_time')
@@ -278,7 +292,8 @@ export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
     }
     if (s.within !== 'any') {
       const d = ago(j.posted, now)
-      if (d === null || d > (s.within === 'week' ? 7 : 31)) continue
+      const max = { day: 1, '3days': 3, week: 7, month: 31 }[s.within]
+      if (d === null || d > max) continue
     }
     if (excluded.length && excluded.some((x) => sameName(x, j.company))) continue
     if (s.minPay && j.pay && j.pay.currency === 'USD' && j.pay.max < s.minPay) continue

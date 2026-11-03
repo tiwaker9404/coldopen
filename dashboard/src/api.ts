@@ -398,7 +398,17 @@ export interface JobSearch {
   /** US only (default) or anywhere */
   country: 'us' | 'any'
   /** how senior, from the title; empty: any */
-  levels: ('intern' | 'entry' | 'mid' | 'senior')[]
+  levels: ('intern' | 'entry' | 'mid' | 'senior' | 'lead' | 'director')[]
+  /** people managers, individual contributors, or both */
+  roleType: 'any' | 'ic' | 'manager'
+  /** words that rule a title out */
+  excludeTitles: string[]
+  /** skills the requirements must name, any of them */
+  skills: string[]
+  /** skills that rule a post out */
+  excludeSkills: string[]
+  noClearance: boolean
+  noCitizenOnly: boolean
   /** empty: any */
   types: ('full_time' | 'part_time' | 'contract' | 'intern')[]
   /** empty: any */
@@ -406,7 +416,7 @@ export interface JobSearch {
   /** leave out posts asking for more years than this */
   maxYears: number | null
   /** only roles posted in the last week or month */
-  within: 'any' | 'week' | 'month'
+  within: 'any' | 'day' | '3days' | 'week' | 'month'
   /** companies to leave out */
   exclude: string[]
   /** hide roles whose listed pay tops out below this, yearly in dollars */

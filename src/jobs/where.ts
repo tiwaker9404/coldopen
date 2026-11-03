@@ -35,24 +35,39 @@ export function inUS(j: Pick<Job, 'location' | 'country' | 'remote'>): boolean {
   return !ELSEWHERE.test(loc) && (j.remote || /remote|anywhere/i.test(loc))
 }
 
-export type Level = 'intern' | 'entry' | 'mid' | 'senior'
+export const LEVELS = ['intern', 'entry', 'mid', 'senior', 'lead', 'director'] as const
+export type Level = (typeof LEVELS)[number]
 
 /** How senior a role is, read from its title */
 export function levelOf(title: string): Level {
   const t = title.toLowerCase()
-  if (/\b(intern|internship|co-?op|apprentice)\b/.test(t)) return 'intern'
   if (
-    /\b(senior|sr\.?|staff|principal|lead|manager|director|head|vp|vice president|chief|architect|distinguished|fellow)\b|\b(iii|iv|v)\b/.test(
-      t,
-    )
+    /\b(intern|internship|co-?op|apprentice|new grad|graduate|university|campus|student)\b/.test(t)
   )
-    return 'senior'
-  if (
-    /\b(new grad|graduate|entry|junior|jr\.?|associate|early career|university|campus|i)\b/.test(t)
-  )
-    return 'entry'
+    return 'intern'
+  if (/\b(director|head of|vp|vice president|chief|executive|president|cto|ceo|cfo|coo)\b/.test(t))
+    return 'director'
+  if (/\b(staff|principal|lead|architect|distinguished|fellow)\b|\b(iv|v)\b/.test(t)) return 'lead'
+  if (/\b(senior|sr\.?|manager)\b|\biii\b/.test(t)) return 'senior'
+  if (/\b(entry|junior|jr\.?|associate|early career)\b|\bi\b/.test(t)) return 'entry'
   return 'mid'
 }
+
+/** Whether a role manages people, from its title */
+export function managesOf(title: string): boolean {
+  return (
+    /\b(manager|director|head of|vp|vice president|chief|cto|ceo)\b/i.test(title) &&
+    !/\b(account manager|product manager|program manager|project manager|technical account manager|success manager)\b/i.test(
+      title,
+    )
+  )
+}
+
+/** Requirement lines that limit who can apply */
+export const CLEARANCE =
+  /\b(security clearance|ts\/sci|top secret|secret clearance|clearance required|active clearance|clearable)\b/i
+export const CITIZEN_ONLY =
+  /\b(u\.?s\.? citizens? only|must be a u\.?s\.? citizen|u\.?s\.? citizenship (is )?required|requires? u\.?s\.? citizenship)\b/i
 
 /** The fewest years of experience a post's requirements ask for, if any line says */
 export function yearsAsked(requirements: string[]): number | null {

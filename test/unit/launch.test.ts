@@ -291,9 +291,12 @@ describe('where and how senior', () => {
   it('reads the level from the title and the years from the requirements', async () => {
     const { levelOf, yearsAsked } = await import('../../src/jobs/where.ts')
     expect(levelOf('Software Engineering Intern, Summer 2027')).toBe('intern')
-    expect(levelOf('New Grad Solutions Engineer')).toBe('entry')
+    expect(levelOf('New Grad Solutions Engineer')).toBe('intern')
+    expect(levelOf('Associate Solutions Engineer')).toBe('entry')
     expect(levelOf('Forward Deployed Engineer')).toBe('mid')
-    expect(levelOf('Staff Solutions Engineer')).toBe('senior')
+    expect(levelOf('Senior Solutions Engineer')).toBe('senior')
+    expect(levelOf('Staff Solutions Engineer')).toBe('lead')
+    expect(levelOf('Director of Solutions Engineering')).toBe('director')
     expect(yearsAsked(['5+ years in sales engineering', '2-4 years of Python'])).toBe(2)
     expect(yearsAsked(['Strong communication'])).toBeNull()
   })
@@ -328,5 +331,18 @@ describe('where and how senior', () => {
       'Solutions Engineer',
       'Solutions Engineering Intern',
     ])
+  })
+})
+
+describe('limits and role type', () => {
+  it('spots clearance and citizen-only posts, and people managers', async () => {
+    const { CLEARANCE, CITIZEN_ONLY, managesOf } = await import('../../src/jobs/where.ts')
+    expect(CLEARANCE.test('Active TS/SCI clearance required')).toBe(true)
+    expect(CLEARANCE.test('Clear communication')).toBe(false)
+    expect(CITIZEN_ONLY.test('Must be a U.S. citizen')).toBe(true)
+    expect(CITIZEN_ONLY.test('Authorized to work in the US')).toBe(false)
+    expect(managesOf('Engineering Manager')).toBe(true)
+    expect(managesOf('Product Manager')).toBe(false)
+    expect(managesOf('Head of Solutions')).toBe(true)
   })
 })
