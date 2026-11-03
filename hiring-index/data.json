@@ -3,8 +3,8 @@
  "snapshots": 1,
  "totals": {
   "companies": 466,
-  "open_roles": 17296,
-  "new_roles_30d": 5134,
+  "open_roles": 17291,
+  "new_roles_30d": 5128,
   "us_roles": 11378
  },
  "families": [
@@ -928,6 +928,11 @@
  "daily": [
   {
    "snapshot_date": "2026-11-03",
+   "job_family": "Design",
+   "open_roles": 265
+  },
+  {
+   "snapshot_date": "2026-11-03",
    "job_family": "Software Engineering",
    "open_roles": 3000
   },
@@ -935,11 +940,6 @@
    "snapshot_date": "2026-11-03",
    "job_family": "Data",
    "open_roles": 207
-  },
-  {
-   "snapshot_date": "2026-11-03",
-   "job_family": "Design",
-   "open_roles": 265
   },
   {
    "snapshot_date": "2026-11-03",
@@ -953,8 +953,8 @@
   },
   {
    "snapshot_date": "2026-11-03",
-   "job_family": "Operations & other",
-   "open_roles": 3392
+   "job_family": "Sales",
+   "open_roles": 1370
   },
   {
    "snapshot_date": "2026-11-03",
@@ -963,8 +963,8 @@
   },
   {
    "snapshot_date": "2026-11-03",
-   "job_family": "Sales",
-   "open_roles": 1370
+   "job_family": "Operations & other",
+   "open_roles": 3392
   },
   {
    "snapshot_date": "2026-11-03",
@@ -1080,13 +1080,6 @@
    "new_roles_30d": 101
   },
   {
-   "company": "Coinbase",
-   "yc_batch": null,
-   "visa_sponsor": true,
-   "open_roles": 267,
-   "new_roles_30d": 95
-  },
-  {
    "company": "Datadog",
    "yc_batch": null,
    "visa_sponsor": true,
@@ -1099,6 +1092,13 @@
    "visa_sponsor": false,
    "open_roles": 305,
    "new_roles_30d": 93
+  },
+  {
+   "company": "Coinbase",
+   "yc_batch": null,
+   "visa_sponsor": true,
+   "open_roles": 261,
+   "new_roles_30d": 89
   },
   {
    "company": "Finni Health",
