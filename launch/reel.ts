@@ -238,7 +238,7 @@ body{font-family:'Instrument Sans';color:var(--ink);-webkit-font-smoothing:antia
 </section>
 <section class="s stock" id="outro">
   <div class="mark a up" style="animation-delay:100ms"><div class="lens"></div><h1 class="display word">coldopen</h1></div>
-  <div class="lines display"><p class="a up" style="animation-delay:600ms">A 60% reply rate</p><p class="a up" style="animation-delay:1100ms">in my first week.</p></div>
+  <div class="lines display"><p class="a up" style="animation-delay:600ms">A 57% reply rate</p><p class="a up" style="animation-delay:1100ms">across 300 films.</p></div>
   <div class="credits a fade" style="animation-delay:1700ms"><span>Directed by</span><b>you</b><span>Written from</span><b>your résumé</b><span>Ran on</span><b>free, open-source tools</b></div>
   <p class="repo a fade" style="animation-delay:2200ms">github.com/tiwaker9404/coldopen</p>
   <div class="stripe"></div>

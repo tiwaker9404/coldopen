@@ -43,8 +43,8 @@ export function Onboarding({
         when they watch.
       </p>
       <p className="proof-line">
-        <b>60%</b> of the first 15 films got a reply. Beta users are seeing 50–70% more replies than
-        with plain messages.
+        <b>57%</b> of about 300 films from 30 people got a reply. One user went from a 12% reply
+        rate to 54%, and landed an offer.
       </p>
       <ResumeDraft hosted={hosted} onDraft={onDraft}>
         <button type="button" className="link" onClick={() => onBlank(BLANK)}>
