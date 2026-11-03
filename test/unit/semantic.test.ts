@@ -58,3 +58,13 @@ describe('semantic fit', () => {
     expect(n).toBe(1 + 2 + 1)
   })
 })
+
+describe('semantic fit without waiting', () => {
+  it('scores what is embedded and embeds the rest for next time', async () => {
+    const sem = semanticFit(fake, 0.8)
+    const req = 'Experience deploying large language model applications'
+    expect(sem.known(profile, [req]).size).toBe(0)
+    await new Promise((r) => setTimeout(r, 10))
+    expect(sem.known(profile, [req]).get(req)!.score).toBeGreaterThan(ANSWERED)
+  })
+})

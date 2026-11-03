@@ -13,7 +13,7 @@ coldopen is an open-source agent for personalized video outreach. Give it a pros
 **60% of the first 15 films got a reply, against 2 replies from plain messages.** Friends using the public beta are seeing 50 to 70% more replies.
 
 - **Find the role.** Open roles from 450+ companies' public job boards, including about 400 hiring YC startups, ranked against the roles you want. Each shows its pay, a YC badge, whether the company sponsors H-1B visas, how fast it's hiring, and who you already know there.
-- **Fit it.** Fit check scores how well your profile answers each post. Fit gaps shows the skills your best matches keep asking for, one click to add.
+- **Fit it.** Fit check scores how well your profile answers each post, by meaning as well as shared words ([eval](evals/fit/results.md)). Fit gaps shows the skills your best matches keep asking for, one click to add.
 - **Make the film.** One click per job, or tick ten and make them all. Each film quotes a requirement from the post and answers it with your own numbers.
 - **Reach the right person.** For YC startups, the founders come first. Find their email with your own free Hunter key, and the message opens as a ready draft.
 - **Into your CRM.** Connect HubSpot's free CRM and each film you send becomes a company, a contact and a timeline note: sent, watched, replied, interview.
@@ -166,7 +166,7 @@ Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show*
 ## Quality, measured
 
 ```bash
-pnpm test         # 163 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, Slack, model path
+pnpm test         # 209 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
 ```
@@ -179,6 +179,8 @@ pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2
 - **Design:** WCAG contrast, no text overflow in any of three formats, and pixel-identical re-renders.
 
 Run `pnpm evals --model <name>` to grade a real model's scripts the same way.
+
+The [fit eval](evals/fit/results.md) grades job matching: does "this line of your record answers that requirement" agree with a person? On 128 hand-labeled pairs, built so many share words without answering (and many answer without sharing words), shared-word matching finds 15% of real answers (F1 0.25). A small sentence-embedding model, bge-small-en-v1.5 run on the CPU through ONNX with no API, finds 76% at 74% precision (F1 0.75, AUC 0.83). Its cut-off is picked on half the pairs and scored on the other half, and fit uses it when `FIT_SEMANTIC=on`. The workflow reruns the eval whenever the matching changes (`pnpm eval:fit`).
 
 The fixture companies in [fixtures/sites](fixtures/sites) (a freight platform, a health-tech startup and an e-commerce returns tool) are fictional, but they're built like real sites: web fonts, stat tiles, testimonials and CTAs.
 

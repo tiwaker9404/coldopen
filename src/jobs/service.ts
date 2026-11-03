@@ -477,13 +477,11 @@ export async function suggestions(
         profile || byReqs
           ? await requirementsFor(sql, candidates, { ...opts, pay: paid })
           : new Map<string, string[]>()
-      // matching by meaning, when it's on and loaded: one batch for every requirement shown
+      // matching by meaning, when it's on: from what's embedded so far, never waiting on the model
       const sem = profile ? semanticNow() : null
       const meaning =
         sem && profile
-          ? await sem
-              .best(profile, [...new Set(candidates.flatMap((j) => reqs.get(j.id) ?? []))])
-              .catch(() => undefined)
+          ? sem.known(profile, [...new Set(candidates.flatMap((j) => reqs.get(j.id) ?? []))])
           : undefined
       const fitted: JobWithFit[] = candidates.flatMap((j) => {
         const years = yearsAsked(reqs.get(j.id) ?? [])

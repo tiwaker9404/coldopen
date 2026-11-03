@@ -85,6 +85,11 @@ export interface Semantic {
     profile: Profile,
     requirements: string[],
   ): Promise<Map<string, { score: number; with: string }>>
+  /**
+   * The same, from what's already embedded, without waiting: requirements not embedded yet are
+   * left out and embedded in the background, so they count on the next look.
+   */
+  known(profile: Profile, requirements: string[]): Map<string, { score: number; with: string }>
 }
 
 /** Embeddings kept by text, so a requirement or a record line is embedded once */
@@ -105,6 +110,31 @@ export function semanticFit(
       for (const k of [...cache.keys()].slice(0, cache.size - MAX)) cache.delete(k)
     return texts.map((t) => cache.get(t)!)
   }
+  function match(lines: string[], lv: Float32Array[], rv: Float32Array) {
+    let top = { score: 0, with: '' }
+    lines.forEach((l, j) => {
+      const s = asScore(cosine(rv, lv[j]!), threshold)
+      if (s > top.score) top = { score: s, with: l }
+    })
+    return top
+  }
+  // one background job at a time, so a slow CPU embeds at its own pace
+  let queue = Promise.resolve()
+  const pending = new Set<string>()
+  function later(texts: string[]) {
+    const fresh = texts.filter((t) => !cache.has(t) && !pending.has(t))
+    if (!fresh.length) return
+    for (const t of fresh) pending.add(t)
+    queue = queue
+      .then(() => vectors(fresh))
+      .then(
+        () => undefined,
+        () => undefined,
+      )
+      .finally(() => {
+        for (const t of fresh) pending.delete(t)
+      })
+  }
   return {
     model: embedder.model,
     threshold,
@@ -113,14 +143,19 @@ export function semanticFit(
       const out = new Map<string, { score: number; with: string }>()
       if (!lines.length || !requirements.length) return out
       const [lv, rv] = [await vectors(lines), await vectors(requirements)]
-      requirements.forEach((r, i) => {
-        let top = { score: 0, with: '' }
-        lines.forEach((l, j) => {
-          const s = asScore(cosine(rv[i]!, lv[j]!), threshold)
-          if (s > top.score) top = { score: s, with: l }
-        })
-        out.set(r, top)
-      })
+      for (const [i, r] of requirements.entries()) out.set(r, match(lines, lv, rv[i]!))
+      return out
+    },
+    known(profile, requirements) {
+      const lines = recordLines(profile)
+      const out = new Map<string, { score: number; with: string }>()
+      later([...lines, ...requirements])
+      if (!lines.length || lines.some((l) => !cache.has(l))) return out
+      const lv = lines.map((l) => cache.get(l)!)
+      for (const r of requirements) {
+        const rv = cache.get(r)
+        if (rv) out.set(r, match(lines, lv, rv))
+      }
       return out
     },
   }
