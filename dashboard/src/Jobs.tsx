@@ -158,7 +158,7 @@ export function Jobs({
             {r.search.remote && r.search.locations.length > 0 && ', or remote'}
             {r.search.ycOnly && ' at YC companies'}
             {r.search.visaOnly && ' that sponsor H-1B visas'}
-            {r.search.raisedOnly && ', raised in the last year'}
+            {r.search.raisedOnly && ', raised this quarter'}
             {r.search.sort === 'fastest' && ', hiring fastest first'}
             {`. ${r.data.length} matches across ${r.companies} companies`}
             {r.updatedAt && `, checked ${ago(r.updatedAt)}`}
@@ -908,7 +908,7 @@ function SearchForm({
                   checked={raisedOnly}
                   onChange={(e) => setRaisedOnly(e.target.checked)}
                 />
-                Raised in the last year
+                Raised this quarter
               </label>
             )}
           </div>

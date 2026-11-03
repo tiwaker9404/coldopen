@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * Builds src/jobs/raised.json: companies in Jobs for you that filed an SEC Form D (the notice a
- * US company files when it sells shares in a private round) in the last 12 months. Read from
- * EDGAR's quarterly form index: one file per quarter lists every filing by form, so four or five
- * downloads cover the year, with no per-company lookups for EDGAR to throttle. A filer counts
+ * US company files when it sells shares in a private round) this calendar quarter. Read from
+ * EDGAR's quarterly form index: one file lists every filing of the quarter by form, so one
+ * download covers it, with no per-company lookups for EDGAR to throttle. A filer counts
  * only when its name is the company's own ("Ramp Business Corp" for Ramp), so investment
  * vehicles named after a company ("Acme SPV LP") never do. Amounts aren't kept: Form D often
  * states the most the round may raise.
@@ -15,7 +15,7 @@
  */
 import { writeFile } from 'node:fs/promises'
 import { boardKey } from './boards.ts'
-import { DEFAULT_BOARDS } from './companies.ts'
+import { DEFAULT_BOARDS, quarterStart } from './companies.ts'
 import { employerKey } from './visa-build.ts'
 
 const OUT = new URL('./raised.json', import.meta.url)
@@ -150,23 +150,24 @@ async function text(url: string): Promise<string | null> {
 
 async function main() {
   const now = new Date()
-  const from = new Date(now.getTime() - 365 * 86_400_000)
-  const since = from.toISOString().slice(0, 10)
+  // this quarter's rounds only: a raise from months ago isn't news to open an email with
+  const since = quarterStart(now)
   const filings: Filing[] = []
-  for (const { year, q } of quartersSince(from, now)) {
+  for (const { year, q } of quartersSince(new Date(since), now)) {
     const idx = await text(`https://www.sec.gov/Archives/edgar/full-index/${year}/QTR${q}/form.idx`)
     if (idx) filings.push(...formDs(idx))
     // SEC asks for no more than 10 requests a second
     await sleep(500)
   }
-  if (filings.length === 0) throw new Error('EDGAR returned no Form D filings: nothing to match')
+  // early in a quarter its index can still be empty; that's no reason to fail
+  if (filings.length === 0) console.log('EDGAR lists no Form D filings this quarter yet')
   const out = match(
     DEFAULT_BOARDS.map((b) => ({ name: b.name, key: boardKey(b) })),
     filings,
     since,
   )
   await writeFile(OUT, `${JSON.stringify(out, null, 0).replace(/},"/g, '},\n"')}\n`)
-  const line = `${Object.keys(out).length} of ${DEFAULT_BOARDS.length} companies filed a Form D in the last 12 months (from ${filings.length.toLocaleString('en-US')} Form D filings)`
+  const line = `${Object.keys(out).length} of ${DEFAULT_BOARDS.length} companies filed a Form D this quarter (from ${filings.length.toLocaleString('en-US')} Form D filings)`
   console.log(line)
   if (process.env.GITHUB_STEP_SUMMARY) {
     const { appendFile } = await import('node:fs/promises')
