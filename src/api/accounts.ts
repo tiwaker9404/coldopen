@@ -51,20 +51,19 @@ export function unsign(secret: string, signed: string | undefined): string | nul
   return want.length === got.length && timingSafeEqual(want, got) ? value : null
 }
 
-export function cookies(req: FastifyRequest): Record<string, string> {
-  // no prototype: a cookie named "__proto__" or "constructor" is just a key, never a property
-  const out: Record<string, string> = Object.create(null)
+/** One cookie's value, or undefined. Read by name, so a cookie's name never becomes an object key. */
+export function cookie(req: FastifyRequest, name: string): string | undefined {
   for (const part of (req.headers.cookie ?? '').split(';')) {
     const i = part.indexOf('=')
-    if (i < 1) continue
-    const name = part.slice(0, i).trim()
-    if (name === '__proto__' || name === 'constructor' || name === 'prototype') continue
+    if (i < 1 || part.slice(0, i).trim() !== name) continue
     // a malformed cookie (a stray "%") is ignored, not a 500 on every request
     try {
-      out[name] = decodeURIComponent(part.slice(i + 1).trim())
-    } catch {}
+      return decodeURIComponent(part.slice(i + 1).trim())
+    } catch {
+      return undefined
+    }
   }
-  return out
+  return undefined
 }
 
 function setCookie(
@@ -88,7 +87,7 @@ function setCookie(
 }
 
 export function readSession(cfg: Config, req: FastifyRequest): Session | null {
-  const raw = unsign(cfg.SESSION_SECRET!, cookies(req)[SESSION])
+  const raw = unsign(cfg.SESSION_SECRET!, cookie(req, SESSION))
   if (!raw) return null
   try {
     const s = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) as Session
@@ -103,7 +102,7 @@ export function hostedOwner(cfg: Config, req: FastifyRequest, reply: FastifyRepl
   const s = readSession(cfg, req)
   if (s) return `u:${s.sub}`
   const secure = cfg.PUBLIC_URL.startsWith('https://')
-  let id = unsign(cfg.SESSION_SECRET!, cookies(req)[VISITOR])
+  let id = unsign(cfg.SESSION_SECRET!, cookie(req, VISITOR))
   if (!id) {
     id = randomBytes(12).toString('base64url')
     setCookie(reply, VISITOR, sign(cfg.SESSION_SECRET!, id), 30 * DAY, secure)
@@ -170,7 +169,7 @@ export async function githubCallback(
   fetchImpl: typeof fetch = fetch,
 ): Promise<Session> {
   const { code, state } = req.query
-  const expected = cookies(req)[STATE]
+  const expected = cookie(req, STATE)
   if (!code || !state || !expected || state !== expected)
     throw Object.assign(new Error('sign-in expired or was started elsewhere; try again'), {
       statusCode: 400,
@@ -228,7 +227,7 @@ async function finishSignIn(
     on conflict (id) do update set login = excluded.login, name = excluded.name, avatar = excluded.avatar, seen_at = now()`
 
   // what they made before signing in is theirs now
-  const visitor = unsign(cfg.SESSION_SECRET!, cookies(req)[VISITOR])
+  const visitor = unsign(cfg.SESSION_SECRET!, cookie(req, VISITOR))
   if (visitor) await claim(sql, `a:${visitor}`, `u:${who.sub}`)
 
   const session: Session = { ...who, exp: Math.floor(Date.now() / 1000) + 30 * DAY }
@@ -299,7 +298,7 @@ export async function googleCallback(
   fetchImpl: typeof fetch = fetch,
 ): Promise<Session> {
   const { code, state } = req.query
-  const expected = cookies(req)[STATE]
+  const expected = cookie(req, STATE)
   if (!code || !state || !expected || state !== expected)
     throw Object.assign(new Error('sign-in expired or was started elsewhere; try again'), {
       statusCode: 400,
