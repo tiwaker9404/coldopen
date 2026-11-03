@@ -4,7 +4,10 @@ name: Fit eval
 # hand-labeled pairs in evals/fit, and commits the results and the cut-offs it picked.
 on:
   workflow_dispatch:
+  # on main only: these commit their results, and must not commit onto other branches (a
+  # Dependabot branch once picked up a stray results commit)
   push:
+    branches: [main]
     paths:
       [
         src/job/fit.ts,
@@ -27,8 +30,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
         env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
