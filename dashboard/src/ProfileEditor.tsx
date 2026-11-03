@@ -67,6 +67,15 @@ export function ProfileEditor({
             ...(p.where?.trim() ? { where: p.where.trim() } : {}),
           })),
       }
+      const projects = (d.projects ?? [])
+        .map((x) => ({ name: x.name.trim(), url: x.url.trim(), line: x.line.trim() }))
+        .filter((x) => x.name || x.url || x.line)
+      for (const x of projects) {
+        if (!x.name || !x.line) throw new Error('Give each project a name and one line')
+        if (!/^https:\/\/\S{4,}$/.test(x.url))
+          throw new Error(`The link for ${x.name} should start with https://`)
+      }
+      data.projects = projects.length ? projects.slice(0, 8) : undefined
       if (data.points.length < 2)
         throw new Error('Add at least 2 things the film can say about you')
       if (data.proof.length < 1) throw new Error('Add at least one result with a number')
@@ -79,6 +88,9 @@ export function ProfileEditor({
     onSuccess: onSaved,
   })
 
+  const projects = d.projects ?? []
+  const setProject = (i: number, patch: Partial<NonNullable<ProfileData['projects']>[number]>) =>
+    set({ projects: projects.map((x, j) => (j === i ? { ...x, ...patch } : x)) })
   const setProof = (i: number, patch: Partial<ProfileData['proof'][number]>) =>
     set({ proof: d.proof.map((x, j) => (j === i ? { ...x, ...patch } : x)) })
 
@@ -310,6 +322,49 @@ export function ProfileEditor({
               onClick={() => set({ proof: [...d.proof, { value: '', label: '', where: '' }] })}
             >
               Add a result
+            </button>
+          )}
+        </fieldset>
+
+        <fieldset>
+          <legend>Things you built</legend>
+          <p className="hint">
+            Projects with a link. Each film puts the one closest to the company on its share page
+            and in the email, so they can open real work in one click.
+          </p>
+          {projects.map((x, i) => (
+            <div className="project" key={`p${i.toString()}`}>
+              <input
+                aria-label={`Project ${i + 1}: name`}
+                placeholder="integration-triage"
+                maxLength={60}
+                value={x.name}
+                onChange={(e) => setProject(i, { name: e.target.value })}
+              />
+              <input
+                aria-label={`Project ${i + 1}: link`}
+                placeholder="https://github.com/you/project"
+                maxLength={300}
+                value={x.url}
+                onChange={(e) => setProject(i, { url: e.target.value })}
+              />
+              <input
+                className="wide"
+                aria-label={`Project ${i + 1}: what it does`}
+                placeholder="Diagnoses failing API calls from logs and drafts the reply"
+                maxLength={120}
+                value={x.line}
+                onChange={(e) => setProject(i, { line: e.target.value })}
+              />
+            </div>
+          ))}
+          {projects.length < 8 && (
+            <button
+              type="button"
+              className="link"
+              onClick={() => set({ projects: [...projects, { name: '', url: '', line: '' }] })}
+            >
+              Add a project
             </button>
           )}
         </fieldset>

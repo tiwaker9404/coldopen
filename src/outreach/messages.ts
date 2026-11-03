@@ -103,7 +103,7 @@ const clean = (s: string) =>
     .replace(/[.,;:]$/, '')
 
 export function draftMessages(
-  out: Pick<FilmResult, 'company' | 'job' | 'highlights' | 'script'>,
+  out: Pick<FilmResult, 'company' | 'job' | 'highlights' | 'script' | 'related'>,
   profile: Profile,
   link: string,
   more: {
@@ -186,6 +186,10 @@ export function draftMessages(
       '',
       `${opener}${lead === 'proof' ? evidenceAfterLead : evidence}`,
       ...(pitch ? ['', pitch] : []),
+      // real work they can open in one click, when one of the sender's projects is close
+      ...(out.related
+        ? ['', `Something I built that's close to what you do: ${out.related.name}, ${out.related.url}`]
+        : []),
       '',
       ask,
       '',

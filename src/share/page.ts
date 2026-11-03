@@ -24,6 +24,8 @@ export interface ShareView {
   film: string
   /** recruiter films: the candidate it was made for */
   recipient?: string
+  /** the sender's project closest to this company, shown under the film */
+  related?: { name: string; url: string; line: string }
   /** who sent it: a job seeker (seen by a recruiter), a recruiter (seen by a candidate), a seller */
   kind?: 'candidate' | 'recruiter' | 'sales' | 'hiring'
 }
@@ -51,6 +53,7 @@ export function viewFromRun(input: FilmInput, out: FilmResult): ShareView {
     film: out.files.film.split('/').pop()!,
     kind: p.preset,
     ...(p.preset === 'recruiter' && p.recipient ? { recipient: p.recipient.name } : {}),
+    ...(out.related ? { related: out.related } : {}),
   }
 }
 
@@ -169,6 +172,10 @@ a.cta.alt{background:none;color:var(--fg);box-shadow:inset 0 0 0 1.5px var(--fg)
 a.cta:focus-visible{outline:3px solid #1F5BD8;outline-offset:3px}
 footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);font-size:13px;color:var(--muted)}
 footer a{color:inherit}
+.related{margin-top:28px;padding:16px 18px;border:1px solid var(--rule);border-radius:12px;display:grid;gap:4px}
+.related span{font-size:13px;color:var(--muted)}
+.related a{color:var(--fg);text-decoration:none}
+.related a:hover b{text-decoration:underline}
 .made{display:inline-flex;align-items:center;gap:7px;color:var(--fg);font-weight:650}
 .made::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--tally)}
 </style></head><body><main>
@@ -179,6 +186,7 @@ footer a{color:inherit}
 </figure>
 <div class="row"><div><h1>${esc(v.ctaLine)}</h1><p>${v.kind === 'hiring' ? `${esc(v.company)} is hiring. Posted by ${esc(v.from)}.` : `${esc(v.firstName)} made this film for ${esc(v.recipient ? `you, about a role at ${v.company}` : v.company)}.`}</p></div>
 <div class="do">${v.book ? `<a class="cta" data-track href="${esc(v.book)}" target="_blank" rel="noopener">${v.kind === 'hiring' ? 'See the role and apply' : 'Book 15 minutes'}</a><a class="cta alt" data-track href="${esc(contactHref(v.contact))}">Reply</a>` : `<a class="cta" data-track href="${esc(contactHref(v.contact))}">Reply to ${esc(v.firstName)}</a>`}</div></div>
+${v.related ? `<aside class="related"><span>Something I built that’s close to what you do</span><a data-track href="${esc(v.related.url)}" target="_blank" rel="noopener"><b>${esc(v.related.name)}</b> ${esc(v.related.line)}</a></aside>` : ''}
 <footer><a class="made" href="${esc(made.toString())}">Made with coldopen</a>. ${esc(other.line)}${privacy ? `<br>Views are counted without storing your IP address. <a href="${esc(privacy)}">Privacy</a>` : ''}</footer>
 </main>${track ? trackingScript(track) : ''}</body></html>`
 }

@@ -11,6 +11,7 @@ import { isJobPage, JobPostSchema, jobFromText } from './job/post.ts'
 import { fetchJob } from './job/read.ts'
 import { LlmHttpError } from './llm/openai.ts'
 import { withRole } from './profile/pitch.ts'
+import { relatedWork } from './profile/related.ts'
 import { compose, FORMATS, type Format, siteShot } from './render/composition.ts'
 import {
   concatSegments,
@@ -94,6 +95,8 @@ export interface FilmResult {
   job?: { title: string; url?: string }
   /** where the film is published, when a share worker is configured (the hosted app) */
   shared?: { id: string; link: string }
+  /** the sender's project closest to this company and role: see profile/related.ts */
+  related?: { name: string; url: string; line: string }
   /** what they've published lately, beyond the homepage: see brand/homework.ts */
   homework?: Homework
   /** the profile as the film used it, when the film filled it in (hiring films) */
@@ -233,6 +236,11 @@ export function createFilmAgent(opts: FilmAgentOptions) {
       )
       // a hiring film takes its lines from the post and its numbers from their site
       if (profile.preset === 'hiring') profile = withRole(profile, kit, post?.url ?? j?.url ?? site)
+      // the sender's own project closest to this company and role, for the share page and email
+      const related = (() => {
+        const r = relatedWork(profile, kit)
+        return r ? { name: r.name, url: r.url, line: r.line } : null
+      })()
 
       ctx.progress({ stage: 'script', label: `Writing the script for ${kit.name}` })
       const builtIn = (usedFallback: boolean) =>
@@ -458,6 +466,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
                     .slice(0, 40) || 'film'
                 }-${ctx.runId.slice(-10).toLowerCase()}`,
                 view: viewFromRun({ ...input, profile }, {
+                  ...(related ? { related } : {}),
                   company: kit.name,
                   format,
                   files: { film: out.film },
@@ -513,6 +522,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           ...(shared ? { shared } : {}),
           highlights: highlightsOf(board),
           ...(homework.items.length || homework.pages.length ? { homework } : {}),
+          ...(related ? { related } : {}),
           // a hiring film's profile was filled in from the post and the site
           ...(profile !== input.profile ? { profile } : {}),
         }

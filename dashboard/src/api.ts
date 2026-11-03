@@ -239,6 +239,8 @@ export interface ProfileData {
   cta: { line: string; contact: string; book?: string }
   /** skills and tools, counted by Fit check */
   skills?: string[]
+  /** things you built: each film shows the one closest to the company */
+  projects?: { name: string; url: string; line: string }[]
   /** schools, for alumni at the companies you film */
   schools?: string[]
   color?: string

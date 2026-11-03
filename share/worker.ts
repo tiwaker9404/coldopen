@@ -104,6 +104,17 @@ async function authorized(req: Request, env: Env) {
   return diff === 0
 }
 
+/** a related project: a name, a line and an https link, or nothing */
+function relatedOf(r: unknown): ShareView['related'] | null {
+  if (!r || typeof r !== 'object') return null
+  const o = r as Record<string, unknown>
+  const ok = (k: string, max: number) =>
+    typeof o[k] === 'string' && (o[k] as string).length > 1 && (o[k] as string).length <= max
+  if (!ok('name', 60) || !ok('line', 120) || !ok('url', 300)) return null
+  if (!/^https:\/\/\S{4,300}$/.test(o.url as string)) return null
+  return { name: o.name as string, line: o.line as string, url: o.url as string }
+}
+
 function parseView(body: unknown): ShareView | null {
   if (!body || typeof body !== 'object') return null
   const v = body as Record<string, unknown>
@@ -130,6 +141,7 @@ function parseView(body: unknown): ShareView | null {
     film: v.film,
     ...(typeof v.book === 'string' && /^https:\/\/\S{4,300}$/.test(v.book) ? { book: v.book } : {}),
     ...(str('recipient', 80) ? { recipient: v.recipient as string } : {}),
+    ...(relatedOf(v.related) ? { related: relatedOf(v.related)! } : {}),
     ...(['candidate', 'recruiter', 'sales', 'hiring'].includes(v.kind as string)
       ? { kind: v.kind as ShareView['kind'] }
       : {}),

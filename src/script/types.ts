@@ -44,6 +44,21 @@ export const ProfileSchema = z.object({
       .regex(/^https:\/\/\S{4,300}$/, 'a booking link starts with https://')
       .optional(),
   }),
+  /**
+   * things they built, with a link: each film shows the one closest to the company and role
+   * on its share page and in the email ("Something I built that's close to what you do")
+   */
+  projects: z
+    .array(
+      z.object({
+        name: z.string().trim().min(2).max(60),
+        url: z.string().regex(/^https:\/\/\S{4,300}$/, 'a project link starts with https://'),
+        /** one line on what it does, in plain words */
+        line: z.string().trim().min(3).max(120),
+      }),
+    )
+    .max(8)
+    .optional(),
   /** schools they went to ("Duke University"): who to reach includes alumni at the company */
   schools: z.array(z.string().trim().min(2).max(60)).max(4).optional(),
   /** skills and tools they have, in their words ("Kubernetes", "Salesforce"): counted by Fit check */
