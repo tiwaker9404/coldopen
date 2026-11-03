@@ -40,4 +40,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/jobs/visa.json
           git commit -m "Visa sponsors: refresh H-1B approvals"
-          git push
+          # another workflow may have pushed meanwhile: replay this commit on top, then push
+          for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push && exit 0; sleep $((i * 5)); done; exit 1
