@@ -96,55 +96,55 @@ h3 {
 }
 
 /* the slate: every finished film carries one, with the clapper on top */
-.slate {
+.take {
   margin: 0;
   border-radius: 12px;
   overflow: hidden;
   background: #000;
 }
 
-.slate .clap {
+.take .clap {
   height: 16px;
   background: repeating-linear-gradient(-55deg, #fff 0 14px, #000 14px 28px);
 }
 
-.slate .player {
+.take .player {
   border-radius: 0;
   width: 100%;
 }
 
-.slate:has(.player.square) {
+.take:has(.player.square) {
   max-width: 480px;
 }
 
-.slate:has(.player.portrait) {
+.take:has(.player.portrait) {
   max-width: 320px;
 }
 
-.slate-fields {
+.take-fields {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) auto auto;
   color: #fff;
   border-top: 1px solid #333;
 }
 
-.slate-fields div {
+.take-fields div {
   padding: 8px 12px 10px;
   border-right: 1px solid #333;
   min-width: 0;
 }
 
-.slate-fields div:last-child {
+.take-fields div:last-child {
   border-right: 0;
 }
 
-.slate-fields span {
+.take-fields span {
   display: block;
   font-size: 11.5px;
   color: #a8aaae;
 }
 
-.slate-fields b {
+.take-fields b {
   display: block;
   font-family: var(--display);
   font-size: 19px;
@@ -557,7 +557,7 @@ small,
 
 .onboard h1,
 .composer h1 {
-  font-size: clamp(34px, 5.4vw, 58px);
+  font-size: clamp(26px, 2.6vw, 32px);
   font-weight: 700;
   font-family: var(--display);
   line-height: 1;
@@ -2116,10 +2116,10 @@ dl.tally dd {
 }
 
 a.primary-link {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--bg);
-  font-weight: 600;
+  background: var(--stock);
+  border-color: color-mix(in oklab, var(--stock) 70%, #000);
+  color: var(--stock-ink);
+  font-weight: 650;
 }
 
 .results {
@@ -3366,8 +3366,27 @@ kbd {
 }
 
 .startup-filters input {
-  flex: 1 1 240px;
+  flex: 1 1 100%;
   min-width: 0;
+}
+
+.startup-filters select {
+  flex: 1 1 160px;
+  width: auto;
+  min-width: 0;
+}
+
+/* on this page the startup's name is the title, and its links are quiet */
+.startups .job-what > b {
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.startups .startup-links a {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--muted);
 }
 
 .startup-line {
@@ -3407,4 +3426,119 @@ a.tag {
 
 .mcp .token {
   word-break: break-all;
+}
+
+/* ---------------------------------------------------------------- the call sheet (Today) */
+
+.call-sheet {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 18px;
+  margin-bottom: 6px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.call-day {
+  font-family: var(--display);
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.call-line {
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.films-head h2 .rec {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--rec);
+  vertical-align: 0.12em;
+}
+
+/* ---------------------------------------------------------------- the dailies (Films) */
+
+/* each stage is a strip of film: a black band with perforations, one frame per film */
+.column h2 {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.column ul {
+  position: relative;
+  gap: 12px;
+  padding: 22px 8px;
+  border-radius: 6px;
+  background: #000;
+}
+
+.column ul::before,
+.column ul::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 10px;
+  background:
+    radial-gradient(circle at 6px 50%, var(--bg) 0 3.2px, transparent 3.6px) 0 0 / 20px 10px
+    repeat-x;
+}
+
+.column ul::before {
+  top: 6px;
+}
+
+.column ul::after {
+  bottom: 6px;
+}
+
+.column .card {
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: #000;
+  color: #fff;
+}
+
+.column .card:hover .poster {
+  outline: 2px solid var(--stock);
+  outline-offset: 2px;
+}
+
+.column .card.active .poster {
+  outline: 2px solid var(--stock);
+  outline-offset: 2px;
+}
+
+.column .card.active {
+  box-shadow: none;
+}
+
+.column .poster {
+  border-radius: 3px;
+  background: #1c1d20;
+}
+
+.column .card-text {
+  padding: 6px 2px 0;
+}
+
+.column .card-text span,
+.column .card-text small {
+  color: #b9bbc0;
+}
+
+.column .card-text small.due,
+.column .card-text small.bad {
+  color: #ff8a80;
+}
+
+.column-empty {
+  padding: 18px 12px;
+  border: 1.5px dashed var(--rule);
+  border-radius: 6px;
 }

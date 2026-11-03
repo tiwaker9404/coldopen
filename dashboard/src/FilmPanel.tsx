@@ -149,7 +149,7 @@ export function FilmPanel({
 
         {done && f.files && (
           <>
-            <figure className="slate">
+            <figure className="take">
               <div className="clap" aria-hidden="true" />
               <video
                 key={f.id}
@@ -161,7 +161,7 @@ export function FilmPanel({
                 muted
                 playsInline
               />
-              <figcaption className="slate-fields">
+              <figcaption className="take-fields">
                 <div>
                   <span>Company</span>
                   <b>{f.company ?? host(f.url)}</b>

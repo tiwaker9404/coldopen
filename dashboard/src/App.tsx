@@ -195,6 +195,7 @@ export function App() {
             </>
           ) : (
             <>
+              <CallSheet list={list} due={dueCount} />
               <Composer
                 me={me.data}
                 profiles={profiles.data?.data ?? []}
@@ -203,8 +204,9 @@ export function App() {
               />
               <GettingStarted films={list} onOpen={setOpen} onGuide={() => setSide('guide')} />
               <FollowUps onOpen={setOpen} />
-              <Openers />
+              <InProduction list={list} name={name} open={open} onOpen={setOpen} />
               <Jobs onMade={setOpen} variant="preview" />
+              <Openers />
               <Recent list={list} name={name} open={open} onOpen={setOpen} />
             </>
           )}
@@ -302,6 +304,69 @@ function PageTitle({ title, sub, aside }: { title: string; sub: string; aside?: 
   )
 }
 
+/**
+ * Today is the call sheet: on a set, the page that says what happens today. The date, then one
+ * line on what needs you, most urgent first.
+ */
+function CallSheet({ list, due }: { list: Film[]; due: number }) {
+  const rolling = list.filter((f) => f.status === 'queued' || f.status === 'running').length
+  const ready = list.filter((f) => f.status === 'succeeded' && !f.outreach).length
+  const parts = [
+    due > 0 && `${due} ${due === 1 ? 'follow-up' : 'follow-ups'} due`,
+    rolling > 0 && `${rolling} ${rolling === 1 ? 'film' : 'films'} in production`,
+    ready > 0 && `${ready} ready to send`,
+  ].filter(Boolean) as string[]
+  const day = new Date().toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  })
+  return (
+    <header className="call-sheet">
+      <p className="call-day">Call sheet for {day}</p>
+      <p className="call-line">
+        {parts.length
+          ? `${parts.join(', ')}.`
+          : list.length
+            ? 'Nothing waiting on you. Make the next film.'
+            : 'Your first film is one link away.'}
+      </p>
+    </header>
+  )
+}
+
+/** Films being made right now, with the tally light on */
+function InProduction({
+  list,
+  name,
+  open,
+  onOpen,
+}: {
+  list: Film[]
+  name: (f: Film) => string | undefined
+  open: string | null
+  onOpen: (id: string) => void
+}) {
+  const rolling = list.filter((f) => f.status === 'queued' || f.status === 'running')
+  if (rolling.length === 0) return null
+  return (
+    <section className="films" aria-labelledby="rolling-title">
+      <div className="films-head">
+        <h2 id="rolling-title">
+          <span className="rec" aria-hidden="true" /> In production
+        </h2>
+      </div>
+      <ul>
+        {rolling.map((f) => (
+          <li key={f.id}>
+            <FilmRow film={f} name={name(f)} active={open === f.id} onOpen={() => onOpen(f.id)} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 /** The newest few films on Today, with the way to the whole board */
 function Recent({
   list,
@@ -318,17 +383,20 @@ function Recent({
   return (
     <section className="films" aria-labelledby="recent-title">
       <div className="films-head">
-        <h2 id="recent-title">Latest films</h2>
+        <h2 id="recent-title">Latest takes</h2>
         <a className="see-all" href="#films">
           All {list.length} films
         </a>
       </div>
       <ul>
-        {list.slice(0, 4).map((f) => (
-          <li key={f.id}>
-            <FilmRow film={f} name={name(f)} active={open === f.id} onOpen={() => onOpen(f.id)} />
-          </li>
-        ))}
+        {list
+          .filter((f) => f.status !== 'queued' && f.status !== 'running')
+          .slice(0, 4)
+          .map((f) => (
+            <li key={f.id}>
+              <FilmRow film={f} name={name(f)} active={open === f.id} onOpen={() => onOpen(f.id)} />
+            </li>
+          ))}
       </ul>
     </section>
   )
