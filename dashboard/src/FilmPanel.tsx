@@ -670,9 +670,43 @@ function WhoToSend({ film }: { film: FilmDetail }) {
         <h3>Pick one or two people</h3>
       </section>
     )
+  // one clear first move: someone you know, else the founders, else the hiring manager
+  const yc = p.searches.find((x) => isYc(x.url))
+  const manager = p.searches.find((x) => x.label === 'Hiring manager')
+  const first = p.known[0]
   return (
     <section className="block">
       <h3>Pick one or two people</h3>
+      <div className="start-here">
+        <small>Start here</small>
+        {first ? (
+          <p>
+            <b>Ask {first.name} for an intro.</b> You’re connected, and an intro beats any cold
+            message. The intro message below has a note they can forward as it is.
+          </p>
+        ) : yc ? (
+          <>
+            <p>
+              <b>Write to the founders.</b> At a startup this size they read their own inbox, and
+              they’re the ones hiring.
+            </p>
+            <Founders film={film} />
+          </>
+        ) : manager ? (
+          <p>
+            <b>Write to the hiring manager.</b> {manager.hint}: they decide, and they get far fewer
+            messages than recruiters.{' '}
+            <a href={safeUrl(manager.url)} target="_blank" rel="noreferrer">
+              Find them on LinkedIn <Out />
+            </a>
+          </p>
+        ) : (
+          <p>
+            <b>Write to a recruiter or the team lead.</b> Pick one person, not a whole team: one
+            message to the right person beats five to the wrong ones.
+          </p>
+        )}
+      </div>
       {p.known.length > 0 && (
         <>
           <p>
@@ -742,7 +776,7 @@ function WhoToSend({ film }: { film: FilmDetail }) {
           </li>
         ))}
       </ul>
-      {p.searches.some((s) => isYc(s.url)) && <Founders film={film} />}
+      {yc && first && <Founders film={film} />}
       {p.connections === 0 && (
         <p className="small muted">
           Upload your LinkedIn connections on your Profile page to see who you already know here.

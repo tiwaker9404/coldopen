@@ -3654,3 +3654,23 @@ a.tag {
 .homework-list button {
   flex: none;
 }
+
+.start-here {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 16px;
+  padding: 14px 16px;
+  border-radius: var(--r);
+  border: 1px solid color-mix(in oklab, var(--stock) 60%, var(--rule));
+  background: color-mix(in oklab, var(--stock) 10%, var(--surface));
+}
+
+.start-here > small {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.start-here p {
+  margin: 0;
+}
