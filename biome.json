@@ -15,7 +15,8 @@
       "!pnpm-lock.yaml",
       "!src/jobs/yc.json",
       "!src/jobs/visa.json",
-      "!src/jobs/raised.json"
+      "!src/jobs/raised.json",
+      "!src/jobs/startups.json"
     ]
   },
   "formatter": {

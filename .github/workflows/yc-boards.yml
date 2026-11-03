@@ -9,6 +9,7 @@ on:
   push:
     paths:
       - src/jobs/yc-build.ts
+      - src/jobs/startups-build.ts
       - .github/workflows/yc-boards.yml
 
 permissions:
@@ -30,11 +31,12 @@ jobs:
       - run: pnpm install --frozen-lockfile --prod
         env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
       - run: node src/jobs/yc-build.ts
+      - run: node src/jobs/startups-build.ts
       - name: Commit the list if it changed
         run: |
-          git diff --quiet src/jobs/yc.json && exit 0
+          git diff --quiet src/jobs/yc.json src/jobs/startups.json && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/jobs/yc.json
+          git add src/jobs/yc.json src/jobs/startups.json
           git commit -m "YC boards: refresh the list of hiring YC companies"
           git push
