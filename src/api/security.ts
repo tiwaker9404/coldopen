@@ -68,7 +68,12 @@ export function crossSite(
   const from = String(h.origin ?? h.referer ?? '')
   if (!from || from === 'null') return !!h.origin
   try {
-    return new URL(from).host !== new URL(publicUrl).host
+    const host = new URL(from).host
+    // its own address (PUBLIC_URL), or the host the request was sent to, behind any proxy
+    const self = String(h['x-forwarded-host'] ?? h.host ?? '')
+      .split(',')[0]!
+      .trim()
+    return host !== new URL(publicUrl).host && host !== self
   } catch {
     return true
   }

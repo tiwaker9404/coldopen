@@ -70,6 +70,17 @@ describe('cross-site requests', () => {
       crossSite(req('POST', { cookie: 's=1', origin: 'https://x.y' }, '/f/run_1/v'), site),
     ).toBe(false)
     expect(crossSite(req('POST', { origin: 'https://x.y' }), site)).toBe(false)
+    // served at another address than PUBLIC_URL says: its own pages still work
+    expect(
+      crossSite(
+        req('POST', {
+          cookie: 's=1',
+          origin: 'https://app.onrender.com',
+          host: 'app.onrender.com',
+        }),
+        site,
+      ),
+    ).toBe(false)
   })
 })
 
