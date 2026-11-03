@@ -763,7 +763,7 @@ function Detail({ id }: { id: string }) {
           value={value}
           maxLength={240}
           onChange={(e) => setText(e.target.value)}
-          placeholder="the one thing I kept hitting was losing a draft when my wifi dropped"
+          placeholder="the export to CSV dropped every custom field, so I rebuilt my report by hand"
         />
         <button
           type="button"

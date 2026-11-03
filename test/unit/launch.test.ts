@@ -346,3 +346,26 @@ describe('limits and role type', () => {
     expect(managesOf('Head of Solutions')).toBe(true)
   })
 })
+
+describe('full-time first', () => {
+  it('lists internships after full-time roles unless the search asks for them', () => {
+    const j = (title: string, extra: Record<string, unknown> = {}) => ({
+      id: title,
+      board: `ashby:${title}`,
+      company: title,
+      title,
+      url: 'https://example.com/j',
+      location: 'San Francisco, CA',
+      remote: false,
+      ...extra,
+    })
+    const jobs = [j('Software Engineering Intern', { type: 'intern' }), j('Software Engineer')]
+    expect(rank(jobs as never, SearchSchema.parse({}), NOW).map((x) => x.title)).toEqual([
+      'Software Engineer',
+      'Software Engineering Intern',
+    ])
+    expect(
+      rank(jobs as never, SearchSchema.parse({ types: ['intern'] }), NOW).map((x) => x.title),
+    ).toEqual(['Software Engineering Intern'])
+  })
+})

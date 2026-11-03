@@ -1676,7 +1676,7 @@ export async function buildApi({
         tags: ['films'],
         summary: 'Save your one detail from using their product',
         description:
-          'In your own words, like "the one thing I kept hitting was losing a draft when my wifi dropped". The email opens with it. Send null to clear.',
+          'In your own words, like "the export to CSV dropped every custom field, so I rebuilt my report by hand". The email opens with it. Send null to clear.',
         params: z.object({ id: RunId }),
         body: z.object({ detail: z.string().trim().min(10).max(240).nullable() }),
       },
