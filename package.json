@@ -39,6 +39,7 @@
     "share:deploy": "node share/deploy.ts"
   },
   "dependencies": {
+    "@fastify/rate-limit": "^11.2.2",
     "@fastify/static": "^10.1.8",
     "@fastify/swagger": "^9.9.2",
     "@fastify/swagger-ui": "^6.1.2",
@@ -73,6 +74,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "axe-core": "^4.14.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "typescript": "^7.0.2",

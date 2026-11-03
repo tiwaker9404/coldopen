@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, type Film, send } from './api.ts'
+import { safeUrl } from './safe.ts'
 
 /** one YC startup, hiring or not */
 interface Startup {
@@ -175,16 +176,16 @@ function StartupRow({ s, onMade }: { s: Startup; onMade: (id: string) => void })
           )}
         </span>
         <span className="startup-links">
-          <a href={s.yc} target="_blank" rel="noreferrer">
+          <a href={safeUrl(s.yc)} target="_blank" rel="noreferrer">
             Founders on YC
           </a>
           {s.ycJobs && (
-            <a href={s.ycJobs} target="_blank" rel="noreferrer">
+            <a href={safeUrl(s.ycJobs)} target="_blank" rel="noreferrer">
               Jobs on YC
             </a>
           )}
           {s.website && (
-            <a href={s.website} target="_blank" rel="noreferrer">
+            <a href={safeUrl(s.website)} target="_blank" rel="noreferrer">
               Website
             </a>
           )}

@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# read the code, nothing more: no writes to the repo, issues or packages
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -23,6 +27,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm dashboard:build
+      - name: Dependencies with known high or critical vulnerabilities
+        run: pnpm audit --audit-level high --prod
 
   test:
     name: Tests and quality evals
@@ -53,6 +59,17 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: eval-report, path: evals/results.md }
+      - name: UI audit (accessibility, console errors, phone overflow, security headers)
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/coldopen_test
+          LLM_PROVIDER: none
+          PORT: "8080"
+        run: |
+          pnpm dashboard:build
+          node src/main.ts migrate
+          node src/main.ts api > api.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs localhost:8080/healthz >/dev/null && break; sleep 1; done
+          node scripts/audit-ui.ts http://localhost:8080 site
 
   docker:
     name: Docker image

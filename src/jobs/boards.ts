@@ -268,10 +268,8 @@ export function readBoard(b: Board, body: unknown): Job[] {
         ),
         ...opt(
           'country',
-          str(
-            (((j.address as Raw | undefined)?.postalAddress as Raw | undefined) ?? {})
-              .addressCountry,
-          ) || undefined,
+          str(((j.address as Raw | undefined)?.postalAddress as Raw | undefined)?.addressCountry) ||
+            undefined,
         ),
       })
     }

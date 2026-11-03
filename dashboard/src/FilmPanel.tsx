@@ -20,6 +20,7 @@ import {
   type ViewSummary,
 } from './api.ts'
 import { host, Outreach } from './FilmRow.tsx'
+import { safeUrl } from './safe.ts'
 import { canNotify, Out, useToast } from './ui.tsx'
 
 const STEP_LABEL: Record<string, string> = {
@@ -503,7 +504,12 @@ function WhoToSend({ film }: { film: FilmDetail }) {
                       <div className="actions">
                         <Copy className="primary" text={text} label="Copy message" done="Copied" />
                         {c.url && (
-                          <a className="button" href={c.url} target="_blank" rel="noreferrer">
+                          <a
+                            className="button"
+                            href={safeUrl(c.url)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             Open {c.name.split(/\s+/)[0]}’s LinkedIn <Out />
                           </a>
                         )}
@@ -527,7 +533,7 @@ function WhoToSend({ film }: { film: FilmDetail }) {
               <b>{s.label}</b>
               <small>{s.hint}</small>
             </span>
-            <a className="button" href={s.url} target="_blank" rel="noreferrer">
+            <a className="button" href={safeUrl(s.url)} target="_blank" rel="noreferrer">
               {s.url.includes('ycombinator.com') ? 'Open YC page' : 'Search LinkedIn'} <Out />
             </a>
           </li>

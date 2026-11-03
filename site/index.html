@@ -14,7 +14,7 @@
 <style>
 @font-face{font-family:"Archivo";src:url(fonts/archivo.woff2) format("woff2-variations");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
 :root{--bg:#eceee9;--surface:#fff;--ink:#17201c;--muted:#5b6661;--faint:#8b948f;--rule:#d4d9d3;--soft:#e3e7e1;--rec:#d6362a;--go:#23704c;--go-soft:#dcefe4;--code:#17201c;--code-ink:#eceee9;color-scheme:light}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121614;--surface:#1a1f1d;--ink:#e9ede9;--muted:#a0aaa5;--faint:#737d78;--rule:#2b322f;--soft:#232a27;--rec:#f0574a;--go:#5cc893;--go-soft:#1d3329;--code:#0c0f0e;--code-ink:#e9ede9;color-scheme:dark}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121614;--surface:#1a1f1d;--ink:#e9ede9;--muted:#a0aaa5;--faint:#8a948f;--rule:#2b322f;--soft:#232a27;--rec:#f0574a;--go:#5cc893;--go-soft:#1d3329;--code:#0c0f0e;--code-ink:#e9ede9;color-scheme:dark}}
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--ink);font:400 17px/1.55 "Archivo",system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
@@ -105,7 +105,8 @@ footer{border-top:1px solid var(--rule);padding:30px 0 48px;color:var(--muted);f
 }
 @media (max-width:480px){.wrap{padding:0 16px}.how{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.film img{transition:none}}
-.beta{margin-left:10px;padding:2px 9px;border:1px solid currentColor;border-radius:99px;color:#c0392b;font-size:12px;font-weight:600;letter-spacing:.02em;vertical-align:middle}
+.beta{margin-left:10px;padding:2px 9px;border:1px solid currentColor;border-radius:99px;color:#b42318;font-size:12px;font-weight:600;letter-spacing:.02em;vertical-align:middle}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .beta{color:#ff8a80}}
 </style>
 </head>
 <body>
@@ -216,7 +217,8 @@ footer{border-top:1px solid var(--rule);padding:30px 0 48px;color:var(--muted);f
     <section id="install" aria-labelledby="install-h">
       <h2 id="install-h">Or run it on your own laptop, free.</h2>
       <p class="intro">You need Node 24 and ffmpeg. Add Groq’s free tier or a local model through Ollama for natural copy; without one, a built-in writer makes plain scripts that are always correct.</p>
-<pre><code>git clone https://github.com/tiwaker9404/coldopen && cd coldopen && pnpm install
+<!-- biome-ignore lint/a11y/noNoninteractiveTabindex: a code block that scrolls sideways needs keyboard access -->
+<pre tabindex="0"><code>git clone https://github.com/tiwaker9404/coldopen && cd coldopen && pnpm install
 <span class="c"># your profile, from your résumé</span>
 pnpm coldopen profile resume.pdf me.json --role "Data analyst"
 <span class="c"># a film</span>
