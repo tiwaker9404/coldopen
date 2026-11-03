@@ -928,21 +928,6 @@
  "daily": [
   {
    "snapshot_date": "2026-11-03",
-   "job_family": "Design",
-   "open_roles": 265
-  },
-  {
-   "snapshot_date": "2026-11-03",
-   "job_family": "Software Engineering",
-   "open_roles": 3000
-  },
-  {
-   "snapshot_date": "2026-11-03",
-   "job_family": "Data",
-   "open_roles": 207
-  },
-  {
-   "snapshot_date": "2026-11-03",
    "job_family": "Marketing",
    "open_roles": 534
   },
@@ -958,18 +943,8 @@
   },
   {
    "snapshot_date": "2026-11-03",
-   "job_family": "AI & ML",
-   "open_roles": 879
-  },
-  {
-   "snapshot_date": "2026-11-03",
    "job_family": "Operations & other",
    "open_roles": 3392
-  },
-  {
-   "snapshot_date": "2026-11-03",
-   "job_family": "Customer Success",
-   "open_roles": 323
   },
   {
    "snapshot_date": "2026-11-03",
@@ -978,13 +953,38 @@
   },
   {
    "snapshot_date": "2026-11-03",
+   "job_family": "GTM Engineering & RevOps",
+   "open_roles": 75
+  },
+  {
+   "snapshot_date": "2026-11-03",
+   "job_family": "AI & ML",
+   "open_roles": 879
+  },
+  {
+   "snapshot_date": "2026-11-03",
    "job_family": "Product",
    "open_roles": 340
   },
   {
    "snapshot_date": "2026-11-03",
-   "job_family": "GTM Engineering & RevOps",
-   "open_roles": 75
+   "job_family": "Customer Success",
+   "open_roles": 323
+  },
+  {
+   "snapshot_date": "2026-11-03",
+   "job_family": "Software Engineering",
+   "open_roles": 3000
+  },
+  {
+   "snapshot_date": "2026-11-03",
+   "job_family": "Design",
+   "open_roles": 265
+  },
+  {
+   "snapshot_date": "2026-11-03",
+   "job_family": "Data",
+   "open_roles": 207
   }
  ],
  "fastest": [
