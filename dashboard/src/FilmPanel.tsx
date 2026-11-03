@@ -727,6 +727,81 @@ function Recipient({ film }: { film: FilmDetail }) {
 }
 
 /** The message, and where to send it from: Gmail, Outlook or the mail app, as a ready draft. */
+/**
+ * The one detail only someone who used their product would know, in your words. The email opens
+ * with it; it's what tells a founder a person wrote this.
+ */
+function Detail({ id }: { id: string }) {
+  const qc = useQueryClient()
+  const film = useQuery({
+    queryKey: ['film', id],
+    queryFn: () => api<FilmDetail>(`/v1/films/${id}`),
+  })
+  const saved = film.data?.detail ?? ''
+  const [text, setText] = useState<string | null>(null)
+  const value = text ?? saved
+  const save = useMutation({
+    mutationFn: () =>
+      send('PUT', `/v1/films/${id}/detail`, { detail: value.trim() ? value.trim() : null }),
+    onSuccess: () => {
+      setText(null)
+      void qc.invalidateQueries({ queryKey: ['film', id] })
+      void qc.invalidateQueries({ queryKey: ['messages', id] })
+    },
+  })
+  return (
+    <div className="detail">
+      <label htmlFor={`detail-${id}`}>
+        <b>Your one detail</b>{' '}
+        <span className="small muted">
+          Something only a real user would notice: where you got stuck, or what you loved.
+        </span>
+      </label>
+      <div className="detail-row">
+        <input
+          id={`detail-${id}`}
+          value={value}
+          maxLength={240}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="the one thing I kept hitting was losing a draft when my wifi dropped"
+        />
+        <button
+          type="button"
+          disabled={
+            save.isPending ||
+            value.trim() === saved.trim() ||
+            (value.trim().length > 0 && value.trim().length < 10)
+          }
+          onClick={() => save.mutate()}
+        >
+          {save.isPending ? 'Saving…' : 'Add to email'}
+        </button>
+      </div>
+      {save.error && <p className="error">{save.error.message}</p>}
+    </div>
+  )
+}
+
+/** What makes a cold email work, checked on this one */
+function Checks({ c }: { c: Messages['checks'] }) {
+  if (!c) return null
+  const items: [boolean, string][] = [
+    [c.short, c.short ? `${c.words} words` : `${c.words} words: aim for under 125`],
+    [c.aboutThem, c.aboutThem ? 'Subject about them' : 'Make the subject about them'],
+    [c.detail, c.detail ? 'Your own detail' : 'Add your one detail'],
+    [c.oneAsk, c.oneAsk ? 'One clear ask' : 'Keep it to one ask'],
+  ]
+  return (
+    <ul className="checks" aria-label="Email checks">
+      {items.map(([ok, label]) => (
+        <li key={label} className={ok ? 'ok' : 'todo'}>
+          {ok ? '✓' : '○'} {label}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function Message({
   id,
   to,
@@ -789,6 +864,8 @@ function Message({
           ))}
         </div>
       </div>
+      {kind === 'email' && <Detail id={id} />}
+      {kind === 'email' && <Checks c={m.checks} />}
       <p className="small muted">
         {kind === 'email'
           ? 'Your first message, with the film’s link in it.'

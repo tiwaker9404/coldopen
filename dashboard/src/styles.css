@@ -3193,3 +3193,37 @@ kbd {
 .job-checks.selects {
   margin-top: 12px;
 }
+
+.detail {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 10px;
+}
+
+.detail-row {
+  display: flex;
+  gap: 8px;
+}
+
+.detail-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.checks .ok {
+  color: var(--go);
+}
+
+.checks .todo {
+  color: var(--muted);
+}

@@ -34,6 +34,8 @@ export interface Film {
   editOf: string | null
   /** who it's going to, when you saved it */
   recipient: Recipient | null
+  /** your one detail from using their product */
+  detail?: string | null
 }
 
 export interface Recipient {
@@ -154,6 +156,8 @@ export interface Messages {
   linkedinFollowUp: string
   /** to someone you know there, asking them to pass it on */
   intro: string
+  /** how the email measures up: short, about them, your detail, one ask */
+  checks: { words: number; short: boolean; aboutThem: boolean; detail: boolean; oneAsk: boolean }
 }
 
 /** "3 min ago", "yesterday", "Oct 12" */

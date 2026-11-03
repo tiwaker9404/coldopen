@@ -30,7 +30,7 @@ describe('the messages that go with a film', () => {
   it('quotes the post and the proof the film shows, and nothing else', () => {
     const p = profile('candidate')
     const m = draftMessages(out as never, p, 'https://share.example/f/x')
-    expect(m.email.subject).toBe('A 30-second film I made for Parcelpine (Operations Analyst)')
+    expect(m.email.subject).toBe("A 30-second film for Parcelpine's Operations Analyst team")
     expect(m.email.body).toContain(
       'I made a 30-second film for your Operations Analyst role at Parcelpine:\nhttps://share.example/f/x',
     )
@@ -55,8 +55,34 @@ describe('the messages that go with a film', () => {
       profile('sales'),
       'https://share.example/f/y',
     )
-    expect(m.email.subject).toBe('A 30-second film I made for Acme')
+    expect(m.email.subject).toBe('A 30-second film for Acme')
     expect(m.email.body).toContain('I made a 30-second film for Acme:')
     expect(m.email.body).toContain('starts from your homepage')
+  })
+})
+
+describe('what makes a cold email work', () => {
+  it('opens with your detail, and checks length, subject, detail and ask', () => {
+    const p = profile('candidate')
+    const plain = draftMessages(out as never, p, 'https://share.example/f/x')
+    expect(plain.checks).toMatchObject({ aboutThem: true, detail: false, oneAsk: true })
+    const m = draftMessages(out as never, p, 'https://share.example/f/x', {
+      detail: 'The one thing I kept hitting was losing a draft when my wifi dropped',
+    })
+    expect(m.email.body).toContain(
+      "I've been using Parcelpine, and the one thing I kept hitting was losing a draft when my wifi dropped.",
+    )
+    expect(m.email.body).toContain('So I made a 30-second film')
+    expect(m.checks.detail).toBe(true)
+    expect(m.checks.short).toBe(m.checks.words <= 125)
+  })
+
+  it('brings something new to the follow-up when there is something', () => {
+    const p = profile('candidate')
+    const m = draftMessages(out as never, p, 'https://share.example/f/x', {
+      fresh: 'Trusted by 4,000 shippers',
+    })
+    expect(m.followUp).toContain('your site says "Trusted by 4,000 shippers"')
+    expect(m.followUp).not.toContain('Bumping')
   })
 })
