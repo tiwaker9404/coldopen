@@ -2,25 +2,26 @@
 /**
  * Builds src/jobs/raised.json: companies in Jobs for you that filed an SEC Form D (the notice a
  * US company files when it sells shares in a private round) in the last 12 months. Read from
- * EDGAR's free company search and filings index. A filer counts only when its name is the
- * company's own ("Ramp Business Corp" for Ramp), so investment vehicles named after a company
- * ("Acme SPV LP") never do. Amounts aren't kept: Form D often states the most the round may raise.
+ * EDGAR's quarterly form index: one file per quarter lists every filing by form, so four or five
+ * downloads cover the year, with no per-company lookups for EDGAR to throttle. A filer counts
+ * only when its name is the company's own ("Ramp Business Corp" for Ramp), so investment
+ * vehicles named after a company ("Acme SPV LP") never do. Amounts aren't kept: Form D often
+ * states the most the round may raise.
+ *
+ * SEC asks automated clients to name themselves with a contact address: set SEC_USER_AGENT
+ * (e.g. "coldopen you@example.com"), a repository variable in the workflow.
  *
  * Run by the "Raised recently" workflow (weekly), or by hand: node src/jobs/raised-build.ts
  */
-import { readFile, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { boardKey } from './boards.ts'
 import { DEFAULT_BOARDS } from './companies.ts'
 import { employerKey } from './visa-build.ts'
 
 const OUT = new URL('./raised.json', import.meta.url)
-/** when each company was last looked up, so a run that stops early picks up where it left off */
-const CHECKED = new URL('./raised-checked.json', import.meta.url)
-/** a run stops looking things up after this long and saves what it has (the job's cap is 30 min) */
-const BUDGET_MS = Number(process.env.RAISED_BUDGET_MS ?? 20 * 60_000)
-/** each company is looked up again after a week */
-const RECHECK_DAYS = 7
-const UA = 'coldopen job search (https://github.com/tiwaker9404/coldopen)'
+const UA =
+  process.env.SEC_USER_AGENT?.trim() ||
+  'coldopen job search (https://github.com/tiwaker9404/coldopen)'
 
 export interface Raised {
   /** when the latest Form D was filed, YYYY-MM-DD */
@@ -61,133 +62,116 @@ export function sameFiler(brand: string, filer: string): boolean {
   return rest.length === 1 && EXTRA.has(rest[0]!)
 }
 
-/** The latest Form D in a filer's EDGAR submissions, on or after `since` (YYYY-MM-DD) */
-export function latestFormD(
-  recent: { form?: string[]; filingDate?: string[] },
+/** One Form D in EDGAR's form index */
+export interface Filing {
+  filer: string
+  date: string
+}
+
+/**
+ * The Form D lines of a quarterly form.idx. Each line is fixed-width columns: form type, company
+ * name, CIK, date filed, file name ("D   Acme Inc   1234567   2026-10-01   edgar/data/...").
+ */
+export function formDs(index: string): Filing[] {
+  const out: Filing[] = []
+  for (const line of index.split('\n')) {
+    const m = /^(D|D\/A)\s{2,}(.+?)\s{2,}\d+\s+(\d{4}-\d{2}-\d{2})\s/.exec(line)
+    if (m) out.push({ filer: m[2]!.trim(), date: m[3]! })
+  }
+  return out
+}
+
+/** The quarters (year, 1-4) that cover the 12 months up to `now` */
+export function quartersSince(from: Date, now: Date): { year: number; q: number }[] {
+  const out: { year: number; q: number }[] = []
+  let year = from.getUTCFullYear()
+  let q = Math.floor(from.getUTCMonth() / 3) + 1
+  const endYear = now.getUTCFullYear()
+  const endQ = Math.floor(now.getUTCMonth() / 3) + 1
+  while (year < endYear || (year === endYear && q <= endQ)) {
+    out.push({ year, q })
+    q++
+    if (q === 5) {
+      q = 1
+      year++
+    }
+  }
+  return out
+}
+
+/** Each board's latest Form D on or after `since`, from the filings */
+export function match(
+  boards: { name: string; key: string }[],
+  filings: Filing[],
   since: string,
-): string | null {
-  let best: string | null = null
-  ;(recent.form ?? []).forEach((form, i) => {
-    const d = recent.filingDate?.[i]
-    if ((form === 'D' || form === 'D/A') && d && d >= since && (!best || d > best)) best = d
-  })
-  return best
+): Record<string, Raised> {
+  // index filings by their first word, so each board compares against a handful, not all of them
+  const byFirst = new Map<string, Filing[]>()
+  for (const f of filings) {
+    if (f.date < since) continue
+    const first = employerKey(f.filer).split(' ')[0]
+    if (!first) continue
+    const list = byFirst.get(first)
+    if (list) list.push(f)
+    else byFirst.set(first, [f])
+  }
+  const out: Record<string, Raised> = {}
+  for (const b of boards) {
+    // short names match too many filers to trust
+    if (employerKey(b.name).replace(/ /g, '').length < 5) continue
+    const first = employerKey(b.name).split(' ')[0]!
+    for (const f of byFirst.get(first) ?? []) {
+      if (!sameFiler(b.name, f.filer)) continue
+      if (!out[b.key] || f.date > out[b.key]!.date) out[b.key] = { date: f.date, filer: f.filer }
+    }
+  }
+  return Object.fromEntries(Object.entries(out).sort(([a], [b]) => a.localeCompare(b)))
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-/**
- * Which companies this run looks up: never-checked first, then the longest ago, skipping any
- * checked within the last week.
- */
-export function dueBoards<T>(
-  boards: T[],
-  key: (b: T) => string,
-  checked: Record<string, string>,
-  today: string,
-  recheckDays = RECHECK_DAYS,
-): T[] {
-  const cutoff = new Date(Date.parse(today) - recheckDays * 86_400_000).toISOString().slice(0, 10)
-  return boards
-    .filter((b) => !checked[key(b)] || checked[key(b)]! <= cutoff)
-    .sort((a, b) => (checked[key(a)] ?? '').localeCompare(checked[key(b)] ?? ''))
-}
-
-/**
- * The list after a run: what was found for the companies it looked up, what earlier runs found
- * for the rest, and nothing older than a year.
- */
-export function mergeRaised(
-  before: Record<string, Raised>,
-  found: Record<string, Raised>,
-  looked: string[],
-  since: string,
-): Record<string, Raised> {
-  const out: Record<string, Raised> = {}
-  const redone = new Set(looked)
-  for (const [k, v] of Object.entries(before)) if (!redone.has(k) && v.date >= since) out[k] = v
-  for (const [k, v] of Object.entries(found)) if (v.date >= since) out[k] = v
-  return Object.fromEntries(Object.entries(out).sort(([a], [b]) => a.localeCompare(b)))
-}
-
-const readJson = async <T>(url: URL, fallback: T): Promise<T> => {
-  try {
-    return JSON.parse(await readFile(url, 'utf8')) as T
-  } catch {
-    return fallback
-  }
-}
-
-async function get(url: string): Promise<unknown> {
-  for (let attempt = 0; attempt < 3; attempt++) {
+async function text(url: string): Promise<string | null> {
+  let last = ''
+  for (let attempt = 0; attempt < 4; attempt++) {
     const res = await fetch(url, {
-      headers: { 'user-agent': UA, accept: 'application/json' },
-      signal: AbortSignal.timeout(15_000),
+      headers: { 'user-agent': UA, 'accept-encoding': 'gzip, deflate' },
+      signal: AbortSignal.timeout(120_000),
     })
-    if (res.ok) return res.json()
+    if (res.ok) return res.text()
+    // a quarter that hasn't started its index yet
     if (res.status === 404) return null
-    await sleep(2_000 * (attempt + 1))
+    last = `${res.status} ${res.statusText}`
+    await sleep(5_000 * (attempt + 1))
   }
-  throw new Error(`EDGAR: ${url}`)
-}
-
-/** EDGAR filers whose names start like this brand, from its company-name search */
-async function filers(name: string): Promise<{ cik: string; name: string }[]> {
-  const j = (await get(
-    `https://efts.sec.gov/LATEST/search-index?keysTyped=${encodeURIComponent(name)}`,
-  )) as { hits?: { hits?: { _id: string; _source?: { entity?: string } }[] } } | null
-  return (j?.hits?.hits ?? []).flatMap((h) =>
-    h._source?.entity ? [{ cik: h._id, name: h._source.entity }] : [],
+  throw new Error(
+    `EDGAR refused ${url}: ${last}${last.startsWith('403') ? ' (set SEC_USER_AGENT to a name and contact email)' : ''}`,
   )
 }
 
 async function main() {
-  const started = Date.now()
-  const from = new Date(Date.now() - 365 * 86_400_000)
-  const day = (d: Date) => d.toISOString().slice(0, 10)
-  const today = day(new Date())
-  const before = await readJson<Record<string, Raised>>(OUT, {})
-  const checked = await readJson<Record<string, string>>(CHECKED, {})
-  // short names match too many filers to trust
-  const eligible = DEFAULT_BOARDS.filter((b) => employerKey(b.name).replace(/ /g, '').length >= 5)
-  const due = dueBoards(eligible, boardKey, checked, today)
-  const found: Record<string, Raised> = {}
-  const looked: string[] = []
-  let failed = 0
-  for (const b of due) {
-    if (Date.now() - started > BUDGET_MS) break
-    const k = boardKey(b)
-    try {
-      for (const f of (await filers(b.name)).filter((f) => sameFiler(b.name, f.name))) {
-        await sleep(150)
-        const sub = (await get(
-          `https://data.sec.gov/submissions/CIK${f.cik.padStart(10, '0')}.json`,
-        )) as { filings?: { recent?: { form?: string[]; filingDate?: string[] } } } | null
-        const date = latestFormD(sub?.filings?.recent ?? {}, day(from))
-        if (date && (!found[k] || date > found[k]!.date)) found[k] = { date, filer: f.name }
-      }
-      // only a lookup that finished counts as checked; a failed one is tried again next run
-      looked.push(k)
-      checked[k] = today
-    } catch {
-      failed++
-    }
-    // EDGAR asks for no more than 10 requests a second
-    await sleep(150)
+  const now = new Date()
+  const from = new Date(now.getTime() - 365 * 86_400_000)
+  const since = from.toISOString().slice(0, 10)
+  const filings: Filing[] = []
+  for (const { year, q } of quartersSince(from, now)) {
+    const idx = await text(`https://www.sec.gov/Archives/edgar/full-index/${year}/QTR${q}/form.idx`)
+    if (idx) filings.push(...formDs(idx))
+    // SEC asks for no more than 10 requests a second
+    await sleep(500)
   }
-  const out = mergeRaised(before, found, looked, day(from))
+  if (filings.length === 0) throw new Error('EDGAR returned no Form D filings: nothing to match')
+  const out = match(
+    DEFAULT_BOARDS.map((b) => ({ name: b.name, key: boardKey(b) })),
+    filings,
+    since,
+  )
   await writeFile(OUT, `${JSON.stringify(out, null, 0).replace(/},"/g, '},\n"')}\n`)
-  const sorted = Object.fromEntries(Object.entries(checked).sort(([a], [b]) => a.localeCompare(b)))
-  await writeFile(CHECKED, `${JSON.stringify(sorted, null, 0).replace(/,"/g, ',\n"')}\n`)
-  const left = due.length - looked.length
-  const line = `${Object.keys(out).length} companies filed a Form D in the last 12 months. This run looked up ${looked.length} of ${due.length} due (${failed} failed); ${left} left for the next run.`
+  const line = `${Object.keys(out).length} of ${DEFAULT_BOARDS.length} companies filed a Form D in the last 12 months (from ${filings.length.toLocaleString('en-US')} Form D filings)`
   console.log(line)
   if (process.env.GITHUB_STEP_SUMMARY) {
     const { appendFile } = await import('node:fs/promises')
     await appendFile(process.env.GITHUB_STEP_SUMMARY, `### Raised recently\n\n${line}\n`)
   }
-  // nothing got through at all: EDGAR is refusing us, so the run should show as failed
-  if (looked.length === 0 && failed > 0) process.exit(1)
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) await main()

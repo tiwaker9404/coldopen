@@ -1,13 +1,13 @@
 name: Raised recently
 
 # Rebuilds src/jobs/raised.json: which companies in Jobs for you filed an SEC Form D in the last
-# 12 months, from EDGAR. EDGAR throttles GitHub's runners, so each run looks up what it can in
-# 20 minutes and saves it (src/jobs/raised-checked.json records when each company was looked
-# up); the next run carries on. Each company is looked up again after a week.
+# 12 months, from EDGAR's quarterly form index (a handful of downloads). Weekly, or by hand.
+# SEC asks automated clients for a contact: set the repository variable SEC_USER_AGENT, e.g.
+# "coldopen you@example.com".
 on:
   workflow_dispatch:
   schedule:
-    - cron: "23 */3 * * *"
+    - cron: "17 13 * * 2"
 
 permissions:
   contents: write
@@ -19,7 +19,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v6
@@ -28,12 +28,13 @@ jobs:
       - run: pnpm install --frozen-lockfile --prod
         env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
       - run: node src/jobs/raised-build.ts
+        env: { SEC_USER_AGENT: "${{ vars.SEC_USER_AGENT }}" }
       - name: Commit the list if it changed
         run: |
-          git diff --quiet src/jobs/raised.json src/jobs/raised-checked.json && exit 0
+          git diff --quiet src/jobs/raised.json && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/jobs/raised.json src/jobs/raised-checked.json
+          git add src/jobs/raised.json
           git commit -m "Raised recently: refresh recent Form D filings"
           # another workflow may have pushed meanwhile: replay this commit on top, then push
           for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push && exit 0; sleep $((i * 5)); done; exit 1

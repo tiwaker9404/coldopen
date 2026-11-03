@@ -260,41 +260,45 @@ describe('founders from Hunter', () => {
 
 describe('raised recently', () => {
   it("matches the company's own filer, never a vehicle named after it", async () => {
-    const { sameFiler, latestFormD } = await import('../../src/jobs/raised-build.ts')
+    const { sameFiler } = await import('../../src/jobs/raised-build.ts')
     expect(sameFiler('Ramp', 'Ramp Business Corp')).toBe(true)
     expect(sameFiler('Anthropic', 'Anthropic, PBC')).toBe(true)
     expect(sameFiler('Ramp', 'EPIC Ramp LP')).toBe(false)
     expect(sameFiler('Ramp', 'Ramp SPV Series I')).toBe(false)
     expect(sameFiler('Notion', 'Notion Health Inc')).toBe(false)
-    expect(
-      latestFormD(
-        {
-          form: ['10-K', 'D', 'D/A', 'D'],
-          filingDate: ['2026-05-01', '2025-01-01', '2026-03-02', '2026-02-01'],
-        },
-        '2025-11-02',
-      ),
-    ).toBe('2026-03-02')
   })
 
-  it('picks up where the last run stopped, and keeps what earlier runs found', async () => {
-    const { dueBoards, mergeRaised } = await import('../../src/jobs/raised-build.ts')
-    const boards = ['a', 'b', 'c', 'd']
-    const checked = { a: '2026-11-01', b: '2026-10-20', d: '2026-10-25' }
-    // never checked first, then the oldest; anything from the last week waits
-    expect(dueBoards(boards, (x) => x, checked, '2026-11-03')).toEqual(['c', 'b', 'd'])
-    const merged = mergeRaised(
-      {
-        a: { date: '2026-06-01', filer: 'A Inc' },
-        b: { date: '2026-05-01', filer: 'B Inc' },
-        old: { date: '2025-01-01', filer: 'Old Inc' },
-      },
-      { c: { date: '2026-09-01', filer: 'C Inc' } },
-      ['b', 'c'],
+  it("reads Form Ds from EDGAR's quarterly index and keeps each company's latest", async () => {
+    const { formDs, match, quartersSince } = await import('../../src/jobs/raised-build.ts')
+    const idx = [
+      'Form Type   Company Name                    CIK         Date Filed  File Name',
+      '----------------------------------------------------------------------------',
+      '10-K        RETOOL INC                      1111111     2026-05-01  edgar/data/1/a.txt',
+      'D           RETOOL INC                      1111111     2026-02-01  edgar/data/1/b.txt',
+      'D/A         Retool, Inc.                    1111111     2026-03-02  edgar/data/1/c.txt',
+      'D           Retool Ventures LP              2222222     2026-06-01  edgar/data/2/d.txt',
+      'D           Linear Orbit, Inc.              3333333     2025-01-01  edgar/data/3/e.txt',
+    ].join('\n')
+    const f = formDs(idx)
+    expect(f).toHaveLength(4)
+    expect(f[0]).toEqual({ filer: 'RETOOL INC', date: '2026-02-01' })
+    const out = match(
+      [
+        { name: 'Retool', key: 'ashby:retool' },
+        { name: 'Linear', key: 'ashby:linear' },
+      ],
+      f,
       '2025-11-03',
     )
-    // a kept (not looked up), b dropped (looked up, nothing recent), c added, old expired
-    expect(Object.keys(merged)).toEqual(['a', 'c'])
+    // the latest of Retool's own filings; never the fund named after it; nothing older than a year
+    expect(out).toEqual({ 'ashby:retool': { date: '2026-03-02', filer: 'Retool, Inc.' } })
+    expect(quartersSince(new Date('2025-11-03'), new Date('2026-11-03'))).toEqual([
+      { year: 2025, q: 4 },
+      { year: 2026, q: 1 },
+      { year: 2026, q: 2 },
+      { year: 2026, q: 3 },
+      { year: 2026, q: 4 },
+    ])
   })
 })
 
