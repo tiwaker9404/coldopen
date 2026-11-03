@@ -1,7 +1,7 @@
 name: Raised recently
 
 # Rebuilds src/jobs/raised.json: which companies in Jobs for you filed an SEC Form D in the
-# last month, from EDGAR's quarterly form index (one or two downloads). Daily, or by hand.
+# last 3 months, from EDGAR's quarterly form index (two downloads). Daily, or by hand.
 # SEC asks automated clients for a contact: set the repository variable SEC_USER_AGENT, e.g.
 # "coldopen you@example.com".
 on:

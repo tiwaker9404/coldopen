@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * Builds src/jobs/raised.json: companies in Jobs for you that filed an SEC Form D (the notice a
- * US company files when it sells shares in a private round) in the last month. Read from
- * EDGAR's quarterly form index: one file lists every filing of a quarter by form, so one or two
- * downloads cover the month, with no per-company lookups for EDGAR to throttle. A filer counts
+ * US company files when it sells shares in a private round) in the last 3 months. Read from
+ * EDGAR's quarterly form index: one file lists every filing of a quarter by form, so two
+ * downloads cover it, with no per-company lookups for EDGAR to throttle. A filer counts
  * only when its name is the company's own ("Ramp Business Corp" for Ramp), so investment
  * vehicles named after a company ("Acme SPV LP") never do. Amounts aren't kept: Form D often
  * states the most the round may raise.
@@ -150,7 +150,7 @@ async function text(url: string): Promise<string | null> {
 
 async function main() {
   const now = new Date()
-  // the last month's rounds only: a raise from months ago isn't news to open an email with.
+  // the last 3 months' rounds only (the email congratulates only the last month's).
   // RAISED_REPORT_DAYS asks a what-if ("how many raised in 90 days?"): it reports, writes nothing
   const report = Number(process.env.RAISED_REPORT_DAYS) || 0
   const since = report
@@ -164,7 +164,7 @@ async function main() {
     await sleep(500)
   }
   // early in a quarter its index can still be empty; that's no reason to fail
-  if (filings.length === 0) console.log('EDGAR lists no Form D filings for the last month yet')
+  if (filings.length === 0) console.log('EDGAR lists no Form D filings for the last 3 months yet')
   const out = match(
     DEFAULT_BOARDS.map((b) => ({ name: b.name, key: boardKey(b) })),
     filings,
@@ -172,7 +172,7 @@ async function main() {
   )
   if (!report) await writeFile(OUT, `${JSON.stringify(out, null, 0).replace(/},"/g, '},\n"')}\n`)
   else for (const [k, v] of Object.entries(out)) console.log(`${v.date}  ${v.filer}  (${k})`)
-  const window = report ? `the last ${report} days` : 'the last month'
+  const window = report ? `the last ${report} days` : 'the last 3 months'
   const line = `${Object.keys(out).length} of ${DEFAULT_BOARDS.length} companies filed a Form D in ${window} (from ${filings.length.toLocaleString('en-US')} Form D filings)`
   console.log(line)
   if (process.env.GITHUB_STEP_SUMMARY) {

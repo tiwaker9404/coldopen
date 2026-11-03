@@ -16,7 +16,7 @@ coldopen is an open-source agent for personalized video outreach. Give it a pros
 - **Fit it.** Fit check scores how well your profile answers each post, by meaning as well as shared words ([eval](evals/fit/results.md)). Fit gaps shows the skills your best matches keep asking for, one click to add.
 - **Make the film.** One click per job, or tick ten and make them all. Each film quotes a requirement from the post and answers it with your own numbers.
 - **Reach the right person.** For YC startups, the founders come first. Warm paths add alumni of your schools and people from your past teams at each company. Find their email with your own free Hunter key, and the message opens as a ready draft.
-- **Learn what gets replies.** Half your drafts open with the film, half with your best number; Today shows which one is winning. When a company raised a round in the last month (from SEC Form D filings), the email opens by congratulating them.
+- **Learn what gets replies.** Half your drafts open with the film, half with your best number; Today shows which one is winning. Raised in the last 3 months (from SEC Form D filings) is a filter and a badge; when the round is from the last month, the email opens by congratulating them.
 - **Into your CRM.** Connect HubSpot's free CRM and each film you send becomes a company, a contact and a timeline note: sent, watched, replied, interview.
 - **From your AI assistant.** coldopen is an MCP server: Claude, Cursor or ChatGPT can search jobs and YC startups, make films, draft the messages and list follow-ups for you ([setup](#use-it-from-claude-or-cursor-mcp)).
 - **From any job post.** The [Chrome extension](extension/README.md) adds a Make film button to Greenhouse, Lever, Ashby, LinkedIn and YC job posts.

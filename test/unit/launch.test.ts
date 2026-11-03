@@ -293,10 +293,10 @@ describe('raised recently', () => {
     // the latest of Retool's own filings; never the fund named after it; nothing older than a year
     expect(out).toEqual({ 'ashby:retool': { date: '2026-03-02', filer: 'Retool, Inc.' } })
     const { raisedSince } = await import('../../src/jobs/companies.ts')
-    // only the last month's rounds count; early in a quarter that spans two indexes
-    expect(raisedSince(new Date('2026-11-03T12:00:00Z'))).toBe('2026-10-04')
+    // the last 3 months' rounds count, which spans two quarterly indexes
+    expect(raisedSince(new Date('2026-11-03T12:00:00Z'))).toBe('2026-08-05')
     expect(
-      quartersSince(new Date(raisedSince(new Date('2026-10-10'))), new Date('2026-10-10')),
+      quartersSince(new Date(raisedSince(new Date('2026-11-03'))), new Date('2026-11-03')),
     ).toEqual([
       { year: 2026, q: 3 },
       { year: 2026, q: 4 },

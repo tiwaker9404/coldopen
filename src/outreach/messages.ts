@@ -21,7 +21,7 @@ export interface Messages {
   checks: EmailChecks
   /** which opener these drafts lead with: half your films get each, so you learn which wins */
   opener: Opener
-  /** the email opens on their recent funding round (an SEC Form D in the last six months) */
+  /** the email opens on their recent funding round (an SEC Form D in the last month) */
   whyNow: boolean
 }
 
@@ -38,8 +38,8 @@ export function openerFor(id: string): Opener {
   return h % 2 === 0 ? 'film' : 'proof'
 }
 
-/** A round counts as news for six months after its Form D */
-const FRESH_ROUND_DAYS = 183
+/** A round counts as news to congratulate for a month after its Form D */
+const FRESH_ROUND_DAYS = 30
 
 export function freshRound(raised: { date: string } | null | undefined, now = Date.now()): boolean {
   if (!raised) return false

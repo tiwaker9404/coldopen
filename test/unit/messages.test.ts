@@ -127,8 +127,9 @@ describe('two openers, to learn which gets replies', () => {
 describe('why now: a recent funding round', () => {
   it('congratulates them only while the round is news', () => {
     const now = Date.parse('2026-11-03')
-    expect(freshRound({ date: '2026-09-01' }, now)).toBe(true)
-    expect(freshRound({ date: '2026-01-01' }, now)).toBe(false)
+    expect(freshRound({ date: '2026-10-20' }, now)).toBe(true)
+    // still on the 3-month filter, but too old to open an email with
+    expect(freshRound({ date: '2026-09-01' }, now)).toBe(false)
     expect(freshRound(null, now)).toBe(false)
     const recent = new Date(Date.now() - 20 * 86_400_000).toISOString().slice(0, 10)
     const m = draftMessages(out as never, profile('candidate'), 'https://share.example/f/x', {
