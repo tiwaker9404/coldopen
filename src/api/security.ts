@@ -35,7 +35,8 @@ export function csp(nonce: string): string {
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob: https:",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    // the profile editor lists your public GitHub repositories straight from GitHub
+    "connect-src 'self' https://api.github.com",
     "object-src 'none'",
     "base-uri 'self'",
     "frame-ancestors 'none'",

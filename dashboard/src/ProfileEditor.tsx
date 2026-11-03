@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { type Profile, type ProfileData, send } from './api.ts'
 import { BLANK } from './examples.ts'
+import { GitHubRepos } from './GitHubRepos.tsx'
 import { ResumeDraft } from './Onboarding.tsx'
 
 const slug = (s: string) =>
@@ -359,13 +360,28 @@ export function ProfileEditor({
             </div>
           ))}
           {projects.length < 8 && (
-            <button
-              type="button"
-              className="link"
-              onClick={() => set({ projects: [...projects, { name: '', url: '', line: '' }] })}
-            >
-              Add a project
-            </button>
+            <div className="project-add">
+              <GitHubRepos
+                taken={projects.map((x) => x.url)}
+                room={8 - projects.length}
+                onAdd={(repos) =>
+                  set({
+                    projects: [
+                      // a blank row someone started and left empty makes room
+                      ...projects.filter((x) => x.name || x.url || x.line),
+                      ...repos.map((r) => ({ name: r.name, url: r.url, line: r.line })),
+                    ].slice(0, 8),
+                  })
+                }
+              />
+              <button
+                type="button"
+                className="link"
+                onClick={() => set({ projects: [...projects, { name: '', url: '', line: '' }] })}
+              >
+                Add one by hand
+              </button>
+            </div>
           )}
         </fieldset>
 

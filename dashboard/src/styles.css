@@ -3692,3 +3692,61 @@ a.tag {
     grid-template-columns: 1fr;
   }
 }
+
+.project-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 20px;
+}
+
+.gh-repos {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  background: var(--soft);
+}
+
+.gh-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  display: grid;
+}
+
+.gh-list li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.gh-list label {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 9px 2px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.gh-list input {
+  margin-top: 4px;
+}
+
+.gh-list span {
+  display: grid;
+  min-width: 0;
+}
+
+.gh-list b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.gh-list small {
+  color: var(--muted);
+}
