@@ -4,6 +4,7 @@ import { availableParallelism } from 'node:os'
 import { join, relative } from 'node:path'
 import { z } from 'zod'
 import { extractBrand } from './brand/extract.ts'
+import { type Homework, readHomework } from './brand/homework.ts'
 import type { BrandKit } from './brand/types.ts'
 import { withJob } from './job/kit.ts'
 import { isJobPage, JobPostSchema, jobFromText } from './job/post.ts'
@@ -93,6 +94,8 @@ export interface FilmResult {
   job?: { title: string; url?: string }
   /** where the film is published, when a share worker is configured (the hosted app) */
   shared?: { id: string; link: string }
+  /** what they've published lately, beyond the homepage: see brand/homework.ts */
+  homework?: Homework
   /** the profile as the film used it, when the film filled it in (hiring films) */
   profile?: Profile
   /** what the film says, for writing the message that goes with it */
@@ -216,6 +219,18 @@ export function createFilmAgent(opts: FilmAgentOptions) {
       }
 
       if (post) kit = withJob(kit, post)
+
+      // homework: what they've published lately (blog, changelog, news, podcast), for the brief
+      // and the email. Best effort and time-boxed: a site without feeds still gets its film.
+      ctx.progress({ stage: 'research', label: `Reading what ${kit.name} published lately` })
+      const homework = await ctx.step('homework', () =>
+        Promise.race([
+          readHomework(site, { allowPrivateNetworks: opts.allowPrivateNetworks ?? false }),
+          new Promise<Homework>((done) =>
+            setTimeout(() => done({ items: [], pages: [] }), 20_000).unref(),
+          ),
+        ]).catch((): Homework => ({ items: [], pages: [] })),
+      )
       // a hiring film takes its lines from the post and its numbers from their site
       if (profile.preset === 'hiring') profile = withRole(profile, kit, post?.url ?? j?.url ?? site)
 
@@ -497,6 +512,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           ...(kit.job ? { job: kit.job } : {}),
           ...(shared ? { shared } : {}),
           highlights: highlightsOf(board),
+          ...(homework.items.length || homework.pages.length ? { homework } : {}),
           // a hiring film's profile was filled in from the post and the site
           ...(profile !== input.profile ? { profile } : {}),
         }

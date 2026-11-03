@@ -3608,3 +3608,49 @@ a.tag {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------------------------------------------------------------- homework */
+
+.homework-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+}
+
+.homework-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.homework-list li:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+
+.homework-list span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.homework-list small {
+  color: var(--faint);
+}
+
+.homework-list a {
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.homework-list a:hover {
+  text-decoration: underline;
+}
+
+.homework-list button {
+  flex: none;
+}

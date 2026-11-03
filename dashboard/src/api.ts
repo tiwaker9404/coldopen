@@ -209,6 +209,11 @@ export interface FilmDetail extends Film {
     proof: { value: string; label: string; where?: string }[]
   } | null
   qa: { issues: { kind: string; text?: string }[]; fonts: string[] } | null
+  /** what they published lately, beyond the homepage */
+  homework: {
+    items: { kind: HomeworkKind; title: string; url: string; date?: string }[]
+    pages: { kind: HomeworkKind; url: string }[]
+  } | null
   render: { frames: number; ms: number } | null
   steps: {
     key: string
@@ -543,3 +548,5 @@ export interface Brief {
   /** what they'll likely ask you, with your answer from your record (null: prepare one) */
   expect?: { q: string; a: string | null }[]
 }
+
+export type HomeworkKind = 'blog' | 'changelog' | 'news' | 'engineering' | 'podcast' | 'docs'

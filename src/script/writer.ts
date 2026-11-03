@@ -1,8 +1,8 @@
 import type { BrandKit, Fact } from '../brand/types.ts'
 import { answers, proofText } from '../job/fit.ts'
 import type { ChatMessage } from '../llm/types.ts'
-import { checkScript, clampScript, overlap, words } from './checks.ts'
 import { isDuty } from '../profile/pitch.ts'
+import { checkScript, clampScript, overlap, words } from './checks.ts'
 import { LIMITS, TASTE_RULES } from './taste.ts'
 import type { Profile, Script, ScriptMeta } from './types.ts'
 

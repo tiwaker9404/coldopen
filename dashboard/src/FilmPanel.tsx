@@ -9,6 +9,7 @@ import {
   type FilmDetail,
   type FoundEmails,
   fileName,
+  type HomeworkKind,
   LIMITS,
   type Messages,
   media,
@@ -356,6 +357,7 @@ function SendSteps({ film }: { film: FilmDetail }) {
   return (
     <>
       {(status === 'replied' || status === 'interview') && <CallBrief id={film.id} />}
+      {film.homework && !film.pitch && <Homework film={film} />}
       <ol className="steps">
         <li>
           {film.pitch?.hiring ? (
@@ -412,6 +414,94 @@ function SendSteps({ film }: { film: FilmDetail }) {
         </li>
       </ol>
     </>
+  )
+}
+
+const NOUN: Record<HomeworkKind, string> = {
+  blog: 'post',
+  engineering: 'engineering post',
+  news: 'announcement',
+  changelog: 'release notes',
+  podcast: 'episode',
+  docs: 'docs',
+}
+
+/** the email's opening line for one item, in the sender's voice */
+function mention(i: { kind: HomeworkKind; title: string }): string {
+  const t = i.title.replace(/["“”]/g, '')
+  if (i.kind === 'podcast') return `I listened to your episode "${t}"`
+  if (i.kind === 'changelog') return `I saw "${t}" in your release notes`
+  return `I read your ${NOUN[i.kind]} "${t}"`
+}
+
+/** What they've published lately: proof you did more than read the homepage */
+function Homework({ film }: { film: FilmDetail }) {
+  const qc = useQueryClient()
+  const toast = useToast()
+  const hw = film.homework!
+  const use = useMutation({
+    mutationFn: (detail: string) => send('PUT', `/v1/films/${film.id}/detail`, { detail }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['film', film.id] })
+      void qc.invalidateQueries({ queryKey: ['messages', film.id] })
+      toast({ text: 'Added to the email’s opening line.' })
+    },
+  })
+  const pages = hw.pages.filter((p) => p.kind === 'docs' || p.kind === 'podcast')
+  return (
+    <section className="block homework">
+      <h3>Your homework on {film.company}</h3>
+      {hw.items.length > 0 ? (
+        <>
+          <p className="small muted">
+            What they’ve published in the last 90 days. Read one, then open your email with it: it
+            shows you did more than skim the homepage.
+          </p>
+          <ul className="homework-list">
+            {hw.items.map((i) => {
+              const line = mention(i)
+              const chosen = film.detail === line
+              return (
+                <li key={i.url}>
+                  <span>
+                    <small>
+                      {NOUN[i.kind][0]!.toUpperCase() + NOUN[i.kind].slice(1)}
+                      {i.date ? ` · ${ago(`${i.date}T12:00:00Z`)}` : ''}
+                    </small>
+                    <a href={safeUrl(i.url)} target="_blank" rel="noreferrer">
+                      {i.title} <Out />
+                    </a>
+                  </span>
+                  <button
+                    type="button"
+                    className="link"
+                    disabled={use.isPending || chosen}
+                    onClick={() => use.mutate(line)}
+                  >
+                    {chosen ? 'In your email' : 'Mention this'}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      ) : (
+        <p className="small muted">They haven’t published a feed we can read lately.</p>
+      )}
+      {pages.length > 0 && (
+        <p className="small">
+          Also worth a look:{' '}
+          {pages.map((p, n) => (
+            <span key={p.url}>
+              {n > 0 && ' · '}
+              <a href={safeUrl(p.url)} target="_blank" rel="noreferrer">
+                {p.kind === 'docs' ? 'their docs' : 'their podcast'} <Out />
+              </a>
+            </span>
+          ))}
+        </p>
+      )}
+    </section>
   )
 }
 

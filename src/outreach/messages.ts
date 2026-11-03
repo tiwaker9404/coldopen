@@ -170,7 +170,15 @@ export function draftMessages(
       'Hi [First name],',
       '',
       ...(whyNow ? [`Congratulations on the new funding round.`, ''] : []),
-      ...(detail ? [`I've been using ${company}, and ${lower(detail)}.`, ''] : []),
+      // a detail in their own voice ("I read your post…") stands as it is
+      ...(detail
+        ? [
+            /^I\b/.test(detail)
+              ? `${detail.replace(/[.!]$/, '')}.`
+              : `I've been using ${company}, and ${lower(detail)}.`,
+            '',
+          ]
+        : []),
       ...(lead === 'proof'
         ? [`${best}. I made a 30-second film ${forWhat} on what I'd bring:`]
         : [`${detail ? 'So I' : 'I'} made a 30-second film ${forWhat}:`]),

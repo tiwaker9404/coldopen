@@ -1251,6 +1251,7 @@ export async function buildApi({
         scriptMeta: run.output?.scriptMeta ?? null,
         /** the line quoted from their site or job post, and the proof shown */
         highlights: run.output?.highlights ?? null,
+        homework: run.output?.homework ?? null,
         qa: run.output?.qa ?? null,
         render: run.output?.render ?? null,
         steps: steps.map((s) => ({
