@@ -270,3 +270,79 @@ describe('raised recently', () => {
     ).toBe('2026-03-02')
   })
 })
+
+describe('where and how senior', () => {
+  it('tells US jobs from the rest', async () => {
+    const { inUS } = await import('../../src/jobs/where.ts')
+    const at = (location: string, country?: string, remote = false) =>
+      inUS({ location, remote, ...(country ? { country } : {}) })
+    expect(at('San Francisco, CA')).toBe(true)
+    expect(at('New York, NY | London, UK')).toBe(true)
+    expect(at('Remote - US')).toBe(true)
+    expect(at('Remote', undefined, true)).toBe(true)
+    expect(at('London, UK')).toBe(false)
+    expect(at('Bangalore, IN')).toBe(false)
+    expect(at('Toronto, ON')).toBe(false)
+    expect(at('Remote - EMEA', undefined, true)).toBe(false)
+    expect(at('HQ', 'United States')).toBe(true)
+    expect(at('Berlin', 'Germany')).toBe(false)
+  })
+
+  it('reads the level from the title and the years from the requirements', async () => {
+    const { levelOf, yearsAsked } = await import('../../src/jobs/where.ts')
+    expect(levelOf('Software Engineering Intern, Summer 2027')).toBe('intern')
+    expect(levelOf('New Grad Solutions Engineer')).toBe('intern')
+    expect(levelOf('Associate Solutions Engineer')).toBe('entry')
+    expect(levelOf('Forward Deployed Engineer')).toBe('mid')
+    expect(levelOf('Senior Solutions Engineer')).toBe('senior')
+    expect(levelOf('Staff Solutions Engineer')).toBe('lead')
+    expect(levelOf('Director of Solutions Engineering')).toBe('director')
+    expect(yearsAsked(['5+ years in sales engineering', '2-4 years of Python'])).toBe(2)
+    expect(yearsAsked(['Strong communication'])).toBeNull()
+  })
+
+  it('filters by level, type and workplace', () => {
+    const j = (title: string, extra: Record<string, unknown> = {}) => ({
+      id: title,
+      board: 'ashby:x',
+      company: 'X',
+      title,
+      url: 'https://example.com/j',
+      location: 'San Francisco, CA',
+      remote: false,
+      ...extra,
+    })
+    const jobs = [
+      j('Solutions Engineer', { type: 'full_time', workplace: 'hybrid' }),
+      j('Solutions Engineering Intern', { type: 'intern', workplace: 'onsite' }),
+      j('Senior Solutions Engineer', { workplace: 'remote', remote: true }),
+    ]
+    const names = (s: Record<string, unknown>) =>
+      rank(jobs as never, SearchSchema.parse(s), NOW)
+        .map((x) => x.title)
+        .sort()
+    expect(names({ levels: ['intern'] })).toEqual(['Solutions Engineering Intern'])
+    expect(names({ types: ['full_time'] })).toEqual([
+      'Senior Solutions Engineer',
+      'Solutions Engineer',
+    ])
+    expect(names({ workplaces: ['remote'] })).toEqual(['Senior Solutions Engineer'])
+    expect(names({ workplaces: ['hybrid', 'onsite'] })).toEqual([
+      'Solutions Engineer',
+      'Solutions Engineering Intern',
+    ])
+  })
+})
+
+describe('limits and role type', () => {
+  it('spots clearance and citizen-only posts, and people managers', async () => {
+    const { CLEARANCE, CITIZEN_ONLY, managesOf } = await import('../../src/jobs/where.ts')
+    expect(CLEARANCE.test('Active TS/SCI clearance required')).toBe(true)
+    expect(CLEARANCE.test('Clear communication')).toBe(false)
+    expect(CITIZEN_ONLY.test('Must be a U.S. citizen')).toBe(true)
+    expect(CITIZEN_ONLY.test('Authorized to work in the US')).toBe(false)
+    expect(managesOf('Engineering Manager')).toBe(true)
+    expect(managesOf('Product Manager')).toBe(false)
+    expect(managesOf('Head of Solutions')).toBe(true)
+  })
+})

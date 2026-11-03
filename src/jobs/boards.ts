@@ -37,6 +37,35 @@ export interface Job {
   posted?: string
   /** yearly base pay the post lists, in its currency (Ashby and Lever boards publish it) */
   pay?: Pay
+  /** full time, part time, contract or internship, when the board says */
+  type?: JobType
+  /** remote, hybrid or on site, when the board says */
+  workplace?: Workplace
+  /** the country the board gives for the role (Ashby and Lever), e.g. "United States" or "US" */
+  country?: string
+}
+
+export type JobType = 'full_time' | 'part_time' | 'contract' | 'intern'
+export type Workplace = 'remote' | 'hybrid' | 'onsite'
+
+/** "FullTime", "Full-time", "Intern", "Contractor" -> one of four */
+export function jobTypeOf(v: unknown): JobType | undefined {
+  const t = typeof v === 'string' ? v.toLowerCase().replace(/[^a-z]/g, '') : ''
+  if (!t) return undefined
+  if (t.includes('intern') || t.includes('coop')) return 'intern'
+  if (t.includes('contract') || t.includes('temp') || t.includes('freelance')) return 'contract'
+  if (t.includes('part')) return 'part_time'
+  if (t.includes('full') || t.includes('permanent')) return 'full_time'
+  return undefined
+}
+
+/** "Remote", "OnSite", "on-site", "Hybrid" -> one of three */
+export function workplaceOf(v: unknown): Workplace | undefined {
+  const t = typeof v === 'string' ? v.toLowerCase().replace(/[^a-z]/g, '') : ''
+  if (t === 'remote') return 'remote'
+  if (t === 'hybrid') return 'hybrid'
+  if (t === 'onsite' || t === 'inoffice' || t === 'office') return 'onsite'
+  return undefined
 }
 
 export interface Pay {
@@ -133,6 +162,10 @@ const clean = (s: string) => s.replace(/\s+/g, ' ').trim()
 
 type Raw = Record<string, unknown>
 
+/** { key: value } when there's a value, else nothing, to spread into a job */
+const opt = <K extends string, V>(k: K, v: V | undefined): { [P in K]?: V } =>
+  (v === undefined ? {} : { [k]: v }) as { [P in K]?: V }
+
 const pay = (raw: Raw | undefined, read: (r: Raw) => Pay | null): { pay?: Pay } => {
   if (!raw || typeof raw !== 'object') return {}
   const p = read(raw)
@@ -178,6 +211,15 @@ export function readBoard(b: Board, body: unknown): Job[] {
         ...(iso(j.first_published ?? j.updated_at)
           ? { posted: iso(j.first_published ?? j.updated_at) }
           : {}),
+        ...opt('type', jobTypeOf(/employment type|job type|time type/i.test(kind) ? kind : '')),
+        ...opt<'workplace', Workplace>(
+          'workplace',
+          /\bhybrid\b/i.test(`${location} ${kind}`)
+            ? 'hybrid'
+            : REMOTE.test(location) || /location type\s+remote/i.test(kind)
+              ? 'remote'
+              : undefined,
+        ),
       })
     }
   } else if (b.ats === 'lever') {
@@ -196,6 +238,9 @@ export function readBoard(b: Board, body: unknown): Job[] {
         ...pay(j.salaryRange as Raw | undefined, (r) =>
           payOf(r.min, r.max, r.currency, r.interval),
         ),
+        ...opt('type', jobTypeOf(c.commitment)),
+        ...opt('workplace', workplaceOf(j.workplaceType)),
+        ...opt('country', str(j.country) || undefined),
       })
     }
   } else {
@@ -215,6 +260,18 @@ export function readBoard(b: Board, body: unknown): Job[] {
         ...(str(j.department) || str(j.team) ? { team: str(j.department) || str(j.team) } : {}),
         ...(iso(j.publishedAt) ? { posted: iso(j.publishedAt) } : {}),
         ...pay(j.compensation as Raw | undefined, ashbyPay),
+        ...opt('type', jobTypeOf(j.employmentType)),
+        ...opt(
+          'workplace',
+          workplaceOf(j.workplaceType) ?? (j.isRemote === true ? 'remote' : undefined),
+        ),
+        ...opt(
+          'country',
+          str(
+            (((j.address as Raw | undefined)?.postalAddress as Raw | undefined) ?? {})
+              .addressCountry,
+          ) || undefined,
+        ),
       })
     }
   }

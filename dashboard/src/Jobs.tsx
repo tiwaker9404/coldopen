@@ -11,9 +11,28 @@ import {
   type Me,
   send,
 } from './api.ts'
+import { FUNCTIONS } from './functions.ts'
 import { useToast } from './ui.tsx'
 
 const SHOWN = 6
+
+const TYPE_LABEL = {
+  full_time: 'Full time',
+  part_time: 'Part time',
+  contract: 'Contract',
+  intern: 'Internship',
+} as const
+
+const LEVEL_LABEL = {
+  intern: 'Intern / New grad',
+  entry: 'Entry level',
+  mid: 'Mid level',
+  senior: 'Senior',
+  lead: 'Lead / Staff',
+  director: 'Director / Executive',
+} as const
+
+const WORK_LABEL = { onsite: 'On site', hybrid: 'Hybrid', remote: 'Remote' } as const
 
 const FIT_LABEL = { strong: 'Strong fit', good: 'Good fit', stretch: 'Stretch' } as const
 
@@ -47,7 +66,6 @@ export function Jobs({
   const [picked, setPicked] = useState<string[]>([])
   const [started, setStarted] = useState<number | null>(null)
   const r = q.data
-  const noRoles = !!r && r.search.roles.length === 0
   // a visitor makes one film at a time; an account several, up to what's left today
   const visitor = !!me.data?.hosted && !me.data.user
   const left = me.data?.films ? Math.max(0, me.data.films.limit - me.data.films.used) : null
@@ -95,13 +113,6 @@ export function Jobs({
           </p>
         ) : q.isError ? (
           <p className="error">Couldn’t load jobs: {q.error.message}</p>
-        ) : noRoles ? (
-          <p className="empty">
-            Tell coldopen which roles you want and it finds open ones at{' '}
-            {r?.companies ?? 'hundreds of'} companies
-            {r?.ycCompanies ? `, ${r.ycCompanies} of them YC startups` : ''}.{' '}
-            <a href="#jobs">Set up your job search</a>
-          </p>
         ) : r!.data.length === 0 ? (
           <p className="empty">
             No open roles fit your search right now. <a href="#jobs">Change your search</a>
@@ -130,16 +141,20 @@ export function Jobs({
       ) : q.isError ? (
         <p className="error">Couldn’t load jobs: {q.error.message}</p>
       ) : (
-        <SearchForm search={r!.search} first={noRoles} raisable={(r!.raisedCompanies ?? 0) > 0} />
+        <SearchForm
+          search={r!.search}
+          first={r!.search.suggested}
+          raisable={(r!.raisedCompanies ?? 0) > 0}
+        />
       )}
 
-      {r && !noRoles && (
+      {r && (
         <>
           <p className="jobs-note">
-            {r.search.roles.join(', ')}
-            {r.search.locations.length > 0 && ` in ${r.search.locations.join(', ')}`}
-            {r.search.remote &&
-              (r.search.locations.length ? ', or remote' : ', anywhere or remote')}
+            {r.search.roles.length ? r.search.roles.join(', ') : 'Every role'}
+            {r.search.country === 'us' && ' in the US'}
+            {r.search.locations.length > 0 && `, in ${r.search.locations.join(', ')}`}
+            {r.search.remote && r.search.locations.length > 0 && ', or remote'}
             {r.search.ycOnly && ' at YC companies'}
             {r.search.visaOnly && ' that sponsor H-1B visas'}
             {r.search.raisedOnly && ', raised in the last year'}
@@ -320,7 +335,18 @@ function JobRow({
               {money(job.pay)}
             </span>
           )}
-          {why.map((w) => (
+          {job.type && job.type !== 'full_time' && (
+            <span className="tag">{TYPE_LABEL[job.type]}</span>
+          )}
+          {job.workplace && job.workplace !== 'remote' && (
+            <span className="tag">{job.workplace === 'hybrid' ? 'Hybrid' : 'On site'}</span>
+          )}
+          {job.years !== undefined && (
+            <span className="tag quiet" title="The fewest years of experience the post asks for">
+              {job.years}+ yrs
+            </span>
+          )}
+          {why.filter(Boolean).map((w) => (
             <span key={w} className={w === 'New this week' ? 'tag new' : 'tag'}>
               {w}
             </span>
@@ -524,6 +550,34 @@ function KnowNudge() {
   )
 }
 
+/** Toggle chips for a few options; none picked means any */
+function Picks<K extends string>({
+  all,
+  value,
+  onChange,
+}: {
+  all: Record<K, string>
+  value: K[]
+  onChange: (v: K[]) => void
+}) {
+  return (
+    <>
+      {(Object.keys(all) as K[]).map((k) => (
+        <label key={k} className={`chip${value.includes(k) ? ' on' : ''}`}>
+          <input
+            type="checkbox"
+            checked={value.includes(k)}
+            onChange={(e) =>
+              onChange(e.target.checked ? [...value, k] : value.filter((x) => x !== k))
+            }
+          />
+          {all[k]}
+        </label>
+      ))}
+    </>
+  )
+}
+
 /** $150k–$200k */
 function money(p: { min: number; max: number; currency: string }) {
   const sym =
@@ -549,18 +603,27 @@ function SearchForm({
 }) {
   const qc = useQueryClient()
   const [roles, setRoles] = useState(search.roles.join(', '))
+  const [excludeTitles, setExcludeTitles] = useState(search.excludeTitles.join(', '))
   const [places, setPlaces] = useState(search.locations.join(', '))
-  const [remote, setRemote] = useState(search.remote)
-  const [skipSenior, setSkipSenior] = useState(search.skipSenior)
-  const [ycOnly, setYcOnly] = useState(search.ycOnly)
-  const [sort, setSort] = useState(search.sort)
+  const [usOnly, setUsOnly] = useState(search.country === 'us')
+  const [types, setTypes] = useState(search.types)
+  const [workplaces, setWorkplaces] = useState(search.workplaces)
+  const [levels, setLevels] = useState(search.levels)
+  const [maxYears, setMaxYears] = useState(search.maxYears === null ? '' : String(search.maxYears))
   const [within, setWithin] = useState(search.within)
-  const [visaOnly, setVisaOnly] = useState(search.visaOnly)
-  const [raisedOnly, setRaisedOnly] = useState(search.raisedOnly)
-  const [exclude, setExclude] = useState(search.exclude.join(', '))
+  const [roleType, setRoleType] = useState(search.roleType)
   const [minPay, setMinPay] = useState(
     search.minPay ? String(Math.round(search.minPay / 1000)) : '',
   )
+  const [visaOnly, setVisaOnly] = useState(search.visaOnly)
+  const [noClearance, setNoClearance] = useState(search.noClearance)
+  const [noCitizenOnly, setNoCitizenOnly] = useState(search.noCitizenOnly)
+  const [skills, setSkills] = useState(search.skills.join(', '))
+  const [excludeSkills, setExcludeSkills] = useState(search.excludeSkills.join(', '))
+  const [ycOnly, setYcOnly] = useState(search.ycOnly)
+  const [raisedOnly, setRaisedOnly] = useState(search.raisedOnly)
+  const [exclude, setExclude] = useState(search.exclude.join(', '))
+  const [sort, setSort] = useState(search.sort)
   const [boards, setBoards] = useState(
     search.boards
       .map((b) =>
@@ -572,25 +635,47 @@ function SearchForm({
       )
       .join('\n'),
   )
+  const more =
+    search.skills.length > 0 ||
+    search.excludeSkills.length > 0 ||
+    search.excludeTitles.length > 0 ||
+    search.exclude.length > 0 ||
+    search.boards.length > 0 ||
+    search.roleType !== 'any'
+  const addFunction = (label: string) => {
+    const f = FUNCTIONS.find((x) => x.label === label)
+    if (!f) return
+    const have = list(roles)
+    const next = [...have, ...f.roles.filter((r) => !have.includes(r))].slice(0, 8)
+    setRoles(next.join(', '))
+  }
   const save = useMutation({
-    mutationFn: () => {
-      const r = list(roles)
-      if (r.length === 0) throw new Error('Add at least one role, like Solutions Engineer')
-      return send<JobSearch>('PUT', '/v1/jobs/search', {
-        roles: r.slice(0, 8),
+    mutationFn: () =>
+      send<JobSearch>('PUT', '/v1/jobs/search', {
+        roles: list(roles).slice(0, 8),
+        excludeTitles: list(excludeTitles).slice(0, 20),
         locations: list(places).slice(0, 8),
-        remote,
-        skipSenior,
-        ycOnly,
-        sort,
+        remote: workplaces.length === 0 || workplaces.includes('remote'),
+        skipSenior: false,
+        country: usOnly ? 'us' : 'any',
+        types,
+        workplaces,
+        levels,
+        maxYears: maxYears === '' ? null : Number(maxYears),
         within,
+        roleType,
+        minPay: minPay.trim() ? Math.max(0, Math.round(Number(minPay) || 0)) * 1000 || null : null,
         visaOnly,
+        noClearance,
+        noCitizenOnly,
+        skills: list(skills).slice(0, 20),
+        excludeSkills: list(excludeSkills).slice(0, 20),
+        ycOnly,
         raisedOnly,
         exclude: list(exclude).slice(0, 50),
-        minPay: minPay.trim() ? Math.max(0, Math.round(Number(minPay) || 0)) * 1000 || null : null,
+        sort,
         boards: list(boards),
-      })
-    },
+      }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['jobs'] })
     },
@@ -603,62 +688,80 @@ function SearchForm({
         save.mutate()
       }}
     >
-      <h2 className="search-title">{first ? 'What are you looking for?' : 'Your search'}</h2>
+      <h2 className="search-title">
+        {first ? 'Every open role in the US. Narrow it down:' : 'Your search'}
+      </h2>
       <div className="search-grid">
         <label>
           <span>Roles</span>
           <input
             value={roles}
             onChange={(e) => setRoles(e.target.value)}
-            placeholder="Forward Deployed Engineer, Solutions Engineer"
+            placeholder="Every role"
           />
-          <small>Job titles you’d apply for, separated by commas.</small>
+          <select
+            className="add-function"
+            value=""
+            onChange={(e) => addFunction(e.target.value)}
+            aria-label="Add a job function"
+          >
+            <option value="">Add a job function…</option>
+            {FUNCTIONS.map((f) => (
+              <option key={f.label} value={f.label}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+          <small>Job titles, separated by commas. Leave it empty to see every role.</small>
         </label>
         <label>
           <span>Places</span>
           <input
             value={places}
             onChange={(e) => setPlaces(e.target.value)}
-            placeholder="Bay Area, New York"
+            placeholder="Anywhere"
           />
-          <small>Cities or regions. Leave it empty to see every place.</small>
+          <label className="check inline">
+            <input type="checkbox" checked={usOnly} onChange={(e) => setUsOnly(e.target.checked)} />
+            In the United States only
+          </label>
+          <small>Cities or regions, like Bay Area or New York. Empty: every place.</small>
         </label>
       </div>
-      <div className="job-checks">
-        <label className="check">
-          <input type="checkbox" checked={remote} onChange={(e) => setRemote(e.target.checked)} />
-          Include remote roles
+
+      <fieldset className="chips">
+        <legend>Job type</legend>
+        <Picks all={TYPE_LABEL} value={types} onChange={setTypes} />
+      </fieldset>
+      <fieldset className="chips">
+        <legend>Work model</legend>
+        <Picks all={WORK_LABEL} value={workplaces} onChange={setWorkplaces} />
+      </fieldset>
+      <fieldset className="chips">
+        <legend>Experience</legend>
+        <Picks all={LEVEL_LABEL} value={levels} onChange={setLevels} />
+      </fieldset>
+
+      <div className="job-checks selects">
+        <label className="check sort">
+          Required experience
+          <select value={maxYears} onChange={(e) => setMaxYears(e.target.value)}>
+            <option value="">Open to all</option>
+            <option value="2">0–2 years</option>
+            <option value="5">Up to 5 years</option>
+            <option value="8">Up to 8 years</option>
+          </select>
         </label>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={skipSenior}
-            onChange={(e) => setSkipSenior(e.target.checked)}
-          />
-          Hide staff, principal and manager roles
+        <label className="check sort">
+          Date posted
+          <select value={within} onChange={(e) => setWithin(e.target.value as JobSearch['within'])}>
+            <option value="any">Any time</option>
+            <option value="day">Past 24 hours</option>
+            <option value="3days">Past 3 days</option>
+            <option value="week">Past week</option>
+            <option value="month">Past month</option>
+          </select>
         </label>
-        <label className="check">
-          <input type="checkbox" checked={ycOnly} onChange={(e) => setYcOnly(e.target.checked)} />
-          YC companies only
-        </label>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={visaOnly}
-            onChange={(e) => setVisaOnly(e.target.checked)}
-          />
-          Sponsors H-1B visas
-        </label>
-        {(raisable || raisedOnly) && (
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={raisedOnly}
-              onChange={(e) => setRaisedOnly(e.target.checked)}
-            />
-            Raised in the last year
-          </label>
-        )}
         <label className="check sort">
           Sort by
           <select value={sort} onChange={(e) => setSort(e.target.value as JobSearch['sort'])}>
@@ -666,47 +769,130 @@ function SearchForm({
             <option value="fastest">Hiring fastest</option>
           </select>
         </label>
-        <label className="check sort">
-          Posted
-          <select value={within} onChange={(e) => setWithin(e.target.value as JobSearch['within'])}>
-            <option value="any">Any time</option>
-            <option value="month">This month</option>
-            <option value="week">This week</option>
-          </select>
-        </label>
       </div>
-      <div className="search-grid">
-        <label>
-          <span>Minimum pay</span>
-          <span className="pay-input">
-            $
+
+      <fieldset className="group">
+        <legend>Compensation and sponsorship</legend>
+        <div className="search-grid">
+          <label>
+            <span>Minimum annual salary</span>
+            <span className="pay-input">
+              $
+              <input
+                inputMode="numeric"
+                value={minPay}
+                onChange={(e) => setMinPay(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="any"
+                aria-label="Minimum pay in thousands of dollars a year"
+              />
+              k
+            </span>
+            <small>
+              Hides roles whose listed pay tops out lower. Roles that don’t list pay stay.
+            </small>
+          </label>
+          <div className="job-checks column">
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={visaOnly}
+                onChange={(e) => setVisaOnly(e.target.checked)}
+              />
+              Sponsors H-1B visas
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={noClearance}
+                onChange={(e) => setNoClearance(e.target.checked)}
+              />
+              Leave out roles needing a security clearance
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={noCitizenOnly}
+                onChange={(e) => setNoCitizenOnly(e.target.checked)}
+              />
+              Leave out roles for US citizens only
+            </label>
+          </div>
+        </div>
+      </fieldset>
+
+      <details className="more-companies" open={more}>
+        <summary>More filters: skills, titles, companies</summary>
+        <div className="search-grid">
+          <label>
+            <span>Skills</span>
             <input
-              inputMode="numeric"
-              value={minPay}
-              onChange={(e) => setMinPay(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="120"
-              aria-label="Minimum pay in thousands of dollars a year"
+              value={skills}
+              onChange={(e) => setSkills(e.target.value)}
+              placeholder="Python, AWS"
             />
-            k a year
-          </span>
-          <small>
-            Hides roles whose listed pay tops out lower. Roles that don’t list pay stay.
-          </small>
-        </label>
+            <small>Roles whose requirements name any of these.</small>
+          </label>
+          <label>
+            <span>Leave out skills</span>
+            <input
+              value={excludeSkills}
+              onChange={(e) => setExcludeSkills(e.target.value)}
+              placeholder="Java"
+            />
+            <small>Roles whose requirements name these are hidden.</small>
+          </label>
+          <label>
+            <span>Leave out titles with</span>
+            <input
+              value={excludeTitles}
+              onChange={(e) => setExcludeTitles(e.target.value)}
+              placeholder="Sales, Clinical"
+            />
+            <small>Words, separated by commas.</small>
+          </label>
+          <label>
+            <span>Role type</span>
+            <select
+              value={roleType}
+              onChange={(e) => setRoleType(e.target.value as JobSearch['roleType'])}
+            >
+              <option value="any">Individual contributors and managers</option>
+              <option value="ic">Individual contributors</option>
+              <option value="manager">People managers</option>
+            </select>
+          </label>
+          <label>
+            <span>Leave out companies</span>
+            <input
+              value={exclude}
+              onChange={(e) => setExclude(e.target.value)}
+              placeholder="Companies you’ve applied to"
+            />
+            <small>Company names, separated by commas.</small>
+          </label>
+          <div className="job-checks column">
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={ycOnly}
+                onChange={(e) => setYcOnly(e.target.checked)}
+              />
+              YC companies only
+            </label>
+            {(raisable || raisedOnly) && (
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={raisedOnly}
+                  onChange={(e) => setRaisedOnly(e.target.checked)}
+                />
+                Raised in the last year
+              </label>
+            )}
+          </div>
+        </div>
         <label>
-          <span>Leave out</span>
-          <input
-            value={exclude}
-            onChange={(e) => setExclude(e.target.value)}
-            placeholder="Companies you’ve applied to or don’t want"
-          />
-          <small>Company names, separated by commas.</small>
-        </label>
-      </div>
-      <details className="more-companies" open={search.boards.length > 0}>
-        <summary>Add companies that aren’t in the list</summary>
-        <label>
-          <span className="sr">Careers page links</span>
+          <span>Companies that aren’t in the list</span>
           <textarea
             rows={2}
             value={boards}
@@ -720,9 +906,9 @@ function SearchForm({
       </details>
       {save.error && <p className="error">{save.error.message}</p>}
       <div className="job-search-do">
-        {save.isSuccess && !save.isPending && <span className="saved">Results updated</span>}
+        {save.isSuccess && !save.isPending && <span className="saved">Saved. Results updated</span>}
         <button type="submit" className="primary" disabled={save.isPending}>
-          {save.isPending ? 'Finding jobs…' : first ? 'Find jobs' : 'Update results'}
+          {save.isPending ? 'Finding jobs…' : first ? 'Save my search' : 'Update results'}
         </button>
       </div>
     </form>
