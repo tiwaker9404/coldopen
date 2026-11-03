@@ -24,17 +24,17 @@ pnpm film http://127.0.0.1:4100/northwind/ -p profiles/candidate.example.json
 
 ## Where things live
 
-| Area | Files |
-| --- | --- |
-| Reading a company's site | `src/brand/extract.ts`, `src/brand/homework.ts` |
-| Reading a job post | `src/job/` |
+| Area                                                 | Files                                                                 |
+| ---------------------------------------------------- | --------------------------------------------------------------------- |
+| Reading a company's site                             | `src/brand/extract.ts`, `src/brand/homework.ts`                       |
+| Reading a job post                                   | `src/job/`                                                            |
 | Writing the script, and the checks every line passes | `src/script/writer.ts`, `src/script/checks.ts`, `src/script/taste.ts` |
-| The six scenes and how they're drawn | `src/script/storyboard.ts`, `src/render/composition.ts` |
-| Rendering, frame by frame | `src/render/render.ts` |
-| The durable runtime (journal, leases, replays) | `src/runtime/` |
-| The API and MCP server | `src/api/` |
-| The app | `dashboard/src/` |
-| Share pages (Cloudflare Worker) | `share/`, `src/share/page.ts` |
+| The six scenes and how they're drawn                 | `src/script/storyboard.ts`, `src/render/composition.ts`               |
+| Rendering, frame by frame                            | `src/render/render.ts`                                                |
+| The durable runtime (journal, leases, replays)       | `src/runtime/`                                                        |
+| The API and MCP server                               | `src/api/`                                                            |
+| The app                                              | `dashboard/src/`                                                      |
+| Share pages (Cloudflare Worker)                      | `share/`, `src/share/page.ts`                                         |
 
 ## Starter projects
 

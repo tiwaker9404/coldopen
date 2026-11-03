@@ -52,8 +52,7 @@ h2{font-size:clamp(44px,6.2vw,84px);max-width:16ch}
 .way{background:var(--paper);border:1px solid var(--rule);border-radius:14px;padding:26px 26px 22px;min-width:0}
 .way h3{font-size:36px;line-height:1}
 .way p{color:var(--grain);margin-top:8px;font-size:16px}
-.way pre{margin-top:16px}
-pre{background:var(--slate);color:#EDEDEA;border-radius:10px;padding:16px 18px;overflow-x:auto;font:500 13.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace}
+pre{background:var(--slate);color:#EDEDEA;border-radius:10px;padding:16px 18px;margin-top:16px;white-space:pre-wrap;overflow-wrap:anywhere;font:500 13.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace}
 pre .c{color:#9A9DA3}
 code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
 
@@ -137,7 +136,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
       <div class="way">
         <h3>REST API</h3>
         <p>Make a film, poll its progress, draft the messages, read who watched. OpenAPI docs are live on the hosted app at <a href="https://coldopen-nk8o.onrender.com/docs">/docs</a>.</p>
-<pre tabindex="0" aria-label="Make a film with the API"><span class="c"># make a film for one company</span>
+<pre><span class="c"># make a film for one company</span>
 curl -X POST $COLDOPEN/v1/films \
   -H "Authorization: Bearer co_…" \
   -H "Idempotency-Key: linear-1" \
@@ -146,21 +145,21 @@ curl -X POST $COLDOPEN/v1/films \
       <div class="way">
         <h3>MCP server</h3>
         <p>Ten tools for Claude, Cursor or ChatGPT: search jobs and YC startups, make films, draft messages, list follow-ups. Make an access token on your Profile page.</p>
-<pre tabindex="0" aria-label="Add the MCP server">claude mcp add --transport http coldopen \
+<pre>claude mcp add --transport http coldopen \
   https://coldopen-nk8o.onrender.com/mcp \
   --header "Authorization: Bearer co_…"</pre>
       </div>
       <div class="way">
         <h3>CLI</h3>
         <p>A film from your terminal, with no server and no model: the built-in writer is free, offline and reproducible. Add <code>--model</code> for Ollama or any OpenAI-compatible API.</p>
-<pre tabindex="0" aria-label="Make a film from the CLI">git clone https://github.com/tiwaker9404/coldopen
+<pre>git clone https://github.com/tiwaker9404/coldopen
 cd coldopen &amp;&amp; pnpm install
 pnpm film https://linear.app --job &lt;job link&gt;</pre>
       </div>
       <div class="way">
         <h3>Your own server</h3>
         <p>The API, the durable workers and Postgres in one compose file. The hosting guide covers free options with no card.</p>
-<pre tabindex="0" aria-label="Run your own server">docker compose up --build
+<pre>docker compose up --build
 <span class="c"># then open http://localhost:8080</span></pre>
       </div>
     </div>
