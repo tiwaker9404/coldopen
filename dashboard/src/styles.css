@@ -1,42 +1,52 @@
 /*
- * coldopen: an edit bay, not a dashboard. A light table to lay films out on, one condensed
- * typeface (Archivo, using its width axis instead of a second family), and a single red
- * "recording" light that only shows while something is being made.
+ * coldopen: the production around someone else's film (docs/BRAND.md). Film-box yellow (Stock)
+ * is the brand field, the sidebar and the main button; Big Shoulders sets the display type and
+ * timecodes; Instrument Sans everything people read; the red tally light shows only while
+ * something is live (rendering, watched, due).
  */
 :root {
-  /* the work surface is white; the sidebar is the quiet tint around it */
   --bg: #ffffff;
-  --side: #f3f5f2;
+  --side: #ffc21a;
+  --side-ink: #000000;
+  --side-muted: #3d3420;
+  --side-chip: #ffffff;
   --surface: #ffffff;
-  --ink: #121a16;
-  /* secondary text at about 8:1, and the faintest still past 4.5:1, on white */
-  --muted: #46514b;
-  --faint: #66706a;
-  --rule: #dde3de;
-  --soft: #eef1ed;
-  --rec: #d6362a;
+  --ink: #141414;
+  /* secondary text at about 7:1, and the faintest still past 4.5:1, on white */
+  --muted: #4a4d53;
+  --faint: #686b72;
+  --rule: #dcddd9;
+  --soft: #f3f3f0;
+  --stock: #ffc21a;
+  --stock-ink: #000000;
+  --rec: #e5291f;
   /* the red as small text: dark enough for 4.5:1 */
-  --rec-text: #b42318;
-  --go: #23704c;
-  --go-soft: #dcefe4;
-  --focus: #2457c5;
-  --font: "Archivo Variable", "Archivo", system-ui, sans-serif;
-  --narrow: 74%;
+  --rec-text: #b81d14;
+  --go: #1f6b47;
+  --go-soft: #ddefe4;
+  --focus: #1f5bd8;
+  --font: "Instrument Sans Variable", "Instrument Sans", system-ui, sans-serif;
+  --display:
+    "Big Shoulders Display Variable", "Big Shoulders Display", Impact, "Arial Narrow", sans-serif;
+  --narrow: 100%;
   --r: 10px;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #141917;
-    --side: #101412;
-    --surface: #1a201d;
-    --ink: #e9ede9;
-    --muted: #a0aaa5;
-    --faint: #8a948f;
-    --rule: #2b322f;
-    --soft: #232a27;
-    --rec: #f0574a;
+    --bg: #17181b;
+    --side: #0d0d0f;
+    --side-ink: #f2f2ee;
+    --side-muted: #a8aaae;
+    --side-chip: #ffc21a;
+    --surface: #1f2024;
+    --ink: #f2f2ee;
+    --muted: #b3b5b9;
+    --faint: #93959a;
+    --rule: #2e3035;
+    --soft: #25262a;
+    --rec: #ff4d40;
     --rec-text: #ff8a80;
     --go: #5cc893;
     --go-soft: #1d3329;
@@ -68,9 +78,81 @@ h1,
 h2,
 h3 {
   margin: 0;
-  font-stretch: var(--narrow);
-  font-weight: 680;
+  font-family: var(--display);
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+/* small headings read better in the text face: the display face is for size */
+h3 {
+  font-family: var(--font);
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.beta {
+  font-family: var(--font);
+}
+
+/* the slate: every finished film carries one, with the clapper on top */
+.take {
+  margin: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+
+.take .clap {
+  height: 16px;
+  background: repeating-linear-gradient(-55deg, #fff 0 14px, #000 14px 28px);
+}
+
+.take .player {
+  border-radius: 0;
+  width: 100%;
+}
+
+.take:has(.player.square) {
+  max-width: 480px;
+}
+
+.take:has(.player.portrait) {
+  max-width: 320px;
+}
+
+.take-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) auto auto;
+  color: #fff;
+  border-top: 1px solid #333;
+}
+
+.take-fields div {
+  padding: 8px 12px 10px;
+  border-right: 1px solid #333;
+  min-width: 0;
+}
+
+.take-fields div:last-child {
+  border-right: 0;
+}
+
+.take-fields span {
+  display: block;
+  font-size: 11.5px;
+  color: #a8aaae;
+}
+
+.take-fields b {
+  display: block;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 700;
   line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 p {
@@ -134,14 +216,14 @@ button:disabled {
 }
 
 button.primary {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--bg);
-  font-weight: 600;
+  background: var(--stock);
+  border-color: color-mix(in oklab, var(--stock) 70%, #000);
+  color: var(--stock-ink);
+  font-weight: 650;
 }
 
 button.primary:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--ink) 86%, var(--bg));
+  background: color-mix(in oklab, var(--stock) 88%, #fff);
 }
 
 button.link,
@@ -311,7 +393,7 @@ small,
   gap: 9px;
   font-size: 22px;
   font-weight: 780;
-  font-stretch: 78%;
+  font-family: var(--display);
   letter-spacing: -0.01em;
   text-decoration: none;
 }
@@ -475,9 +557,9 @@ small,
 
 .onboard h1,
 .composer h1 {
-  font-size: clamp(34px, 5.4vw, 58px);
+  font-size: clamp(26px, 2.6vw, 32px);
   font-weight: 700;
-  font-stretch: 70%;
+  font-family: var(--display);
   line-height: 1;
   letter-spacing: -0.012em;
   max-width: 16ch;
@@ -1440,7 +1522,7 @@ small,
 
 .drawer-head h2 {
   font-size: 30px;
-  font-stretch: 72%;
+  font-family: var(--display);
   font-weight: 700;
 }
 
@@ -1694,7 +1776,7 @@ dl.tally dd {
   margin: 0;
   font-size: 26px;
   font-weight: 650;
-  font-stretch: var(--narrow);
+  font-family: var(--display);
 }
 
 .log {
@@ -1740,7 +1822,7 @@ dl.tally dd {
 .funnel b {
   font-size: 26px;
   font-weight: 650;
-  font-stretch: var(--narrow);
+  font-family: var(--display);
   text-align: right;
 }
 
@@ -1765,7 +1847,7 @@ dl.tally dd {
   padding: 0;
   font-size: 17px;
   font-weight: 680;
-  font-stretch: var(--narrow);
+  font-family: var(--display);
 }
 
 .editor legend + * {
@@ -2034,10 +2116,10 @@ dl.tally dd {
 }
 
 a.primary-link {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--bg);
-  font-weight: 600;
+  background: var(--stock);
+  border-color: color-mix(in oklab, var(--stock) 70%, #000);
+  color: var(--stock-ink);
+  font-weight: 650;
 }
 
 .results {
@@ -2477,12 +2559,19 @@ kbd {
   gap: 28px;
   padding: 22px 14px 18px;
   background: var(--side);
-  border-right: 1px solid var(--rule);
+  color: var(--side-ink);
+  border-right: 1px solid color-mix(in oklab, var(--side) 80%, #000);
 }
 
 .side .wordmark {
   padding: 0 10px;
-  font-size: 20px;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.side .beta {
+  border-color: currentColor;
+  color: var(--side-ink);
 }
 
 .beta {
@@ -2510,22 +2599,22 @@ kbd {
   gap: 8px;
   padding: 8px 10px;
   border-radius: 8px;
-  color: var(--muted);
+  color: var(--side-muted);
   font-size: 15px;
   font-weight: 500;
   text-decoration: none;
 }
 
 .places a:hover {
-  color: var(--ink);
-  background: color-mix(in oklab, var(--ink) 5%, transparent);
+  color: var(--side-ink);
+  background: color-mix(in oklab, var(--side-ink) 8%, transparent);
 }
 
 .places a[aria-current="page"] {
-  color: var(--ink);
+  color: #000;
   font-weight: 650;
-  background: var(--surface);
-  box-shadow: 0 0 0 1px var(--rule);
+  background: var(--side-chip);
+  box-shadow: 0 1px 0 color-mix(in oklab, #000 18%, transparent);
 }
 
 .count {
@@ -2598,7 +2687,7 @@ kbd {
 .page-title h1 {
   font-size: clamp(32px, 4vw, 44px);
   font-weight: 760;
-  font-stretch: 74%;
+  font-family: var(--display);
   letter-spacing: -0.01em;
 }
 
@@ -3277,8 +3366,27 @@ kbd {
 }
 
 .startup-filters input {
-  flex: 1 1 240px;
+  flex: 1 1 100%;
   min-width: 0;
+}
+
+.startup-filters select {
+  flex: 1 1 160px;
+  width: auto;
+  min-width: 0;
+}
+
+/* on this page the startup's name is the title, and its links are quiet */
+.startups .job-what > b {
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.startups .startup-links a {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--muted);
 }
 
 .startup-line {
@@ -3318,4 +3426,119 @@ a.tag {
 
 .mcp .token {
   word-break: break-all;
+}
+
+/* ---------------------------------------------------------------- the call sheet (Today) */
+
+.call-sheet {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 18px;
+  margin-bottom: 6px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.call-day {
+  font-family: var(--display);
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.call-line {
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.films-head h2 .rec {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--rec);
+  vertical-align: 0.12em;
+}
+
+/* ---------------------------------------------------------------- the dailies (Films) */
+
+/* each stage is a strip of film: a black band with perforations, one frame per film */
+.column h2 {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.column ul {
+  position: relative;
+  gap: 12px;
+  padding: 22px 8px;
+  border-radius: 6px;
+  background: #000;
+}
+
+.column ul::before,
+.column ul::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 10px;
+  background:
+    radial-gradient(circle at 6px 50%, var(--bg) 0 3.2px, transparent 3.6px) 0 0 / 20px 10px
+    repeat-x;
+}
+
+.column ul::before {
+  top: 6px;
+}
+
+.column ul::after {
+  bottom: 6px;
+}
+
+.column .card {
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: #000;
+  color: #fff;
+}
+
+.column .card:hover .poster {
+  outline: 2px solid var(--stock);
+  outline-offset: 2px;
+}
+
+.column .card.active .poster {
+  outline: 2px solid var(--stock);
+  outline-offset: 2px;
+}
+
+.column .card.active {
+  box-shadow: none;
+}
+
+.column .poster {
+  border-radius: 3px;
+  background: #1c1d20;
+}
+
+.column .card-text {
+  padding: 6px 2px 0;
+}
+
+.column .card-text span,
+.column .card-text small {
+  color: #b9bbc0;
+}
+
+.column .card-text small.due,
+.column .card-text small.bad {
+  color: #ff8a80;
+}
+
+.column-empty {
+  padding: 18px 12px;
+  border: 1.5px dashed var(--rule);
+  border-radius: 6px;
 }

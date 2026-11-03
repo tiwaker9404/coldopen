@@ -121,22 +121,38 @@ export function sharePage(
 <meta name="twitter:card" content="summary_large_image">
 <meta name="robots" content="noindex">
 <style>
-:root{color-scheme:light dark;--bg:#f4f5f7;--fg:#15171c;--muted:#5d6370;--card:#fff}
-@media (prefers-color-scheme:dark){:root{--bg:#121418;--fg:#eef0f3;--muted:#9aa1ad;--card:#1b1e24}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px}
+:root{color-scheme:light dark;--bg:#F6F6F3;--fg:#141414;--muted:#5E6168;--rule:#D9DAD6;--stock:#FFC21A;--tally:#E5291F}
+@media (prefers-color-scheme:dark){:root{--bg:#17181B;--fg:#F2F2EE;--muted:#A8AAAE;--rule:#2E3035}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px 16px}
 main{width:min(100%,${v.format === 'landscape' ? 960 : v.format === 'portrait' ? 420 : 640}px)}
-video{width:100%;height:auto;display:block;border-radius:14px;background:#000;box-shadow:0 20px 50px rgba(0,0,0,.18)}
-h1{font-size:20px;font-weight:650;margin:20px 0 2px}p{margin:0;color:var(--muted)}
-.row{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:4px}
-a.cta{display:inline-block;background:var(--fg);color:var(--bg);text-decoration:none;font-weight:600;padding:12px 20px;border-radius:10px}
-a.cta:focus-visible{outline:3px solid #3f6fd8;outline-offset:3px}
-.do{display:flex;gap:8px;flex-wrap:wrap}a.cta.alt{background:none;color:var(--fg);box-shadow:inset 0 0 0 1.5px var(--fg)}
-footer{margin-top:40px;font-size:13px;color:var(--muted);text-align:center}
+.slate{background:#000;border-radius:14px;overflow:hidden;box-shadow:0 24px 56px -28px rgb(0 0 0/.5)}
+.clap{height:18px;background:repeating-linear-gradient(-55deg,#fff 0 16px,#000 16px 32px)}
+video{width:100%;height:auto;display:block;background:#000}
+.fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) auto;color:#fff;border-top:1px solid #333}
+.fields div{padding:9px 14px 11px;border-right:1px solid #333;min-width:0}
+.fields div:last-child{border-right:0}
+.fields span{display:block;font-size:12px;color:#A8AAAE}
+.fields b{display:block;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+h1{font-size:22px;line-height:1.25;font-weight:700;margin:22px 0 4px;letter-spacing:-.01em}
+p{margin:0;color:var(--muted)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:16px 24px;flex-wrap:wrap}
+.do{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+a.cta{display:inline-block;background:var(--stock);color:#000;text-decoration:none;font-weight:650;padding:13px 22px;border-radius:999px}
+a.cta.alt{background:none;color:var(--fg);box-shadow:inset 0 0 0 1.5px var(--fg)}
+a.cta:focus-visible{outline:3px solid #1F5BD8;outline-offset:3px}
+footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);font-size:13px;color:var(--muted)}
 footer a{color:inherit}
+.made{display:inline-flex;align-items:center;gap:7px;color:var(--fg);font-weight:650}
+.made::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--tally)}
 </style></head><body><main>
+<figure class="slate" style="margin:0">
+<div class="clap" aria-hidden="true"></div>
 <video src="${url}/${v.film}" poster="${url}/poster.jpg" controls playsinline preload="metadata" width="${w}" height="${h}"></video>
-<div class="row"><div><h1>${esc(v.ctaLine)}</h1><p>From ${esc(v.from)}, made for ${esc(v.company)}</p></div>
+<figcaption class="fields"><div><span>Made for</span><b>${esc(v.company)}</b></div><div><span>From</span><b>${esc(v.from)}</b></div><div><span>Runs</span><b>0:30</b></div></figcaption>
+</figure>
+<div class="row"><div><h1>${esc(v.ctaLine)}</h1><p>${esc(v.firstName)} made this film for ${esc(v.company)}.</p></div>
 <div class="do">${v.book ? `<a class="cta" data-track href="${esc(v.book)}" target="_blank" rel="noopener">Book 15 minutes</a><a class="cta alt" data-track href="${esc(contactHref(v.contact))}">Reply</a>` : `<a class="cta" data-track href="${esc(contactHref(v.contact))}">Reply to ${esc(v.firstName)}</a>`}</div></div>
-<footer><a href="${esc(made.toString())}">Made with coldopen</a>. Make one for a company you'd like to work with.${privacy ? `<br>Views are counted without storing your IP address. <a href="${esc(privacy)}">Privacy</a>` : ''}</footer>
+<footer><a class="made" href="${esc(made.toString())}">Made with coldopen</a>. Make one for a company you'd like to work with.${privacy ? `<br>Views are counted without storing your IP address. <a href="${esc(privacy)}">Privacy</a>` : ''}</footer>
 </main>${track ? trackingScript(track) : ''}</body></html>`
 }

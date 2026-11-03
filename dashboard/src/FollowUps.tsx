@@ -22,7 +22,7 @@ export function FollowUps({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <section className="followups" aria-labelledby="followups-title">
       <div className="films-head">
-        <h2 id="followups-title">Follow up today</h2>
+        <h2 id="followups-title">Due today</h2>
         <p className="rate">
           {list.length} due{q.data!.waiting > 0 && `, ${q.data!.waiting} waiting`}
         </p>
