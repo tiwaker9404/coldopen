@@ -146,7 +146,7 @@ export function visaOf(board: string): { approvals: number; year: number } | nul
 }
 
 /** Each board's latest SEC Form D in the last 3 months, from src/jobs/raised.json (daily) */
-const RAISED: Record<string, { date: string; filer: string }> = (() => {
+const RAISED: Record<string, { date: string; filer: string; amount?: number }> = (() => {
   try {
     const raw = JSON.parse(readFileSync(new URL('./raised.json', import.meta.url), 'utf8'))
     return raw && typeof raw === 'object' ? raw : {}
@@ -161,13 +161,31 @@ export const RAISED_COUNT = Object.keys(RAISED).length
 /** How far back a round counts as recent for the filter and badge: about 3 months */
 export const RAISED_DAYS = 90
 
+/**
+ * Round sizes, from the dollars a Form D says were sold. Form D doesn't name the round, so these
+ * are sizes, with the round that size usually is as a hint.
+ */
+export const ROUND_SIZES = {
+  seed: { label: 'Under $3M', hint: 'usually pre-seed or seed', max: 3_000_000 },
+  a: { label: '$3M to $20M', hint: 'usually Series A', max: 20_000_000 },
+  b: { label: '$20M to $80M', hint: 'usually Series B', max: 80_000_000 },
+  c: { label: '$80M and up', hint: 'usually Series C or later', max: Number.POSITIVE_INFINITY },
+} as const
+export type RoundSize = keyof typeof ROUND_SIZES
+
+/** Which size a round was, or null when the filing didn't state a plain amount */
+export function sizeOf(amount: number | undefined | null): RoundSize | null {
+  if (!amount || amount <= 0) return null
+  return (Object.keys(ROUND_SIZES) as RoundSize[]).find((k) => amount < ROUND_SIZES[k].max)!
+}
+
 /** The first day that counts, YYYY-MM-DD */
 export function raisedSince(now = new Date()): string {
   return new Date(now.getTime() - RAISED_DAYS * 86_400_000).toISOString().slice(0, 10)
 }
 
 /** When the company filed a Form D (a private round), if it did in the last 3 months */
-export function raisedOf(board: string): { date: string; filer: string } | null {
+export function raisedOf(board: string): { date: string; filer: string; amount?: number } | null {
   const r = RAISED[board]
   return r && r.date >= raisedSince() ? r : null
 }

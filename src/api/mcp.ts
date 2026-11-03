@@ -69,6 +69,16 @@ export function buildMcp(call: Call): McpServer {
         within: z.enum(['any', 'day', '3days', 'week', 'month']).optional(),
         ycOnly: z.boolean().optional(),
         visaOnly: z.boolean().optional().describe('only companies that sponsor H-1B visas'),
+        raisedOnly: z
+          .boolean()
+          .optional()
+          .describe('only companies that raised a private round (SEC Form D) in the last 3 months'),
+        raisedSize: z
+          .enum(['any', 'seed', 'a', 'b', 'c'])
+          .optional()
+          .describe(
+            'with raisedOnly, the round size: seed under $3M, a $3-20M, b $20-80M, c $80M and up',
+          ),
         minPay: z.number().int().optional().describe('yearly, in dollars'),
         limit: z.number().int().min(1).max(30).default(10),
       },

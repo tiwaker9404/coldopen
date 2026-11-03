@@ -14,10 +14,16 @@ import {
   type Pay,
   readBoard,
 } from './boards.ts'
-import { DEFAULT_BOARDS, raisedOf, visaOf, ycOf } from './companies.ts'
+import { DEFAULT_BOARDS, raisedOf, sizeOf, visaOf, ycOf } from './companies.ts'
 import { detailsFromBoard, greenhouseDetails } from './details.ts'
 import { defaultSearch, rank, type Search, SearchSchema, type Suggestion, spread } from './rank.ts'
 import { CITIZEN_ONLY, CLEARANCE, yearsAsked } from './where.ts'
+
+/** Raised in the window, and (when a size is asked for) a round of that size */
+function raisedFits(board: string, size: 'any' | 'seed' | 'a' | 'b' | 'c'): boolean {
+  const r = raisedOf(board)
+  return !!r && (size === 'any' || sizeOf(r.amount) === size)
+}
 
 /**
  * Suggested jobs for one person: their search, the default boards plus any they added, read
@@ -449,7 +455,7 @@ export async function suggestions(
         (j) =>
           (!state.search.ycOnly || ycOf({ site: j.site }) || ycBoard(j)) &&
           (!state.search.visaOnly || visaOf(j.board)) &&
-          (!state.search.raisedOnly || raisedOf(j.board)),
+          (!state.search.raisedOnly || raisedFits(j.board, state.search.raisedSize)),
       )
       const pace = momentum(all, opts.now)
       // the best title matches, then how well the person's record answers each one's requirements

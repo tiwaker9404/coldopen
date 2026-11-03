@@ -281,7 +281,7 @@ describe('raised recently', () => {
     ].join('\n')
     const f = formDs(idx)
     expect(f).toHaveLength(4)
-    expect(f[0]).toEqual({ filer: 'RETOOL INC', date: '2026-02-01' })
+    expect(f[0]).toEqual({ filer: 'RETOOL INC', date: '2026-02-01', path: 'edgar/data/1/b.txt' })
     const out = match(
       [
         { name: 'Retool', key: 'ashby:retool' },
@@ -290,8 +290,10 @@ describe('raised recently', () => {
       f,
       '2025-11-03',
     )
-    // the latest of Retool's own filings; never the fund named after it; nothing older than a year
-    expect(out).toEqual({ 'ashby:retool': { date: '2026-03-02', filer: 'Retool, Inc.' } })
+    // the latest of Retool's own filings; never the fund named after it; nothing older than the window
+    expect(out).toEqual({
+      'ashby:retool': { date: '2026-03-02', filer: 'Retool, Inc.', path: 'edgar/data/1/c.txt' },
+    })
     const { raisedSince } = await import('../../src/jobs/companies.ts')
     // the last 3 months' rounds count, which spans two quarterly indexes
     expect(raisedSince(new Date('2026-11-03T12:00:00Z'))).toBe('2026-08-05')
@@ -308,6 +310,27 @@ describe('raised recently', () => {
       { year: 2026, q: 3 },
       { year: 2026, q: 4 },
     ])
+  })
+})
+
+describe('round sizes from Form D', () => {
+  it('reads the amount sold from the filing, and sorts it into a size', async () => {
+    const { amountSold, formUrl } = await import('../../src/jobs/raised-build.ts')
+    const { sizeOf } = await import('../../src/jobs/companies.ts')
+    expect(formUrl('edgar/data/1725255/0001725255-26-000003.txt')).toBe(
+      'https://www.sec.gov/Archives/edgar/data/1725255/000172525526000003/primary_doc.xml',
+    )
+    expect(formUrl('nonsense')).toBeNull()
+    const xml = (sold: string) =>
+      `<offeringSalesAmounts><totalOfferingAmount>Indefinite</totalOfferingAmount><totalAmountSold>${sold}</totalAmountSold></offeringSalesAmounts>`
+    expect(amountSold(xml('87000000'))).toBe(87_000_000)
+    expect(amountSold(xml('0'))).toBeNull()
+    expect(amountSold('<edgarSubmission/>')).toBeNull()
+    expect(sizeOf(1_500_000)).toBe('seed')
+    expect(sizeOf(3_000_000)).toBe('a')
+    expect(sizeOf(45_000_000)).toBe('b')
+    expect(sizeOf(87_000_000)).toBe('c')
+    expect(sizeOf(undefined)).toBeNull()
   })
 })
 

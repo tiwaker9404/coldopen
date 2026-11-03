@@ -28,6 +28,8 @@ export interface Raised {
   date: string
   /** the filer, as EDGAR names it */
   filer: string
+  /** dollars sold in the round so far, as the filing states it (not the most it may raise) */
+  amount?: number
 }
 
 /** Words a company's legal name often adds to its brand: "Ramp Business Corp" for Ramp */
@@ -66,6 +68,8 @@ export function sameFiler(brand: string, filer: string): boolean {
 export interface Filing {
   filer: string
   date: string
+  /** the filing's path in EDGAR, "edgar/data/1234567/0001234567-26-000123.txt" */
+  path?: string
 }
 
 /**
@@ -75,8 +79,8 @@ export interface Filing {
 export function formDs(index: string): Filing[] {
   const out: Filing[] = []
   for (const line of index.split('\n')) {
-    const m = /^(D|D\/A)\s{2,}(.+?)\s{2,}\d+\s+(\d{4}-\d{2}-\d{2})\s/.exec(line)
-    if (m) out.push({ filer: m[2]!.trim(), date: m[3]! })
+    const m = /^(D|D\/A)\s{2,}(.+?)\s{2,}\d+\s+(\d{4}-\d{2}-\d{2})\s+(edgar\/\S+)?/.exec(line)
+    if (m) out.push({ filer: m[2]!.trim(), date: m[3]!, ...(m[4] ? { path: m[4] } : {}) })
   }
   return out
 }
@@ -99,12 +103,27 @@ export function quartersSince(from: Date, now: Date): { year: number; q: number 
   return out
 }
 
-/** Each board's latest Form D on or after `since`, from the filings */
+/** Where a filing's form lives: edgar/data/CIK/ACCESSION.txt -> .../ACCESSIONNODASHES/primary_doc.xml */
+export function formUrl(path: string): string | null {
+  const m = /^edgar\/data\/(\d+)\/(\d{10}-\d{2}-\d{6})\.txt$/.exec(path)
+  return m
+    ? `https://www.sec.gov/Archives/edgar/data/${m[1]}/${m[2]!.replace(/-/g, '')}/primary_doc.xml`
+    : null
+}
+
+/** "Total Amount Sold" from a Form D's XML, in dollars, or null when it isn't a plain number */
+export function amountSold(xml: string): number | null {
+  const m = /<totalAmountSold>\s*([\d.,]+)\s*<\/totalAmountSold>/i.exec(xml)
+  const n = m ? Number(m[1]!.replace(/,/g, '')) : Number.NaN
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : null
+}
+
+/** Each board's latest Form D on or after `since`, from the filings, with where to read it */
 export function match(
   boards: { name: string; key: string }[],
   filings: Filing[],
   since: string,
-): Record<string, Raised> {
+): Record<string, Raised & { path?: string }> {
   // index filings by their first word, so each board compares against a handful, not all of them
   const byFirst = new Map<string, Filing[]>()
   for (const f of filings) {
@@ -115,14 +134,15 @@ export function match(
     if (list) list.push(f)
     else byFirst.set(first, [f])
   }
-  const out: Record<string, Raised> = {}
+  const out: Record<string, Raised & { path?: string }> = {}
   for (const b of boards) {
     // short names match too many filers to trust
     if (employerKey(b.name).replace(/ /g, '').length < 5) continue
     const first = employerKey(b.name).split(' ')[0]!
     for (const f of byFirst.get(first) ?? []) {
       if (!sameFiler(b.name, f.filer)) continue
-      if (!out[b.key] || f.date > out[b.key]!.date) out[b.key] = { date: f.date, filer: f.filer }
+      if (!out[b.key] || f.date > out[b.key]!.date)
+        out[b.key] = { date: f.date, filer: f.filer, ...(f.path ? { path: f.path } : {}) }
     }
   }
   return Object.fromEntries(Object.entries(out).sort(([a], [b]) => a.localeCompare(b)))
@@ -165,13 +185,26 @@ async function main() {
   }
   // early in a quarter its index can still be empty; that's no reason to fail
   if (filings.length === 0) console.log('EDGAR lists no Form D filings for the last 3 months yet')
-  const out = match(
+  const matched = match(
     DEFAULT_BOARDS.map((b) => ({ name: b.name, key: boardKey(b) })),
     filings,
     since,
   )
+  // how much each round raised, from its own filing: a few dozen small downloads
+  const out: Record<string, Raised> = {}
+  for (const [k, { path, ...r }] of Object.entries(matched)) {
+    const url = path ? formUrl(path) : null
+    const xml = url ? await text(url).catch(() => null) : null
+    const amount = xml ? amountSold(xml) : null
+    out[k] = { ...r, ...(amount ? { amount } : {}) }
+    await sleep(200)
+  }
   if (!report) await writeFile(OUT, `${JSON.stringify(out, null, 0).replace(/},"/g, '},\n"')}\n`)
-  else for (const [k, v] of Object.entries(out)) console.log(`${v.date}  ${v.filer}  (${k})`)
+  else
+    for (const [k, v] of Object.entries(out))
+      console.log(
+        `${v.date}  ${v.filer}  ${v.amount ? `$${(v.amount / 1e6).toFixed(1)}M` : 'amount not stated'}  (${k})`,
+      )
   const window = report ? `the last ${report} days` : 'the last 3 months'
   const line = `${Object.keys(out).length} of ${DEFAULT_BOARDS.length} companies filed a Form D in ${window} (from ${filings.length.toLocaleString('en-US')} Form D filings)`
   console.log(line)

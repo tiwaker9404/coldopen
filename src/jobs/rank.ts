@@ -51,6 +51,8 @@ export const SearchSchema = z.object({
   visaOnly: z.boolean().default(false),
   /** only companies that filed a Form D (raised a private round) in the last 3 months */
   raisedOnly: z.boolean().default(false),
+  /** with raisedOnly: only rounds of this size, from the amount the Form D says was sold */
+  raisedSize: z.enum(['any', 'seed', 'a', 'b', 'c']).default('any'),
   /** best fit first, or the companies adding the most roles lately first */
   sort: z.enum(['best', 'fastest']).default('best'),
   /** only roles posted in the last week or month */
@@ -73,7 +75,7 @@ export interface Suggestion extends Job {
   /** H-1B petitions the company had approved in the latest fiscal year */
   visa?: { approvals: number; year: number }
   /** the company's SEC Form D (a private round) in the last 3 months */
-  raised?: { date: string; filer: string }
+  raised?: { date: string; filer: string; amount?: number }
   /** short reasons, shown as chips: "Forward Deployed Engineer", "San Francisco", "New this week" */
   why: string[]
 }

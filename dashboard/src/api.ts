@@ -381,7 +381,8 @@ export interface JobSuggestion {
   /** H-1B petitions the company had approved in the latest fiscal year */
   visa?: { approvals: number; year: number }
   /** the company's latest SEC Form D (a private round) in the last year */
-  raised?: { date: string; filer: string }
+  /** a Form D in the last 3 months; amount is dollars sold, when the filing states it */
+  raised?: { date: string; filer: string; amount?: number }
   /** full time, part time, contract or internship, when the board says */
   type?: 'full_time' | 'part_time' | 'contract' | 'intern'
   /** remote, hybrid or on site, when the board says */
@@ -414,8 +415,10 @@ export interface JobSearch {
   sort: 'best' | 'fastest'
   /** only companies with H-1B approvals last year */
   visaOnly: boolean
-  /** only companies that raised a private round in the last year */
+  /** only companies that raised a private round in the last 3 months */
   raisedOnly: boolean
+  /** with raisedOnly: the round's size */
+  raisedSize?: RaisedSize
   /** US only (default) or anywhere */
   country: 'us' | 'any'
   /** how senior, from the title; empty: any */
@@ -489,6 +492,32 @@ export interface FollowUps {
   /** sent films not due yet */
   waiting: number
   nextDueAt: string | null
+}
+
+/** round sizes, from the dollars a Form D says were sold (it never names the round) */
+export type RaisedSize = 'any' | 'seed' | 'a' | 'b' | 'c'
+export const RAISED_SIZES: {
+  id: Exclude<RaisedSize, 'any'>
+  label: string
+  hint: string
+  max: number
+}[] = [
+  { id: 'seed', label: 'Under $3M', hint: 'usually pre-seed or seed', max: 3e6 },
+  { id: 'a', label: '$3M to $20M', hint: 'usually Series A', max: 2e7 },
+  { id: 'b', label: '$20M to $80M', hint: 'usually Series B', max: 8e7 },
+  {
+    id: 'c',
+    label: '$80M and up',
+    hint: 'usually Series C or later',
+    max: Number.POSITIVE_INFINITY,
+  },
+]
+
+/** "$45M", "$2.5M", "$800K" */
+export function dollars(n: number): string {
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(n >= 1e10 ? 0 : 1).replace(/\.0$/, '')}B`
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '')}M`
+  return `$${Math.round(n / 1e3)}K`
 }
 
 /** a brief for the call once they reply, from the film's own research */

@@ -3,12 +3,15 @@ import { useEffect, useRef, useState } from 'react'
 import {
   ago,
   api,
+  dollars,
   type Film,
   type FitGap,
   type JobSearch,
   type JobSuggestion,
   type JobSuggestions,
   type Me,
+  RAISED_SIZES,
+  type RaisedSize,
   send,
 } from './api.ts'
 import { FUNCTIONS } from './functions.ts'
@@ -159,6 +162,10 @@ export function Jobs({
             {r.search.ycOnly && ' at YC companies'}
             {r.search.visaOnly && ' that sponsor H-1B visas'}
             {r.search.raisedOnly && ', raised in the last 3 months'}
+            {r.search.raisedOnly &&
+              r.search.raisedSize &&
+              r.search.raisedSize !== 'any' &&
+              ` (${RAISED_SIZES.find((x) => x.id === r.search.raisedSize)?.label})`}
             {r.search.sort === 'fastest' && ', hiring fastest first'}
             {`. ${r.data.length} matches across ${r.companies} companies`}
             {r.updatedAt && `, checked ${ago(r.updatedAt)}`}
@@ -326,9 +333,9 @@ function JobRow({
           {job.raised && (
             <span
               className="tag raised"
-              title={`${job.raised.filer} filed an SEC Form D (a private funding round) on ${job.raised.date}`}
+              title={`${job.raised.filer} filed an SEC Form D (a private funding round) on ${job.raised.date}${job.raised.amount ? `, with ${dollars(job.raised.amount)} sold so far: ${RAISED_SIZES.find((x) => job.raised!.amount! < x.max)?.hint}` : ''}`}
             >
-              Raised{' '}
+              Raised {job.raised.amount ? `${dollars(job.raised.amount)} ` : ''}
               {new Date(`${job.raised.date}T12:00:00`).toLocaleDateString(undefined, {
                 month: 'short',
                 year: 'numeric',
@@ -644,6 +651,7 @@ function SearchForm({
   const [excludeSkills, setExcludeSkills] = useState(search.excludeSkills.join(', '))
   const [ycOnly, setYcOnly] = useState(search.ycOnly)
   const [raisedOnly, setRaisedOnly] = useState(search.raisedOnly)
+  const [raisedSize, setRaisedSize] = useState<RaisedSize>(search.raisedSize ?? 'any')
   const [exclude, setExclude] = useState(search.exclude.join(', '))
   const [sort, setSort] = useState(search.sort)
   const [boards, setBoards] = useState(
@@ -694,6 +702,7 @@ function SearchForm({
         excludeSkills: list(excludeSkills).slice(0, 20),
         ycOnly,
         raisedOnly,
+        raisedSize: raisedOnly ? raisedSize : 'any',
         exclude: list(exclude).slice(0, 50),
         sort,
         boards: list(boards),
@@ -909,6 +918,22 @@ function SearchForm({
                   onChange={(e) => setRaisedOnly(e.target.checked)}
                 />
                 Raised in the last 3 months
+              </label>
+            )}
+            {raisedOnly && (
+              <label className="inline-select">
+                <span>Round size</span>
+                <select
+                  value={raisedSize}
+                  onChange={(e) => setRaisedSize(e.target.value as RaisedSize)}
+                >
+                  <option value="any">Any size</option>
+                  {RAISED_SIZES.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label} ({r.hint})
+                    </option>
+                  ))}
+                </select>
               </label>
             )}
           </div>
