@@ -3265,3 +3265,16 @@ kbd {
 a.tag {
   text-decoration: none;
 }
+
+.mcp pre {
+  overflow-x: auto;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--soft);
+  font-size: 12px;
+  white-space: pre;
+}
+
+.mcp .token {
+  word-break: break-all;
+}
