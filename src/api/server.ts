@@ -51,6 +51,7 @@ import {
   type OutreachStatus,
   watchedFrom,
 } from '../outreach/followup.ts'
+import { type CrmState, checkHubSpot, HubSpotError, syncFilm } from '../outreach/hubspot.ts'
 import { addressed, draftMessages } from '../outreach/messages.ts'
 import {
   type Connection,
@@ -119,6 +120,8 @@ const RecipientSchema = z.object({
 type Recipient = z.infer<typeof RecipientSchema>
 
 interface FilmRow extends Run {
+  /** what's been synced to the sender's HubSpot */
+  crm?: CrmState | null
   /** the sender's one detail from using the company's product, in their words */
   detail?: string | null
   input: z.infer<typeof FilmInputSchema>
@@ -171,6 +174,10 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
     recipient: r.recipient ?? null,
     /** the sender's one detail from using their product */
     detail: r.detail ?? null,
+    /** synced to the sender's HubSpot: when, and the error if the last try failed */
+    crm: r.crm
+      ? { syncedAt: r.crm.syncedAt, error: r.crm.error ?? null, noted: r.crm.noted }
+      : null,
     /** the first film, when this one re-renders it with an edited script */
     editOf: r.input.editOf ?? null,
   }
@@ -193,6 +200,8 @@ export interface ApiDeps {
   hunterFetch?: FetchFn
   /** for tests: how sign-in providers are called (default: their real APIs) */
   authFetch?: typeof fetch
+  /** for tests: how HubSpot is called (default: its real API) */
+  crmFetch?: FetchFn
 }
 
 export async function buildApi({
@@ -204,6 +213,7 @@ export async function buildApi({
   jobsFetch,
   hunterFetch = fetch,
   authFetch,
+  crmFetch = fetch,
 }: ApiDeps) {
   const filmsDir = resolve(cfg.FILMS_DIR)
   const publicUrl = cfg.PUBLIC_URL
@@ -1313,6 +1323,7 @@ export async function buildApi({
       const [r] = await sql<FilmRow[]>`
         update runs set outreach = ${next ? sql.json(next as never) : null}
         where id = ${req.params.id} returning *`
+      void syncCrm(r!)
       return filmDto(r!, publicUrl)
     },
   )
@@ -1321,6 +1332,44 @@ export async function buildApi({
   // keys are sealed with the server's secret; a private install without one uses its database URL
   const keySecret = cfg.SESSION_SECRET ?? cfg.DATABASE_URL
 
+  /**
+   * Brings the sender's HubSpot up to date for a film, when they saved a HubSpot token: the
+   * company, the contact it went to, and a note for each step. Never fails the request it rides on.
+   */
+  const syncCrm = async (run: FilmRow): Promise<CrmState | null> => {
+    if (!run.output || !run.outreach) return null
+    const owner = run.owner ?? 'team'
+    const token = await readKey(sql, keySecret, owner, 'hubspot')
+    if (!token) return null
+    const views = (await viewSummaries(sql, [run.id])).get(run.id)
+    let state: CrmState
+    try {
+      state = await syncFilm(
+        token,
+        {
+          company: run.output.company,
+          domain: domainOf(run.output.host ?? run.input.url),
+          share: filmDto(run, publicUrl).share!,
+          role: run.output.job?.title ?? null,
+          recipient: run.recipient ?? null,
+          status: run.outreach.status,
+          watched: (views?.plays ?? 0) > 0,
+        },
+        run.crm ?? null,
+        crmFetch,
+      )
+    } catch (err) {
+      state = {
+        ...(run.crm ?? { noted: [] }),
+        noted: run.crm?.noted ?? [],
+        syncedAt: new Date().toISOString(),
+        error: err instanceof HubSpotError ? err.message : 'HubSpot could not be reached',
+      }
+      log.warn({ err, film: run.id }, 'HubSpot sync failed')
+    }
+    await sql`update runs set crm = ${sql.json(state as never)} where id = ${run.id}`
+    return state
+  }
   app.put(
     '/v1/films/:id/recipient',
     {
@@ -1338,6 +1387,7 @@ export async function buildApi({
       const [r] = await sql<FilmRow[]>`
         update runs set recipient = ${req.body ? sql.json(req.body as never) : null}
         where id = ${req.params.id} returning *`
+      void syncCrm(r!)
       return filmDto(r!, publicUrl)
     },
   )
@@ -1497,6 +1547,65 @@ export async function buildApi({
     '/v1/me/keys/hunter',
     { schema: { tags: ['account'], summary: 'Forget your Hunter key' } },
     async (req) => ({ deleted: await deleteKey(sql, req.owner, 'hunter') }),
+  )
+
+  app.put(
+    '/v1/me/keys/hubspot',
+    {
+      schema: {
+        tags: ['account'],
+        summary: 'Save your HubSpot private app token, to sync films to your CRM',
+        description:
+          'A private app token with contacts and companies (read and write). Checked with HubSpot first, then kept encrypted. Films you mark sent are synced from then on.',
+        body: z.object({ key: z.string().trim().min(10).max(300) }),
+      },
+    },
+    async (req, reply) => {
+      try {
+        const { portal } = await checkHubSpot(req.body.key, crmFetch)
+        await saveKey(sql, keySecret, req.owner, 'hubspot', req.body.key)
+        return { saved: true, last4: req.body.key.slice(-4), portal }
+      } catch (err) {
+        const msg = err instanceof HubSpotError ? err.message : 'HubSpot could not be reached'
+        return reply.status(422).send({ error: { code: 'bad_key', message: msg } })
+      }
+    },
+  )
+
+  app.delete(
+    '/v1/me/keys/hubspot',
+    { schema: { tags: ['account'], summary: 'Forget your HubSpot token' } },
+    async (req) => ({ deleted: await deleteKey(sql, req.owner, 'hubspot') }),
+  )
+
+  app.post(
+    '/v1/crm/sync',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Sync every film you sent to HubSpot now',
+        description:
+          'Companies, the people they went to, and a note for each step (sent, watched, replied, interview). Usually automatic; this catches up films sent before you connected HubSpot.',
+      },
+    },
+    async (req, reply) => {
+      if (!(await readKey(sql, keySecret, req.owner, 'hubspot')))
+        return reply.status(409).send({
+          error: { code: 'no_hubspot', message: 'Save your HubSpot token on Profile first' },
+        })
+      const rows = await sql<FilmRow[]>`
+        select * from runs where agent = 'film' and owner = ${req.owner} and status = 'succeeded'
+          and outreach is not null
+        order by id desc limit 200`
+      let synced = 0
+      let failed = 0
+      for (const r of rows) {
+        const s = await syncCrm(r)
+        if (s?.error) failed++
+        else if (s) synced++
+      }
+      return { synced, failed }
+    },
   )
 
   app.get(

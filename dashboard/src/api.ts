@@ -36,6 +36,8 @@ export interface Film {
   recipient: Recipient | null
   /** your one detail from using their product */
   detail?: string | null
+  /** synced to your HubSpot */
+  crm?: { syncedAt: string; error: string | null; noted: string[] } | null
 }
 
 export interface Recipient {

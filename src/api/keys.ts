@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 import type { Sql } from '../db/index.ts'
 
 /**
- * Keys people give coldopen for their own accounts on other services (today: Hunter), kept
+ * Keys people give coldopen for their own accounts on other services (Hunter, HubSpot), kept
  * encrypted at rest (AES-256-GCM, keyed from the server's secret) and never sent back whole:
  * the app only ever shows the last four characters.
  */
@@ -28,7 +28,7 @@ export function open(secret: string, sealed: string): string | null {
   }
 }
 
-export type KeyName = 'hunter'
+export type KeyName = 'hunter' | 'hubspot'
 
 export async function saveKey(sql: Sql, secret: string, owner: string, name: KeyName, key: string) {
   await sql`

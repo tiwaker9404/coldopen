@@ -257,6 +257,9 @@ export function Tools({ me }: { me: Me | undefined }) {
       <li>
         <HunterKey />
       </li>
+      <li>
+        <HubSpotKey />
+      </li>
       {!signedOut && (
         <li>
           <McpAccess />
@@ -434,6 +437,94 @@ function McpAccess() {
       )}
       {make.error && <p className="error">{make.error.message}</p>}
     </div>
+  )
+}
+
+/** Sync to HubSpot: a private app token, kept encrypted; films sync as they're marked */
+function HubSpotKey() {
+  const qc = useQueryClient()
+  const toast = useToast()
+  const keys = useQuery({
+    queryKey: ['keys'],
+    queryFn: () => api<{ hunter?: { last4: string }; hubspot?: { last4: string } }>('/v1/me/keys'),
+  })
+  const [key, setKey] = useState('')
+  const save = useMutation({
+    mutationFn: () => send('PUT', '/v1/me/keys/hubspot', { key: key.trim() }),
+    onSuccess: () => {
+      setKey('')
+      toast({ text: 'HubSpot connected. Films you mark sent sync from now on.' })
+      void qc.invalidateQueries({ queryKey: ['keys'] })
+    },
+  })
+  const sync = useMutation({
+    mutationFn: () => send<{ synced: number; failed: number }>('POST', '/v1/crm/sync', {}),
+    onSuccess: (r) =>
+      toast({
+        text: `Synced ${r.synced} film${r.synced === 1 ? '' : 's'} to HubSpot${r.failed ? `; ${r.failed} failed` : ''}.`,
+      }),
+  })
+  const remove = useMutation({
+    mutationFn: () => send('DELETE', '/v1/me/keys/hubspot'),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['keys'] }),
+  })
+  const saved = keys.data?.hubspot
+  return (
+    <>
+      <div>
+        <h3>Sync to HubSpot</h3>
+        <p>
+          Every film you send lands in your free{' '}
+          <a href="https://www.hubspot.com/products/crm" target="_blank" rel="noreferrer">
+            HubSpot CRM
+          </a>
+          : the company, the person it went to, and a note on their timeline when you send it, when
+          they watch, reply or book an interview. In HubSpot, make a private app (Settings,
+          Integrations, Private apps) with contacts and companies, read and write, and paste its
+          token here. It's kept encrypted.
+        </p>
+        {!saved && (
+          <form
+            className="key-form"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (key.trim()) save.mutate()
+            }}
+          >
+            <input
+              type="password"
+              autoComplete="off"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="Paste your HubSpot private app token"
+              aria-label="HubSpot private app token"
+            />
+            <button type="submit" disabled={save.isPending || !key.trim()}>
+              {save.isPending ? 'Checking…' : 'Connect'}
+            </button>
+          </form>
+        )}
+        {(save.error || sync.error) && (
+          <p className="error">{(save.error ?? sync.error)!.message}</p>
+        )}
+      </div>
+      {saved && (
+        <div className="tool-state">
+          <span className="on">Connected, token ending {saved.last4}</span>
+          <button
+            type="button"
+            className="link"
+            onClick={() => sync.mutate()}
+            disabled={sync.isPending}
+          >
+            {sync.isPending ? 'Syncing…' : 'Sync all now'}
+          </button>
+          <button type="button" className="link" onClick={() => remove.mutate()}>
+            Remove
+          </button>
+        </div>
+      )}
+    </>
   )
 }
 

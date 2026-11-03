@@ -345,6 +345,13 @@ function SendSteps({ film }: { film: FilmDetail }) {
         <li>
           <section className="block">
             <h3>Mark it sent</h3>
+            {film.crm && (
+              <p className={film.crm.error ? 'small error' : 'small muted'}>
+                {film.crm.error
+                  ? `HubSpot: ${film.crm.error}`
+                  : `In HubSpot: ${film.crm.noted.join(', ') || 'company added'}, synced ${ago(film.crm.syncedAt)}.`}
+              </p>
+            )}
             {status ? (
               <p>
                 {status === 'sent'
