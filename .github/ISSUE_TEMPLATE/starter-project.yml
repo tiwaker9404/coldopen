@@ -1,0 +1,26 @@
+name: Starter project
+description: Claim one of the starter projects from CONTRIBUTING.md
+title: "Starter: "
+labels: ["good first issue"]
+body:
+  - type: dropdown
+    id: project
+    attributes:
+      label: Which one
+      options:
+        - A new scene
+        - A new writer preset
+        - A new job board
+        - A 4:5 format
+        - A sharper brand read
+        - More homework
+        - Something else (describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: plan
+    attributes:
+      label: Your plan
+      description: A few lines on what you'll build and which files you'll touch.
+    validations:
+      required: true

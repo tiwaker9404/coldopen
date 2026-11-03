@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build on coldopen</title>
+<meta name="description" content="coldopen is open source: a durable pipeline that turns a company's URL into a 30-second film. Use it through the API, MCP, the CLI or your own server, and pick a starter project.">
+<meta property="og:title" content="Build on coldopen">
+<meta property="og:description" content="A URL in, a 30-second film out, through a pipeline you can kill mid-render. MIT licensed.">
+<meta property="og:image" content="../media/og.jpg">
+<meta name="theme-color" content="#FFC21A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23FFC21A'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23E5291F'/%3E%3C/svg%3E">
+<link rel="preload" href="../fonts/big-shoulders.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:"Big Shoulders";src:url(../fonts/big-shoulders.woff2) format("woff2-variations");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Instrument Sans";src:url(../fonts/instrument-sans.woff2) format("woff2-variations");font-weight:400 700;font-stretch:75% 100%;font-display:swap}
+:root{
+  --stock:#FFC21A;--slate:#000;--screen:#F6F6F3;--paper:#fff;--ink:#141414;--grain:#5E6168;--rule:#D9DAD6;--tally:#E5291F;
+  --display:"Big Shoulders",Impact,"Arial Narrow",sans-serif;--body:"Instrument Sans",system-ui,sans-serif;
+  color-scheme:light
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--screen);color:var(--ink);font:400 17px/1.6 var(--body);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-underline-offset:3px;text-decoration-thickness:1px}
+:focus-visible{outline:3px solid #1F5BD8;outline-offset:3px}
+.wrap{max-width:1200px;margin:0 auto;padding:0 32px}
+h1,h2,h3{font-family:var(--display);font-weight:800;line-height:.92;letter-spacing:-.005em}
+
+.set{background:var(--stock);color:var(--slate)}
+.top{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+.mark{display:inline-flex;align-items:center;gap:10px;font:800 30px/1 var(--display);text-decoration:none;letter-spacing:-.01em}
+.mark i{width:12px;height:12px;border-radius:50%;background:var(--tally);box-shadow:0 0 0 3px rgb(229 41 31/.18)}
+.top nav{display:flex;gap:26px;font-size:15px;font-weight:550}
+.top nav a{text-decoration:none}
+.top nav a:hover{text-decoration:underline}
+.hero{padding:40px 0 88px}
+.hero h1{font-size:clamp(58px,8vw,124px);line-height:.86;letter-spacing:-.012em;max-width:12ch}
+.lede{font-size:20px;line-height:1.5;max-width:48ch;margin:28px 0 30px}
+.ctas{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:16px 24px;border-radius:999px;background:var(--slate);color:var(--stock);font-weight:650;font-size:17px;text-decoration:none}
+.btn:hover{background:#262626}
+.btn i{width:9px;height:9px;border-radius:50%;background:var(--tally)}
+.quiet{font-weight:600}
+.bar{height:12px;background:repeating-linear-gradient(-55deg,#000 0 22px,#fff 22px 44px)}
+
+section{padding:96px 0}
+section+section{border-top:1px solid var(--rule)}
+h2{font-size:clamp(44px,6.2vw,84px);max-width:16ch}
+.intro{color:var(--grain);font-size:19px;max-width:60ch;margin-top:18px}
+
+.ways{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:48px}
+.way{background:var(--paper);border:1px solid var(--rule);border-radius:14px;padding:26px 26px 22px;min-width:0}
+.way h3{font-size:36px;line-height:1}
+.way p{color:var(--grain);margin-top:8px;font-size:16px}
+.way pre{margin-top:16px}
+pre{background:var(--slate);color:#EDEDEA;border-radius:10px;padding:16px 18px;overflow-x:auto;font:500 13.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace}
+pre .c{color:#9A9DA3}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
+
+.shots{list-style:none;margin-top:48px;counter-reset:s}
+.shots li{display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1.5fr);gap:28px;padding:24px 0;border-top:1.5px solid var(--ink);counter-increment:s;align-items:baseline}
+.shots li:last-child{border-bottom:1.5px solid var(--ink)}
+.shots li::before{content:"Shot " counter(s);font:800 28px/1 var(--display)}
+.shots h3{font-size:32px;line-height:1}
+.shots p{color:var(--grain)}
+
+.bench{display:flex;gap:64px;margin-top:44px;flex-wrap:wrap}
+.bench b{display:block;font:900 110px/.8 var(--display)}
+.bench span{color:var(--grain);font-size:15.5px;display:block;max-width:24ch;margin-top:12px}
+.notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px 44px;margin-top:56px}
+.notes h3{font-size:28px;line-height:1;margin-bottom:8px}
+.notes p{color:var(--grain);font-size:16px}
+
+.starters{list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:48px}
+.starters li{background:var(--paper);border:1px solid var(--rule);border-radius:14px;padding:22px 22px 18px;display:grid;gap:8px;align-content:start}
+.starters h3{font-size:28px;line-height:1}
+.starters p{color:var(--grain);font-size:15.5px}
+.starters .files{font-size:13.5px;color:var(--ink)}
+.starters .files code{background:#EFEFEA;border-radius:4px;padding:1px 5px}
+.tag{justify-self:start;font-size:12.5px;font-weight:650;border:1.5px solid var(--ink);border-radius:99px;padding:2px 9px}
+
+.credits{background:var(--slate);color:#fff;padding:96px 0 48px;text-align:center}
+.credits h2{margin:0 auto;font-size:clamp(40px,5vw,64px);max-width:none}
+.roll{display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;max-width:680px;margin:44px auto 0;font-size:16px}
+.roll dt{text-align:right;color:#A8AAAE}
+.roll dd{text-align:left;font-weight:600}
+.credits .btn{background:var(--stock);color:#000;margin-top:48px}
+.credits .btn:hover{background:#FFD24F}
+.legal{margin-top:64px;color:#A8AAAE;font-size:14px;display:flex;justify-content:center;gap:22px;flex-wrap:wrap}
+
+@media (max-width:960px){
+  .ways{grid-template-columns:1fr}
+  .notes,.starters{grid-template-columns:1fr 1fr}
+  .shots li{grid-template-columns:1fr;gap:8px}
+}
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .top nav{gap:16px;font-size:14px}
+  .notes,.starters{grid-template-columns:1fr}
+  .bench{gap:36px}
+  .bench b{font-size:84px}
+  .roll{grid-template-columns:1fr;gap:2px}
+  .roll dt,.roll dd{text-align:center}
+  .roll dd{margin-bottom:12px}
+}
+</style>
+</head>
+<body>
+<header class="set">
+  <div class="wrap">
+    <div class="top">
+      <a class="mark" href="../"><i aria-hidden="true"></i>coldopen</a>
+      <nav aria-label="Site">
+        <a href="../">Home</a>
+        <a href="#ways">Ways in</a>
+        <a href="#starters">Starter projects</a>
+        <a href="https://github.com/tiwaker9404/coldopen">GitHub</a>
+      </nav>
+    </div>
+    <div class="hero">
+      <h1>Build on coldopen.</h1>
+      <p class="lede">A company’s URL goes in, a 30-second film in their brand comes out. Every step is a checkpoint in Postgres, so you can kill the renderer halfway through and a new worker finishes the film. MIT licensed, and it runs on free tiers.</p>
+      <div class="ctas">
+        <a class="btn" href="https://github.com/tiwaker9404/coldopen"><i aria-hidden="true"></i>Read the code</a>
+        <a class="quiet" href="#starters">Pick a starter project</a>
+      </div>
+    </div>
+  </div>
+  <div class="bar" aria-hidden="true"></div>
+</header>
+
+<main class="wrap">
+  <section id="ways" aria-labelledby="ways-h">
+    <h2 id="ways-h">Four ways in.</h2>
+    <p class="intro">The same engine behind each one. Nothing is ever sent for you: every way in makes films and drafts, and a person decides what goes out.</p>
+    <div class="ways">
+      <div class="way">
+        <h3>REST API</h3>
+        <p>Make a film, poll its progress, draft the messages, read who watched. OpenAPI docs are live on the hosted app at <a href="https://coldopen-nk8o.onrender.com/docs">/docs</a>.</p>
+<pre tabindex="0" aria-label="Make a film with the API"><span class="c"># make a film for one company</span>
+curl -X POST $COLDOPEN/v1/films \
+  -H "Authorization: Bearer co_…" \
+  -H "Idempotency-Key: linear-1" \
+  -d '{"url":"https://linear.app"}'</pre>
+      </div>
+      <div class="way">
+        <h3>MCP server</h3>
+        <p>Ten tools for Claude, Cursor or ChatGPT: search jobs and YC startups, make films, draft messages, list follow-ups. Make an access token on your Profile page.</p>
+<pre tabindex="0" aria-label="Add the MCP server">claude mcp add --transport http coldopen \
+  https://coldopen-nk8o.onrender.com/mcp \
+  --header "Authorization: Bearer co_…"</pre>
+      </div>
+      <div class="way">
+        <h3>CLI</h3>
+        <p>A film from your terminal, with no server and no model: the built-in writer is free, offline and reproducible. Add <code>--model</code> for Ollama or any OpenAI-compatible API.</p>
+<pre tabindex="0" aria-label="Make a film from the CLI">git clone https://github.com/tiwaker9404/coldopen
+cd coldopen &amp;&amp; pnpm install
+pnpm film https://linear.app --job &lt;job link&gt;</pre>
+      </div>
+      <div class="way">
+        <h3>Your own server</h3>
+        <p>The API, the durable workers and Postgres in one compose file. The hosting guide covers free options with no card.</p>
+<pre tabindex="0" aria-label="Run your own server">docker compose up --build
+<span class="c"># then open http://localhost:8080</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="how-h">
+    <h2 id="how-h">How a URL becomes a film.</h2>
+    <ol class="shots">
+      <li><h3>Research</h3><p>Headless Chromium reads the homepage: colors, typefaces, logo, and every quotable fact. The job post’s requirements join the facts, and their RSS feeds add what they published lately.</p></li>
+      <li><h3>Script</h3><p>A writer fills six scenes, built in or any OpenAI-compatible model. Code checks every line: word limits, banned phrases, and every number traced to a source. A model gets its violations back and revises; lines it can’t fix fall back to the built-in writer.</p></li>
+      <li><h3>Compose</h3><p>Each scene is an HTML timeline in the company’s own fonts and colors, with paused animations so any frame can be drawn exactly.</p></li>
+      <li><h3>Render</h3><p>Scenes render in parallel, each in its own Chromium page, seeked frame by frame and encoded with ffmpeg. Every finished scene is its own checkpoint.</p></li>
+      <li><h3>Survive</h3><p>Runs are journaled in Postgres with leases. Kill a worker mid-film and the next one replays research and script from the journal, then renders only what’s left.</p></li>
+      <li><h3>Share</h3><p>A Cloudflare Worker serves the share page and counts real views (opened, played, finished) without storing IP addresses.</p></li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="eng-h">
+    <h2 id="eng-h">Tested like it matters.</h2>
+    <div class="bench">
+      <div><b>328</b><span>tests: unit, integration, runtime, and a chaos test that kills the worker mid-render</span></div>
+      <div><b>72</b><span>evals of script and design quality, run on every change</span></div>
+      <div><b>$0</b><span>to run: GitHub Actions, Supabase, Render and Cloudflare free tiers</span></div>
+    </div>
+    <div class="notes">
+      <div><h3>Grounded by design</h3><p>The model points at facts by id instead of quoting them, so code can verify that what’s on screen came from the source.</p></div>
+      <div><h3>Observable</h3><p>OpenTelemetry traces for every step and model call, and Prometheus metrics for queue lag, runs, replayed steps and model calls.</p></div>
+      <div><h3>Safe to host</h3><p>Research only opens public addresses, every redirect included. Rate limits per person, network and app keep the free tiers free.</p></div>
+    </div>
+  </section>
+
+  <section id="starters" aria-labelledby="starters-h">
+    <h2 id="starters-h">Starter projects.</h2>
+    <p class="intro">Six ways to make a first contribution, each with the files to open. Read <a href="https://github.com/tiwaker9404/coldopen/blob/main/CONTRIBUTING.md">CONTRIBUTING</a>, then open an issue with the starter project template to claim one.</p>
+    <ul class="starters">
+      <li><span class="tag">Design</span><h3>A new scene</h3><p>Add a seventh scene kind, like a customer quote over their logo.</p><p class="files"><code>src/script/storyboard.ts</code> <code>src/render/composition.ts</code></p></li>
+      <li><span class="tag">Writing</span><h3>A new writer preset</h3><p>Beyond job seekers, sellers, recruiters and hiring posts: founders raising, or students asking for a coffee chat.</p><p class="files"><code>src/script/types.ts</code> <code>src/script/writer.ts</code> <code>src/script/checks.ts</code></p></li>
+      <li><span class="tag">Data</span><h3>A new job board</h3><p>Greenhouse, Lever and Ashby are in. Add Workable, SmartRecruiters or Recruitee.</p><p class="files"><code>src/jobs/boards.ts</code> <code>test/unit/jobs.test.ts</code></p></li>
+      <li><span class="tag">Render</span><h3>A 4:5 format</h3><p>LinkedIn’s feed favors 4:5 video. Add the shape and make every scene fit it.</p><p class="files"><code>src/render/composition.ts</code> <code>src/film.ts</code></p></li>
+      <li><span class="tag">Research</span><h3>A sharper brand read</h3><p>Better logo picks and color roles on sites that hide their brand in images or CSS variables.</p><p class="files"><code>src/brand/extract.ts</code> <code>src/brand/color.ts</code></p></li>
+      <li><span class="tag">Research</span><h3>More homework</h3><p>Read a company’s YouTube channel feed, or their GitHub organization’s latest releases.</p><p class="files"><code>src/brand/homework.ts</code> <code>test/unit/homework.test.ts</code></p></li>
+    </ul>
+  </section>
+</main>
+
+<footer class="credits">
+  <div class="wrap">
+    <h2>Credits</h2>
+    <dl class="roll">
+      <dt>Designed and built by</dt><dd>Ashwin Tiwari</dd>
+      <dt>Open to</dt><dd>Forward Deployed and Solutions Engineer roles</dd>
+      <dt>Reach me at</dt><dd><a href="mailto:ashwintiwarizx@gmail.com">ashwintiwarizx@gmail.com</a></dd>
+      <dt>Ran on</dt><dd>Node, Postgres, Chromium, ffmpeg, free tiers</dd>
+    </dl>
+    <a class="btn" href="https://github.com/tiwaker9404/coldopen">Star it on GitHub</a>
+    <p class="legal"><span>MIT licensed</span><a href="../">coldopen</a></p>
+  </div>
+</footer>
+</body>
+</html>

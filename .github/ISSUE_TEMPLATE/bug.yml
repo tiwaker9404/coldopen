@@ -1,0 +1,16 @@
+name: Something's wrong
+description: A film, a page or a message didn't come out right
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got. A film link or a screenshot helps most.
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: The hosted app, your own server, or the CLI (and its version).

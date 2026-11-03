@@ -52,6 +52,7 @@ if (siteDir) {
   pages.push(
     { name: 'Landing', url: 'http://localhost:8099/' },
     { name: 'Hiring Index', url: 'http://localhost:8099/hiring-index/' },
+    { name: 'Developers', url: 'http://localhost:8099/developers/' },
   )
 }
 
