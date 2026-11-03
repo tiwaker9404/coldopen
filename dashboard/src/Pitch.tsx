@@ -41,6 +41,9 @@ export function Pitch({ onMade }: { onMade: (id: string) => void }) {
   const [site, setSite] = useState('')
   const [name, setName] = useState('')
   const [text, setText] = useState('')
+  // one candidate (a film made for them) or everyone (a hiring film to post on LinkedIn)
+  const [mode, setMode] = useState<'one' | 'everyone'>('one')
+  const everyone = mode === 'everyone'
   const [from, setFrom] = useState<From>(loadFrom)
   const set = (k: keyof From) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setFrom({ ...from, [k]: e.target.value })
@@ -54,20 +57,20 @@ export function Pitch({ onMade }: { onMade: (id: string) => void }) {
         throw new Error('That’s too short for a job post; paste all of it')
       if (pasted && !site.trim())
         throw new Error('Add your company’s website, so the film is in your brand')
-      if (text.trim().length < 80)
+      if (!everyone && text.trim().length < 80)
         throw new Error(
           'Paste the candidate’s whole profile or résumé, with the bullets under each role',
         )
-      if (!from.name.trim() || !from.contact.trim())
-        throw new Error('Add your name and where they can reply')
+      if (!from.name.trim() || (!everyone && !from.contact.trim()))
+        throw new Error(everyone ? 'Add your name' : 'Add your name and where they can reply')
       saveFrom(from)
       const profile = await send<ProfileData>('POST', '/v1/pitch/profile', {
-        candidateText: text,
-        ...(name.trim() ? { candidateName: name.trim() } : {}),
+        ...(everyone ? {} : { candidateText: text }),
+        ...(!everyone && name.trim() ? { candidateName: name.trim() } : {}),
         recruiter: {
           name: from.name.trim(),
           ...(from.company.trim() ? { company: from.company.trim() } : {}),
-          contact: from.contact.trim(),
+          contact: from.contact.trim() || 'the job post',
           ...(from.book.trim() ? { book: from.book.trim() } : {}),
         },
       })
@@ -95,6 +98,30 @@ export function Pitch({ onMade }: { onMade: (id: string) => void }) {
         make.mutate()
       }}
     >
+      <div className="switch" role="radiogroup" aria-label="Who the film is for">
+        {(
+          [
+            ['one', 'For one candidate'],
+            ['everyone', 'For everyone: a hiring post'],
+          ] as const
+        ).map(([k, label]) => (
+          // biome-ignore lint/a11y/useSemanticElements: radio-styled buttons are the WAI-ARIA pattern for this control
+          <button
+            key={k}
+            type="button"
+            role="radio"
+            aria-checked={mode === k}
+            onClick={() => setMode(k)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="muted small">
+        {everyone
+          ? 'A 30-second film that announces the role in your brand, with a LinkedIn post ready to paste. Made for small teams hiring without a recruiter.'
+          : 'A 30-second film made for one person, answering your role with their own results, plus a short InMail.'}
+      </p>
       <ol className="pitch-steps">
         <li>
           <h2>The role</h2>
@@ -108,8 +135,10 @@ export function Pitch({ onMade }: { onMade: (id: string) => void }) {
               spellCheck={false}
             />
             <small>
-              Greenhouse, Lever, Ashby or your careers page. The film quotes one requirement from
-              it.
+              Greenhouse, Lever, Ashby or your careers page.{' '}
+              {everyone
+                ? 'The film shows what the role would do, in the post’s own words.'
+                : 'The film quotes one requirement from it.'}
             </small>
           </label>
           {pasted && (
@@ -125,31 +154,34 @@ export function Pitch({ onMade }: { onMade: (id: string) => void }) {
             </label>
           )}
         </li>
-        <li>
-          <h2>The candidate</h2>
-          <label>
-            <span>
-              Their name <small>(optional: read from their profile when it’s there)</small>
-            </span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Priya Shah"
-            />
-          </label>
-          <label>
-            Their profile or résumé
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={9}
-              placeholder="Paste their LinkedIn profile or résumé, with the bullets under each role"
-            />
-            <small>
-              The film answers your role with their own results, word for word. Nothing is invented.
-            </small>
-          </label>
-        </li>
+        {!everyone && (
+          <li>
+            <h2>The candidate</h2>
+            <label>
+              <span>
+                Their name <small>(optional: read from their profile when it’s there)</small>
+              </span>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Priya Shah"
+              />
+            </label>
+            <label>
+              Their profile or résumé
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={9}
+                placeholder="Paste their LinkedIn profile or résumé, with the bullets under each role"
+              />
+              <small>
+                The film answers your role with their own results, word for word. Nothing is
+                invented.
+              </small>
+            </label>
+          </li>
+        )}
         <li>
           <h2>From you</h2>
           <div className="pitch-from">
@@ -163,25 +195,29 @@ export function Pitch({ onMade }: { onMade: (id: string) => void }) {
               </span>
               <input value={from.company} onChange={set('company')} autoComplete="organization" />
             </label>
-            <label>
-              Where they reply
-              <input
-                value={from.contact}
-                onChange={set('contact')}
-                placeholder="you@acme.com"
-                autoComplete="email"
-              />
-            </label>
-            <label>
-              <span>
-                Booking link <small>(optional)</small>
-              </span>
-              <input
-                value={from.book}
-                onChange={set('book')}
-                placeholder="https://cal.com/you/15min"
-              />
-            </label>
+            {!everyone && (
+              <>
+                <label>
+                  Where they reply
+                  <input
+                    value={from.contact}
+                    onChange={set('contact')}
+                    placeholder="you@acme.com"
+                    autoComplete="email"
+                  />
+                </label>
+                <label>
+                  <span>
+                    Booking link <small>(optional)</small>
+                  </span>
+                  <input
+                    value={from.book}
+                    onChange={set('book')}
+                    placeholder="https://cal.com/you/15min"
+                  />
+                </label>
+              </>
+            )}
           </div>
         </li>
       </ol>

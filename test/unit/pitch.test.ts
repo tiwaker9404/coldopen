@@ -5,7 +5,7 @@ import type { BrandKit } from '../../src/brand/types.ts'
 import { withJob } from '../../src/job/kit.ts'
 import { jobFromText } from '../../src/job/post.ts'
 import { draftMessages } from '../../src/outreach/messages.ts'
-import { PitchError, recruiterProfile } from '../../src/profile/pitch.ts'
+import { hiringProfile, PitchError, recruiterProfile, withRole } from '../../src/profile/pitch.ts'
 import { checkScript } from '../../src/script/checks.ts'
 import { buildStoryboard } from '../../src/script/storyboard.ts'
 import { deterministicScript } from '../../src/script/writer.ts'
@@ -181,5 +181,61 @@ describe('referral kit', () => {
     expect(m.forward).toContain('Reach Priya at priya@example.com')
     expect(m.intro).toContain(m.forward!)
     expect(m.intro).not.toContain('[forward]')
+  })
+})
+
+describe('a hiring film, for everyone', () => {
+  const kit = withJob(
+    {
+      ...base,
+      facts: [
+        ...base.facts,
+        { id: 'f3', text: '38% fewer late deliveries for our shippers', kind: 'stat' },
+      ],
+    },
+    jobFromText(POSTED),
+  )
+  const profile = withRole(
+    hiringProfile({ recruiter: { name: 'Sam Lee', company: 'Northwind Freight' } }),
+    kit,
+    'https://jobs.ashbyhq.com/northwind/123',
+  )
+
+  it("takes the post's own lines and the site's own numbers", () => {
+    expect(profile.points.every((p) => POSTED.includes(p))).toBe(true)
+    expect(profile.proof.map((p) => p.value)).toEqual(['2.4 million', '38%'])
+    expect(profile.cta.book).toBe('https://jobs.ashbyhq.com/northwind/123')
+  })
+
+  it('writes a clean script that announces the role', () => {
+    const script = deterministicScript(kit, profile)
+    expect(checkScript(script, kit, profile)).toEqual([])
+    expect(script.hook).toBe('Northwind Freight is hiring')
+    const board = buildStoryboard(kit, profile, script)
+    const hook = board.scenes[0]!
+    expect(hook.kind === 'hook' && hook.sub).toBe('Now hiring: Senior Data Analyst')
+    expect(
+      board.scenes.at(-1)!.kind === 'cta' && (board.scenes.at(-1) as { signoff: string }).signoff,
+    ).toBe('Posted by Sam Lee at Northwind Freight')
+  })
+
+  it('comes with a LinkedIn post to paste', () => {
+    const script = deterministicScript(kit, profile)
+    const m = draftMessages(
+      {
+        company: kit.name,
+        job: { title: 'Senior Data Analyst' },
+        script,
+        highlights: {
+          quote: { text: '38% fewer late deliveries for our shippers', source: kit.host },
+          proof: [],
+        },
+      },
+      profile,
+      'https://films.example/f/h1',
+    )
+    expect(m.post).toContain("We're hiring: Senior Data Analyst at Northwind Freight.")
+    expect(m.post).toContain('Apply: https://jobs.ashbyhq.com/northwind/123')
+    expect(m.post).toContain('https://films.example/f/h1')
   })
 })

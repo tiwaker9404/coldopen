@@ -9,7 +9,7 @@ export interface Film {
   batch: string | null
   sender: string
   /** Pitch a role: a recruiter's film made for one candidate */
-  pitch?: { candidate: string } | null
+  pitch?: { candidate?: string; hiring?: boolean } | null
   progress: { stage?: string; label?: string; percent?: number; scene?: number } | null
   attempts: number
   error: string | null
@@ -162,6 +162,8 @@ export interface Messages {
   intro: string
   /** the note they forward, about you in the third person */
   forward?: string
+  /** a hiring film: the LinkedIn post that carries it */
+  post?: string
   /** how the email measures up: short, about them, your detail, one ask */
   checks: { words: number; short: boolean; aboutThem: boolean; detail: boolean; oneAsk: boolean }
   /** which way this film's drafts open: half your films lead with the film, half with your best number */

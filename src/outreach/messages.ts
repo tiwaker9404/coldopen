@@ -22,10 +22,12 @@ export interface Messages {
    * referral form or team chat, so passing you on takes them one paste
    */
   forward?: string
+  /** a hiring film: the LinkedIn post that carries it, ready to paste */
+  post?: string
   /** how the email measures up to what makes cold email work */
   checks: EmailChecks
-  /** which opener these drafts lead with: half your films get each, so you learn which wins */
-  opener: Opener
+  /** which opener these drafts lead with: half your films get each, so you learn which wins (job seekers and sellers) */
+  opener?: Opener
   /** the email opens on their recent funding round (an SEC Form D in the last month) */
   whyNow: boolean
 }
@@ -116,6 +118,7 @@ export function draftMessages(
   } = {},
 ): Messages {
   if (profile.preset === 'recruiter') return recruiterMessages(out, profile, link)
+  if (profile.preset === 'hiring') return hiringMessages(out, profile, link)
   const company = out.company
   const role = out.job?.title
   const me = profile.sender.name
@@ -372,7 +375,67 @@ function recruiterMessages(
     linkedinFollowUp: to(linkedinFollowUp),
     intro,
     checks: checkEmail(email, company, null),
-    opener: 'film',
+    whyNow: false,
+  }
+}
+
+/**
+ * Messages for a hiring film: the LinkedIn post itself, a short note to someone you'd like to
+ * apply, and an email asking your network who they'd recommend. The role's lines are the post's
+ * own words, and the numbers are the company's.
+ */
+function hiringMessages(
+  out: Pick<FilmResult, 'company' | 'job' | 'highlights' | 'script'>,
+  profile: Profile,
+  link: string,
+): Messages {
+  const company = profile.sender.company ?? out.company
+  const role = out.job?.title ?? 'an open role'
+  const me = profile.sender.name
+  const first = me.split(' ')[0]!
+  const lines = (out.script?.pitch.points ?? profile.points).slice(0, 3).map(clean)
+  const stat = out.highlights?.quote.text ? clean(out.highlights.quote.text) : ''
+  const apply = profile.cta.book ?? link
+  const post = [
+    `We're hiring: ${role} at ${company}.`,
+    '',
+    ...(lines.length ? ['What you would do:', ...lines.map((l) => `→ ${l}`), ''] : []),
+    ...(stat && /\d/.test(stat) ? [`${stat[0]!.toUpperCase()}${stat.slice(1)}.`, ''] : []),
+    `Watch the 30-second film: ${link}`,
+    `Apply: ${apply}`,
+    '',
+    'Know someone who would be great at this? Tag them or send this their way.',
+  ].join('\n')
+  const email = {
+    subject: `Know someone for our ${role} role?`,
+    body: [
+      'Hi [First name],',
+      '',
+      `We're hiring a ${role} at ${company}, and I made a 30-second film about the role: ${link}`,
+      '',
+      `Who's the best person you know for it? The post is here: ${apply}`,
+      '',
+      'Thank you!',
+      me,
+    ].join('\n'),
+  }
+  const linkedin = `Hi [First name], we're hiring a ${role} at ${company} and I thought of you. A 30-second film about it: ${link} – ${first}`
+  const followUp = [
+    'Hi [First name],',
+    '',
+    `Bumping this: we're still hiring for the ${role} role, and the film is here, ${link}`,
+    '',
+    first,
+  ].join('\n')
+  return {
+    email,
+    linkedin: linkedin.length <= LINKEDIN_LIMIT ? linkedin : linkedin.slice(0, LINKEDIN_LIMIT),
+    followUp,
+    lastNote: followUp,
+    linkedinFollowUp: `Hi [First name], one more nudge on our ${role} role: ${link} – ${first}`,
+    intro: email.body,
+    post,
+    checks: checkEmail(email, company, null),
     whyNow: false,
   }
 }

@@ -6,8 +6,10 @@ export const ProfileSchema = z.object({
    * sales: a seller pitches a company. candidate: a job seeker pitches a company.
    * recruiter: a recruiter pitches a role to one candidate; proof and points are the
    * candidate's own record (from their résumé), and the film speaks to them as "you".
+   * hiring: a team announces an open role to everyone (a LinkedIn post); the points are the
+   * role's own lines and the proof is numbers from the company's site, filled in at film time.
    */
-  preset: z.enum(['sales', 'candidate', 'recruiter']).default('sales'),
+  preset: z.enum(['sales', 'candidate', 'recruiter', 'hiring']).default('sales'),
   sender: z.object({
     name: z.string().min(1),
     company: z.string().optional(),

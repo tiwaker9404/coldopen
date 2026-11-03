@@ -358,7 +358,13 @@ function SendSteps({ film }: { film: FilmDetail }) {
       {(status === 'replied' || status === 'interview') && <CallBrief id={film.id} />}
       <ol className="steps">
         <li>
-          {film.pitch ? <ToCandidate name={film.pitch.candidate} /> : <WhoToSend film={film} />}
+          {film.pitch?.hiring ? (
+            <ToEveryone film={film} />
+          ) : film.pitch?.candidate ? (
+            <ToCandidate name={film.pitch.candidate} />
+          ) : (
+            <WhoToSend film={film} />
+          )}
         </li>
         <li>
           <Message
@@ -406,6 +412,26 @@ function SendSteps({ film }: { film: FilmDetail }) {
         </li>
       </ol>
     </>
+  )
+}
+
+/** A hiring film goes to everyone: post it, then pass it to the people you'd most like to apply */
+function ToEveryone({ film }: { film: FilmDetail }) {
+  return (
+    <section className="block">
+      <h3>Post it on LinkedIn</h3>
+      <p>
+        Download the MP4 above and attach it to the post below: a native video reaches more people
+        than a link. Then send the LinkedIn note to the few people you’d most like to apply.
+      </p>
+      {film.files && (
+        <div className="actions">
+          <a className="button" href={downloadUrl(film, 'film')} download={`${fileName(film)}.mp4`}>
+            Download MP4
+          </a>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -919,10 +945,12 @@ function Message({
     queryFn: () => api<Messages>(`/v1/films/${id}/messages`),
     staleTime: Number.POSITIVE_INFINITY,
   })
-  const [kind, setKind] = useState<'email' | 'linkedin' | 'followUp'>(
-    followUp ? 'followUp' : 'email',
+  const [picked, setKind] = useState<'post' | 'email' | 'linkedin' | 'followUp' | null>(
+    followUp ? 'followUp' : null,
   )
   const m = q.data
+  // a hiring film opens on its LinkedIn post
+  const kind = picked ?? (m?.post ? 'post' : 'email')
   if (!m)
     return (
       <section className="block">
@@ -930,13 +958,15 @@ function Message({
       </section>
     )
   const body =
-    kind === 'email'
-      ? m.email.body
-      : kind === 'linkedin'
-        ? m.linkedin
-        : last
-          ? m.lastNote
-          : m.followUp
+    kind === 'post'
+      ? (m.post ?? '')
+      : kind === 'email'
+        ? m.email.body
+        : kind === 'linkedin'
+          ? m.linkedin
+          : last
+            ? m.lastNote
+            : m.followUp
   const subject = kind === 'followUp' ? `Re: ${m.email.subject}` : m.email.subject
   const enc = encodeURIComponent
   return (
@@ -946,6 +976,7 @@ function Message({
         <div className="switch" role="radiogroup" aria-label="Where you're sending it">
           {(
             [
+              ...(m.post ? ([['post', 'LinkedIn post']] as const) : []),
               ['email', 'Email'],
               ['linkedin', 'LinkedIn note'],
               ['followUp', 'Follow-up'],
@@ -976,16 +1007,18 @@ function Message({
         </p>
       )}
       <p className="small muted">
-        {kind === 'email'
-          ? 'Your first message, with the film’s link in it.'
-          : kind === 'linkedin'
-            ? 'For a LinkedIn connection request, which allows 300 characters.'
-            : last
-              ? 'Your last note: short, and easy to answer either way. After this, let it go.'
-              : 'A friendly nudge for 4 or 5 days later, if you haven’t heard back.'}
+        {kind === 'post'
+          ? 'Post it on LinkedIn with the film attached (Download MP4 above): a native video reaches more people than a link.'
+          : kind === 'email'
+            ? 'Your first message, with the film’s link in it.'
+            : kind === 'linkedin'
+              ? 'For a LinkedIn connection request, which allows 300 characters.'
+              : last
+                ? 'Your last note: short, and easy to answer either way. After this, let it go.'
+                : 'A friendly nudge for 4 or 5 days later, if you haven’t heard back.'}
       </p>
       <div className="letter">
-        {kind !== 'linkedin' && (
+        {kind !== 'linkedin' && kind !== 'post' && (
           <p className="subject">
             <span>Subject</span> {subject}
           </p>

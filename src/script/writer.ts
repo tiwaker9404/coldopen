@@ -2,6 +2,7 @@ import type { BrandKit, Fact } from '../brand/types.ts'
 import { answers, proofText } from '../job/fit.ts'
 import type { ChatMessage } from '../llm/types.ts'
 import { checkScript, clampScript, overlap, words } from './checks.ts'
+import { isDuty } from '../profile/pitch.ts'
 import { LIMITS, TASTE_RULES } from './taste.ts'
 import type { Profile, Script, ScriptMeta } from './types.ts'
 
@@ -18,9 +19,14 @@ const PRESETS: Record<Profile['preset'], string> = {
     'The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.',
   candidate:
     'The sender is a job candidate who wants to work at this company. Show that they understand what the company builds and who it serves, and connect their strengths to it. The call to action asks for a conversation, never for a job. Write in the first person ("I").',
+  hiring:
+    'The sender is on the team at this company and is announcing an open role to everyone, as a LinkedIn post. The company facts are your own company. Speak to whoever is watching as "you" and about your company as "we" or "our". Make the role feel concrete and worth applying for, without hype. The call to action points to the job post.',
   recruiter:
     'The sender is a recruiter at this company, and the film is made for one candidate (named below) to pitch them the role. The company facts are your own company; the points and proof are the candidate\'s own record, taken from their résumé. Speak to the candidate as "you" and about your company as "we" or "our". Show them why their record fits this role. The call to action asks for a short conversation.',
 }
+
+const HIRING_JOB_BRIEF = (title: string) =>
+  `This film announces your open ${title} role to everyone who sees the post. Feature one stat from your own site (insight.factId) and say in insight.why what it means for someone joining ("you would..." or "we..."). The pitch headline names the role; the pitch points are what the person would do, taken from the role lines given as the points. Numbers come only from your site's facts.`
 
 const RECRUITER_JOB_BRIEF = (title: string) =>
   `This film pitches your ${title} role. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why tells the candidate, in the second person ("You..."), where their record already answers it, taken from their points or proof. Pick the proof that answers the requirements best. The pitch headline names the role. Numbers in your lines must come from the candidate's record; the job post's numbers are what you want, not what they have done.`
@@ -42,7 +48,7 @@ THE JOB: ${kit.job.title}
 Requirements from the post (cite by id; feature one that is under 160 characters):
 ${reqs.map((f) => `${f.id} ${f.text}`).join('\n')}
 
-${profile.preset === 'recruiter' ? RECRUITER_JOB_BRIEF(kit.job.title) : JOB_BRIEF(kit.job.title)}`
+${profile.preset === 'recruiter' ? RECRUITER_JOB_BRIEF(kit.job.title) : profile.preset === 'hiring' ? HIRING_JOB_BRIEF(kit.job.title) : JOB_BRIEF(kit.job.title)}`
     : ''
   const recruiter = profile.preset === 'recruiter'
   const proof = profile.proof
@@ -256,6 +262,7 @@ function whyLine(fact: Fact, candidate: boolean, company: string | undefined): s
  * final fallback. Plainer than a good LLM, but always on-brief and always grounded.
  */
 export function deterministicScript(kit: BrandKit, profile: Profile): Script {
+  if (profile.preset === 'hiring') return hiringScript(kit, profile)
   if (kit.job) return jobScript(kit, profile, kit.job.title)
   const name = kit.name
   const first = name.split(/\s+/)[0]!
@@ -436,3 +443,57 @@ function jobScript(kit: BrandKit, profile: Profile, title: string): Script {
     cta: clip(profile.cta.line, LIMITS.cta),
   }
 }
+
+/* ------------------------------------------------- a hiring film, for everyone */
+
+/**
+ * The deterministic writer for a hiring film: who's hiring, one number from their own site,
+ * what you would do (the post's own lines), and where to apply.
+ */
+function hiringScript(kit: BrandKit, profile: Profile): Script {
+  const name = kit.name
+  const first = name.split(/\s+/)[0]!
+  const title = kit.job?.title
+  const fact = bestFact(kit, profile)
+  const hook =
+    words(`${name} is hiring`) <= LIMITS.hook ? `${name} is hiring` : `${first} is hiring`
+  // the points are duties when the post lists them, otherwise what it asks for
+  const doing = profile.points.filter(isDuty).length >= 2
+  const headline = doing
+    ? title && words(`What you would do as our ${title}`) <= LIMITS.headline
+      ? `What you would do as our ${title}`
+      : 'What you would do on our team'
+    : title && words(`What we look for in our ${title}`) <= LIMITS.headline
+      ? `What we look for in our ${title}`
+      : 'What we look for in this role'
+  // the featured number stays out of the proof scene, so nothing shows twice
+  const proof = profile.proof
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => !fact.text.includes(p.value))
+    .map(({ i }) => i)
+    .slice(0, 3)
+  return {
+    hook,
+    noticed: noticedLine(kit, first),
+    insight: {
+      factId: fact.id,
+      why: clip(
+        fact.kind === 'stat'
+          ? 'Numbers like this are what you would work on'
+          : 'The kind of problem you would work on here',
+        LIMITS.why,
+      ),
+    },
+    pitch: {
+      headline: clip(clipToWords(headline, LIMITS.headline), LIMITS.headline),
+      points: [...profile.points]
+        .sort((a, b) => Number(words(a) > LIMITS.point) - Number(words(b) > LIMITS.point))
+        .slice(0, 3)
+        .map((p) => clip(p, LIMITS.point)),
+    },
+    proof,
+    cta: clip(profile.cta.line, LIMITS.cta),
+  }
+}
+
+const clipToWords = (s: string, n: number) => (words(s) <= n ? s : 'What you would do here')

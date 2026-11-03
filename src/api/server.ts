@@ -62,7 +62,7 @@ import {
 } from '../outreach/people.ts'
 import { draftProfile } from '../profile/draft.ts'
 import { parseResume } from '../profile/parse.ts'
-import { PitchError, recruiterProfile } from '../profile/pitch.ts'
+import { hiringProfile, PitchError, recruiterProfile } from '../profile/pitch.ts'
 import { resumeText } from '../profile/read.ts'
 import {
   cancelRun,
@@ -149,7 +149,9 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
     pitch:
       r.input.profile.preset === 'recruiter' && r.input.profile.recipient
         ? { candidate: r.input.profile.recipient.name }
-        : null,
+        : r.input.profile.preset === 'hiring'
+          ? { hiring: true }
+          : null,
     progress: r.status === 'running' || r.status === 'queued' ? r.progress : null,
     attempts: r.attempts,
     error: r.error,
@@ -756,7 +758,8 @@ export async function buildApi({
         description:
           "Paste the candidate's LinkedIn profile or résumé as text. The film's proof is their own numbers, read from that text; nothing is invented. Send the returned profile with POST /v1/films and the job link as `url` (or the company website as `url` and the post as `job`).",
         body: z.object({
-          candidateText: z.string().min(80).max(30_000),
+          /** leave out for a hiring film: the role announced to everyone, for a LinkedIn post */
+          candidateText: z.string().min(80).max(30_000).optional(),
           candidateName: z.string().trim().max(80).optional(),
           role: z.string().trim().min(2).max(80).optional(),
           recruiter: z.object({
@@ -773,7 +776,10 @@ export async function buildApi({
     },
     async (req, reply) => {
       try {
-        return recruiterProfile(req.body)
+        const { candidateText, ...rest } = req.body
+        return candidateText
+          ? recruiterProfile({ ...rest, candidateText })
+          : hiringProfile({ recruiter: rest.recruiter, ...(rest.role ? { role: rest.role } : {}) })
       } catch (err) {
         if (!(err instanceof PitchError)) throw err
         return reply
@@ -1762,7 +1768,7 @@ export async function buildApi({
             const m =
               r.output && film.share
                 ? addressed(
-                    draftMessages(r.output, r.input.profile, film.share, {
+                    draftMessages(r.output, r.output.profile ?? r.input.profile, film.share, {
                       detail: r.detail ?? null,
                       fresh: await freshFact(r),
                       opener: openerFor(r.id),
@@ -1966,7 +1972,10 @@ export async function buildApi({
       reply.type('text/html; charset=utf-8')
       const link = `${publicUrl.replace(/\/$/, '')}/f/${run.id}`
       return sharePage(
-        viewFromRun(run.input, run.output),
+        viewFromRun(
+          run.output.profile ? { ...run.input, profile: run.output.profile } : run.input,
+          run.output,
+        ),
         link,
         `${link}/v`,
         cfg.HOSTED ? publicUrl : undefined,
@@ -2022,7 +2031,7 @@ export async function buildApi({
       const link = filmDto(run, publicUrl).share!
       const row = run as FilmRow
       return addressed(
-        draftMessages(run.output, run.input.profile, link, {
+        draftMessages(run.output, run.output.profile ?? run.input.profile, link, {
           detail: row.detail ?? null,
           fresh: await freshFact(row),
           opener: openerFor(run.id),

@@ -9,6 +9,7 @@ import { withJob } from './job/kit.ts'
 import { isJobPage, JobPostSchema, jobFromText } from './job/post.ts'
 import { fetchJob } from './job/read.ts'
 import { LlmHttpError } from './llm/openai.ts'
+import { withRole } from './profile/pitch.ts'
 import { compose, FORMATS, type Format, siteShot } from './render/composition.ts'
 import {
   concatSegments,
@@ -24,7 +25,13 @@ import { NonRetryableError } from './runtime/errors.ts'
 import { defineAgent } from './runtime/types.ts'
 import { editViolations } from './script/checks.ts'
 import { buildStoryboard, type Storyboard } from './script/storyboard.ts'
-import { ProfileSchema, type Script, type ScriptMeta, ScriptSchema } from './script/types.ts'
+import {
+  type Profile,
+  ProfileSchema,
+  type Script,
+  type ScriptMeta,
+  ScriptSchema,
+} from './script/types.ts'
 import { deterministicScript, writeScript } from './script/writer.ts'
 import { publish, type ShareConfig } from './share/client.ts'
 import { viewFromRun } from './share/page.ts'
@@ -86,6 +93,8 @@ export interface FilmResult {
   job?: { title: string; url?: string }
   /** where the film is published, when a share worker is configured (the hosted app) */
   shared?: { id: string; link: string }
+  /** the profile as the film used it, when the film filled it in (hiring films) */
+  profile?: Profile
   /** what the film says, for writing the message that goes with it */
   highlights?: {
     /** the line quoted from their site or job post, and where it's from */
@@ -134,7 +143,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
     name: 'film',
     input: FilmInputSchema,
     async run(ctx, input: FilmInput): Promise<FilmResult> {
-      const profile = input.profile
+      let profile = input.profile
       const format = input.format
       const dir = join(opts.filmsDir, ctx.runId)
       const rel = (p: string) => relative(opts.filmsDir, p)
@@ -207,6 +216,8 @@ export function createFilmAgent(opts: FilmAgentOptions) {
       }
 
       if (post) kit = withJob(kit, post)
+      // a hiring film takes its lines from the post and its numbers from their site
+      if (profile.preset === 'hiring') profile = withRole(profile, kit, post?.url ?? j?.url ?? site)
 
       ctx.progress({ stage: 'script', label: `Writing the script for ${kit.name}` })
       const builtIn = (usedFallback: boolean) =>
@@ -431,7 +442,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
                     .replace(/^-|-$/g, '')
                     .slice(0, 40) || 'film'
                 }-${ctx.runId.slice(-10).toLowerCase()}`,
-                view: viewFromRun(input, {
+                view: viewFromRun({ ...input, profile }, {
                   company: kit.name,
                   format,
                   files: { film: out.film },
@@ -486,6 +497,8 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           ...(kit.job ? { job: kit.job } : {}),
           ...(shared ? { shared } : {}),
           highlights: highlightsOf(board),
+          // a hiring film's profile was filled in from the post and the site
+          ...(profile !== input.profile ? { profile } : {}),
         }
       } finally {
         await Promise.all(pool.map((c) => c.close()))

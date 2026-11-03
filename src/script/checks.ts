@@ -111,7 +111,9 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
   const chosen = kit.facts.find((f) => f.id === script.insight.factId)
   const reqs = kit.facts.filter((f) => f.kind === 'requirement' && f.text.length <= 160)
   // made from a job post: the featured line is a requirement, answered with the sender's record
-  if (kit.job && chosen && chosen.kind !== 'requirement' && reqs.length) {
+  // a hiring film leads with the company, not with what it asks of applicants
+  const hiring = profile.preset === 'hiring'
+  if (!hiring && kit.job && chosen && chosen.kind !== 'requirement' && reqs.length) {
     v.push(
       `insight.factId "${chosen.id}" is from their homepage; feature one of the job's requirements instead (${reqs
         .slice(0, 8)
@@ -125,7 +127,7 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
     )
   // a number lands harder than a sentence; insist on one when the site offers a readable stat
   const stats = kit.facts.filter((f) => f.kind === 'stat' && f.text.length <= 160)
-  if (!kit.job && chosen && chosen.kind !== 'stat' && stats.length) {
+  if ((!kit.job || hiring) && chosen && chosen.kind !== 'stat' && stats.length) {
     v.push(
       `insight.factId "${chosen.id}" is a ${chosen.kind}; pick one of the stats instead (${stats
         .slice(0, 6)
@@ -174,7 +176,7 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
   const connects =
     profile.preset === 'candidate'
       ? firstPerson
-      : profile.preset === 'recruiter'
+      : profile.preset === 'recruiter' || hiring
         ? secondPerson || /\b(we|our|us)\b/i.test(script.insight.why)
         : /\b(we|our|us)\b/i.test(script.insight.why) ||
           [...content(script.insight.why)].some((w) => !GENERIC.has(w) && content(sender).has(w))
@@ -182,8 +184,8 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
     v.push(
       profile.preset === 'candidate'
         ? 'insight.why must connect the fact to you (use "I" or "my"); a compliment alone is filler'
-        : profile.preset === 'recruiter'
-          ? 'insight.why must connect the role to the candidate (use "you" or "your"); a compliment alone is filler'
+        : profile.preset === 'recruiter' || hiring
+          ? 'insight.why must connect it to the person watching (use "you" or "your"); a compliment alone is filler'
           : `insight.why must connect the fact to what ${profile.sender.company ?? 'the sender'} offers (name it, or the problem it solves); a compliment alone is filler`,
     )
   // the pitch may be tailored to them, but it can't claim things the profile doesn't say
@@ -204,7 +206,8 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
     v.push(
       `pitch.headline "${script.pitch.headline}" is too generic; say what you offer in 4 to ${LIMITS.headline} words`,
     )
-  const minProof = Math.min(2, profile.proof.length)
+  // a hiring film's proof is the company's own numbers, and a site may have one or none
+  const minProof = hiring ? 0 : Math.min(2, profile.proof.length)
   if (script.proof.length < minProof)
     v.push(`proof needs at least ${minProof} items from the profile; one stat alone looks empty`)
 

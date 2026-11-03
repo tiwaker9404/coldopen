@@ -256,7 +256,7 @@ html,body{width:${width}px;height:${height}px;overflow:hidden;background:#000}
 </style></head><body>
 <div id="stage">
 ${scenes.join('\n')}
-<div id="chrome"><div class="meta"><span>${esc(board.sender)}</span><span>for ${esc(board.recipient ?? board.company)}</span></div>
+<div id="chrome"><div class="meta"><span>${esc(board.sender)}</span><span>${esc(board.header ?? `for ${board.recipient ?? board.company}`)}</span></div>
 <div id="reel">${board.scenes.map(() => '<i><b></b></i>').join('')}</div></div>
 </div>
 <script>

@@ -130,7 +130,7 @@ function parseView(body: unknown): ShareView | null {
     film: v.film,
     ...(typeof v.book === 'string' && /^https:\/\/\S{4,300}$/.test(v.book) ? { book: v.book } : {}),
     ...(str('recipient', 80) ? { recipient: v.recipient as string } : {}),
-    ...(['candidate', 'recruiter', 'sales'].includes(v.kind as string)
+    ...(['candidate', 'recruiter', 'sales', 'hiring'].includes(v.kind as string)
       ? { kind: v.kind as ShareView['kind'] }
       : {}),
   }

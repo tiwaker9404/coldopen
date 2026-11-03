@@ -34,6 +34,8 @@ export interface Storyboard {
   sender: string
   /** recruiter films: the candidate it was made for (the header's "for ...") */
   recipient?: string
+  /** the header's right-hand label, when it isn't "for <who>" (hiring films: "Now hiring") */
+  header?: string
   scenes: Scene[]
   duration: number
 }
@@ -106,19 +108,24 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
     ? `${profile.sender.name}, ${profile.sender.company}`
     : profile.sender.name
   const recruiter = profile.preset === 'recruiter'
+  const hiring = profile.preset === 'hiring'
   const them = profile.recipient?.name
   const scenes: Scene[] = [
     {
       kind: 'hook',
       dur: 3.2,
       text: script.hook.replace(/[.,]$/, ''),
-      sub: recruiter
+      sub: hiring
         ? kit.job
-          ? `About our ${kit.job.title} role`
-          : `A 30-second film from ${kit.name}`
-        : kit.job
-          ? `For your ${kit.job.title} role`
-          : `A 30-second film for ${kit.name}`,
+          ? `Now hiring: ${kit.job.title}`
+          : 'An open role on our team'
+        : recruiter
+          ? kit.job
+            ? `About our ${kit.job.title} role`
+            : `A 30-second film from ${kit.name}`
+          : kit.job
+            ? `For your ${kit.job.title} role`
+            : `A 30-second film for ${kit.name}`,
     },
     (() => {
       const focus = noticedFact(kit, script.noticed)
@@ -149,26 +156,38 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
       headline: script.pitch.headline.replace(/\.$/, ''),
       points: script.pitch.points.map((x) => x.replace(/\.$/, '')),
     },
-    {
-      kind: 'proof',
-      dur: 4.8,
-      stats: script.proof.map((i) => profile.proof[i]!).filter(Boolean),
-      ...(recruiter ? { heading: 'What caught our eye' } : {}),
-    },
+    // a hiring film shows the company's own numbers, and skips the scene when the site has none
+    ...(hiring && !script.proof.some((i) => profile.proof[i])
+      ? []
+      : [
+          {
+            kind: 'proof' as const,
+            dur: 4.8,
+            stats: script.proof.map((i) => profile.proof[i]!).filter(Boolean),
+            ...(recruiter
+              ? { heading: 'What caught our eye' }
+              : hiring
+                ? { heading: `${kit.name}, by the numbers` }
+                : {}),
+          },
+        ]),
     {
       kind: 'cta',
       dur: 4.6,
       line: asked(script.cta),
       contact: profile.cta.contact,
-      signoff: recruiter
-        ? `Made for ${them ?? 'you'} by ${profile.sender.name} at ${profile.sender.company ?? kit.name}`
-        : `Made for ${kit.name} by ${profile.sender.name}${profile.sender.company ? ` at ${profile.sender.company}` : ''}`,
+      signoff: hiring
+        ? `Posted by ${profile.sender.name} at ${profile.sender.company ?? kit.name}`
+        : recruiter
+          ? `Made for ${them ?? 'you'} by ${profile.sender.name} at ${profile.sender.company ?? kit.name}`
+          : `Made for ${kit.name} by ${profile.sender.name}${profile.sender.company ? ` at ${profile.sender.company}` : ''}`,
     },
   ]
   return {
     company: kit.name,
     sender: from,
     ...(recruiter && them ? { recipient: them } : {}),
+    ...(hiring ? { header: 'Now hiring' } : {}),
     scenes,
     duration: Math.round(scenes.reduce((a, s) => a + s.dur, 0) * 10) / 10,
   }
