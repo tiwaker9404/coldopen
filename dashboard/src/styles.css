@@ -3542,3 +3542,69 @@ a.tag {
   border: 1.5px dashed var(--rule);
   border-radius: 6px;
 }
+
+/* ---------------------------------------------------------------- pitch a role */
+
+.pitch {
+  display: grid;
+  gap: 22px;
+  max-width: 820px;
+  padding-top: 8px;
+}
+
+.pitch-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+  counter-reset: step;
+}
+
+.pitch-steps > li {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  background: var(--surface);
+  counter-increment: step;
+}
+
+.pitch-steps h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pitch-steps h2::before {
+  content: counter(step) ". ";
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+}
+
+.pitch-from {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.pitch-go {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+}
+
+.pitch-go button {
+  min-height: 48px;
+  padding: 0 24px;
+}
+
+@media (max-width: 640px) {
+  .pitch-from {
+    grid-template-columns: 1fr;
+  }
+}

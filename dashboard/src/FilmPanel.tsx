@@ -358,7 +358,7 @@ function SendSteps({ film }: { film: FilmDetail }) {
       {(status === 'replied' || status === 'interview') && <CallBrief id={film.id} />}
       <ol className="steps">
         <li>
-          <WhoToSend film={film} />
+          {film.pitch ? <ToCandidate name={film.pitch.candidate} /> : <WhoToSend film={film} />}
         </li>
         <li>
           <Message
@@ -406,6 +406,25 @@ function SendSteps({ film }: { film: FilmDetail }) {
         </li>
       </ol>
     </>
+  )
+}
+
+/** A recruiter's film already knows who it's for: one step, find them */
+function ToCandidate({ name }: { name: string }) {
+  const search = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(name)}`
+  return (
+    <section className="block">
+      <h3>Send it to {name}</h3>
+      <p>
+        Their name is already in the messages below. Send the InMail on LinkedIn, or the email if
+        you have their address.
+      </p>
+      <div className="actions">
+        <a className="button" href={search} target="_blank" rel="noreferrer">
+          Find {name.split(/\s+/)[0]} on LinkedIn <Out />
+        </a>
+      </div>
+    </section>
   )
 }
 

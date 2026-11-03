@@ -62,6 +62,7 @@ import {
 } from '../outreach/people.ts'
 import { draftProfile } from '../profile/draft.ts'
 import { parseResume } from '../profile/parse.ts'
+import { PitchError, recruiterProfile } from '../profile/pitch.ts'
 import { resumeText } from '../profile/read.ts'
 import {
   cancelRun,
@@ -144,6 +145,11 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
     batch: r.input.batch ?? null,
     ref: r.input.ref ?? null,
     sender: r.input.profile.sender.name,
+    /** Pitch a role: a recruiter's film for one candidate */
+    pitch:
+      r.input.profile.preset === 'recruiter' && r.input.profile.recipient
+        ? { candidate: r.input.profile.recipient.name }
+        : null,
     progress: r.status === 'running' || r.status === 'queued' ? r.progress : null,
     attempts: r.attempts,
     error: r.error,
@@ -736,6 +742,43 @@ export async function buildApi({
         return reply
           .status(422)
           .send({ error: { code: 'unreadable_resume', message: (err as Error).message } })
+      }
+    },
+  )
+
+  app.post(
+    '/v1/pitch/profile',
+    {
+      schema: {
+        tags: ['profiles'],
+        summary:
+          "Pitch a role: draft a recruiter's film profile from a candidate's profile text (not saved)",
+        description:
+          "Paste the candidate's LinkedIn profile or résumé as text. The film's proof is their own numbers, read from that text; nothing is invented. Send the returned profile with POST /v1/films and the job link as `url` (or the company website as `url` and the post as `job`).",
+        body: z.object({
+          candidateText: z.string().min(80).max(30_000),
+          candidateName: z.string().trim().max(80).optional(),
+          role: z.string().trim().min(2).max(80).optional(),
+          recruiter: z.object({
+            name: z.string().trim().min(1).max(80),
+            company: z.string().trim().max(80).optional(),
+            contact: z.string().trim().min(3).max(80),
+            book: z
+              .string()
+              .regex(/^https:\/\/\S{4,300}$/, 'a booking link starts with https://')
+              .optional(),
+          }),
+        }),
+      },
+    },
+    async (req, reply) => {
+      try {
+        return recruiterProfile(req.body)
+      } catch (err) {
+        if (!(err instanceof PitchError)) throw err
+        return reply
+          .status(422)
+          .send({ error: { code: 'unreadable_profile', message: err.message } })
       }
     },
   )

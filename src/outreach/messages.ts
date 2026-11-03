@@ -17,6 +17,11 @@ export interface Messages {
   linkedinFollowUp: string
   /** to someone you already know there: would they pass the film on */
   intro: string
+  /**
+   * the note that person forwards: about you in the third person, ready to paste into their
+   * referral form or team chat, so passing you on takes them one paste
+   */
+  forward?: string
   /** how the email measures up to what makes cold email work */
   checks: EmailChecks
   /** which opener these drafts lead with: half your films get each, so you learn which wins */
@@ -110,6 +115,7 @@ export function draftMessages(
     raised?: { date: string } | null
   } = {},
 ): Messages {
+  if (profile.preset === 'recruiter') return recruiterMessages(out, profile, link)
   const company = out.company
   const role = out.job?.title
   const me = profile.sender.name
@@ -225,10 +231,21 @@ export function draftMessages(
       ? `Hope you're doing well! I'm applying for the ${role} role at ${company}, and I made a 30-second film for the team: ${link}`
       : `Hope you're doing well! I'd love to work with the team at ${company}, and I made a 30-second film for them: ${link}`,
     '',
-    `Would you be open to passing it to the hiring manager, or pointing me to the right person? I'm happy to write a short note you can forward.`,
+    `Would you be open to passing it to the hiring manager, or pointing me to the right person? Here's a short note you can forward as is:`,
+    '',
+    '[forward]',
     '',
     'Thank you!',
     first,
+  ].join('\n')
+
+  // the note they forward: everything it says is on the film or the profile
+  const forward = [
+    role
+      ? `${me} is interested in our ${role} role and made a 30-second film for the team: ${link}`
+      : `${me} would love to work with us and made a 30-second film for the team: ${link}`,
+    ...(proof.length ? [`Highlights: ${proof.join('; ')}.`] : []),
+    `Reach ${first} at ${profile.cta.contact}.`,
   ].join('\n')
 
   return {
@@ -237,7 +254,8 @@ export function draftMessages(
     followUp,
     lastNote,
     linkedinFollowUp,
-    intro,
+    intro: intro.replace('[forward]', forward),
+    forward,
     checks: checkEmail(email, company, detail || null),
     opener: lead,
     whyNow,
@@ -264,5 +282,97 @@ export function addressed(m: Messages, name: string | undefined): Messages {
     followUp: fill(m.followUp),
     lastNote: fill(m.lastNote),
     linkedinFollowUp: fill(m.linkedinFollowUp),
+  }
+}
+
+/** LinkedIn's limit for InMail is longer, but short ones get more replies (under 400 characters: +22%) */
+const INMAIL_LIMIT = 400
+
+/**
+ * Messages for a recruiter's film: to the candidate, about the role, in the recruiter's voice.
+ * Like the film, every claim about the candidate is their own record.
+ */
+function recruiterMessages(
+  out: Pick<FilmResult, 'company' | 'job' | 'highlights' | 'script'>,
+  profile: Profile,
+  link: string,
+): Messages {
+  const company = profile.sender.company ?? out.company
+  const role = out.job?.title
+  const me = profile.sender.name
+  const first = me.split(' ')[0]!
+  const what = role ? `our ${role} role` : `a role on our team at ${company}`
+  const best = out.highlights?.proof[0]
+  const noticed = best
+    ? clean(`${best.value} ${best.label}${best.where ? ` at ${best.where}` : ''}`)
+    : ''
+  const ask = clean(profile.cta.line).replace(/\?*$/, '?')
+  const email = {
+    subject: role
+      ? `${company}'s ${role} role, made for you`
+      : `A role at ${company}, made for you`,
+    body: [
+      'Hi [First name],',
+      '',
+      `I'm ${first}, ${profile.sender.role ? `a ${profile.sender.role.toLowerCase()}` : 'hiring'} at ${company}. Instead of a long message about ${what}, I made you a 30-second film:`,
+      link,
+      '',
+      noticed
+        ? `It starts from your own work. ${noticed[0]!.toUpperCase()}${noticed.slice(1)} is what caught our eye.`
+        : 'It starts from your own work.',
+      '',
+      ask,
+      '',
+      me,
+      profile.cta.contact,
+    ].join('\n'),
+  }
+  const at = best?.where ? ` at ${clean(best.where)}` : ''
+  const full = `Hi [First name], I made you a 30-second film about ${what}. It starts from your own work${at}: ${link} ${ask} – ${first}`
+  const plain = `Hi [First name], I made you a 30-second film about ${what}: ${link} ${ask} – ${first}`
+  const linkedin = full.length <= INMAIL_LIMIT ? full : plain.slice(0, INMAIL_LIMIT)
+  const followUp = [
+    'Hi [First name],',
+    '',
+    `Bumping this in case it got buried: the film I made you about ${what} is here, ${link}`,
+    '',
+    ask,
+    '',
+    first,
+  ].join('\n')
+  const lastNote = [
+    'Hi [First name],',
+    '',
+    `Last note from me on ${what}: ${link}`,
+    '',
+    `If the timing isn't right, no problem at all. If you know someone it would suit, I'd be grateful for a pointer.`,
+    '',
+    first,
+  ].join('\n')
+  const linkedinFollowUp = `Hi [First name], following up on the film I made you: ${link} ${ask} – ${first}`
+  const intro = [
+    'Hi [First name],',
+    '',
+    `We're hiring for ${what}, and I made a 30-second film for a candidate you may know: ${link}`,
+    '',
+    'Would you be open to introducing us?',
+    '',
+    'Thank you!',
+    first,
+  ].join('\n')
+  // the recruiter already knows who it's for: the candidate's first name goes in everywhere
+  // except the intro, which goes to someone who knows them
+  const them = profile.recipient?.name.trim().split(/\s+/)[0]
+  const to = (t: string) => (them ? t.replaceAll('[First name]', them) : t)
+  return {
+    email: { subject: email.subject, body: to(email.body) },
+    linkedin: to(linkedin),
+    followUp: to(followUp),
+    lastNote: to(lastNote),
+    linkedinFollowUp: to(linkedinFollowUp),
+    intro,
+    checks: checkEmail(email, company, null),
+    opener: 'film',
+    whyNow: false,
   }
 }

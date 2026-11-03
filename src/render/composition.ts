@@ -99,6 +99,7 @@ function sceneHtml(s: Scene, i: number, start: number, c: SceneCtx): string {
     case 'proof':
       return `${open(c.theme.dark)}
         <div class="proof-wrap n${s.stats.length}">
+          ${s.heading ? `<p class="from proof-from in" style="animation-delay:80ms">${esc(s.heading)}</p>` : ''}
           ${s.stats
             .map(
               (st, j) => `<div class="stat in-up" style="animation-delay:${200 + j * 380}ms">
@@ -240,6 +241,7 @@ html,body{width:${width}px;height:${height}px;overflow:hidden;background:#000}
 
 /* proof */
 .proof-wrap{margin:auto 0;display:grid;gap:calc(var(--u)*5.5)}
+.proof-from{grid-column:1/-1;margin:0 0 calc(var(--u)*-2)}
 .proof-wrap.n2,.proof-wrap.n3{grid-template-columns:repeat(var(--cols),1fr)}
 .stat .value{font-size:calc(var(--u)*13);line-height:1;color:var(--accent);letter-spacing:-0.04em;white-space:nowrap}
 .stat{min-width:0}
@@ -254,7 +256,7 @@ html,body{width:${width}px;height:${height}px;overflow:hidden;background:#000}
 </style></head><body>
 <div id="stage">
 ${scenes.join('\n')}
-<div id="chrome"><div class="meta"><span>${esc(board.sender)}</span><span>for ${esc(board.company)}</span></div>
+<div id="chrome"><div class="meta"><span>${esc(board.sender)}</span><span>for ${esc(board.recipient ?? board.company)}</span></div>
 <div id="reel">${board.scenes.map(() => '<i><b></b></i>').join('')}</div></div>
 </div>
 <script>
@@ -321,7 +323,7 @@ function fit() {
 
 const pw = document.querySelector('.proof-wrap');
 if (pw) {
-  const n = pw.children.length;
+  const n = pw.querySelectorAll('.stat').length;
   const wide = ${width >= height};
   pw.style.setProperty('--cols', wide ? n : (n === 3 ? 1 : n));
   if (!wide && n === 3) pw.style.gridTemplateColumns = '1fr';

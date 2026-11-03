@@ -23,6 +23,7 @@ import { GettingStarted, GuidePanel, ToolsPanel } from './Guide.tsx'
 import { Jobs } from './Jobs.tsx'
 import { Onboarding } from './Onboarding.tsx'
 import { Openers } from './Openers.tsx'
+import { Pitch } from './Pitch.tsx'
 import { ProfileEditor } from './ProfileEditor.tsx'
 import { ProfilesPage } from './Profiles.tsx'
 import { Startups } from './Startups.tsx'
@@ -180,6 +181,14 @@ export function App() {
                 <Board list={list} name={name} open={open} onOpen={setOpen} />
               )}
             </>
+          ) : place === 'pitch' ? (
+            <>
+              <PageTitle
+                title="Pitch a role"
+                sub="For recruiters and founders: a 30-second film that pitches your role to one candidate, in your company’s brand, starting from their own work."
+              />
+              <Pitch onMade={setOpen} />
+            </>
           ) : place === 'profile' ? (
             <>
               <PageTitle
@@ -263,12 +272,13 @@ export function App() {
 
 /* ------------------------------------------------------------------ places */
 
-type Place = 'today' | 'jobs' | 'startups' | 'films' | 'profile'
+type Place = 'today' | 'jobs' | 'startups' | 'films' | 'pitch' | 'profile'
 const PLACES: { id: Place; label: string }[] = [
   { id: 'today', label: 'Today' },
   { id: 'jobs', label: 'Jobs' },
   { id: 'startups', label: 'Startups' },
   { id: 'films', label: 'Films' },
+  { id: 'pitch', label: 'Pitch a role' },
   { id: 'profile', label: 'Profile' },
 ]
 
@@ -410,7 +420,7 @@ function whatHappens(
   urls: string[],
   many: boolean,
   job: string,
-  preset: 'sales' | 'candidate' | undefined,
+  preset: 'sales' | 'candidate' | 'recruiter' | undefined,
 ): string {
   if (many)
     return urls.length

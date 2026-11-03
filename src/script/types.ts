@@ -2,12 +2,21 @@ import { z } from 'zod'
 
 /** Who is sending the film, and what they offer. Lives in a JSON file per team or person. */
 export const ProfileSchema = z.object({
-  preset: z.enum(['sales', 'candidate']).default('sales'),
+  /**
+   * sales: a seller pitches a company. candidate: a job seeker pitches a company.
+   * recruiter: a recruiter pitches a role to one candidate; proof and points are the
+   * candidate's own record (from their résumé), and the film speaks to them as "you".
+   */
+  preset: z.enum(['sales', 'candidate', 'recruiter']).default('sales'),
   sender: z.object({
     name: z.string().min(1),
     company: z.string().optional(),
     role: z.string().optional(),
   }),
+  /** recruiter films: the candidate the film is made for */
+  recipient: z
+    .object({ name: z.string().trim().min(1).max(80), role: z.string().max(80).optional() })
+    .optional(),
   /** one line: what you offer, in the recipient's terms */
   offer: z.string().min(3).max(120),
   /** value props / strengths the script may tailor (never invent new ones) */

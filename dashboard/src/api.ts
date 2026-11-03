@@ -8,6 +8,8 @@ export interface Film {
   format: Format
   batch: string | null
   sender: string
+  /** Pitch a role: a recruiter's film made for one candidate */
+  pitch?: { candidate: string } | null
   progress: { stage?: string; label?: string; percent?: number; scene?: number } | null
   attempts: number
   error: string | null
@@ -158,6 +160,8 @@ export interface Messages {
   linkedinFollowUp: string
   /** to someone you know there, asking them to pass it on */
   intro: string
+  /** the note they forward, about you in the third person */
+  forward?: string
   /** how the email measures up: short, about them, your detail, one ask */
   checks: { words: number; short: boolean; aboutThem: boolean; detail: boolean; oneAsk: boolean }
   /** which way this film's drafts open: half your films lead with the film, half with your best number */
@@ -218,8 +222,10 @@ export interface FilmDetail extends Film {
 }
 
 export interface ProfileData {
-  preset: 'sales' | 'candidate'
+  preset: 'sales' | 'candidate' | 'recruiter'
   sender: { name: string; company?: string; role?: string }
+  /** recruiter films: the candidate it's made for */
+  recipient?: { name: string; role?: string }
   offer: string
   points: string[]
   proof: { value: string; label: string; where?: string }[]

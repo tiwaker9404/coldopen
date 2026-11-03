@@ -18,7 +18,12 @@ const PRESETS: Record<Profile['preset'], string> = {
     'The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.',
   candidate:
     'The sender is a job candidate who wants to work at this company. Show that they understand what the company builds and who it serves, and connect their strengths to it. The call to action asks for a conversation, never for a job. Write in the first person ("I").',
+  recruiter:
+    'The sender is a recruiter at this company, and the film is made for one candidate (named below) to pitch them the role. The company facts are your own company; the points and proof are the candidate\'s own record, taken from their résumé. Speak to the candidate as "you" and about your company as "we" or "our". Show them why their record fits this role. The call to action asks for a short conversation.',
 }
+
+const RECRUITER_JOB_BRIEF = (title: string) =>
+  `This film pitches your ${title} role. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why tells the candidate, in the second person ("You..."), where their record already answers it, taken from their points or proof. Pick the proof that answers the requirements best. The pitch headline names the role. Numbers in your lines must come from the candidate's record; the job post's numbers are what you want, not what they have done.`
 
 const JOB_BRIEF = (title: string) =>
   `This film answers a job post: ${title}. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why answers it in the first person with something you have already done, taken from your points or proof. Pick the proof that answers the requirements best. The pitch headline may name the role. Numbers in your lines must come from your profile; the job post's numbers are what they want, not what you have done.`
@@ -37,8 +42,9 @@ THE JOB: ${kit.job.title}
 Requirements from the post (cite by id; feature one that is under 160 characters):
 ${reqs.map((f) => `${f.id} ${f.text}`).join('\n')}
 
-${JOB_BRIEF(kit.job.title)}`
+${profile.preset === 'recruiter' ? RECRUITER_JOB_BRIEF(kit.job.title) : JOB_BRIEF(kit.job.title)}`
     : ''
+  const recruiter = profile.preset === 'recruiter'
   const proof = profile.proof
     .map((p, i) => `${i}: ${p.value} ${p.label}${p.where ? ` (${p.where})` : ''}`)
     .join('\n')
@@ -55,10 +61,10 @@ ${facts}
 
 SENDER
 Name: ${profile.sender.name}${profile.sender.company ? `, ${profile.sender.company}` : ''}${profile.sender.role ? ` (${profile.sender.role})` : ''}
-Offer: ${profile.offer}
-Points you may tailor:
+Offer: ${profile.offer}${recruiter && profile.recipient ? `\nCandidate: ${profile.recipient.name}` : ''}
+${recruiter ? "The candidate's strengths you may tailor" : 'Points you may tailor'}:
 ${profile.points.map((p) => `- ${p}`).join('\n')}
-Proof (pick by index; shown verbatim):
+${recruiter ? "The candidate's proof" : 'Proof'} (pick by index; shown verbatim):
 ${proof}
 Call to action: ${profile.cta.line}${job}`
   return [
@@ -255,7 +261,12 @@ export function deterministicScript(kit: BrandKit, profile: Profile): Script {
   const first = name.split(/\s+/)[0]!
   const fact = bestFact(kit, profile)
   const candidate = profile.preset === 'candidate'
-  const hook = words(`Hi ${name} team`) <= LIMITS.hook ? `Hi ${name} team` : `Hi ${first} team`
+  const hook =
+    profile.preset === 'recruiter'
+      ? recruiterHook(profile.recipient?.name.split(/\s+/)[0], name, first)
+      : words(`Hi ${name} team`) <= LIMITS.hook
+        ? `Hi ${name} team`
+        : `Hi ${first} team`
   return {
     hook,
     noticed: noticedLine(kit, first),
@@ -281,6 +292,12 @@ export function deterministicScript(kit: BrandKit, profile: Profile): Script {
     proof: profile.proof.slice(0, 3).map((_, i) => i),
     cta: clip(profile.cta.line, LIMITS.cta),
   }
+}
+
+/** "Hi Priya, from Northwind": the candidate by first name, and who is writing */
+function recruiterHook(them: string | undefined, name: string, first: string): string {
+  const who = them ? `Hi ${them}, from` : 'A role for you at'
+  return words(`${who} ${name}`) <= LIMITS.hook ? `${who} ${name}` : `${who} ${first}`
 }
 
 /* --------------------------------------------- answering a job post */
@@ -326,7 +343,7 @@ function firstPerson(point: string): string | null {
 }
 
 /** The one-line answer: the proof item that answers it, and where it happened. */
-function answerLine(p: ProofItem, direct: boolean): string {
+function answerLine(p: ProofItem, direct: boolean, you = false): string {
   const done = `${p.value} ${p.label}`.replace(/\.$/, '')
   // "I did this" only when the proof plainly matches the requirement; otherwise say less
   // "On GitHub", "At Duke" already carry their preposition
@@ -335,14 +352,18 @@ function answerLine(p: ProofItem, direct: boolean): string {
       ? ` ${p.where[0]!.toLowerCase()}${p.where.slice(1)}`
       : ` at ${p.where}`
     : ''
+  // a recruiter's film says it to the candidate: "You did this at Stripe:"
+  const [did, have, closest] = you
+    ? ['You did this', 'You have done this', 'Your closest match']
+    : ['I did this', 'I have done this', 'My closest match']
   const prefix = direct
     ? p.where
-      ? `I did this${at}:`
-      : 'I have done this:'
+      ? `${did}${at}:`
+      : `${have}:`
     : p.where
-      ? `My closest match,${at}:`
-      : 'My closest match:'
-  for (const pre of [prefix, direct ? 'I did this:' : 'My closest match:']) {
+      ? `${closest},${at}:`
+      : `${closest}:`
+  for (const pre of [prefix, direct ? `${did}:` : `${closest}:`]) {
     const rest = trimAtBreak(done, LIMITS.why - words(pre))
     if (rest) return `${pre} ${rest}`
   }
@@ -375,28 +396,36 @@ function jobScript(kit: BrandKit, profile: Profile, title: string): Script {
   // say "I did this" only about something on the record that plainly matches
   // (a point that claims it plus proof that touches it counts; so does a point alone, said
   // in the first person, as long as it isn't just their requirement read back to them)
-  const claim = best.point.i >= 0 ? firstPerson(profile.points[best.point.i]!) : null
+  const recruiter = profile.preset === 'recruiter'
+  const claim = best.point.i >= 0 && !recruiter ? firstPerson(profile.points[best.point.i]!) : null
   const why =
     best.proof.f >= 0.34 || (best.point.f >= 0.34 && best.proof.f > 0)
-      ? answerLine(profile.proof[answer]!, true)
+      ? answerLine(profile.proof[answer]!, true, recruiter)
       : best.point.f >= 0.34 && claim && overlap(claim, req.text) <= 0.6
         ? claim
-        : answerLine(profile.proof[answer]!, false)
+        : answerLine(profile.proof[answer]!, false, recruiter)
   const rest = byFit(profile.proof.map(proofText), allReqs)
     .map((x) => x.i)
     .filter((i) => i !== answer)
-  const hook = words(`Hi ${name} team`) <= LIMITS.hook ? `Hi ${name} team` : `Hi ${first} team`
+  const them = profile.recipient?.name.split(/\s+/)[0]
+  const hook = recruiter
+    ? recruiterHook(them, name, first)
+    : words(`Hi ${name} team`) <= LIMITS.hook
+      ? `Hi ${name} team`
+      : `Hi ${first} team`
+  const headline = recruiter
+    ? words(`Why you fit our ${title} role`) <= LIMITS.headline
+      ? `Why you fit our ${title} role`
+      : `Why you fit the role at ${first}`
+    : words(`Why I fit your ${title} role`) <= LIMITS.headline
+      ? `Why I fit your ${title} role`
+      : 'Why I fit the role you posted'
   return {
     hook,
     noticed: noticedLine(kit, first),
     insight: { factId: req.id, why },
     pitch: {
-      headline: clip(
-        words(`Why I fit your ${title} role`) <= LIMITS.headline
-          ? `Why I fit your ${title} role`
-          : 'Why I fit the role you posted',
-        LIMITS.headline,
-      ),
+      headline: clip(headline, LIMITS.headline),
       points: byFit(profile.points, allReqs)
         .map((x) => profile.points[x.i]!)
         .sort((a, b) => Number(words(a) > LIMITS.point) - Number(words(b) > LIMITS.point))

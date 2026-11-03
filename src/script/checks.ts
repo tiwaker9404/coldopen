@@ -80,8 +80,15 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
   const sources = numbersIn(allSourceText(kit, profile))
   const ownNumbers = numbersIn(profileText(profile))
   const aboutSender = (field: string) => !!kit.job && !/^(hook|noticed)$/.test(field)
+  // the ask may repeat the sender's own ask ("Could we talk for 15 minutes?")
+  const askNumbers = numbersIn(profile.cta.line)
   for (const [field, text] of lines) {
-    const pool = aboutSender(field) ? ownNumbers : sources
+    const pool =
+      field === 'cta'
+        ? [...(aboutSender(field) ? ownNumbers : sources), ...askNumbers]
+        : aboutSender(field)
+          ? ownNumbers
+          : sources
     for (const n of numbersIn(text)) {
       if (!pool.some((s) => s === n || s.startsWith(n) || n.startsWith(s))) {
         v.push(
@@ -154,16 +161,30 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
     v.push(
       'insight.why must answer the requirement with something from your profile or proof (a result, a place, a skill it names); "I can do this" is not evidence',
     )
+  // a recruiter's film answers the requirement with the candidate's record, said to them
+  const secondPerson = /\b(you|your|you've|you're)\b/i.test(script.insight.why)
+  if (profile.preset === 'recruiter' && kit.job && secondPerson && !onRecord)
+    v.push(
+      "insight.why must point at something on the candidate's record (a result, a place, a skill it names); a compliment is not evidence",
+    )
+  if (profile.preset === 'recruiter' && firstPerson)
+    v.push(
+      'insight.why speaks as "I"; in a recruiter\'s film, speak to the candidate as "you" and about the company as "we"',
+    )
   const connects =
     profile.preset === 'candidate'
       ? firstPerson
-      : /\b(we|our|us)\b/i.test(script.insight.why) ||
-        [...content(script.insight.why)].some((w) => !GENERIC.has(w) && content(sender).has(w))
+      : profile.preset === 'recruiter'
+        ? secondPerson || /\b(we|our|us)\b/i.test(script.insight.why)
+        : /\b(we|our|us)\b/i.test(script.insight.why) ||
+          [...content(script.insight.why)].some((w) => !GENERIC.has(w) && content(sender).has(w))
   if (!connects)
     v.push(
       profile.preset === 'candidate'
         ? 'insight.why must connect the fact to you (use "I" or "my"); a compliment alone is filler'
-        : `insight.why must connect the fact to what ${profile.sender.company ?? 'the sender'} offers (name it, or the problem it solves); a compliment alone is filler`,
+        : profile.preset === 'recruiter'
+          ? 'insight.why must connect the role to the candidate (use "you" or "your"); a compliment alone is filler'
+          : `insight.why must connect the fact to what ${profile.sender.company ?? 'the sender'} offers (name it, or the problem it solves); a compliment alone is filler`,
     )
   // the pitch may be tailored to them, but it can't claim things the profile doesn't say
   // (deel.com: a job seeker's film pitched "AI agent platform for global payroll")

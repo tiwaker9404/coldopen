@@ -20,12 +20,20 @@ export type Scene =
       why: string
     }
   | { kind: 'pitch'; dur: number; from: string; headline: string; points: string[] }
-  | { kind: 'proof'; dur: number; stats: { value: string; label: string; where?: string }[] }
+  | {
+      kind: 'proof'
+      dur: number
+      stats: { value: string; label: string; where?: string }[]
+      /** a line above the numbers; recruiter films say whose record they are */
+      heading?: string
+    }
   | { kind: 'cta'; dur: number; line: string; contact: string; signoff: string }
 
 export interface Storyboard {
   company: string
   sender: string
+  /** recruiter films: the candidate it was made for (the header's "for ...") */
+  recipient?: string
   scenes: Scene[]
   duration: number
 }
@@ -97,12 +105,20 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
   const from = profile.sender.company
     ? `${profile.sender.name}, ${profile.sender.company}`
     : profile.sender.name
+  const recruiter = profile.preset === 'recruiter'
+  const them = profile.recipient?.name
   const scenes: Scene[] = [
     {
       kind: 'hook',
       dur: 3.2,
       text: script.hook.replace(/[.,]$/, ''),
-      sub: kit.job ? `For your ${kit.job.title} role` : `A 30-second film for ${kit.name}`,
+      sub: recruiter
+        ? kit.job
+          ? `About our ${kit.job.title} role`
+          : `A 30-second film from ${kit.name}`
+        : kit.job
+          ? `For your ${kit.job.title} role`
+          : `A 30-second film for ${kit.name}`,
     },
     (() => {
       const focus = noticedFact(kit, script.noticed)
@@ -120,7 +136,10 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
       value: stat?.value ?? null,
       text: stat ? stat.rest : fact.text.replace(/^["“]|["”]$/g, ''),
       // a requirement is quoted from the job post, not the homepage
-      source: fact.kind === 'requirement' && kit.job ? `your ${kit.job.title} post` : kit.host,
+      source:
+        fact.kind === 'requirement' && kit.job
+          ? `${recruiter ? 'our' : 'your'} ${kit.job.title} post`
+          : kit.host,
       why: script.insight.why.replace(/\.$/, ''),
     },
     {
@@ -134,18 +153,22 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
       kind: 'proof',
       dur: 4.8,
       stats: script.proof.map((i) => profile.proof[i]!).filter(Boolean),
+      ...(recruiter ? { heading: 'What caught our eye' } : {}),
     },
     {
       kind: 'cta',
       dur: 4.6,
       line: asked(script.cta),
       contact: profile.cta.contact,
-      signoff: `Made for ${kit.name} by ${profile.sender.name}${profile.sender.company ? ` at ${profile.sender.company}` : ''}`,
+      signoff: recruiter
+        ? `Made for ${them ?? 'you'} by ${profile.sender.name} at ${profile.sender.company ?? kit.name}`
+        : `Made for ${kit.name} by ${profile.sender.name}${profile.sender.company ? ` at ${profile.sender.company}` : ''}`,
     },
   ]
   return {
     company: kit.name,
     sender: from,
+    ...(recruiter && them ? { recipient: them } : {}),
     scenes,
     duration: Math.round(scenes.reduce((a, s) => a + s.dur, 0) * 10) / 10,
   }

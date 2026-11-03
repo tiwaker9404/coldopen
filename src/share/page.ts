@@ -22,6 +22,10 @@ export interface ShareView {
   book?: string
   /** the film's file name, e.g. film-square.mp4 */
   film: string
+  /** recruiter films: the candidate it was made for */
+  recipient?: string
+  /** who sent it: a job seeker (seen by a recruiter), a recruiter (seen by a candidate), a seller */
+  kind?: 'candidate' | 'recruiter' | 'sales'
 }
 
 export const FORMAT_SIZE = {
@@ -45,6 +49,8 @@ export function viewFromRun(input: FilmInput, out: FilmResult): ShareView {
     contact: p.cta.contact,
     ...(p.cta.book ? { book: p.cta.book } : {}),
     film: out.files.film.split('/').pop()!,
+    kind: p.preset,
+    ...(p.preset === 'recruiter' && p.recipient ? { recipient: p.recipient.name } : {}),
   }
 }
 
@@ -64,6 +70,7 @@ export function viewFromStoryboard(board: Storyboard, film: string): ShareView {
     ctaLine: cta.line,
     contact: cta.contact,
     film,
+    ...(board.recipient ? { recipient: board.recipient, kind: 'recruiter' as const } : {}),
   }
 }
 
@@ -106,7 +113,26 @@ export function sharePage(
   made.searchParams.set('ref', 'share')
   // the hosted app has a privacy page; the project's GitHub page doesn't
   const privacy = made.hostname === 'github.com' ? null : new URL('/privacy', made).toString()
-  const title = `A 30-second film for ${v.company}`
+  // who the film is for, and what the viewer on the other side might want to make
+  const forWho = v.recipient ?? v.company
+  const title = `A 30-second film for ${forWho}`
+  const other =
+    v.kind === 'recruiter'
+      ? {
+          ref: 'share-candidate',
+          hash: '',
+          line: "Job hunting? Make a film for a company you'd like to work with.",
+        }
+      : v.kind === 'candidate'
+        ? {
+            ref: 'share-recruiter',
+            hash: '#pitch',
+            line: 'Hiring? Pitch your roles to candidates the same way.',
+          }
+        : { ref: 'share', hash: '', line: "Make one for a company you'd like to work with." }
+  made.searchParams.set('ref', other.ref)
+  // the project's GitHub page has no #pitch; the hosted app does
+  if (other.hash && made.hostname !== 'github.com') made.hash = other.hash
   const [w, h] = FORMAT_SIZE[v.format]
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -149,10 +175,10 @@ footer a{color:inherit}
 <figure class="slate" style="margin:0">
 <div class="clap" aria-hidden="true"></div>
 <video src="${url}/${v.film}" poster="${url}/poster.jpg" controls playsinline preload="metadata" width="${w}" height="${h}"></video>
-<figcaption class="fields"><div><span>Made for</span><b>${esc(v.company)}</b></div><div><span>From</span><b>${esc(v.from)}</b></div><div><span>Runs</span><b>0:30</b></div></figcaption>
+<figcaption class="fields"><div><span>Made for</span><b>${esc(forWho)}</b></div><div><span>From</span><b>${esc(v.from)}</b></div><div><span>Runs</span><b>0:30</b></div></figcaption>
 </figure>
-<div class="row"><div><h1>${esc(v.ctaLine)}</h1><p>${esc(v.firstName)} made this film for ${esc(v.company)}.</p></div>
+<div class="row"><div><h1>${esc(v.ctaLine)}</h1><p>${esc(v.firstName)} made this film for ${esc(v.recipient ? `you, about a role at ${v.company}` : v.company)}.</p></div>
 <div class="do">${v.book ? `<a class="cta" data-track href="${esc(v.book)}" target="_blank" rel="noopener">Book 15 minutes</a><a class="cta alt" data-track href="${esc(contactHref(v.contact))}">Reply</a>` : `<a class="cta" data-track href="${esc(contactHref(v.contact))}">Reply to ${esc(v.firstName)}</a>`}</div></div>
-<footer><a class="made" href="${esc(made.toString())}">Made with coldopen</a>. Make one for a company you'd like to work with.${privacy ? `<br>Views are counted without storing your IP address. <a href="${esc(privacy)}">Privacy</a>` : ''}</footer>
+<footer><a class="made" href="${esc(made.toString())}">Made with coldopen</a>. ${esc(other.line)}${privacy ? `<br>Views are counted without storing your IP address. <a href="${esc(privacy)}">Privacy</a>` : ''}</footer>
 </main>${track ? trackingScript(track) : ''}</body></html>`
 }
