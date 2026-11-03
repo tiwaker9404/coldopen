@@ -1882,8 +1882,9 @@ dl.tally dd {
   color: var(--muted);
 }
 
+/* steps still to come read quieter, but stay legible (no opacity: it took small text under 4.5:1) */
 .start li:not(.done):not(.now) {
-  opacity: 0.6;
+  color: var(--muted);
 }
 
 .tick {

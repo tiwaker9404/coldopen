@@ -83,7 +83,12 @@ for (const [width, dark] of [
     const errors: string[] = []
     page.on('console', (m) => {
       // a resource the network refused (offline CI) isn't a page bug; a script error is
-      if (m.type() === 'error' && !/ERR_(TUNNEL|NAME|INTERNET|CONNECTION|PROXY)/.test(m.text()))
+      // a resource that failed to load (offline CI, a test film with no files) is a network
+      // matter, not a page bug; a script error is
+      if (
+        m.type() === 'error' &&
+        !/^Failed to load resource|ERR_(TUNNEL|NAME|INTERNET|CONNECTION|PROXY)/.test(m.text())
+      )
         errors.push(m.text())
     })
     page.on('pageerror', (e) => errors.push(e.message))
