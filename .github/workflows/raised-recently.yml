@@ -6,6 +6,11 @@ name: Raised recently
 # "coldopen you@example.com".
 on:
   workflow_dispatch:
+    inputs:
+      days:
+        description: "Only report how many raised in this many days (changes nothing)"
+        required: false
+        default: ""
   schedule:
     - cron: "17 13 * * *"
 
@@ -28,7 +33,9 @@ jobs:
       - run: pnpm install --frozen-lockfile --prod
         env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
       - run: node src/jobs/raised-build.ts
-        env: { SEC_USER_AGENT: "${{ vars.SEC_USER_AGENT }}" }
+        env:
+          SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
+          RAISED_REPORT_DAYS: ${{ inputs.days }}
       - name: Commit the list if it changed
         run: |
           git diff --quiet src/jobs/raised.json && exit 0

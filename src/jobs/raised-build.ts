@@ -150,8 +150,12 @@ async function text(url: string): Promise<string | null> {
 
 async function main() {
   const now = new Date()
-  // the last month's rounds only: a raise from months ago isn't news to open an email with
-  const since = raisedSince(now)
+  // the last month's rounds only: a raise from months ago isn't news to open an email with.
+  // RAISED_REPORT_DAYS asks a what-if ("how many raised in 90 days?"): it reports, writes nothing
+  const report = Number(process.env.RAISED_REPORT_DAYS) || 0
+  const since = report
+    ? new Date(now.getTime() - report * 86_400_000).toISOString().slice(0, 10)
+    : raisedSince(now)
   const filings: Filing[] = []
   for (const { year, q } of quartersSince(new Date(since), now)) {
     const idx = await text(`https://www.sec.gov/Archives/edgar/full-index/${year}/QTR${q}/form.idx`)
@@ -166,8 +170,10 @@ async function main() {
     filings,
     since,
   )
-  await writeFile(OUT, `${JSON.stringify(out, null, 0).replace(/},"/g, '},\n"')}\n`)
-  const line = `${Object.keys(out).length} of ${DEFAULT_BOARDS.length} companies filed a Form D in the last month (from ${filings.length.toLocaleString('en-US')} Form D filings)`
+  if (!report) await writeFile(OUT, `${JSON.stringify(out, null, 0).replace(/},"/g, '},\n"')}\n`)
+  else for (const [k, v] of Object.entries(out)) console.log(`${v.date}  ${v.filer}  (${k})`)
+  const window = report ? `the last ${report} days` : 'the last month'
+  const line = `${Object.keys(out).length} of ${DEFAULT_BOARDS.length} companies filed a Form D in ${window} (from ${filings.length.toLocaleString('en-US')} Form D filings)`
   console.log(line)
   if (process.env.GITHUB_STEP_SUMMARY) {
     const { appendFile } = await import('node:fs/promises')
