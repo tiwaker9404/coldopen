@@ -11,6 +11,7 @@ import {
   type Me,
   send,
 } from './api.ts'
+import { useToast } from './ui.tsx'
 
 const SHOWN = 6
 
@@ -425,10 +426,18 @@ function Alerts({ alerts }: { alerts: JobSuggestions['alerts'] }) {
  */
 function Gaps({ gaps }: { gaps: FitGap[] }) {
   const qc = useQueryClient()
+  const toast = useToast()
   const answer = useMutation({
     mutationFn: (v: { skill: string; action: 'have' | 'ignore' }) =>
       send('POST', '/v1/jobs/gaps', v),
-    onSuccess: async () => {
+    onSuccess: async (_r, v) => {
+      const jobs = gaps.find((g) => g.label === v.skill)?.jobs ?? 0
+      toast({
+        text:
+          v.action === 'have'
+            ? `Added ${v.skill} to your profile's skills. ${jobs} ${jobs === 1 ? 'fit' : 'fits'} updated.`
+            : `${v.skill} won't be suggested again.`,
+      })
       await qc.invalidateQueries({ queryKey: ['jobs'] })
       await qc.invalidateQueries({ queryKey: ['profiles'] })
     },

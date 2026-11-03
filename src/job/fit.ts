@@ -153,8 +153,7 @@ export function gapsOf(
         if (VAGUE.has(word.toLowerCase()) || GENERIC.has(t) || GENERIC.has(word.toLowerCase()))
           continue
         if (record.has(t) || ignore.has(t)) continue
-        // skills are named, not described: a capital, a symbol or an acronym ("SQL", "C++", "dbt" aside)
-        if (!/[A-Z+#]/.test(word.slice(1)) && !/^[A-Z]/.test(word) && !KNOWN_LOWER.has(t)) continue
+        if (!isSkill(word, t)) continue
         const g = seen.get(t) ?? { jobs: new Set(), spell: new Map(), example: r }
         g.jobs.add(j.id)
         g.spell.set(word, (g.spell.get(word) ?? 0) + 1)
@@ -172,6 +171,32 @@ export function gapsOf(
     .sort((a, b) => b.jobs - a.jobs || a.label.localeCompare(b.label))
     .slice(0, opts.limit ?? 6)
 }
+
+/**
+ * A skill is named, not described: an acronym ("SQL", "AWS"), a name with a capital or a symbol
+ * inside ("TypeScript", "C++", "Node.js"), or a known tool. A plain capitalized word ("Identity",
+ * "Management") is only a skill when it's a tool's name.
+ */
+function isSkill(word: string, t: string): boolean {
+  if (NOT_SKILLS.has(word.toUpperCase().replace(/S$/, ''))) return false
+  if (/^[A-Z][A-Z0-9]{1,5}s?$/.test(word)) return true
+  if (/[a-z][A-Z]|[+#]|\.[a-z]/.test(word)) return true
+  return KNOWN_LOWER.has(t) || TOOLS.has(t)
+}
+
+/** acronyms in posts that aren't skills */
+const NOT_SKILLS = new Set(
+  'US USA UK EU EMEA APAC LATAM ANZ ASEAN NA HQ PHD BS BA MS MA MBA CEO CTO CFO COO CRO VP SVP EVP OTE EOE EEO POC KPI OKR SLA ROI QBR RFP RFI MVP IC TBD FAQ OR AND THE AI ML IT HR PM SE AE SDR BDR CSM'.split(
+    ' ',
+  ),
+)
+
+/** tools people name with only a first capital, matched in lower case (stems, as `terms` makes them) */
+const TOOLS = new Set(
+  'kubernet postgr salesforce hubspot marketo zendesk intercom gong outreach jira confluence notion figma tableau looker excel snowflake bigquery redshift databrick kubernete docker terraform ansible jenkin kafka airflow spark hadoop postgre postgresql mysql mongodb redi elasticsearch graphql grpc django flask rail ruby java golang rust swift kotlin scala php linux azure gcp vercel netlify supabase firebase stripe twilio segment amplitude mixpanel pytorch tensorflow panda numpy langchain langgraph langsmith openai anthropic llamaindex pinecone weaviate workday netsuite sap oracle okta auth0 servicenow'.split(
+    ' ',
+  ),
+)
 
 /** tools people write in lower case */
 const KNOWN_LOWER = new Set([
