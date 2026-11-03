@@ -10,228 +10,301 @@
 <meta property="og:image" content="media/og.jpg">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23d6362a'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#FFC21A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23FFC21A'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23E5291F'/%3E%3C/svg%3E">
+<link rel="preload" href="fonts/big-shoulders.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-@font-face{font-family:"Archivo";src:url(fonts/archivo.woff2) format("woff2-variations");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
-:root{--bg:#eceee9;--surface:#fff;--ink:#17201c;--muted:#5b6661;--faint:#8b948f;--rule:#d4d9d3;--soft:#e3e7e1;--rec:#d6362a;--go:#23704c;--go-soft:#dcefe4;--code:#17201c;--code-ink:#eceee9;color-scheme:light}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121614;--surface:#1a1f1d;--ink:#e9ede9;--muted:#a0aaa5;--faint:#8a948f;--rule:#2b322f;--soft:#232a27;--rec:#f0574a;--go:#5cc893;--go-soft:#1d3329;--code:#0c0f0e;--code-ink:#e9ede9;color-scheme:dark}}
+@font-face{font-family:"Big Shoulders";src:url(fonts/big-shoulders.woff2) format("woff2-variations");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Instrument Sans";src:url(fonts/instrument-sans.woff2) format("woff2-variations");font-weight:400 700;font-stretch:75% 100%;font-display:swap}
+:root{
+  --stock:#FFC21A;--slate:#000;--screen:#F6F6F3;--paper:#fff;--ink:#141414;--grain:#5E6168;--rule:#D9DAD6;--tally:#E5291F;
+  --display:"Big Shoulders",Impact,"Arial Narrow",sans-serif;--body:"Instrument Sans",system-ui,sans-serif;
+  color-scheme:light
+}
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--ink);font:400 17px/1.55 "Archivo",system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
-a{color:inherit;text-underline-offset:3px}
-.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
-h1,h2,h3{font-stretch:72%;font-weight:700;line-height:1.02;letter-spacing:-.01em}
-:focus-visible{outline:2px solid #2457c5;outline-offset:3px}
+body{background:var(--screen);color:var(--ink);font:400 17px/1.6 var(--body);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-underline-offset:3px;text-decoration-thickness:1px}
+:focus-visible{outline:3px solid #1F5BD8;outline-offset:3px}
+.wrap{max-width:1200px;margin:0 auto;padding:0 32px}
+h1,h2,h3{font-family:var(--display);font-weight:800;line-height:.92;letter-spacing:-.005em}
+.num{font-family:var(--display);font-variant-numeric:tabular-nums}
 
-.top{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
-.mark{display:inline-flex;align-items:center;gap:9px;font-size:22px;font-weight:780;font-stretch:78%;text-decoration:none}
-.mark i{width:9px;height:9px;border-radius:50%;background:var(--rec)}
-.top nav{display:flex;gap:22px;font-size:15px;align-items:center}
-.top nav a{color:var(--muted);text-decoration:none}
-.top nav a:hover{color:var(--ink)}
+/* ------------------------------------------------------------------ the set (hero) */
+.set{background:var(--stock);color:var(--slate)}
+.top{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+.mark{display:inline-flex;align-items:center;gap:10px;font:800 30px/1 var(--display);text-decoration:none;letter-spacing:-.01em}
+.mark i{width:12px;height:12px;border-radius:50%;background:var(--tally);box-shadow:0 0 0 3px rgb(229 41 31/.18)}
+.beta{font:600 13px/1 var(--body);border:1.5px solid var(--slate);border-radius:99px;padding:4px 9px;margin-left:4px;letter-spacing:0}
+.top nav{display:flex;gap:26px;font-size:15px;font-weight:550}
+.top nav a{text-decoration:none}
+.top nav a:hover{text-decoration:underline}
 
-/* hero: the line, and a real film playing */
-.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:64px;align-items:center;padding:40px 0 80px}
-.hero h1{font-size:clamp(44px,6.4vw,82px);font-stretch:66%;line-height:.96}
-.lede{font-size:19px;color:var(--muted);margin:24px 0 30px;max-width:44ch}
-.ctas{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
-.btn{display:inline-flex;align-items:center;padding:14px 22px;border-radius:10px;background:var(--ink);color:var(--bg);font-weight:600;text-decoration:none}
-.btn:hover{background:color-mix(in oklab,var(--ink) 86%,var(--bg))}
-.quiet{color:var(--muted);font-weight:500}
-.note{font-size:14px;color:var(--muted);margin-top:18px}
-.count{margin-top:6px;font-size:14px;font-weight:600}
-.reel{position:relative}
-.reel video{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:14px;background:#000;box-shadow:0 30px 60px -30px rgb(10 20 15/.55)}
+.hero{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:64px;align-items:center;padding:28px 0 80px}
+.hero h1{font-size:clamp(58px,7.6vw,116px);line-height:.86;letter-spacing:-.012em;max-width:10.5ch}
+.lede{font-size:20px;line-height:1.5;max-width:40ch;margin:28px 0 30px}
+.ctas{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:16px 24px;border-radius:999px;background:var(--slate);color:var(--stock);font-weight:650;font-size:17px;text-decoration:none}
+.btn:hover{background:#262626}
+.btn i{width:9px;height:9px;border-radius:50%;background:var(--tally)}
+.quiet{font-weight:600}
+.fine{font-size:14.5px;margin-top:20px;max-width:46ch}
+.count{margin-top:6px;font-size:14.5px;font-weight:650}
 
-section{padding:72px 0;border-top:1px solid var(--rule)}
-h2{font-size:clamp(32px,4.4vw,52px);font-stretch:68%;max-width:22ch}
-.intro{color:var(--muted);max-width:58ch;margin-top:14px;font-size:18px}
+/* the slate: a clapper over the frame, the fields under it */
+.slate{background:var(--slate);color:#fff;border-radius:14px;overflow:hidden;box-shadow:0 30px 60px -28px rgb(60 40 0/.55)}
+.clap{height:34px;position:relative;transform-origin:0 100%;background:repeating-linear-gradient(-55deg,#fff 0 22px,#000 22px 44px)}
+.clap.open{transform:rotate(-14deg)}
+.clap.shut{animation:shut .32s cubic-bezier(.5,0,.75,0) forwards}
+@keyframes shut{from{transform:rotate(-14deg)}to{transform:rotate(0)}}
+.bar{height:12px;background:repeating-linear-gradient(-55deg,#000 0 22px,#fff 22px 44px)}
+.frame{aspect-ratio:1;background:#000;position:relative}
+.frame video{width:100%;height:100%;display:block;object-fit:cover}
+.fields{display:grid;grid-template-columns:1.4fr 1.6fr .7fr .9fr;border-top:1px solid #333}
+.fields div{padding:10px 14px 12px;border-right:1px solid #333;min-width:0}
+.fields div:last-child{border-right:0}
+.fields span{display:block;font-size:12px;color:#A8AAAE;margin-bottom:2px}
+.fields b{display:block;font:700 22px/1.05 var(--display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec{display:inline-flex;align-items:center;gap:6px}
+.rec::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--tally)}
 
-/* the result: the one number */
-.result{display:grid;grid-template-columns:auto 1fr;gap:20px 56px;align-items:center}
-.stat{font-size:clamp(96px,14vw,184px);font-stretch:62%;font-weight:720;line-height:.85;letter-spacing:-.02em;color:var(--go)}
+/* ------------------------------------------------------------------ sections */
+section{padding:96px 0}
+section+section{border-top:1px solid var(--rule)}
+h2{font-size:clamp(44px,6.2vw,84px);max-width:16ch}
+.intro{color:var(--grain);font-size:19px;max-width:56ch;margin-top:18px}
 
-/* films */
-.films{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:36px}
-.film button{all:unset;cursor:pointer;display:block;width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;position:relative;background:#000}
-.film button:focus-visible{outline:2px solid #2457c5;outline-offset:3px}
-.film img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .3s ease}
-.film button:hover img{transform:scale(1.03)}
-.film video{width:100%;aspect-ratio:1;display:block;border-radius:10px;background:#000}
-.film .play{position:absolute;left:10px;bottom:10px;width:34px;height:34px;border-radius:50%;background:rgb(255 255 255/.92);display:grid;place-items:center}
-.film .play::before{content:"";margin-left:3px;border-left:10px solid #17201c;border-top:6px solid transparent;border-bottom:6px solid transparent}
-.film p{margin-top:10px;font-weight:620}
-.film p span{display:block;font-weight:400;font-size:14px;color:var(--muted)}
+/* the result: a line from the end of a trailer */
+.result{display:grid;grid-template-columns:auto 1fr;gap:16px 64px;align-items:center}
+.result .figure{font:900 clamp(140px,19vw,260px)/.78 var(--display);letter-spacing:-.03em}
+.result .figure small{font-size:.32em;letter-spacing:0;font-weight:700;vertical-align:top;margin-left:6px}
+.result h2{font-size:clamp(36px,4.4vw,58px)}
 
-/* how: a real sequence, so numbered */
-.how{list-style:none;margin-top:36px;display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--ink);counter-reset:s}
-.how li{padding:18px 20px 0 0;counter-increment:s}
-.how li::before{content:counter(s);display:block;font-size:40px;font-stretch:66%;font-weight:700;line-height:1;margin-bottom:10px}
-.how h3{font-size:21px;margin-bottom:6px}
-.how p{color:var(--muted);font-size:15.5px}
+/* the filmstrip: a frame per film, perforations along both edges */
+.strip{margin-top:44px;background:var(--slate);border-radius:6px;padding:26px 22px;position:relative;
+  --perf:radial-gradient(circle at 9px 50%,var(--screen) 0 4.5px,transparent 5px) 0 0/28px 14px repeat-x}
+.strip::before,.strip::after{content:"";position:absolute;left:12px;right:12px;height:14px;background:var(--perf)}
+.strip::before{top:6px}
+.strip::after{bottom:6px}
+.frames{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.film button{all:unset;cursor:pointer;display:block;width:100%;aspect-ratio:1;border-radius:3px;overflow:hidden;position:relative;background:#111}
+.film button:focus-visible{outline:3px solid var(--stock);outline-offset:3px}
+.film img{width:100%;height:100%;display:block;object-fit:cover}
+.film video{width:100%;aspect-ratio:1;display:block;border-radius:3px;background:#000}
+.film .play{position:absolute;inset:auto auto 10px 10px;display:inline-flex;align-items:center;gap:7px;background:var(--stock);color:#000;border-radius:99px;padding:6px 11px 6px 9px;font:650 13px/1 var(--body)}
+.film .play::before{content:"";border-left:9px solid #000;border-top:5.5px solid transparent;border-bottom:5.5px solid transparent}
+.film p{color:#fff;margin-top:10px;font:700 22px/1.1 var(--display)}
+.film p span{display:block;font:400 14px/1.4 var(--body);color:#B9BBC0;margin-top:3px}
 
-/* rules */
-.split{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start}
-.rules{list-style:none;display:grid}
-.rules li{padding:14px 0;border-bottom:1px solid var(--rule)}
-.rules li:first-child{border-top:1px solid var(--rule)}
-.rules b{display:block;font-weight:620}
-.rules span{color:var(--muted);font-size:15.5px}
+/* the shot list: a real sequence, so numbered */
+.shots{list-style:none;margin-top:48px;counter-reset:s}
+.shots li{display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1.4fr);gap:28px;padding:26px 0;border-top:1.5px solid var(--ink);counter-increment:s;align-items:baseline}
+.shots li:last-child{border-bottom:1.5px solid var(--ink)}
+.shots li::before{content:"Shot " counter(s);font:800 28px/1 var(--display)}
+.shots h3{font-size:34px;line-height:1}
+.shots p{color:var(--grain)}
 
-/* who + crash */
-.who{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:32px}
-.who h3{font-size:24px;margin-bottom:8px}
-.who p{color:var(--muted)}
-.who.find{gap:32px 48px}
-.bench{display:flex;gap:56px;margin-top:32px;flex-wrap:wrap}
-.bench b{display:block;font-size:72px;font-stretch:62%;font-weight:700;line-height:1}
-.bench .good b{color:var(--go)}
-.bench span{color:var(--muted);font-size:15px;display:block;max-width:24ch;margin-top:6px}
+/* features, two columns of short notes */
+.notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px 48px;margin-top:48px}
+.notes h3{font-size:30px;line-height:1;margin-bottom:10px}
+.notes p{color:var(--grain);font-size:16px}
 
-pre{background:var(--code);color:var(--code-ink);border-radius:12px;padding:22px 24px;overflow-x:auto;font:500 14.5px/1.75 ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:28px;max-width:760px}
-pre .c{color:#8b948f}
+/* continuity: the rules checked in code */
+.split{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:64px;align-items:start}
+.rules{list-style:none;background:var(--paper);border:1px solid var(--rule);border-radius:14px;padding:6px 26px}
+.rules li{padding:18px 0;border-bottom:1px solid var(--rule);display:grid;grid-template-columns:22px 1fr;gap:12px}
+.rules li:last-child{border-bottom:0}
+.rules li::before{content:"";width:14px;height:14px;margin-top:5px;border:2px solid var(--ink);border-radius:3px;background:linear-gradient(135deg,transparent 45%,var(--ink) 45% 55%,transparent 55%)}
+.rules b{display:block;font-weight:650}
+.rules span{color:var(--grain);font-size:15.5px}
+
+.bench{display:flex;gap:72px;margin-top:40px;flex-wrap:wrap}
+.bench b{display:block;font:900 120px/.8 var(--display)}
+.bench .good b{color:#fff;background:var(--slate);padding:10px 18px 4px;border-radius:8px;display:inline-block}
+.bench span{color:var(--grain);font-size:15.5px;display:block;max-width:24ch;margin-top:12px}
+
+pre{background:var(--slate);color:#EDEDEA;border-radius:14px;padding:24px 26px;overflow-x:auto;font:500 14.5px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:32px;max-width:820px}
+pre .c{color:#8C8F95}
 code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
+.note{font-size:15px;color:var(--grain);margin-top:16px}
 
-footer{border-top:1px solid var(--rule);padding:30px 0 48px;color:var(--muted);font-size:14px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+/* the credits */
+.credits{background:var(--slate);color:#fff;padding:96px 0 48px;text-align:center}
+.credits h2{margin:0 auto;font-size:clamp(40px,5vw,64px);max-width:none}
+.roll{display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;max-width:640px;margin:44px auto 0;font-size:16px}
+.roll dt{text-align:right;color:#A8AAAE}
+.roll dd{text-align:left;font-weight:600}
+.credits .btn{background:var(--stock);color:#000;margin-top:48px}
+.credits .btn:hover{background:#FFD24F}
+.legal{margin-top:64px;color:#8C8F95;font-size:14px;display:flex;justify-content:center;gap:22px;flex-wrap:wrap}
 
-@media (max-width:880px){
-  .hero,.split,.who,.result{grid-template-columns:1fr;gap:32px}
-  .hero{padding-top:12px}
-  .reel{max-width:420px}
-  .films{grid-template-columns:repeat(2,1fr)}
-  .how{grid-template-columns:1fr 1fr;row-gap:24px}
+@media (max-width:960px){
+  .hero{grid-template-columns:1fr;gap:40px;padding-top:12px}
+  .slate{max-width:460px}
+  .frames{grid-template-columns:repeat(2,1fr)}
+  .notes{grid-template-columns:1fr 1fr}
+  .split,.result{grid-template-columns:1fr;gap:28px}
+  .shots li{grid-template-columns:1fr;gap:6px}
   .top nav a.wide{display:none}
-  section{padding:56px 0}
+  section{padding:72px 0}
 }
-@media (max-width:480px){.wrap{padding:0 16px}.how{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.film img{transition:none}}
-.beta{margin-left:10px;padding:2px 9px;border:1px solid currentColor;border-radius:99px;color:#b42318;font-size:12px;font-weight:600;letter-spacing:.02em;vertical-align:middle}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .beta{color:#ff8a80}}
+@media (max-width:560px){
+  .wrap{padding:0 16px}
+  .notes{grid-template-columns:1fr}
+  .fields{grid-template-columns:1fr 1fr}
+  .fields div:nth-child(2){border-right:0}
+  .fields div:nth-child(-n+2){border-bottom:1px solid #333}
+  .roll{grid-template-columns:1fr;text-align:center}
+  .roll dt,.roll dd{text-align:center}
+  .roll dd{margin-bottom:10px}
+  .bench{gap:40px}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.clap.shut{animation:none;transform:none}.clap.open{transform:none}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top" id="top">
-    <a class="mark" href="#top"><i aria-hidden="true"></i>coldopen<span class="beta">Public beta</span></a>
-    <nav aria-label="Sections">
-      <a class="wide" href="#films">Films</a>
-      <a class="wide" href="#how">How it works</a>
-      <a class="wide" href="hiring-index/">Hiring Index</a>
-      <a href="https://github.com/tiwaker9404/coldopen">GitHub</a>
-    </nav>
-  </header>
+<div class="set">
+  <div class="wrap">
+    <header class="top" id="top">
+      <a class="mark" href="#top"><i aria-hidden="true"></i>coldopen<span class="beta">Public beta</span></a>
+      <nav aria-label="Sections">
+        <a class="wide" href="#films">Films</a>
+        <a class="wide" href="#how">How it works</a>
+        <a class="wide" href="hiring-index/">Hiring Index</a>
+        <a href="https://github.com/tiwaker9404/coldopen">GitHub</a>
+      </nav>
+    </header>
 
-  <main>
     <div class="hero">
       <div>
-        <h1>A 30-second film for every company you apply to.</h1>
-        <p class="lede">Paste a job link. coldopen reads the company’s site, picks the results from your résumé that answer the role, and makes a short film in their colors. You send the link, and see when they watch.</p>
+        <h1>A 30‑second film for every company you apply to.</h1>
+        <p class="lede">Paste a job link. coldopen reads the company’s site, picks the results from your résumé that answer the role, and makes a short film in their brand. You send the link, and see when they watch.</p>
         <div class="ctas">
-          <a class="btn" href="https://coldopen-nk8o.onrender.com/?ref=site">Try the free beta</a>
+          <a class="btn" href="https://coldopen-nk8o.onrender.com/?ref=site"><i aria-hidden="true"></i>Make your first film</a>
           <a class="quiet" href="#films">Watch four films</a>
         </div>
-        <p class="note">No account needed to try it; continue with Google to keep your films. About a minute and a half per film. Open source.</p>
+        <p class="fine">Free, no account needed to try it. About a minute and a half per film. Open source.</p>
         <p class="count" id="count" hidden></p>
       </div>
-      <div class="reel">
-        <video src="media/reel.mp4" poster="media/reel.jpg" autoplay muted loop playsinline aria-label="The coldopen launch reel"></video>
+
+      <figure class="slate" aria-label="Now playing: four real films, one after another">
+        <div class="clap open" id="clap" aria-hidden="true"></div>
+        <div class="bar" aria-hidden="true"></div>
+        <div class="frame">
+          <video id="reel" muted playsinline preload="metadata" poster="media/linear.jpg" aria-label="A coldopen film"></video>
+        </div>
+        <figcaption class="fields">
+          <div><span>Company</span><b id="f-co">Linear</b></div>
+          <div><span>Opens on</span><b id="f-on">Their headline</b></div>
+          <div><span>Take</span><b class="num">1</b></div>
+          <div><span>Runs</span><b class="num rec" id="f-tc">00:00</b></div>
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+  <section aria-labelledby="result-h">
+    <div class="result">
+      <p class="figure" aria-hidden="true">60<small>%</small></p>
+      <div>
+        <h2 id="result-h">My reply rate in the first week.</h2>
+        <p class="intro">I built coldopen for my own job search and sent a film with every application that week. More than half the people I sent one to wrote back; plain messages got me 2 replies. Friends in the beta are seeing 50 to 70% more replies.</p>
       </div>
     </div>
+  </section>
 
-    <section aria-labelledby="result-h">
-      <div class="result">
-        <p class="stat" aria-hidden="true">60%</p>
-        <div>
-          <h2 id="result-h">My reply rate in the first week.</h2>
-          <p class="intro">I built coldopen for my own job search and sent a film with every application that week. More than half the people I sent one to wrote back. Friends in the beta are now seeing 50–70% more replies than with plain messages. I hope it opens as many doors for you.</p>
-        </div>
+  <section id="films" aria-labelledby="films-h">
+    <h2 id="films-h">Every film looks like the company it’s for.</h2>
+    <p class="intro">Each one was made from the company’s website and one profile, with no editing. Press one to play it.</p>
+    <div class="strip">
+      <div class="frames">
+        <div class="film"><button type="button" data-src="media/linear.mp4" aria-label="Play the film for Linear"><img src="media/linear.jpg" alt="" loading="lazy"><span class="play" aria-hidden="true">0:29</span></button><p>Linear<span>Their homepage headline, highlighted</span></p></div>
+        <div class="film"><button type="button" data-src="media/langchain.mp4" aria-label="Play the film for LangChain"><img src="media/langchain.jpg" alt="" loading="lazy"><span class="play" aria-hidden="true">0:29</span></button><p>LangChain<span>Opens on LangSmith Engine</span></p></div>
+        <div class="film"><button type="button" data-src="media/deel.mp4" aria-label="Play the film for Deel"><img src="media/deel.jpg" alt="" loading="lazy"><span class="play" aria-hidden="true">0:29</span></button><p>Deel<span>“150+ currencies”, from their site</span></p></div>
+        <div class="film"><button type="button" data-src="media/retell.mp4" aria-label="Play the film for Retell AI"><img src="media/retell.jpg" alt="" loading="lazy"><span class="play" aria-hidden="true">0:29</span></button><p>Retell AI<span>In their own serif typeface</span></p></div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section id="films" aria-labelledby="films-h">
-      <h2 id="films-h">Every film looks like the company it’s for.</h2>
-      <p class="intro">Each was made from the company’s website and one profile, with no editing. Press one to play it.</p>
-      <div class="films">
-        <div class="film"><button type="button" data-src="media/linear.mp4" aria-label="Play the film for Linear"><img src="media/linear.jpg" alt="" loading="lazy"><span class="play" aria-hidden="true"></span></button><p>Linear<span>Their homepage headline, highlighted</span></p></div>
-        <div class="film"><button type="button" data-src="media/langchain.mp4" aria-label="Play the film for LangChain"><img src="media/langchain.jpg" alt="" loading="lazy"><span class="play" aria-hidden="true"></span></button><p>LangChain<span>Opens on LangSmith Engine</span></p></div>
-        <div class="film"><button type="button" data-src="media/deel.mp4" aria-label="Play the film for Deel"><img src="media/deel.jpg" alt="" loading="lazy"><span class="play" aria-hidden="true"></span></button><p>Deel<span>“150+ currencies”, from their site</span></p></div>
-        <div class="film"><button type="button" data-src="media/retell.mp4" aria-label="Play the film for Retell AI"><img src="media/retell.jpg" alt="" loading="lazy"><span class="play" aria-hidden="true"></span></button><p>Retell AI<span>In their own serif typeface</span></p></div>
+  <section id="how" aria-labelledby="how-h">
+    <h2 id="how-h">From a job link to a reply.</h2>
+    <ol class="shots">
+      <li><h3>Your résumé, once</h3><p>Upload it and name the role. It becomes your profile, and every number is copied from the résumé word for word.</p></li>
+      <li><h3>Paste a job link</h3><p>coldopen reads the post and the company’s homepage: colors, logo, typeface, and the line or number they lead with.</p></li>
+      <li><h3>Check the take</h3><p>The film answers one requirement from the post with your results. Rewrite any line and render a new take in a minute.</p></li>
+      <li><h3>Send it to one person</h3><p>It suggests who to write to, including alumni of your school and people from your past teams, finds their email, and opens it in Gmail already addressed. You see when they watch.</p></li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="find-h">
+    <h2 id="find-h">Find the roles worth a film.</h2>
+    <p class="intro">Open roles from 466 companies’ job boards, including 408 hiring YC startups, ranked by how well you fit.</p>
+    <div class="notes">
+      <div><h3>YC startups, hiring fastest first</h3><p>Every role carries its YC batch and how many roles the company posted this month. At a YC startup, the founders come first.</p></div>
+      <div><h3>Who just raised, and how much</h3><p>Companies that filed an SEC Form D in the last 3 months, filtered by round size. A round from the last month opens your email with congratulations.</p></div>
+      <div><h3>Pay and visas, up front</h3><p>Each role shows the pay its post lists and whether the company had H-1B petitions approved. Filter by minimum pay or sponsors.</p></div>
+      <div><h3>Two openers, one winner</h3><p>Half your emails open with the film, half with your best number. Today shows which one gets you more replies.</p></div>
+      <div><h3>From reply to interview</h3><p>Follow-ups come due sooner when they watch without replying. When they reply, you get the questions they’ll likely ask, answered from your own record.</p></div>
+      <div><h3>A button on every job post</h3><p>The free <a href="https://github.com/tiwaker9404/coldopen/tree/main/extension">Chrome extension</a> adds Make film to Greenhouse, Lever, Ashby, LinkedIn and YC job posts. <a href="coldopen-extension.zip">Download it</a>.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="rules-h">
+    <div class="split">
+      <div>
+        <h2 id="rules-h">It can’t make things up.</h2>
+        <p class="intro">A recruiter spots an invented claim instantly. So these rules are checked in code on every line, not just asked of the AI.</p>
       </div>
-    </section>
+      <ul class="rules">
+        <li><div><b>Their words are quoted, never paraphrased</b><span>The line from their site or job post is copied exactly.</span></div></li>
+        <li><div><b>Your results are shown word for word</b><span>Straight from your profile, which came from your résumé.</span></div></li>
+        <li><div><b>No invented numbers</b><span>A number that isn’t on their site or in your profile gets the line rejected, including lines you edit.</span></div></li>
+        <li><div><b>No AI-sounding filler</b><span>Short lines, and phrases like “unlock”, “seamless” and “revolutionize” are banned.</span></div></li>
+        <li><div><b>Readable on any brand</b><span>Colors are checked for contrast, and text is fitted so nothing spills over.</span></div></li>
+      </ul>
+    </div>
+  </section>
 
-    <section id="how" aria-labelledby="how-h">
-      <h2 id="how-h">From a job link to a reply.</h2>
-      <ol class="how">
-        <li><h3>Your résumé, once</h3><p>Upload it and name the role. It becomes your profile; every number is copied from the résumé word for word.</p></li>
-        <li><h3>Paste a job link</h3><p>coldopen reads the post and the company’s homepage: colors, logo, typeface, and the line or number they lead with.</p></li>
-        <li><h3>Check the film</h3><p>It answers one requirement from the post with your results. Rewrite any line and render it again in a minute.</p></li>
-        <li><h3>Send it to one person</h3><p>It suggests who to write to, finds their email, and opens it in Gmail already addressed. You see when they watch, and it reminds you when to follow up.</p></li>
-      </ol>
-    </section>
+  <section aria-labelledby="crash-h">
+    <h2 id="crash-h">Kill the renderer halfway. The film still finishes.</h2>
+    <p class="intro">Every step is saved in Postgres by <a href="https://github.com/tiwaker9404/unkillable">unkillable</a>, a durable-execution engine built for this. A new worker picks up where the old one died and redoes nothing that finished. In its benchmark of 200 refunds with workers killed at random:</p>
+    <div class="bench">
+      <div><b>83</b><span>customers refunded twice by a plain retry loop</span></div>
+      <div class="good"><b>0</b><span>refunded twice with unkillable</span></div>
+    </div>
+  </section>
 
-    <section aria-labelledby="find-h">
-      <h2 id="find-h">Find the roles worth a film.</h2>
-      <p class="intro">Open roles from 450+ companies’ job boards, about 400 of them hiring YC startups, ranked by how well you fit.</p>
-      <div class="who find">
-        <div><h3>YC startups, hiring fastest first</h3><p>Every role carries its YC batch and how many roles the company posted this month. For a YC startup, the founders come first in who to write to.</p></div>
-        <div><h3>Pay and visas, up front</h3><p>Each role shows the pay its post lists and whether the company had H-1B petitions approved. Filter by minimum pay, visa sponsors or posted this week.</p></div>
-        <div><h3>Who you already know</h3><p>Upload LinkedIn’s connections export once and every role shows the people you know there, with an intro request ready.</p></div>
-        <div><h3>A button on every job post</h3><p>The free <a href="https://github.com/tiwaker9404/coldopen/tree/main/extension">Chrome extension</a> adds Make film to job posts on Greenhouse, Lever, Ashby, LinkedIn and YC. <a href="coldopen-extension.zip">Download it</a>.</p></div>
-        <div><h3>From reply to interview</h3><p>Follow-ups come due sooner when they watch without replying. When they reply, you get a brief for the call and three questions to ask.</p></div>
-      </div>
-    </section>
-
-    <section aria-labelledby="rules-h">
-      <div class="split">
-        <div>
-          <h2 id="rules-h">It can’t make things up.</h2>
-          <p class="intro">A recruiter spots an invented claim instantly. So these rules are checked in code on every line, not just asked of the AI.</p>
-        </div>
-        <ul class="rules">
-          <li><b>Their words are quoted, never paraphrased</b><span>The line from their site or job post is copied exactly.</span></li>
-          <li><b>Your results are shown word for word</b><span>Straight from your profile, which came from your résumé.</span></li>
-          <li><b>No invented numbers</b><span>A number that isn’t in their site or your profile gets the line rejected, including in lines you edit.</span></li>
-          <li><b>No AI-sounding filler</b><span>Short lines, and phrases like “unlock”, “seamless” and “revolutionize” are banned.</span></li>
-          <li><b>Readable on any brand</b><span>Colors are checked for contrast, and text is fitted so nothing spills over.</span></li>
-        </ul>
-      </div>
-    </section>
-
-    <section aria-labelledby="who-h">
-      <h2 id="who-h">Built for job seekers. Works for sales too.</h2>
-      <div class="who">
-        <div><h3>Applying for jobs</h3><p>Any role with results you can count: engineering, data, product, design, marketing, customer success. Leave a current employer out of your profile with one field.</p></div>
-        <div><h3>Selling a product</h3><p>Paste a list of prospects and get one film each, with a CSV of share links for your CRM or sequencer. Or mention <b>@coldopen</b> in Slack.</p></div>
-      </div>
-    </section>
-
-    <section aria-labelledby="crash-h">
-      <h2 id="crash-h">Kill the renderer halfway. The film still finishes.</h2>
-      <p class="intro">Every step is saved in Postgres by <a href="https://github.com/tiwaker9404/unkillable">unkillable</a>, a durable-execution engine built for this. A new worker picks up where the old one died and redoes nothing that finished. A test kills a real worker on every change. In its benchmark of 200 refunds with workers killed at random:</p>
-      <div class="bench">
-        <div><b>83</b><span>customers refunded twice by a plain retry loop</span></div>
-        <div class="good"><b>0</b><span>refunded twice with unkillable</span></div>
-      </div>
-    </section>
-
-    <section id="install" aria-labelledby="install-h">
-      <h2 id="install-h">Or run it on your own laptop, free.</h2>
-      <p class="intro">You need Node 24 and ffmpeg. Add Groq’s free tier or a local model through Ollama for natural copy; without one, a built-in writer makes plain scripts that are always correct.</p>
+  <section id="install" aria-labelledby="install-h">
+    <h2 id="install-h">Or run it on your own laptop, free.</h2>
+    <p class="intro">You need Node 24 and ffmpeg. Add Groq’s free tier or a local model through Ollama for natural copy; without one, a built-in writer makes plain scripts that are always correct. It works for sales too: one film per prospect, with a CSV of share links.</p>
 <!-- biome-ignore lint/a11y/noNoninteractiveTabindex: a code block that scrolls sideways needs keyboard access -->
 <pre tabindex="0"><code>git clone https://github.com/tiwaker9404/coldopen && cd coldopen && pnpm install
 <span class="c"># your profile, from your résumé</span>
 pnpm coldopen profile resume.pdf me.json --role "Data analyst"
 <span class="c"># a film</span>
 pnpm film https://jobs.ashbyhq.com/acme/123 -p me.json</code></pre>
-      <p class="note">For a team: <code>docker compose up</code> runs the web app, API, renderer and database. See the <a href="https://github.com/tiwaker9404/coldopen#readme">README</a>.</p>
-    </section>
-  </main>
+    <p class="note">For a team: <code>docker compose up</code> runs the web app, API, renderer and database. See the <a href="https://github.com/tiwaker9404/coldopen#readme">README</a>.</p>
+  </section>
+</main>
 
-  <footer>
-    <span>Open source under the MIT license. Built by <a href="https://github.com/tiwaker9404">Ashwin Tiwari</a>.</span>
-    <span><a href="https://coldopen-nk8o.onrender.com/privacy">Privacy</a> &nbsp; <a href="https://github.com/tiwaker9404/coldopen">coldopen</a> &nbsp; <a href="https://github.com/tiwaker9404/unkillable">unkillable</a></span>
-  </footer>
-</div>
+<footer class="credits">
+  <div class="wrap">
+    <h2>Your next take starts here.</h2>
+    <dl class="roll">
+      <dt>Directed by</dt><dd>You</dd>
+      <dt>Written from</dt><dd>Your résumé, word for word</dd>
+      <dt>In the brand of</dt><dd>The company you’re writing to</dd>
+      <dt>Running time</dt><dd>30 seconds</dd>
+      <dt>Built by</dt><dd><a href="https://github.com/tiwaker9404">Ashwin Tiwari</a></dd>
+      <dt>License</dt><dd>MIT, free and open source</dd>
+    </dl>
+    <a class="btn" href="https://coldopen-nk8o.onrender.com/?ref=site-credits">Make your first film</a>
+    <p class="legal"><a href="https://coldopen-nk8o.onrender.com/privacy">Privacy</a><a href="https://github.com/tiwaker9404/coldopen">coldopen on GitHub</a><a href="https://github.com/tiwaker9404/unkillable">unkillable</a></p>
+  </div>
+</footer>
+
 <script>
 // the live counter: films made, and the share of sent films that got a reply (views aren't
 // shown: most films get downloaded and shared)
@@ -256,9 +329,51 @@ Promise.all([
   el.hidden = false
 })
 
-// swap a poster for its film on click; one film plays at a time
+// the slate: four real films, one after another; the clapper closes once as the first starts
+const REEL = [
+  { src: 'media/linear.mp4', poster: 'media/linear.jpg', co: 'Linear', on: 'Their headline' },
+  { src: 'media/langchain.mp4', poster: 'media/langchain.jpg', co: 'LangChain', on: 'LangSmith Engine' },
+  { src: 'media/deel.mp4', poster: 'media/deel.jpg', co: 'Deel', on: '150+ currencies' },
+  { src: 'media/retell.mp4', poster: 'media/retell.jpg', co: 'Retell AI', on: 'Their own serif' },
+]
+const reel = document.getElementById('reel')
+const clap = document.getElementById('clap')
+const tc = document.getElementById('f-tc')
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches
+let at = 0
+const show = (i) => {
+  const f = REEL[i]
+  reel.src = f.src
+  reel.poster = f.poster
+  reel.setAttribute('aria-label', `The film for ${f.co}`)
+  document.getElementById('f-co').textContent = f.co
+  document.getElementById('f-on').textContent = f.on
+}
+const two = (s) => String(Math.floor(s)).padStart(2, '0')
+reel.addEventListener('timeupdate', () => {
+  tc.textContent = `00:${two(reel.currentTime)}`
+})
+reel.addEventListener('ended', () => {
+  at = (at + 1) % REEL.length
+  show(at)
+  reel.play().catch(() => {})
+})
+show(0)
+if (still) {
+  // no clap, no autoplay: the first frame waits for a press on the films below
+  clap.classList.remove('open')
+} else {
+  setTimeout(() => {
+    clap.classList.remove('open')
+    clap.classList.add('shut')
+    setTimeout(() => reel.play().catch(() => {}), 300)
+  }, 700)
+}
+
+// the filmstrip: swap a poster for its film on press; one film plays at a time
 document.querySelectorAll('.film button').forEach((b) => {
   b.addEventListener('click', () => {
+    reel.pause()
     for (const v of document.querySelectorAll('.film video')) v.pause()
     const v = document.createElement('video')
     v.src = b.dataset.src

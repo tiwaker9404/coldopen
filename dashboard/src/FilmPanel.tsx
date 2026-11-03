@@ -149,16 +149,41 @@ export function FilmPanel({
 
         {done && f.files && (
           <>
-            <video
-              key={f.id}
-              className={`player ${f.format}`}
-              src={media(f, 'film')}
-              poster={media(f, 'poster.jpg')}
-              controls
-              autoPlay
-              muted
-              playsInline
-            />
+            <figure className="slate">
+              <div className="clap" aria-hidden="true" />
+              <video
+                key={f.id}
+                className={`player ${f.format}`}
+                src={media(f, 'film')}
+                poster={media(f, 'poster.jpg')}
+                controls
+                autoPlay
+                muted
+                playsInline
+              />
+              <figcaption className="slate-fields">
+                <div>
+                  <span>Company</span>
+                  <b>{f.company ?? host(f.url)}</b>
+                </div>
+                <div>
+                  <span>Role</span>
+                  <b>{f.job?.title ?? 'Any role'}</b>
+                </div>
+                <div>
+                  <span>Take</span>
+                  <b>{f.editOf ? 'Edited' : '1'}</b>
+                </div>
+                <div>
+                  <span>Runs</span>
+                  <b>
+                    {f.durationSec
+                      ? `0:${String(Math.round(f.durationSec)).padStart(2, '0')}`
+                      : '0:30'}
+                  </b>
+                </div>
+              </figcaption>
+            </figure>
             <FilmActions film={f} />
           </>
         )}

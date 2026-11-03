@@ -1,4 +1,5 @@
-import '@fontsource-variable/archivo/wdth.css'
+import '@fontsource-variable/big-shoulders-display/wght'
+import '@fontsource-variable/instrument-sans/wdth.css'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
