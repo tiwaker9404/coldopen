@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hiring Index</title>
+<meta name="description" content="Who's hiring, for what, at what pay: open roles at 450+ tech companies and YC startups, read from their own job boards every day.">
+<meta property="og:title" content="Hiring Index by coldopen">
+<meta property="og:description" content="Open roles at 450+ tech companies and YC startups, by job family, pay and how fast they're hiring. Updated daily.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23d6362a'/%3E%3C/svg%3E">
+<style>
+@font-face{font-family:"Archivo";src:url(../fonts/archivo.woff2) format("woff2-variations");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
+:root{--bg:#eceee9;--surface:#fff;--ink:#17201c;--muted:#5b6661;--faint:#8b948f;--rule:#d4d9d3;--soft:#e3e7e1;--rec:#d6362a;--go:#23704c;--go-soft:#dcefe4;--s1:#23704c;--s2:#2457c5;--s3:#b5541b;--s4:#7a3fb0;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121614;--surface:#1a1f1d;--ink:#e9ede9;--muted:#a0aaa5;--faint:#737d78;--rule:#2b322f;--soft:#232a27;--rec:#f0574a;--go:#5cc893;--go-soft:#1d3329;--s1:#5cc893;--s2:#7aa2ff;--s3:#f0a06a;--s4:#c49bf0;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.55 "Archivo",system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+a{color:inherit;text-underline-offset:3px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+h1,h2{font-stretch:72%;font-weight:700;line-height:1.02;letter-spacing:-.01em}
+h1{font-size:clamp(40px,7vw,72px);margin:28px 0 12px}
+h2{font-size:28px;margin:0 0 6px}
+.top{display:flex;justify-content:space-between;align-items:center;padding:20px 0}
+.mark{display:inline-flex;align-items:center;gap:9px;font-size:20px;font-weight:780;font-stretch:78%;text-decoration:none}
+.mark i{width:9px;height:9px;border-radius:50%;background:var(--rec)}
+.lead{max-width:680px;color:var(--muted);font-size:18px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:28px 0 40px}
+.stat{background:var(--surface);border-radius:12px;padding:16px}
+.stat b{display:block;font-size:40px;font-stretch:66%;line-height:1}
+.stat span{color:var(--muted);font-size:14px}
+section{background:var(--surface);border-radius:14px;padding:22px;margin:0 0 20px}
+.note{color:var(--muted);font-size:14px;margin:0 0 14px;max-width:760px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:600;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--rule);vertical-align:middle}
+td.n,th.n{text-align:right}
+.bar{display:flex;align-items:center;gap:8px;min-width:140px}
+.bar i{display:block;height:8px;border-radius:4px;background:var(--go)}
+.scroll{overflow-x:auto}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;margin:4px 0 8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:3px;border-radius:2px}
+svg text{fill:var(--muted);font-size:11px}
+.tag{display:inline-block;padding:0 7px;border-radius:99px;font-size:12px;line-height:19px;background:var(--soft);color:var(--muted);margin-left:6px}
+.tag.yc{background:#fff1e8;color:#b23c00}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tag.yc{background:#3a1d0c;color:#ffb183}}
+footer{color:var(--muted);font-size:14px;padding:24px 0 48px}
+.empty{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="mark" href="../"><i></i>coldopen</a>
+    <a href="https://github.com/tiwaker9404/coldopen/tree/main/analytics">How it's built</a>
+  </div>
+  <h1>Hiring Index</h1>
+  <p class="lead">Who's hiring, for what, and at what pay: every open role at 450+ tech companies and YC startups, read from their own job boards each day. <span id="asof"></span></p>
+
+  <div class="stats" id="stats"></div>
+
+  <section>
+    <h2>Open US roles by job family</h2>
+    <p class="note">Full-time roles in the US; internships aside. Pay is the middle of each listed base range, where posts list one.</p>
+    <div class="scroll"><table id="families"></table></div>
+  </section>
+
+  <section>
+    <h2>How fast each family is hiring</h2>
+    <p class="note">Roles open today, by the week they were posted. Roles already filled have left the boards, so earlier weeks read low; the slope near the right edge is the signal.</p>
+    <div class="legend" id="legend"></div>
+    <div id="weekly"></div>
+  </section>
+
+  <section>
+    <h2>Hiring fastest</h2>
+    <p class="note">Companies with the most roles posted in the last 30 days.</p>
+    <div class="scroll"><table id="fastest"></table></div>
+  </section>
+
+  <footer>
+    Built by <a href="https://github.com/tiwaker9404/coldopen">coldopen</a>: a daily GitHub Actions job snapshots every board, <a href="https://github.com/tiwaker9404/coldopen/tree/main/analytics">dbt models it in DuckDB</a> (tested), and this page reads the result. Job families come from titles; pay only where posts list it.
+  </footer>
+</div>
+<script>
+const fmt = (n) => (n == null ? '–' : Number(n).toLocaleString())
+const money = (n) => (n == null ? '–' : `$${Math.round(n / 1000)}k`)
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const FOCUS = ['Forward Deployed Engineering', 'Solutions & Sales Engineering', 'GTM Engineering & RevOps', 'AI & ML']
+
+fetch('data.json', { cache: 'no-store' })
+  .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+  .then(render)
+  .catch(() => {
+    document.getElementById('stats').innerHTML = '<p class="empty">The first daily snapshot is on its way.</p>'
+  })
+
+function render(d) {
+  document.getElementById('asof').textContent = `Updated ${d.asOf}; ${d.snapshots} daily snapshot${d.snapshots === 1 ? '' : 's'} so far.`
+  const t = d.totals
+  document.getElementById('stats').innerHTML = [
+    [fmt(t.open_roles), 'open roles'],
+    [fmt(t.companies), 'companies'],
+    [fmt(t.new_roles_30d), 'posted in the last 30 days'],
+    [fmt(t.us_roles), 'in the US'],
+  ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join('')
+
+  const max = Math.max(...d.families.map((f) => f.open_roles))
+  document.getElementById('families').innerHTML =
+    '<tr><th>Family</th><th>Open roles</th><th class="n">New, 30 days</th><th class="n">Median pay</th><th class="n">Middle half of pay</th><th class="n">Remote</th><th class="n">H-1B sponsors</th></tr>' +
+    d.families.map((f) => `<tr>
+      <td>${esc(f.job_family)}</td>
+      <td><span class="bar"><i style="width:${Math.max(2, (100 * f.open_roles) / max)}px"></i>${fmt(f.open_roles)}</span></td>
+      <td class="n">${fmt(f.new_roles_30d)}</td>
+      <td class="n">${money(f.pay_median)}</td>
+      <td class="n">${f.pay_p25 ? `${money(f.pay_p25)}–${money(f.pay_p75)}` : '–'}</td>
+      <td class="n">${f.remote_pct ?? 0}%</td>
+      <td class="n">${f.visa_sponsor_pct ?? 0}%</td></tr>`).join('')
+
+  lines(d.weekly)
+
+  document.getElementById('fastest').innerHTML =
+    '<tr><th>Company</th><th class="n">New roles, 30 days</th><th class="n">Open roles</th></tr>' +
+    d.fastest.map((c) => `<tr><td>${esc(c.company)}${c.yc_batch ? `<span class="tag yc">YC ${esc(c.yc_batch)}</span>` : ''}${c.visa_sponsor ? '<span class="tag">Sponsors H-1B</span>' : ''}</td>
+      <td class="n">${fmt(c.new_roles_30d)}</td><td class="n">${fmt(c.open_roles)}</td></tr>`).join('')
+}
+
+/** a line per focus family: roles by posted week */
+function lines(rows) {
+  const weeks = [...new Set(rows.map((r) => r.posted_week))].sort()
+  const series = FOCUS.map((f, i) => ({
+    name: f,
+    color: `var(--s${i + 1})`,
+    pts: weeks.map((w) => rows.find((r) => r.posted_week === w && r.job_family === f)?.roles ?? 0),
+  }))
+  document.getElementById('legend').innerHTML = series.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')
+  if (weeks.length < 2) {
+    document.getElementById('weekly').innerHTML = '<p class="empty">Needs two or more weeks of posts.</p>'
+    return
+  }
+  const W = 900, H = 260, L = 36, B = 24, T = 10, R = 28
+  const top = Math.max(4, ...series.flatMap((s) => s.pts))
+  const x = (i) => L + (i * (W - L - R)) / (weeks.length - 1)
+  const y = (v) => T + (H - T - B) * (1 - v / top)
+  const ticks = [0, Math.round(top / 2), top]
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Roles by posted week for four job families">`
+  for (const v of ticks) svg += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`
+  weeks.forEach((w, i) => {
+    if (i % 2 === 0 || i === weeks.length - 1) svg += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${w.slice(5)}</text>`
+  })
+  for (const s of series)
+    svg += `<polyline fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" points="${s.pts.map((v, i) => `${x(i)},${y(v)}`).join(' ')}"><title>${esc(s.name)}</title></polyline>`
+  document.getElementById('weekly').innerHTML = svg + '</svg>'
+}
+</script>
+</body>
+</html>

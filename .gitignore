@@ -8,3 +8,7 @@ films
 .scratch
 profiles/*.local.json
 profiles/*.local/
+analytics/target/
+analytics/logs/
+analytics/*.duckdb
+site/hiring-index/data.json

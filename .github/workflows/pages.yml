@@ -25,6 +25,11 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # the Hiring Index's latest numbers live on the data branch (its daily workflow writes them)
+      - name: The Hiring Index's numbers
+        run: |
+          git fetch --depth=1 origin data || exit 0
+          git show origin/data:hiring-index/data.json > site/hiring-index/data.json || rm -f site/hiring-index/data.json
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
