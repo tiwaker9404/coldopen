@@ -25,13 +25,13 @@ POST /v1/films                              server span
    └─ event: step replayed                  served from the journal after a crash, not re-run
 ```
 
-| Span | Attributes |
-|---|---|
-| `GET /v1/jobs/suggested` (server) | `http.request.method`, `http.route`, `http.response.status_code` |
-| `run film` (consumer) | `coldopen.run.id`, `.agent`, `.attempt`, `.outcome`, `coldopen.worker.id` |
-| `step`, `llm`, `tool <key>` | `coldopen.step.key`, `.kind`, `.seq`; errors recorded |
-| `chat <model>` (client) | `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `server.address` |
-| `board <ats>` (client) | `coldopen.board.name`, `coldopen.board.jobs` |
+| Span                              | Attributes                                                                                          |
+| --------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `GET /v1/jobs/suggested` (server) | `http.request.method`, `http.route`, `http.response.status_code`                                    |
+| `run film` (consumer)             | `coldopen.run.id`, `.agent`, `.attempt`, `.outcome`, `coldopen.worker.id`                           |
+| `step`, `llm`, `tool <key>`       | `coldopen.step.key`, `.kind`, `.seq`; errors recorded                                               |
+| `chat <model>` (client)           | `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `server.address` |
+| `board <ats>` (client)            | `coldopen.board.name`, `coldopen.board.jobs`                                                        |
 
 LLM spans follow OpenTelemetry's GenAI semantic conventions, so backends that understand them
 (Grafana, Honeycomb, Langfuse) show token use per call without setup.
@@ -40,12 +40,12 @@ LLM spans follow OpenTelemetry's GenAI semantic conventions, so backends that un
 
 Off unless an exporter is configured; with it off, every helper is a no-op.
 
-| Variable | |
-|---|---|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | any OTLP/HTTP backend, e.g. `http://localhost:4318` |
-| `OTEL_EXPORTER_OTLP_HEADERS` | its API key, e.g. `authorization=Basic …` for Grafana Cloud |
-| `OTEL_SERVICE_NAME` | defaults to `coldopen-api`, `coldopen-worker` |
-| `OTEL_TRACES_CONSOLE=1` | print spans to stdout instead |
+| Variable                      |                                                             |
+| ----------------------------- | ----------------------------------------------------------- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | any OTLP/HTTP backend, e.g. `http://localhost:4318`         |
+| `OTEL_EXPORTER_OTLP_HEADERS`  | its API key, e.g. `authorization=Basic …` for Grafana Cloud |
+| `OTEL_SERVICE_NAME`           | defaults to `coldopen-api`, `coldopen-worker`               |
+| `OTEL_TRACES_CONSOLE=1`       | print spans to stdout instead                               |
 
 Locally: `docker compose --profile tracing up`, then open Jaeger at http://localhost:16686.
 
