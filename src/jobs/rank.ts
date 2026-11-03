@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { Job } from './boards.ts'
+import { inUS, type Level, levelOf } from './where.ts'
 
 /**
  * Which open roles to suggest, and why. Deliberately simple and explainable, like profile
@@ -8,8 +9,27 @@ import type { Job } from './boards.ts'
  */
 
 export const SearchSchema = z.object({
-  /** roles they want, in their words: "Forward Deployed Engineer", "Solutions Engineer" */
+  /** roles they want, in their words: "Forward Deployed Engineer", "Solutions Engineer". Empty: every role */
   roles: z.array(z.string().trim().min(2).max(60)).max(8).default([]),
+  /** jobs in the US only (the default), or anywhere */
+  country: z.enum(['us', 'any']).default('us'),
+  /** how senior, read from the title. Empty: any level */
+  levels: z
+    .array(z.enum(['intern', 'entry', 'mid', 'senior']))
+    .max(4)
+    .default([]),
+  /** full time, part time, contract, internship. Empty: any */
+  types: z
+    .array(z.enum(['full_time', 'part_time', 'contract', 'intern']))
+    .max(4)
+    .default([]),
+  /** remote, hybrid, on site. Empty: any */
+  workplaces: z
+    .array(z.enum(['remote', 'hybrid', 'onsite']))
+    .max(3)
+    .default([]),
+  /** leave out posts asking for more years of experience than this */
+  maxYears: z.number().int().min(0).max(30).nullable().default(null),
   /** places they'd work: "San Francisco", "Bay Area", "New York". Empty: anywhere */
   locations: z.array(z.string().trim().min(2).max(40)).max(8).default([]),
   /** remote roles count too */
@@ -224,7 +244,7 @@ function sameName(key: string, company: string): boolean {
  * fits none of the roles are left out; with no roles at all, nothing is suggested.
  */
 export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
-  if (s.roles.length === 0) return []
+  const anyRole = s.roles.length === 0
   const wantsSenior = asksFor(s.roles, SENIOR)
   const excluded = s.exclude.map(nameKey).filter(Boolean)
   const out: Suggestion[] = []
@@ -234,7 +254,7 @@ export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
     const dupe = `${j.board}|${j.title.toLowerCase()}|${j.location.toLowerCase()}`
     if (seen.has(dupe)) continue
 
-    let fit = 0
+    let fit = anyRole ? 1 : 0
     let role = ''
     for (const r of s.roles) {
       const f = titleFit(j.title, r)
@@ -244,6 +264,18 @@ export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
       }
     }
     if (fit === 0) continue
+    if (s.country === 'us' && !inUS(j)) continue
+    if (s.levels.length && !s.levels.includes(levelOf(j.title) as Level)) continue
+    if (s.types.length) {
+      // a post that doesn't say is a full-time role, unless its title says intern
+      const t = j.type ?? (levelOf(j.title) === 'intern' ? 'intern' : 'full_time')
+      if (!s.types.includes(t)) continue
+    }
+    if (s.workplaces.length) {
+      const w = j.workplace ?? (j.remote ? 'remote' : null)
+      // a post that doesn't say could be hybrid or on site
+      if (w ? !s.workplaces.includes(w) : !s.workplaces.some((x) => x !== 'remote')) continue
+    }
     if (s.within !== 'any') {
       const d = ago(j.posted, now)
       if (d === null || d > (s.within === 'week' ? 7 : 31)) continue
@@ -303,14 +335,9 @@ export function spread<T extends { board: string }>(list: T[], per: number): T[]
 }
 
 /**
- * A search to start from: the role on their profile, if it names one ("Forward Deployed
- * Engineer"), and anywhere plus remote.
+ * A search to start from: every role in the US, remote included.
  */
-export function defaultSearch(role: string | undefined): Search {
-  const r = role?.trim()
-  const roles =
-    r && r.length <= 60 && words(r).length > 0 && !/\b(student|graduate|candidate)\b/i.test(r)
-      ? [r]
-      : []
-  return SearchSchema.parse({ roles })
+export function defaultSearch(_role?: string): Search {
+  // every role in the US, until they say what they want
+  return SearchSchema.parse({})
 }

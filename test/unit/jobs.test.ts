@@ -225,11 +225,14 @@ describe('ranking', () => {
     ).toEqual(['Senior Solutions Engineer', 'Solutions Engineer'])
     expect(rank(jobs, SearchSchema.parse({ roles: ['Solutions Engineer'] }), NOW)).toHaveLength(3)
   })
-  it('suggests nothing without roles, and starts from the profile role', () => {
-    expect(rank([job('Anything', 'SF')], SearchSchema.parse({}), NOW)).toEqual([])
-    expect(defaultSearch('Forward Deployed Engineer').roles).toEqual(['Forward Deployed Engineer'])
-    expect(defaultSearch('MBA candidate').roles).toEqual([])
-    expect(defaultSearch(undefined).roles).toEqual([])
+  it('starts from every role in the US', () => {
+    const s = defaultSearch('Forward Deployed Engineer')
+    expect(s).toMatchObject({ roles: [], country: 'us', levels: [], types: [], workplaces: [] })
+    expect(
+      rank([job('Anything', 'San Francisco, CA'), job('Anything else', 'London, UK')], s, NOW).map(
+        (j) => j.location,
+      ),
+    ).toEqual(['San Francisco, CA'])
   })
   it('spreads suggestions across companies', () => {
     const list = ['a', 'a', 'a', 'a', 'b'].map((board) => ({ board }))

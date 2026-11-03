@@ -3100,3 +3100,62 @@ kbd {
 .founders {
   margin: 8px 0 12px;
 }
+
+.job-search fieldset.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.job-search fieldset.chips legend {
+  float: left;
+  width: 96px;
+  margin-right: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.job-search .chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 99px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.job-search .chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.job-search .chip.on {
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: none;
+}
+
+.job-search .chip:focus-within {
+  outline: 2px solid var(--go);
+  outline-offset: 2px;
+}
+
+.job-search .years {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  font-size: 13px;
+}
+
+.job-search .years input {
+  width: 5ch;
+}

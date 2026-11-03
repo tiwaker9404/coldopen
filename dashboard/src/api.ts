@@ -361,6 +361,12 @@ export interface JobSuggestion {
   visa?: { approvals: number; year: number }
   /** the company's latest SEC Form D (a private round) in the last year */
   raised?: { date: string; filer: string }
+  /** full time, part time, contract or internship, when the board says */
+  type?: 'full_time' | 'part_time' | 'contract' | 'intern'
+  /** remote, hybrid or on site, when the board says */
+  workplace?: 'remote' | 'hybrid' | 'onsite'
+  /** the fewest years of experience its requirements ask for */
+  years?: number
   /** yearly base pay the post lists */
   pay?: { min: number; max: number; currency: string }
   /** people you know there, from your LinkedIn connections */
@@ -389,6 +395,16 @@ export interface JobSearch {
   visaOnly: boolean
   /** only companies that raised a private round in the last year */
   raisedOnly: boolean
+  /** US only (default) or anywhere */
+  country: 'us' | 'any'
+  /** how senior, from the title; empty: any */
+  levels: ('intern' | 'entry' | 'mid' | 'senior')[]
+  /** empty: any */
+  types: ('full_time' | 'part_time' | 'contract' | 'intern')[]
+  /** empty: any */
+  workplaces: ('remote' | 'hybrid' | 'onsite')[]
+  /** leave out posts asking for more years than this */
+  maxYears: number | null
   /** only roles posted in the last week or month */
   within: 'any' | 'week' | 'month'
   /** companies to leave out */

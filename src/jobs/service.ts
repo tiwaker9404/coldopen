@@ -16,6 +16,7 @@ import {
 import { DEFAULT_BOARDS, raisedOf, visaOf, ycOf } from './companies.ts'
 import { detailsFromBoard, greenhouseDetails } from './details.ts'
 import { defaultSearch, rank, type Search, SearchSchema, type Suggestion, spread } from './rank.ts'
+import { yearsAsked } from './where.ts'
 
 /**
  * Suggested jobs for one person: their search, the default boards plus any they added, read
@@ -277,7 +278,13 @@ export interface Known {
   people: { name: string; position: string | null; url: string | null }[]
 }
 
-export type JobWithFit = Suggestion & { filmId?: string; fit?: Fit; known?: Known }
+export type JobWithFit = Suggestion & {
+  filmId?: string
+  fit?: Fit
+  known?: Known
+  /** the fewest years of experience its requirements ask for */
+  years?: number
+}
 
 export interface Alerts {
   /** when they last looked at their matches; null on a first visit */
@@ -422,16 +429,6 @@ export async function suggestions(
 ): Promise<Suggested> {
   const state = await getSearch(sql, owner, profile?.sender.role)
   const boards = boardsFor(state.boards)
-  if (state.search.roles.length === 0)
-    return {
-      data: [],
-      alerts: { since: null, newMatches: 0, filmed: [] },
-      gaps: [],
-      companies: boards.length,
-      failed: [],
-      updatedAt: null,
-      search: state,
-    }
   // the ranking is the slow part: reuse it for a minute and a half while nothing it depends on changes
   const key = JSON.stringify([owner, state, profile ?? null, opts.limit ?? 24])
   let hit = opts.fetch || opts.now ? undefined : RANKED.get(key)
@@ -457,26 +454,36 @@ export async function suggestions(
         .filter((j) => j.posted)
         .sort((a, b) => b.posted!.localeCompare(a.posted!))
         .slice(0, 400)
-      const candidates = spread(matched, 6).slice(0, FIT_POOL)
+      // a years limit drops posts only once their requirements are read: read more of them
+      const candidates = spread(matched, 6).slice(
+        0,
+        state.search.maxYears !== null ? FIT_POOL * 2 : FIT_POOL,
+      )
       const paid = new Map<string, Pay>()
       const reqs = profile
         ? await requirementsFor(sql, candidates, { ...opts, pay: paid })
         : new Map<string, string[]>()
-      const fitted: JobWithFit[] = candidates.map((j) => {
+      const fitted: JobWithFit[] = candidates.flatMap((j) => {
+        const years = yearsAsked(reqs.get(j.id) ?? [])
+        if (state.search.maxYears !== null && years !== null && years > state.search.maxYears)
+          return []
         const fit = profile ? fitOf(reqs.get(j.id) ?? [], profile) : null
         const yc = ycBoard(j) ?? ycOf({ site: j.site })
         const hiring = pace.get(j.board)
         const visa = visaOf(j.board)
         const raised = raisedOf(j.board)
-        return {
-          ...j,
-          ...(fit ? { fit, score: j.score + FIT_BONUS[fit.level] } : {}),
-          ...(!j.pay && paid.has(j.id) ? { pay: paid.get(j.id)! } : {}),
-          ...(yc?.batch ? { yc: yc.batch } : {}),
-          ...(hiring ? { hiring } : {}),
-          ...(visa ? { visa } : {}),
-          ...(raised ? { raised } : {}),
-        }
+        return [
+          {
+            ...j,
+            ...(fit ? { fit, score: j.score + FIT_BONUS[fit.level] } : {}),
+            ...(!j.pay && paid.has(j.id) ? { pay: paid.get(j.id)! } : {}),
+            ...(yc?.batch ? { yc: yc.batch } : {}),
+            ...(hiring ? { hiring } : {}),
+            ...(visa ? { visa } : {}),
+            ...(raised ? { raised } : {}),
+            ...(years !== null ? { years } : {}),
+          },
+        ]
       })
       const fastest = state.search.sort === 'fastest'
       fitted.sort(

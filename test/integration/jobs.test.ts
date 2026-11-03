@@ -101,28 +101,32 @@ const suggested = async () => {
 }
 
 describe('suggested jobs', () => {
-  it('starts from the profile role, and reads every board once', async () => {
+  it('starts from every role in the US, and reads every board once', async () => {
     const s = await (
       await app.inject({ method: 'GET', url: '/v1/jobs/search', headers: auth })
     ).json()
-    expect(s).toMatchObject({ roles: ['Forward Deployed Engineer'], suggested: true, boards: [] })
+    expect(s).toMatchObject({ roles: [], country: 'us', suggested: true, boards: [] })
 
     const r = await suggested()
     // YC boards are read in the background; let that sweep finish
     await warmBoards(sql, fakeFetch as never)
     expect(
       r.data.map((j: { title: string; company: string }) => `${j.title} @ ${j.company}`),
-    ).toEqual(['Forward Deployed Engineer @ Anthropic'])
+    ).toEqual([
+      'Forward Deployed Engineer @ Anthropic',
+      'Solutions Engineer @ Ramp',
+      'Recruiter @ Anthropic',
+    ])
     expect(r.data[0]).toMatchObject({
       site: 'https://www.anthropic.com/',
       url: 'https://job-boards.greenhouse.io/anthropic/jobs/11',
-      why: ['Forward Deployed Engineer', 'New this week'],
+      why: ['', 'New this week'],
     })
     expect(r.companies).toBeGreaterThan(50)
     expect(r.failed).toEqual([])
-    // every board once, plus the one Greenhouse post read for its requirements
+    // every board once, plus the Greenhouse posts read for their requirements
     const n = calls.length
-    expect(calls.filter((u) => !u.split('?')[0]!.endsWith('/jobs/11'))).toHaveLength(r.companies)
+    expect(calls.filter((u) => !/\/jobs\/\d+$/.test(u.split('?')[0]!))).toHaveLength(r.companies)
     // cached: a second look fetches nothing
     await suggested()
     expect(calls.length).toBe(n)
