@@ -502,6 +502,7 @@ export async function suggestions(
             ...(fit ? { fit, score: j.score + FIT_BONUS[fit.level] } : {}),
             ...(!j.pay && paid.has(j.id) ? { pay: paid.get(j.id)! } : {}),
             ...(yc?.batch ? { yc: yc.batch } : {}),
+            ...(yc?.slug ? { ycPage: `https://www.ycombinator.com/companies/${yc.slug}` } : {}),
             ...(hiring ? { hiring } : {}),
             ...(visa ? { visa } : {}),
             ...(raised ? { raised } : {}),

@@ -12,7 +12,7 @@ coldopen is an open-source agent for personalized video outreach. Give it a pros
 
 **60% of the first 15 films got a reply, against 2 replies from plain messages.** Friends using the public beta are seeing 50 to 70% more replies.
 
-- **Find the role.** Open roles from 450+ companies' public job boards, including about 400 hiring YC startups, ranked against the roles you want. Each shows its pay, a YC badge, whether the company sponsors H-1B visas, how fast it's hiring, and who you already know there.
+- **Find the role.** Open roles from 450+ companies' public job boards, including about 400 hiring YC startups, ranked against the roles you want. Each shows its pay, a YC badge linking the founders, whether the company sponsors H-1B visas, how fast it's hiring, and who you already know there. Another ~900 YC startups post roles only on YC's Work at a Startup, which has no feed; Startups lists them, founders first.
 - **Fit it.** Fit check scores how well your profile answers each post, by meaning as well as shared words ([eval](evals/fit/results.md)). Fit gaps shows the skills your best matches keep asking for, one click to add.
 - **Make the film.** One click per job, or tick ten and make them all. Each film quotes a requirement from the post and answers it with your own numbers.
 - **Reach the right person.** For YC startups, the founders come first. Find their email with your own free Hunter key, and the message opens as a ready draft.

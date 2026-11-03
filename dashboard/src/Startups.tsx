@@ -36,7 +36,9 @@ export function Startups({ onMade }: { onMade: (id: string) => void }) {
   const [industry, setIndustry] = useState('')
   const [since, setSince] = useState('2023')
   const [maxTeam, setMaxTeam] = useState('50')
-  const [hiring, setHiring] = useState<'any' | 'hiring' | 'quiet'>('any')
+  const [hiring, setHiring] = useState<'any' | 'hiring' | 'yc-only' | 'quiet'>(() =>
+    new URLSearchParams(window.location.search).get('hiring') === 'yc-only' ? 'yc-only' : 'any',
+  )
   const [page, setPage] = useState(0)
   const params = new URLSearchParams({
     ...(q.trim() ? { q: q.trim() } : {}),
@@ -104,6 +106,7 @@ export function Startups({ onMade }: { onMade: (id: string) => void }) {
           <option value="any">Hiring or not</option>
           <option value="quiet">Not posting roles</option>
           <option value="hiring">Hiring on YC</option>
+          <option value="yc-only">Roles only on YC (not in Jobs)</option>
         </select>
       </div>
       <p className="jobs-note">

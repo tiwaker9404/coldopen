@@ -41,3 +41,15 @@ describe('YC startups to reach out to', () => {
     expect(quiet.data[0]!.yc).toMatch(/^https:\/\/www\.ycombinator\.com\/companies\//)
   })
 })
+
+describe('startups hiring only on YC', () => {
+  it('lists hiring startups whose roles are not in Jobs', () => {
+    const r = searchStartups({ hiring: 'yc-only', limit: 200, us: false })
+    expect(r.total).toBeGreaterThan(0)
+    for (const s of r.data) {
+      expect(s.hiring).toBe(true)
+      expect(s.inJobs).toBe(false)
+      expect(s.ycJobs).toContain('/jobs')
+    }
+  })
+})
