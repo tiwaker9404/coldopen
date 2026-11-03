@@ -1,13 +1,13 @@
 name: Raised recently
 
-# Rebuilds src/jobs/raised.json: which companies in Jobs for you filed an SEC Form D this
-# calendar quarter, from EDGAR's quarterly form index (one download). Weekly, or by hand.
+# Rebuilds src/jobs/raised.json: which companies in Jobs for you filed an SEC Form D in the
+# last month, from EDGAR's quarterly form index (one or two downloads). Daily, or by hand.
 # SEC asks automated clients for a contact: set the repository variable SEC_USER_AGENT, e.g.
 # "coldopen you@example.com".
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 13 * * 2"
+    - cron: "17 13 * * *"
 
 permissions:
   contents: write

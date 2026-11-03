@@ -145,7 +145,7 @@ export function visaOf(board: string): { approvals: number; year: number } | nul
   return VISA[board] ?? null
 }
 
-/** Each board's latest SEC Form D this quarter, from src/jobs/raised.json (weekly) */
+/** Each board's latest SEC Form D in the last month, from src/jobs/raised.json (daily) */
 const RAISED: Record<string, { date: string; filer: string }> = (() => {
   try {
     const raw = JSON.parse(readFileSync(new URL('./raised.json', import.meta.url), 'utf8'))
@@ -158,16 +158,18 @@ const RAISED: Record<string, { date: string; filer: string }> = (() => {
 /** how many companies have a recent Form D on file: the filter shows only when there are some */
 export const RAISED_COUNT = Object.keys(RAISED).length
 
-/** The first day of the calendar quarter `now` is in, YYYY-MM-DD */
-export function quarterStart(now = new Date()): string {
-  const m = Math.floor(now.getUTCMonth() / 3) * 3
-  return new Date(Date.UTC(now.getUTCFullYear(), m, 1)).toISOString().slice(0, 10)
+/** How far back a round counts as recent: a month, so it's still news to open an email with */
+export const RAISED_DAYS = 30
+
+/** The first day that counts, YYYY-MM-DD */
+export function raisedSince(now = new Date()): string {
+  return new Date(now.getTime() - RAISED_DAYS * 86_400_000).toISOString().slice(0, 10)
 }
 
-/** When the company filed a Form D (a private round), if it did this quarter */
+/** When the company filed a Form D (a private round), if it did in the last month */
 export function raisedOf(board: string): { date: string; filer: string } | null {
   const r = RAISED[board]
-  return r && r.date >= quarterStart() ? r : null
+  return r && r.date >= raisedSince() ? r : null
 }
 
 const boardByHost = new Map(
