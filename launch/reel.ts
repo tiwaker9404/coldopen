@@ -5,8 +5,10 @@
  *   node launch/reel.ts <films-dir> <out.mp4> [clips.json]
  *
  * clips.json lists which moment of which film to show (default: launch/clips.json):
- *   [{ "dir": "linear.app-55a3ef", "from": 24.9, "caption": "One clear ask." }, ...]
- * Each dir is a film folder made by the CLI. The company name comes from its kit.json.
+ *   [{ "dir": "linear.app-55a3ef", "from": 24.9, "caption": "One clear ask.",
+ *      "role": "Solutions Engineer", "take": 2 }, ...]
+ * Each dir is a film folder made by the CLI. The company name comes from its kit.json and the
+ * running time from its storyboard.json; role and take are optional and fill the slate.
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -27,7 +29,7 @@ const work = resolve(dirname(out), 'reel-build')
 rmSync(work, { recursive: true, force: true })
 mkdirSync(join(work, 'frames'), { recursive: true })
 
-type ClipSpec = { dir: string; from: number; caption: string }
+type ClipSpec = { dir: string; from: number; caption: string; role?: string; take?: number }
 const specs: ClipSpec[] = existsSync(clipsFile)
   ? JSON.parse(readFileSync(clipsFile, 'utf8'))
   : [
@@ -43,11 +45,25 @@ const specs: ClipSpec[] = existsSync(clipsFile)
       },
       { dir: 'parcelpine', from: 24.9, caption: 'One clear ask, signed by the sender.' },
     ]
+const runs = (dir: string) => {
+  try {
+    const s = JSON.parse(readFileSync(join(filmsDir, dir, 'storyboard.json'), 'utf8'))
+    const d = Math.round(Number(s.meta?.duration) || 30)
+    return `${Math.floor(d / 60)}:${String(d % 60).padStart(2, '0')}`
+  } catch {
+    return '0:30'
+  }
+}
 const CLIPS = specs.map((c, i) => ({
   ...c,
   id: `clip${i}`,
   company: JSON.parse(readFileSync(join(filmsDir, c.dir, 'kit.json'), 'utf8')).name as string,
+  role: c.role ?? 'Pitch film',
+  take: c.take ?? 1,
+  runs: runs(c.dir),
 }))
+const esc = (s: string) =>
+  s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!)
 const CLIP_DUR = 3.8
 const FPS = 30
 
@@ -120,92 +136,112 @@ const clipHtml = CLIPS.map((c, i) => {
     { length: n },
     (_, k) => `<img class="f" src="frames/${c.id}/${String(k + 1).padStart(4, '0')}.jpg" alt="">`,
   ).join('')
-  return `<div class="clip" data-clip="${i}" data-n="${n}"><p class="for">for ${c.company}</p><div class="player">${imgs}</div><p class="cap">${c.caption}</p></div>`
+  return `<div class="clip" data-clip="${i}" data-n="${n}"><p class="for">for ${esc(c.company)}</p><figure class="take"><div class="clap"><i></i></div><div class="player">${imgs}</div><div class="fields"><div><span>Company</span><b>${esc(c.company)}</b></div><div><span>Role</span><b>${esc(c.role)}</b></div><div><span>Take</span><b>${c.take}</b></div><div><span>Runs</span><b>${c.runs}</b></div></div></figure><p class="cap">${esc(c.caption)}</p></div>`
 }).join('')
 
+// the brand (docs/BRAND.md): Stock yellow for the title and the credits, the screening room
+// (the app's dark mode) for everything in between, and the slate wherever a film appears
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
-@font-face{font-family:Archivo;src:url(${font('archivo', 'archivo-latin-wdth-normal.woff2')});font-weight:100 900;font-stretch:62% 125%}
-:root{--paper:#eceee9;--ink:#17201c;--muted:#5b6661;--rule:#d4d9d3;--tally:#d6362a;--u:10.8px}
+@font-face{font-family:'Big Shoulders';src:url(${font('big-shoulders-display', 'big-shoulders-display-latin-wght-normal.woff2')});font-weight:100 900}
+@font-face{font-family:'Instrument Sans';src:url(${font('instrument-sans', 'instrument-sans-latin-wght-normal.woff2')});font-weight:400 700}
+:root{--stock:#ffc21a;--slate:#000;--stock-muted:#3d3420;--room:#17181b;--surface:#1f2024;--soft:#25262a;--ink:#f2f2ee;--muted:#b3b5b9;--rule:#2e3035;--tally:#e5291f;--u:10.8px}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{width:${W}px;height:${H}px;overflow:hidden;background:var(--paper)}
-body{font-family:Archivo;color:var(--ink);-webkit-font-smoothing:antialiased}
-.s{position:absolute;inset:0;padding:calc(var(--u)*9) calc(var(--u)*8);display:none;flex-direction:column}
+html,body{width:${W}px;height:${H}px;overflow:hidden;background:var(--room)}
+body{font-family:'Instrument Sans';color:var(--ink);-webkit-font-smoothing:antialiased}
+.s{position:absolute;inset:0;padding:calc(var(--u)*9) calc(var(--u)*8);display:none;flex-direction:column;background:var(--room)}
 .s.on{display:flex}
-#title,#composer,#outro{justify-content:center;padding-bottom:calc(var(--u)*16)}
-.display{font-family:Archivo;font-stretch:66%;font-weight:720;letter-spacing:-0.01em;line-height:.96}
+.s.stock{background:var(--stock);color:var(--slate)}
+#title,#composer,#outro{justify-content:center;padding-bottom:calc(var(--u)*14)}
+.display{font-family:'Big Shoulders';font-weight:800;line-height:.9;letter-spacing:-0.005em}
 .a{animation-play-state:paused;animation-fill-mode:both}
 .up{animation:up 800ms cubic-bezier(.16,1,.3,1) both}
 .fade{animation:fade 600ms ease-out both}
 @keyframes up{from{opacity:0;transform:translateY(calc(var(--u)*4))}to{opacity:1;transform:none}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
-.mark{display:flex;align-items:center;gap:calc(var(--u)*3)}
-/* the tally light: the mark is just the red dot that means "recording" */
-.lens{width:calc(var(--u)*4.2);height:calc(var(--u)*4.2);border-radius:50%;background:var(--tally);flex:none}
-.lens i{display:none}
-.word{font-size:calc(var(--u)*17);font-stretch:78%;font-weight:780}
-.lines{margin-top:calc(var(--u)*8);font-size:calc(var(--u)*10);line-height:1;font-family:Archivo;font-stretch:66%;font-weight:700;letter-spacing:-0.01em}
-.lines p+p{margin-top:calc(var(--u)*1);color:var(--muted)}
+/* the mark: the tally light that means "recording", then the word */
+.mark{display:flex;align-items:center;gap:calc(var(--u)*2.6)}
+.lens{width:calc(var(--u)*4.4);height:calc(var(--u)*4.4);border-radius:50%;background:var(--tally);flex:none}
+.word{font-size:calc(var(--u)*19)}
+.lines{margin-top:calc(var(--u)*7);font-size:calc(var(--u)*11.5)}
+.lines p+p{margin-top:calc(var(--u)*.6);color:var(--stock-muted)}
+.stripe{height:calc(var(--u)*2.6);background:repeating-linear-gradient(-55deg,#fff 0 calc(var(--u)*2.4),#000 calc(var(--u)*2.4) calc(var(--u)*4.8));position:absolute;left:0;right:0;bottom:0}
 /* composer */
-.card{background:#fff;border-radius:calc(var(--u)*2.6);padding:calc(var(--u)*3);box-shadow:0 calc(var(--u)*1) calc(var(--u)*4) rgba(0,0,0,.08);margin-top:calc(var(--u)*8)}
+.kicker{font-size:calc(var(--u)*11)}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:calc(var(--u)*2);padding:calc(var(--u)*2.6);margin-top:calc(var(--u)*7)}
 .row{display:flex;gap:calc(var(--u)*1.6)}
-.input{flex:1;white-space:nowrap;overflow:hidden;border:1px solid var(--rule);background:var(--paper);border-radius:calc(var(--u)*1.8);padding:calc(var(--u)*2.4) calc(var(--u)*2.8);font-size:calc(var(--u)*4.2);min-height:calc(var(--u)*10)}
-.caret{display:inline-block;width:2px;height:1.1em;background:var(--ink);vertical-align:-.15em;margin-left:2px}
-.btn{background:var(--ink);color:var(--paper);border-radius:calc(var(--u)*1.8);padding:0 calc(var(--u)*3.6);font-size:calc(var(--u)*3.4);font-weight:600;display:flex;align-items:center;white-space:nowrap}
-.btn.pressed{transform:scale(.96);background:#2c3631}
+.input{flex:1;white-space:nowrap;overflow:hidden;border:1px solid var(--rule);background:var(--soft);border-radius:calc(var(--u)*1.4);padding:calc(var(--u)*2.4) calc(var(--u)*2.8);font-size:calc(var(--u)*4.2);min-height:calc(var(--u)*10)}
+.caret{display:inline-block;width:3px;height:1.1em;background:var(--stock);vertical-align:-.15em;margin-left:2px}
+.btn{background:var(--stock);color:var(--slate);border-radius:calc(var(--u)*1.4);padding:0 calc(var(--u)*3.6);font-size:calc(var(--u)*3.6);font-weight:650;display:flex;align-items:center;white-space:nowrap}
+.btn.pressed{transform:scale(.96);background:#e6ad0f}
 .status{margin-top:calc(var(--u)*5);display:flex;gap:calc(var(--u)*2.4);align-items:center;font-size:calc(var(--u)*4);font-weight:600;opacity:0}
 .status .dot{width:calc(var(--u)*2.2);height:calc(var(--u)*2.2);border-radius:50%;background:var(--tally)}
 .track{height:calc(var(--u)*.9);background:var(--rule);border-radius:4px;margin-top:calc(var(--u)*2);overflow:hidden}
-.track b{display:block;height:100%;background:var(--tally);width:0}
-.kicker{font-family:Archivo;font-stretch:66%;font-weight:700;font-size:calc(var(--u)*8);letter-spacing:-0.01em;line-height:1}
-/* clips */
-.clip{position:absolute;inset:0;padding:calc(var(--u)*7) calc(var(--u)*8);display:none;flex-direction:column;align-items:center}
+.track b{display:block;height:100%;background:var(--stock);width:0}
+/* clips: every film shown as a take, clapper on top and the slate under it */
+.clip{position:absolute;inset:0;padding:calc(var(--u)*6) calc(var(--u)*8);display:none;flex-direction:column;align-items:center}
 .clip.on{display:flex}
-.for{align-self:flex-start;font-family:Archivo;font-stretch:70%;font-weight:700;font-size:calc(var(--u)*6);margin-bottom:calc(var(--u)*3)}
-.player{position:relative;width:${860}px;height:${860}px;border-radius:calc(var(--u)*2);overflow:hidden;box-shadow:0 calc(var(--u)*2) calc(var(--u)*6) rgba(0,0,0,.18)}
+.for{align-self:flex-start;font-family:'Big Shoulders';font-weight:800;font-size:calc(var(--u)*7.4);line-height:1;margin-bottom:calc(var(--u)*2.6)}
+.take{width:860px;border-radius:calc(var(--u)*1.6);overflow:hidden;background:#000}
+.clap{height:calc(var(--u)*3.4);position:relative;background:#000}
+.clap i{position:absolute;inset:0;background:repeating-linear-gradient(-55deg,#fff 0 calc(var(--u)*2.2),#000 calc(var(--u)*2.2) calc(var(--u)*4.4));transform-origin:0 100%}
+.player{position:relative;width:860px;height:860px;overflow:hidden}
 .player .f{position:absolute;inset:0;width:100%;height:100%;display:none}
 .player .f.on{display:block}
-.cap{align-self:flex-start;margin-top:calc(var(--u)*3.4);font-size:calc(var(--u)*3.6);line-height:1.3;max-width:34ch;color:var(--muted)}
-/* grid */
-.posters{display:flex;gap:calc(var(--u)*2.4);margin-top:calc(var(--u)*4)}
-.posters img{flex:1;min-width:0;aspect-ratio:1;border-radius:calc(var(--u)*1.4);display:block;object-fit:cover}
-.big{font-size:calc(var(--u)*7.4);margin-bottom:calc(var(--u)*5)}
-.small{font-size:calc(var(--u)*3.8);line-height:1.35;color:var(--muted);margin-top:calc(var(--u)*5);max-width:36ch}
+.fields{display:grid;grid-template-columns:1.2fr 1.6fr auto auto;border-top:1px solid #333;color:#fff}
+.fields div{padding:calc(var(--u)*1.2) calc(var(--u)*1.8) calc(var(--u)*1.5);border-right:1px solid #333;min-width:0}
+.fields div:last-child{border-right:0}
+.fields span{display:block;font-size:calc(var(--u)*1.9);color:#a8aaae}
+.fields b{display:block;font-family:'Big Shoulders';font-weight:700;font-size:calc(var(--u)*3.6);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.cap{align-self:flex-start;margin-top:calc(var(--u)*3);font-size:calc(var(--u)*3.6);line-height:1.3;max-width:36ch;color:var(--muted)}
+/* grid: the films on a filmstrip, one frame per film, perforations along both edges */
+.big{font-size:calc(var(--u)*9.4)}
+.strip{margin:calc(var(--u)*6) calc(var(--u)*-8) 0;background:#000;padding:calc(var(--u)*4.4) calc(var(--u)*8)}
+.strip::before,.strip::after{content:'';display:block;height:calc(var(--u)*1.6);background:repeating-linear-gradient(90deg,transparent 0 calc(var(--u)*1.4),#3a3b40 calc(var(--u)*1.4) calc(var(--u)*3.6),transparent calc(var(--u)*3.6) calc(var(--u)*5));border-radius:2px}
+.posters{display:flex;gap:calc(var(--u)*2);margin:calc(var(--u)*2.4) 0}
+.posters img{flex:1;min-width:0;aspect-ratio:1;border-radius:calc(var(--u)*.6);display:block;object-fit:cover}
+.small{font-size:calc(var(--u)*3.8);line-height:1.38;color:var(--muted);margin-top:calc(var(--u)*5);max-width:38ch}
+.stock .small{color:var(--stock-muted)}
 /* crash */
 .reel{display:flex;gap:calc(var(--u)*1.2);margin-top:calc(var(--u)*8)}
-.reel i{flex:1;height:calc(var(--u)*2.4);border-radius:calc(var(--u)*.8);background:var(--rule);position:relative;overflow:hidden}
-.reel b{position:absolute;inset:0;background:var(--ink);transform-origin:left;transform:scaleX(0)}
+.reel i{flex:1;height:calc(var(--u)*2.6);border-radius:calc(var(--u)*.6);background:var(--rule);position:relative;overflow:hidden}
+.reel b{position:absolute;inset:0;background:var(--stock);transform-origin:left;transform:scaleX(0)}
 .cut{margin-top:calc(var(--u)*3);display:flex;justify-content:space-between;font-size:calc(var(--u)*3.4);font-weight:600}
-.cut .x{color:var(--tally)}
-.pid{color:var(--muted);font-weight:500}
-/* outro */
-.repo{font-size:calc(var(--u)*4.4);font-weight:600;margin-top:calc(var(--u)*3);border-bottom:calc(var(--u)*.5) solid var(--tally);align-self:flex-start;padding-bottom:calc(var(--u)*.6)}
+.cut .x{color:#ff4d40}
+.pid{color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+/* outro: the credits */
+.credits{margin-top:calc(var(--u)*6);display:grid;grid-template-columns:auto 1fr;gap:calc(var(--u)*1) calc(var(--u)*4);font-size:calc(var(--u)*3.6)}
+.credits span{color:var(--stock-muted)}
+.credits b{font-weight:650}
+.repo{font-size:calc(var(--u)*4.4);font-weight:650;margin-top:calc(var(--u)*5);border-bottom:calc(var(--u)*.5) solid var(--slate);align-self:flex-start;padding-bottom:calc(var(--u)*.6)}
 </style></head><body>
-<section class="s" id="title">
-  <div class="mark a up" style="animation-delay:100ms"><div class="lens"><i></i></div><h1 class="display word">coldopen</h1></div>
-  <div class="lines"><p class="a up" style="animation-delay:900ms">A 30-second film</p><p class="a up" style="animation-delay:1500ms">for every company you apply to.</p></div>
+<section class="s stock" id="title">
+  <div class="mark a up" style="animation-delay:100ms"><div class="lens"></div><h1 class="display word">coldopen</h1></div>
+  <div class="lines display"><p class="a up" style="animation-delay:900ms">A 30-second film</p><p class="a up" style="animation-delay:1500ms">for every company you apply to.</p></div>
+  <div class="stripe"></div>
 </section>
 <section class="s" id="composer">
-  <p class="kicker a up" style="animation-delay:100ms">One job link in.</p>
+  <p class="display kicker a up" style="animation-delay:100ms">One job link in.</p>
   <div class="card a up" style="animation-delay:300ms"><div class="row"><div class="input"><span id="typed"></span><span class="caret"></span></div><div class="btn" id="btn">Make film</div></div></div>
   <div class="status" id="status"><span class="dot"></span><div style="flex:1"><span id="stage">Reading the site</span><div class="track"><b id="bar"></b></div></div></div>
 </section>
 <section class="s" id="clips" style="padding:0">${clipHtml}</section>
-<section class="s" id="grid">
+<section class="s" id="grid" style="justify-content:center">
   <h2 class="display big a up" style="animation-delay:100ms">Every film looks like the company it’s for.</h2>
-  <div class="posters">${CLIPS.map((c, i) => `<img class="a up" style="animation-delay:${500 + i * 180}ms" src="${c.id}-poster.jpg" alt="">`).join('')}</div>
+  <div class="strip a fade" style="animation-delay:350ms"><div class="posters">${CLIPS.map((c, i) => `<img class="a up" style="animation-delay:${500 + i * 180}ms" src="${c.id}-poster.jpg" alt="">`).join('')}</div></div>
   <p class="small a fade" style="animation-delay:1400ms">Colors, logo and typeface come from their own site. Every fact on screen is quoted from it, and every number is checked in code.</p>
 </section>
-<section class="s" id="crash">
+<section class="s" id="crash" style="justify-content:center">
   <h2 class="display big a up" style="animation-delay:100ms">Kill the renderer halfway through.</h2>
   <div class="reel">${Array.from({ length: 6 }, () => '<i><b></b></i>').join('')}</div>
   <div class="cut"><span class="x" id="died" style="opacity:0">Worker killed at scene 3</span><span class="pid" id="pid">pid 4182</span></div>
   <p class="small a fade" style="animation-delay:2600ms" id="resumed">A new worker picks the film up. Finished scenes are kept, so only what’s left gets rendered.</p>
 </section>
-<section class="s" id="outro">
-  <div class="mark a up" style="animation-delay:100ms"><div class="lens"><i></i></div><h1 class="display word">coldopen</h1></div>
-  <div class="lines"><p class="a up" style="animation-delay:600ms">A 60% reply rate</p><p class="a up" style="animation-delay:1100ms">in my first week.</p></div>
-  <p class="small a fade" style="animation-delay:1800ms">Free and open source.</p>
-  <p class="repo a fade" style="animation-delay:2100ms">github.com/tiwaker9404/coldopen</p>
+<section class="s stock" id="outro">
+  <div class="mark a up" style="animation-delay:100ms"><div class="lens"></div><h1 class="display word">coldopen</h1></div>
+  <div class="lines display"><p class="a up" style="animation-delay:600ms">A 60% reply rate</p><p class="a up" style="animation-delay:1100ms">in my first week.</p></div>
+  <div class="credits a fade" style="animation-delay:1700ms"><span>Directed by</span><b>you</b><span>Written from</span><b>your résumé</b><span>Ran on</span><b>free, open-source tools</b></div>
+  <p class="repo a fade" style="animation-delay:2200ms">github.com/tiwaker9404/coldopen</p>
+  <div class="stripe"></div>
 </section>
 <script>
 const SC = ${JSON.stringify(scenes)};
@@ -239,13 +275,17 @@ window.__seek = (t) => {
       const c = clips[i];
       const f = Math.min(+c.dataset.n - 1, Math.floor((local - i * CLIP) * ${FPS}));
       c.querySelectorAll('.f').forEach((img, k) => img.classList.toggle('on', k === f));
+      // the one orchestrated moment: the clapper closes once, as the first take starts
+      const stick = clips[0].querySelector('.clap i');
+      const k = Math.max(0, Math.min(1, local / 0.28));
+      stick.style.transform = 'rotate(' + (-12 * (1 - k * k)) + 'deg)';
     }
     if (id === 'crash') {
       const segs = [...document.querySelectorAll('#crash .reel b')];
       const p = (x) => Math.max(0, Math.min(1, x));
       // scenes 1-2 render, 3 dies halfway, then a new worker renders 3-6
       const fill = [p((local - 0.5) / 0.5), p((local - 1.0) / 0.5), local < 2.2 ? p((local - 1.5) / 0.5) * 0.5 : p((local - 2.6) / 0.4), p((local - 3.0) / 0.35), p((local - 3.35) / 0.35), p((local - 3.7) / 0.35)];
-      segs.forEach((b, j) => { b.style.transform = 'scaleX(' + fill[j] + ')'; b.style.background = (j === 2 && local >= 1.9 && local < 2.6) ? 'var(--tally)' : 'var(--ink)'; });
+      segs.forEach((b, j) => { b.style.transform = 'scaleX(' + fill[j] + ')'; b.style.background = (j === 2 && local >= 1.9 && local < 2.6) ? 'var(--tally)' : 'var(--stock)'; });
       document.getElementById('died').style.opacity = local >= 1.9 ? '1' : '0';
       document.getElementById('pid').textContent = local >= 2.6 ? 'pid 4211 (new worker)' : 'pid 4182';
     }
