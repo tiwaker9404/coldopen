@@ -55,11 +55,16 @@ jobs:
 
       - name: Model with dbt (and run its tests)
         working-directory: analytics
-        env: { WAREHOUSE: "${{ runner.temp }}/warehouse.duckdb" }
-        run: dbt build --profiles-dir . --vars "{snapshots: '${{ github.workspace }}/data/snapshots'}"
+        env:
+          WAREHOUSE: ${{ runner.temp }}/warehouse.duckdb
+          SNAPSHOTS: ${{ github.workspace }}/data/snapshots
+        run: |
+          dbt build --profiles-dir . --vars "{snapshots: '$SNAPSHOTS'}"
 
       - name: Export the Hiring Index
-        run: python analytics/export.py "${{ runner.temp }}/warehouse.duckdb" data/hiring-index/data.json
+        env:
+          WAREHOUSE: ${{ runner.temp }}/warehouse.duckdb
+        run: python analytics/export.py "$WAREHOUSE" data/hiring-index/data.json
 
       - name: Keep the snapshot and the numbers on the data branch
         working-directory: data
