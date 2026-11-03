@@ -19,6 +19,11 @@ on:
 
 # One job per lane. The app starts up to RENDER_RUNNERS lanes when films pile up, so a burst
 # renders side by side; a start signal for a busy lane waits for it. The schedule uses lane 0.
+
+# read the code, nothing more: no writes to the repo, issues or packages
+permissions:
+  contents: read
+
 concurrency:
   group: render-${{ github.event.client_payload.slot || 0 }}
   cancel-in-progress: false

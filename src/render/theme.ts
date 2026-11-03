@@ -10,6 +10,7 @@ import {
   shade,
   toHex,
 } from '../brand/color.ts'
+import { assertPublicUrl } from '../brand/guard.ts'
 import type { BrandKit, FontRef } from '../brand/types.ts'
 import type { Profile } from '../script/types.ts'
 
@@ -135,11 +136,24 @@ const FALLBACK = {
   },
 }
 
-async function fetchFace(src: string, timeoutMs: number): Promise<string | null> {
+/** a font already inlined by the site, and only that: nothing that could close the CSS rule */
+export const DATA_FONT = /^data:[a-z]+\/[a-z0-9.+-]+(;charset=[a-z0-9-]+)?;base64,[A-Za-z0-9+/=]+$/i
+
+async function fetchFace(
+  src: string,
+  timeoutMs: number,
+  allowPrivate = false,
+): Promise<string | null> {
   const url = src.match(/url\(\s*["']?([^"')]+)["']?\s*\)/)?.[1] ?? src
-  if (url.startsWith('data:')) return url
+  if (url.startsWith('data:')) return DATA_FONT.test(url) ? url : null
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) })
+    // the font URL comes from the company's own CSS: the same SSRF guard as the research
+    // browser, and no redirects (a public URL could redirect to a private one)
+    if (!allowPrivate) await assertPublicUrl(url)
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(timeoutMs),
+      redirect: allowPrivate ? 'follow' : 'error',
+    })
     if (!res.ok) return null
     const buf = Buffer.from(await res.arrayBuffer())
     if (buf.length > 2_000_000) return null
@@ -158,13 +172,20 @@ async function embedFont(
   ref: FontRef,
   alias: string,
   timeoutMs: number,
+  allowPrivate = false,
 ): Promise<{ css: string; ok: boolean }> {
   const rules: string[] = []
   for (const face of ref.faces) {
-    const data = await fetchFace(face.src, timeoutMs)
+    const data = await fetchFace(face.src, timeoutMs, allowPrivate)
     if (!data) continue
+    // weight and style come from the site's CSS: only values a font face can have, so nothing
+    // can close the rule and reach the page that renders the film
+    const weight = /^\d{1,3}( \d{1,3})?$|^(normal|bold)$/.test(face.weight) ? face.weight : '400'
+    const style = /^(normal|italic|oblique( -?\d{1,2}deg){0,2})$/.test(face.style)
+      ? face.style
+      : 'normal'
     rules.push(
-      `@font-face{font-family:'${alias}';src:url(${data});font-weight:${face.weight};font-style:${face.style};font-display:block;}`,
+      `@font-face{font-family:'${alias}';src:url(${data});font-weight:${weight};font-style:${style};font-display:block;}`,
     )
   }
   return { css: rules.join('\n'), ok: rules.length > 0 }
@@ -173,16 +194,17 @@ async function embedFont(
 export async function buildTheme(
   kit: BrandKit,
   profile: Profile,
-  opts: { fontTimeoutMs?: number } = {},
+  opts: { fontTimeoutMs?: number; allowPrivateNetworks?: boolean } = {},
 ): Promise<FilmTheme> {
+  const priv = opts.allowPrivateNetworks ?? false
   const timeout = opts.fontTimeoutMs ?? 8000
   const fields = deriveFields(kit, profile)
   const displayFallback = FALLBACK[kit.fonts.display.category === 'serif' ? 'serif' : 'sans']
   const [display, body, fbDisplay, fbSans] = await Promise.all([
-    embedFont(kit.fonts.display, 'Brand Display', timeout),
+    embedFont(kit.fonts.display, 'Brand Display', timeout, priv),
     kit.fonts.body.family === kit.fonts.display.family
       ? Promise.resolve({ css: '', ok: false, same: true })
-      : embedFont(kit.fonts.body, 'Brand Body', timeout),
+      : embedFont(kit.fonts.body, 'Brand Body', timeout, priv),
     bundled(displayFallback.pkg, displayFallback.file),
     bundled(FALLBACK.sans.pkg, FALLBACK.sans.file),
   ])

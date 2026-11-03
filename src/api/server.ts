@@ -101,6 +101,7 @@ import { renderDispatcher } from './dispatch.ts'
 import { deleteKey, listKeys, readKey, saveKey } from './keys.ts'
 import { registerMcp } from './mcp.ts'
 import { privacyPage } from './privacy.ts'
+import { registerSecurity } from './security.ts'
 import { deleteToken, listTokens, makeToken, TOKEN_PREFIX, tokenOwner } from './tokens.ts'
 
 const FILE_NAMES =
@@ -241,6 +242,11 @@ export async function buildApi({
   app.setSerializerCompiler(serializerCompiler)
   // before any route, so every handler runs inside its request's span
   registerHttpTracing(app as never)
+  // headers, the cross-site check and rate limits, also before any route
+  await registerSecurity(app as never, {
+    publicUrl: cfg.PUBLIC_URL,
+    perMinute: Number(process.env.RATE_LIMIT_PER_MINUTE ?? 600),
+  })
 
   // keep the raw body for Slack signature verification
   app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
@@ -258,7 +264,13 @@ export async function buildApi({
     if (status >= 500) app.log.error({ err }, 'request failed')
     reply.status(status).send({
       error: {
-        code: err.validation ? 'invalid_request' : status >= 500 ? 'internal' : 'bad_request',
+        code: err.validation
+          ? 'invalid_request'
+          : status === 429
+            ? 'rate_limited'
+            : status >= 500
+              ? 'internal'
+              : 'bad_request',
         message: status >= 500 ? 'internal error' : err.message,
       },
     })
@@ -313,7 +325,16 @@ export async function buildApi({
       return reply.status(503).send({ ok: false })
     }
   })
-  app.get('/metrics', { schema: { hide: true } }, async (_r, reply) => {
+  app.get('/metrics', { schema: { hide: true } }, async (req, reply) => {
+    // on the hosted app, only for an API key holder (a scraper): the queue isn't public
+    if (cfg.HOSTED) {
+      const h = req.headers.authorization ?? ''
+      const t = h.startsWith('Bearer ') ? h.slice(7) : ''
+      if (!t || !cfg.API_KEYS.map(digest).some((k) => timingSafeEqual(k, digest(t))))
+        return reply
+          .status(401)
+          .send({ error: { code: 'unauthorized', message: 'API key needed' } })
+    }
     reply.header('content-type', registry.contentType)
     return registry.metrics()
   })

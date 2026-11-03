@@ -276,7 +276,9 @@ export function createFilmAgent(opts: FilmAgentOptions) {
 
       ctx.progress({ stage: 'design', label: `Matching ${kit.name}'s brand` })
       const composed = await ctx.step('compose', async () => {
-        const theme = await buildTheme(kit, profile)
+        const theme = await buildTheme(kit, profile, {
+          allowPrivateNetworks: opts.allowPrivateNetworks ?? false,
+        })
         const site = siteShot(kit, board)
         const shot = await readFile(join(dir, site.file)).catch(() =>
           readFile(join(dir, kit.screenshot.file)),

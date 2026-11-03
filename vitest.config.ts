@@ -9,6 +9,8 @@ export default defineConfig({
     env: {
       TEST_DATABASE_URL:
         process.env.TEST_DATABASE_URL ?? 'postgres://postgres@127.0.0.1:5432/coldopen_test',
+      // every test request comes from one address; the limits have tests of their own
+      RATE_LIMIT_PER_MINUTE: '100000',
     },
   },
 })

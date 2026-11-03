@@ -116,7 +116,7 @@ describe('composition QA', () => {
         const { kit, dir } = await kitFor(site)
         const p = profile(preset)
         const board = buildStoryboard(kit, p, deterministicScript(kit, p))
-        const theme = await buildTheme(kit, p)
+        const theme = await buildTheme(kit, p, { allowPrivateNetworks: true })
         expect(theme.fontsEmbedded.display).toBe(true)
         const shot = `data:image/jpeg;base64,${readFileSync(join(dir, kit.screenshot.file)).toString('base64')}`
         for (const format of formats) {
@@ -141,7 +141,7 @@ describe('rendering', () => {
     const { kit, dir } = await kitFor('lumen')
     const p = profile('sales')
     const board = buildStoryboard(kit, p, deterministicScript(kit, p))
-    const theme = await buildTheme(kit, p)
+    const theme = await buildTheme(kit, p, { allowPrivateNetworks: true })
     const shot = `data:image/jpeg;base64,${readFileSync(join(dir, kit.screenshot.file)).toString('base64')}`
     const c = await openComposition(
       compose({ board, kit, theme, format: 'square', screenshotDataUrl: shot }),

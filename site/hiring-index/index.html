@@ -11,7 +11,7 @@
 <style>
 @font-face{font-family:"Archivo";src:url(../fonts/archivo.woff2) format("woff2-variations");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
 :root{--bg:#eceee9;--surface:#fff;--ink:#17201c;--muted:#5b6661;--faint:#8b948f;--rule:#d4d9d3;--soft:#e3e7e1;--rec:#d6362a;--go:#23704c;--go-soft:#dcefe4;--s1:#23704c;--s2:#2457c5;--s3:#b5541b;--s4:#7a3fb0;color-scheme:light}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121614;--surface:#1a1f1d;--ink:#e9ede9;--muted:#a0aaa5;--faint:#737d78;--rule:#2b322f;--soft:#232a27;--rec:#f0574a;--go:#5cc893;--go-soft:#1d3329;--s1:#5cc893;--s2:#7aa2ff;--s3:#f0a06a;--s4:#c49bf0;color-scheme:dark}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121614;--surface:#1a1f1d;--ink:#e9ede9;--muted:#a0aaa5;--faint:#8a948f;--rule:#2b322f;--soft:#232a27;--rec:#f0574a;--go:#5cc893;--go-soft:#1d3329;--s1:#5cc893;--s2:#7aa2ff;--s3:#f0a06a;--s4:#c49bf0;color-scheme:dark}}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font:400 16px/1.55 "Archivo",system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
 a{color:inherit;text-underline-offset:3px}
@@ -27,7 +27,7 @@ h2{font-size:28px;margin:0 0 6px}
 .stat{background:var(--surface);border-radius:12px;padding:16px}
 .stat b{display:block;font-size:40px;font-stretch:66%;line-height:1}
 .stat span{color:var(--muted);font-size:14px}
-section{background:var(--surface);border-radius:14px;padding:22px;margin:0 0 20px}
+main>section{background:var(--surface);border-radius:14px;padding:22px;margin:0 0 20px}
 .note{color:var(--muted);font-size:14px;margin:0 0 14px;max-width:760px}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th{text-align:left;font-weight:600;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--rule);white-space:nowrap}
@@ -49,10 +49,11 @@ footer{color:var(--muted);font-size:14px;padding:24px 0 48px}
 </head>
 <body>
 <div class="wrap">
-  <div class="top">
+  <header class="top">
     <a class="mark" href="../"><i></i>coldopen</a>
     <a href="https://github.com/tiwaker9404/coldopen/tree/main/analytics">How it's built</a>
-  </div>
+  </header>
+  <main>
   <h1>Hiring Index</h1>
   <p class="lead">Who's hiring, for what, and at what pay: every open role at 450+ tech companies and YC startups, read from their own job boards each day. <span id="asof"></span></p>
 
@@ -61,7 +62,8 @@ footer{color:var(--muted);font-size:14px;padding:24px 0 48px}
   <section>
     <h2>Open US roles by job family</h2>
     <p class="note">Full-time roles in the US; internships aside. Pay is the middle of each listed base range, where posts list one.</p>
-    <div class="scroll"><table id="families"></table></div>
+    <!-- biome-ignore lint/a11y/noNoninteractiveTabindex: a table that scrolls sideways needs keyboard access -->
+    <section class="scroll" tabindex="0" aria-label="Open roles by job family"><table id="families"></table></section>
   </section>
 
   <section>
@@ -74,8 +76,10 @@ footer{color:var(--muted);font-size:14px;padding:24px 0 48px}
   <section>
     <h2>Hiring fastest</h2>
     <p class="note">Companies with the most roles posted in the last 30 days.</p>
-    <div class="scroll"><table id="fastest"></table></div>
+    <!-- biome-ignore lint/a11y/noNoninteractiveTabindex: a table that scrolls sideways needs keyboard access -->
+    <section class="scroll" tabindex="0" aria-label="Companies hiring fastest"><table id="fastest"></table></section>
   </section>
+  </main>
 
   <footer>
     Built by <a href="https://github.com/tiwaker9404/coldopen">coldopen</a>: a daily GitHub Actions job snapshots every board, <a href="https://github.com/tiwaker9404/coldopen/tree/main/analytics">dbt models it in DuckDB</a> (tested), and this page reads the result. Job families come from titles; pay only where posts list it.
@@ -149,7 +153,7 @@ function lines(rows) {
   })
   for (const s of series)
     svg += `<polyline fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" points="${s.pts.map((v, i) => `${x(i)},${y(v)}`).join(' ')}"><title>${esc(s.name)}</title></polyline>`
-  document.getElementById('weekly').innerHTML = svg + '</svg>'
+  document.getElementById('weekly').innerHTML = `${svg}</svg>`
 }
 </script>
 </body>

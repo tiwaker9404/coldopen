@@ -11,6 +11,10 @@ on:
         description: "Page counts to compare, space-separated"
         default: "1 3 1 3"
 
+# read the code, nothing more: no writes to the repo, issues or packages
+permissions:
+  contents: read
+
 jobs:
   time:
     runs-on: ubuntu-latest

@@ -15,6 +15,8 @@
   --rule: #dde3de;
   --soft: #eef1ed;
   --rec: #d6362a;
+  /* the red as small text: dark enough for 4.5:1 */
+  --rec-text: #b42318;
   --go: #23704c;
   --go-soft: #dcefe4;
   --focus: #2457c5;
@@ -31,10 +33,11 @@
     --surface: #1a201d;
     --ink: #e9ede9;
     --muted: #a0aaa5;
-    --faint: #737d78;
+    --faint: #8a948f;
     --rule: #2b322f;
     --soft: #232a27;
     --rec: #f0574a;
+    --rec-text: #ff8a80;
     --go: #5cc893;
     --go-soft: #1d3329;
     --focus: #8aaaf2;
@@ -1879,8 +1882,9 @@ dl.tally dd {
   color: var(--muted);
 }
 
+/* steps still to come read quieter, but stay legible (no opacity: it took small text under 4.5:1) */
 .start li:not(.done):not(.now) {
-  opacity: 0.6;
+  color: var(--muted);
 }
 
 .tick {
@@ -2449,7 +2453,7 @@ kbd {
   padding: 1px 7px;
   border: 1px solid color-mix(in oklab, var(--rec) 45%, transparent);
   border-radius: 99px;
-  color: var(--rec);
+  color: var(--rec-text);
   font-size: 11px;
   font-weight: 600;
   font-stretch: 100%;

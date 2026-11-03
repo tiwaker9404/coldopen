@@ -12,6 +12,7 @@ import {
   send,
 } from './api.ts'
 import { FUNCTIONS } from './functions.ts'
+import { safeUrl } from './safe.ts'
 import { useToast } from './ui.tsx'
 
 const SHOWN = 6
@@ -286,7 +287,7 @@ function JobRow({
         ))}
       <div className="job-what">
         <b>{job.company}</b>
-        <a href={job.url} target="_blank" rel="noreferrer">
+        <a href={safeUrl(job.url)} target="_blank" rel="noreferrer">
           {job.title}
         </a>
         <span className="job-why">
@@ -302,7 +303,7 @@ function JobRow({
             (job.ycPage ? (
               <a
                 className="tag yc"
-                href={job.ycPage}
+                href={safeUrl(job.ycPage)}
                 target="_blank"
                 rel="noreferrer"
                 title={`Y Combinator, ${job.yc} batch: the founders, and roles it posts on Work at a Startup`}
@@ -379,7 +380,7 @@ function JobRow({
               <span key={p.name}>
                 {i > 0 && ' and '}
                 {p.url ? (
-                  <a href={p.url} target="_blank" rel="noreferrer">
+                  <a href={safeUrl(p.url)} target="_blank" rel="noreferrer">
                     {p.name}
                   </a>
                 ) : (
@@ -450,7 +451,7 @@ function Alerts({ alerts }: { alerts: JobSuggestions['alerts'] }) {
             {alerts.filmed.map((j) => (
               <li key={j.id}>
                 {j.company}:{' '}
-                <a href={j.url} target="_blank" rel="noreferrer">
+                <a href={safeUrl(j.url)} target="_blank" rel="noreferrer">
                   {j.title}
                 </a>
                 {j.posted && <span className="quiet"> · {ago(j.posted)}</span>}

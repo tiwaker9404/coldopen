@@ -10,6 +10,10 @@ on:
     paths-ignore: ["site/**", "docs/**", "*.md", "launch/**"]
   workflow_dispatch:
 
+# read the code, nothing more: no writes to the repo, issues or packages
+permissions:
+  contents: read
+
 concurrency: space
 
 jobs:
