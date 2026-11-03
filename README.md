@@ -16,6 +16,7 @@ coldopen is an open-source agent for personalized video outreach. Give it a pros
 - **Fit it.** Fit check scores how well your profile answers each post. Fit gaps shows the skills your best matches keep asking for, one click to add.
 - **Make the film.** One click per job, or tick ten and make them all. Each film quotes a requirement from the post and answers it with your own numbers.
 - **Reach the right person.** For YC startups, the founders come first. Find their email with your own free Hunter key, and the message opens as a ready draft.
+- **From your AI assistant.** coldopen is an MCP server: Claude, Cursor or ChatGPT can search jobs and YC startups, make films, draft the messages and list follow-ups for you ([setup](#use-it-from-claude-or-cursor-mcp)).
 - **From any job post.** The [Chrome extension](extension/README.md) adds a Make film button to Greenhouse, Lever, Ashby, LinkedIn and YC job posts.
 - **Follow up, then prepare.** A follow-up comes due 4 days later, or sooner when they watch without replying. When they reply, you get a brief for the call: the company, where you fit, what to prepare and three questions to ask.
 
@@ -101,6 +102,16 @@ docker compose up --build       # web app, API, renderer and Postgres on http://
 - **Slack.** Mention `@coldopen acme.com` in any channel and the finished film is posted back into the thread. Requests are signature-verified, and Slack's retries never start a second film. See [docs/SLACK.md](docs/SLACK.md).
 - **API.** Everything above is a REST call. OpenAPI docs are served at `/docs`; set `API_KEYS` to require a bearer key.
 - **Scale.** Run more renderers with `docker compose up -d --scale worker=4`. Each worker claims films with `FOR UPDATE SKIP LOCKED` and holds a heartbeated lease; finished work is never redone.
+
+## Use it from Claude or Cursor (MCP)
+
+coldopen serves the [Model Context Protocol](https://modelcontextprotocol.io) at `POST /mcp` (stateless Streamable HTTP). Make an access token on your Profile page, then:
+
+```bash
+claude mcp add --transport http coldopen https://coldopen-nk8o.onrender.com/mcp --header "Authorization: Bearer co_…"
+```
+
+Ten tools, each a thin call to the REST API as you (so limits, ownership and checks are the app's own): `search_jobs`, `find_startups`, `make_film`, `get_film`, `list_films`, `draft_messages`, `find_founders`, `set_recipient`, `follow_ups_due` and `call_brief`. Read-only tools are marked as such. Nothing is ever sent for you. Then ask: _"Find Forward Deployed Engineer roles at YC startups that sponsor visas, make films for the top three, and draft the emails."_
 
 ## Writing scripts with a model (free)
 

@@ -431,9 +431,11 @@ export async function suggestions(
   sql: Sql,
   owner: string,
   profile: Profile | undefined,
-  opts: { limit?: number; fetch?: FetchFn; now?: number } = {},
+  opts: { limit?: number; fetch?: FetchFn; now?: number; search?: Search } = {},
 ): Promise<Suggested> {
-  const state = await getSearch(sql, owner, profile?.sender.role)
+  const saved = await getSearch(sql, owner, profile?.sender.role)
+  // a search to try without saving it (the MCP server's search_jobs)
+  const state = opts.search ? { ...saved, search: opts.search } : saved
   const boards = boardsFor(state.boards)
   // the ranking is the slow part: reuse it for a minute and a half while nothing it depends on changes
   const key = JSON.stringify([owner, state, profile ?? null, opts.limit ?? 24])

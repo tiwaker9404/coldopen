@@ -257,6 +257,11 @@ export function Tools({ me }: { me: Me | undefined }) {
       <li>
         <HunterKey />
       </li>
+      {!signedOut && (
+        <li>
+          <McpAccess />
+        </li>
+      )}
       <li>
         <div>
           <h3>Gmail, Outlook and your mail app</h3>
@@ -334,6 +339,104 @@ export function Tools({ me }: { me: Me | undefined }) {
 }
 
 /** Your own Hunter key, so the Send tab can find a person's work email */
+/**
+ * coldopen as an MCP server: an access token and the lines to paste into Claude Code, Cursor or
+ * Claude Desktop, so an assistant can search jobs, make films and draft messages for you.
+ */
+function McpAccess() {
+  const qc = useQueryClient()
+  const [made, setMade] = useState<string | null>(null)
+  const tokens = useQuery({
+    queryKey: ['tokens'],
+    queryFn: () =>
+      api<{ data: { id: string; name: string; lastUsedAt: string | null }[] }>('/v1/me/tokens'),
+  })
+  const make = useMutation({
+    mutationFn: () => send<{ token: string }>('POST', '/v1/me/tokens', { name: 'MCP' }),
+    onSuccess: (r) => {
+      setMade(r.token)
+      void qc.invalidateQueries({ queryKey: ['tokens'] })
+    },
+  })
+  const remove = useMutation({
+    mutationFn: (id: string) => send('DELETE', `/v1/me/tokens/${id}`),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['tokens'] }),
+  })
+  const url = `${window.location.origin}/mcp`
+  const t = made ?? '<your token>'
+  const claudeCode = `claude mcp add --transport http coldopen ${url} --header "Authorization: Bearer ${t}"`
+  const cursor = JSON.stringify(
+    { mcpServers: { coldopen: { url, headers: { Authorization: `Bearer ${t}` } } } },
+    null,
+    2,
+  )
+  const desktop = JSON.stringify(
+    {
+      mcpServers: {
+        coldopen: {
+          command: 'npx',
+          args: ['-y', 'mcp-remote', url, '--header', `Authorization: Bearer ${t}`],
+        },
+      },
+    },
+    null,
+    2,
+  )
+  const list = tokens.data?.data ?? []
+  return (
+    <div className="mcp">
+      <div>
+        <h3>Use coldopen from Claude or Cursor</h3>
+        <p>
+          coldopen is an MCP server: your assistant can search jobs and YC startups, make films,
+          draft the messages and list follow-ups for you. Ask it things like “find Forward Deployed
+          Engineer roles at YC startups that sponsor visas, and make films for the top three.” It
+          acts as you with a token you can delete any time.
+        </p>
+      </div>
+      {made ? (
+        <>
+          <p className="small">
+            Your token, shown once: <code className="token">{made}</code>
+          </p>
+          <details open>
+            <summary>Claude Code</summary>
+            <pre>{claudeCode}</pre>
+          </details>
+          <details>
+            <summary>Cursor (.cursor/mcp.json)</summary>
+            <pre>{cursor}</pre>
+          </details>
+          <details>
+            <summary>Claude Desktop (claude_desktop_config.json)</summary>
+            <pre>{desktop}</pre>
+          </details>
+        </>
+      ) : (
+        <button type="button" onClick={() => make.mutate()} disabled={make.isPending}>
+          {make.isPending ? 'Making…' : 'Make an access token'}
+        </button>
+      )}
+      {list.length > 0 && (
+        <ul className="small muted">
+          {list.map((k) => (
+            <li key={k.id}>
+              {k.name} token
+              {k.lastUsedAt
+                ? `, last used ${new Date(k.lastUsedAt).toLocaleDateString()}`
+                : ', not used yet'}{' '}
+              <button type="button" className="link" onClick={() => remove.mutate(k.id)}>
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {make.error && <p className="error">{make.error.message}</p>}
+    </div>
+  )
+}
+
 function HunterKey() {
   const qc = useQueryClient()
   const toast = useToast()

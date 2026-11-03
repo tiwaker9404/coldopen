@@ -97,7 +97,9 @@ import {
 } from './accounts.ts'
 import { renderDispatcher } from './dispatch.ts'
 import { deleteKey, listKeys, readKey, saveKey } from './keys.ts'
+import { registerMcp } from './mcp.ts'
 import { privacyPage } from './privacy.ts'
+import { deleteToken, listTokens, makeToken, TOKEN_PREFIX, tokenOwner } from './tokens.ts'
 
 const FILE_NAMES =
   /^(film-(square|landscape|portrait)\.mp4|poster\.jpg|preview\.gif|contact-sheet\.jpg|site\.jpg|kit\.json|storyboard\.json)$/
@@ -319,6 +321,16 @@ export async function buildApi({
       req.owner = 'team'
       return
     }
+    // a personal access token acts as the person who made it
+    if (token.startsWith(TOKEN_PREFIX)) {
+      const owner = await tokenOwner(sql, token)
+      if (!owner)
+        return reply.status(401).send({
+          error: { code: 'unauthorized', message: 'that access token was deleted or is wrong' },
+        })
+      req.owner = owner as Owner
+      return
+    }
     if (cfg.HOSTED) {
       req.owner = hostedOwner(cfg, req, reply)
       return
@@ -328,6 +340,8 @@ export async function buildApi({
       .status(401)
       .send({ error: { code: 'unauthorized', message: 'missing or invalid API key' } })
   })
+  // coldopen as an MCP server, for Claude, Cursor and other MCP clients
+  registerMcp(app as never, sql, (t) => !!t && keys.some((k) => timingSafeEqual(k, digest(t))))
   const notFound = (reply: FastifyReply) =>
     reply.status(404).send({ error: { code: 'not_found', message: 'film not found' } })
   /** a film the asker owns, or undefined */
@@ -868,6 +882,35 @@ export async function buildApi({
   )
 
   app.post(
+    '/v1/jobs/preview',
+    {
+      schema: {
+        tags: ['jobs'],
+        summary: 'Open roles for a search, without saving it',
+        description:
+          'Takes the same fields as PUT /v1/jobs/search (all optional; what you leave out comes from your saved search) and returns ranked roles like /v1/jobs/suggested.',
+        body: SearchSchema.partial(),
+        querystring: z.object({ limit: z.coerce.number().int().min(1).max(60).default(10) }),
+      },
+    },
+    async (req) => {
+      const profile = await newestProfile(req.owner)
+      const saved = await getSearch(sql, req.owner, profile?.sender.role)
+      const search = SearchSchema.parse({ ...saved.search, ...req.body })
+      const r = await suggestions(sql, req.owner, profile, {
+        limit: req.query.limit,
+        search,
+        ...(jobsFetch ? { fetch: jobsFetch } : {}),
+      })
+      return {
+        data: r.data.map(({ score: _s, board: _b, ...j }) => j),
+        companies: r.companies,
+        search,
+      }
+    },
+  )
+
+  app.post(
     '/v1/jobs/seen',
     {
       schema: {
@@ -1373,6 +1416,47 @@ export async function buildApi({
         })
       }
     },
+  )
+
+  /* --------------------------------------------------------- access tokens */
+  const signedIn = (owner: Owner) => owner === 'team' || owner.startsWith('u:')
+  app.get(
+    '/v1/me/tokens',
+    { schema: { tags: ['account'], summary: 'Your access tokens (for MCP clients and scripts)' } },
+    async (req) => ({ data: signedIn(req.owner) ? await listTokens(sql, req.owner) : [] }),
+  )
+  app.post(
+    '/v1/me/tokens',
+    {
+      schema: {
+        tags: ['account'],
+        summary: 'Make an access token: shown once',
+        description:
+          'For coldopen as an MCP server in Claude, Cursor or ChatGPT, or for scripts. It acts as you; delete it to stop it working.',
+        body: z.object({ name: z.string().trim().min(1).max(60).default('MCP') }),
+      },
+    },
+    async (req, reply) => {
+      if (!signedIn(req.owner))
+        return reply
+          .status(403)
+          .send({ error: { code: 'sign_in', message: 'sign in to make an access token' } })
+      const [{ n } = { n: 0 }] = await sql<{ n: number }[]>`
+        select count(*)::int as n from user_tokens where owner = ${req.owner}`
+      if (n >= 10)
+        return reply
+          .status(409)
+          .send({ error: { code: 'too_many', message: 'delete a token first: 10 is the most' } })
+      return makeToken(sql, req.owner, req.body.name)
+    },
+  )
+  app.delete(
+    '/v1/me/tokens/:id',
+    { schema: { tags: ['account'], params: z.object({ id: z.string().max(40) }) } },
+    async (req, reply) =>
+      (await deleteToken(sql, req.owner, req.params.id))
+        ? { deleted: true }
+        : reply.status(404).send({ error: { code: 'not_found', message: 'no such token' } }),
   )
 
   app.get(
