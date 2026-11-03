@@ -34,9 +34,7 @@ export function answers(record: string, requirement: string): number {
   if (!a.size || !b.size) return 0
   let n = 0
   for (const w of a) if (b.has(w)) n++
-  const share = n / Math.min(a.size, b.size)
-  // one shared word between two longer lines is a coincidence more often than a match
-  return n === 1 && Math.min(a.size, b.size) > 2 ? share / 2 : share
+  return n / Math.min(a.size, b.size)
 }
 
 type ProofItem = Profile['proof'][number]
