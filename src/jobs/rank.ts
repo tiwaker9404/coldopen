@@ -190,8 +190,69 @@ const PLACES: Record<string, string[]> = {
   london: ['london'],
 }
 
+const US_NAMES = new Set([
+  'united states',
+  'usa',
+  'us',
+  'u s',
+  'u s a',
+  'america',
+  'united states of america',
+])
+const STATES =
+  'AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'
+const US_CITIES =
+  'san francisco|new york|nyc|seattle|boston|austin|chicago|los angeles|denver|atlanta|miami|palo alto|mountain view|menlo park|san jose|sunnyvale|oakland|berkeley|redwood city|san mateo|santa clara|cupertino|brooklyn|cambridge|washington|arlington|dallas|houston|phoenix|portland|salt lake city|san diego|pittsburgh|philadelphia|raleigh|minneapolis|detroit|nashville'
+
+/** Is this job in the US (or remote in the US)? Boards write "San Francisco, CA", "Remote - US", "New York, NY, United States" */
+export function inUS(location: string): boolean {
+  const l = location.toLowerCase()
+  if (/\b(united states|usa|u\.s\.a?\.?)\b/.test(l) || /\bus\b/.test(l.replace(/[^a-z]+/g, ' ')))
+    return true
+  if (new RegExp(`,\\s*(${STATES.split(' ').join('|')})\\b`).test(location)) return true
+  if (
+    new RegExp(`\\b(${US_CITIES})\\b`).test(l) &&
+    !/\b(canada|uk|united kingdom|australia|india)\b/.test(l)
+  )
+    return true
+  const words = ` ${l.replace(/[^a-z]+/g, ' ')} `
+  return STATE_WORDS.some((n) => words.includes(` ${n} `))
+}
+
+/** state names that aren't also a city or country somewhere else */
+const STATE_WORDS = [
+  'california',
+  'texas',
+  'florida',
+  'massachusetts',
+  'colorado',
+  'illinois',
+  'virginia',
+  'oregon',
+  'utah',
+  'arizona',
+  'north carolina',
+  'pennsylvania',
+  'new jersey',
+  'michigan',
+  'minnesota',
+  'tennessee',
+  'ohio',
+  'maryland',
+]
+
 /** The place they asked for that this location matches, if any */
 export function placeFit(location: string, wanted: string): boolean {
+  if (
+    US_NAMES.has(
+      wanted
+        .toLowerCase()
+        .replace(/[^a-z ]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
+  )
+    return inUS(location)
   const loc = ` ${location.toLowerCase().replace(/[^a-z0-9]+/g, ' ')} `
   const key = wanted.toLowerCase().trim()
   const names = PLACES[key] ?? [key.replace(/[^a-z0-9]+/g, ' ').trim()]
@@ -312,5 +373,6 @@ export function defaultSearch(role: string | undefined): Search {
     r && r.length <= 60 && words(r).length > 0 && !/\b(student|graduate|candidate)\b/i.test(r)
       ? [r]
       : []
-  return SearchSchema.parse({ roles })
+  // most people search in the US first; they can widen it to anywhere
+  return SearchSchema.parse({ roles, locations: ['United States'] })
 }

@@ -270,3 +270,29 @@ describe('raised recently', () => {
     ).toBe('2026-03-02')
   })
 })
+
+describe('jobs in the US', () => {
+  it('reads the ways boards write US places', async () => {
+    const { inUS, placeFit, defaultSearch } = await import('../../src/jobs/rank.ts')
+    for (const l of [
+      'San Francisco, CA',
+      'Remote - US',
+      'New York, NY, United States',
+      'Austin',
+      'Remote (USA)',
+      'Boston, Massachusetts',
+    ])
+      expect(inUS(l), l).toBe(true)
+    for (const l of [
+      'London, UK',
+      'Toronto, Canada',
+      'Singapore',
+      'Remote - EMEA',
+      'Bangalore, India',
+    ])
+      expect(inUS(l), l).toBe(false)
+    expect(placeFit('Seattle, WA', 'United States')).toBe(true)
+    expect(placeFit('Berlin', 'USA')).toBe(false)
+    expect(defaultSearch('Forward Deployed Engineer').locations).toEqual(['United States'])
+  })
+})
