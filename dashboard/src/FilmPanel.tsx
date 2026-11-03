@@ -27,6 +27,7 @@ import { canNotify, Out, useToast } from './ui.tsx'
 const STEP_LABEL: Record<string, string> = {
   job: 'Read the job post',
   research: 'Read their site',
+  homework: 'Read what they published lately',
   script: 'Wrote the script',
   compose: 'Matched their brand',
   encode: 'Encoded the film, GIF and poster',

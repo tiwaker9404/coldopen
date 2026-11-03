@@ -37,7 +37,23 @@ const KINDS: [HomeworkKind, RegExp][] = [
 ]
 
 const MAX_BYTES = 1_500_000
-const MAX_REQUESTS = 10
+const MAX_REQUESTS = 16
+
+/**
+ * Where sites usually keep their feeds, tried on their own domain when the homepage announces
+ * none (feeds are often linked only from menus that load later, like linear.app's changelog).
+ */
+export const COMMON_FEEDS = [
+  '/rss/changelog.xml',
+  '/changelog/rss.xml',
+  '/changelog.xml',
+  '/rss/blog.xml',
+  '/blog/rss.xml',
+  '/blog/feed',
+  '/rss.xml',
+  '/feed',
+  '/atom.xml',
+]
 const RECENT_DAYS = 90
 
 export interface HomeworkOptions {
@@ -217,10 +233,24 @@ export async function readHomework(site: string, opts: HomeworkOptions = {}): Pr
     for (const f of feedLinks(page.text, page.url)) if (!feeds.has(f)) feeds.set(f, p.kind)
   }
 
+  // none announced: try the usual places on their own domain, keeping what is really a feed
+  const fetched = new Map<string, { text: string; url: string }>()
+  if (feeds.size === 0) {
+    const origin = new URL(home.url).origin
+    for (const path of COMMON_FEEDS) {
+      if (feeds.size >= 2 || budget <= 1) break
+      const url = `${origin}${path}`
+      const got = await read(url)
+      if (!got || !/<(rss|feed)\b/i.test(got.text.slice(0, 4000))) continue
+      fetched.set(url, got)
+      feeds.set(url, kindOf(path, 'blog'))
+    }
+  }
+
   const cutoff = now - RECENT_DAYS * 86_400_000
   const items: HomeworkItem[] = []
   for (const [url, kind] of [...feeds].slice(0, 4)) {
-    const feed = await read(url)
+    const feed = fetched.get(url) ?? (await read(url))
     if (!feed) continue
     // a podcast feed's episodes are episodes, whatever page linked it
     const k = /<itunes:/i.test(feed.text) ? 'podcast' : kind

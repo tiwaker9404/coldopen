@@ -84,6 +84,22 @@ describe('homework: what a company published lately', () => {
     expect(hw.pages.find((p) => p.kind === 'docs')?.url).toBe('https://docs.acme.example/')
   })
 
+  it('tries the usual feed addresses when the homepage announces none', async () => {
+    const hw = await readHomework('https://quiet.example/', {
+      allowPrivateNetworks: true,
+      now: NOW,
+      fetch: fakeFetch({
+        'https://quiet.example/': '<html><body><a href="/docs">Docs</a></body></html>',
+        // a single-page app answers every path with its page: not a feed, so skipped
+        'https://quiet.example/changelog/rss.xml': '<!doctype html><html></html>',
+        'https://quiet.example/rss/changelog.xml': RSS,
+      }),
+    })
+    expect(hw.items.map((i) => [i.kind, i.title])).toEqual([
+      ['changelog', 'How we cut routing time by 38%'],
+    ])
+  })
+
   it('returns nothing, without failing, when the site is unreachable', async () => {
     const hw = await readHomework('https://down.example/', {
       allowPrivateNetworks: true,
