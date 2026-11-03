@@ -192,7 +192,7 @@ try {
 
       // --- design quality
       const board = buildStoryboard(kit, profile, s.script)
-      const theme = await buildTheme(kit, profile)
+      const theme = await buildTheme(kit, profile, { allowPrivateNetworks: true })
       const fields = [theme.dark, theme.light, theme.brand]
       const rgb = (h: string) => parseColor(h)!
       const worst = Math.min(...fields.map((f) => contrast(rgb(f.fg), rgb(f.bg))))
