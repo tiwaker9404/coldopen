@@ -31,7 +31,7 @@ jobs:
           git fetch --depth=1 origin data || exit 0
           git show origin/data:hiring-index/data.json > site/hiring-index/data.json || rm -f site/hiring-index/data.json
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
       - id: deployment
