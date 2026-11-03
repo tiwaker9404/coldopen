@@ -30,6 +30,26 @@ describe('people to send a film to', () => {
     ).toBe(true)
   })
 
+  it('adds warm paths: alumni of your schools, then people from your past employers', () => {
+    const p = {
+      ...profile('candidate'),
+      sender: { name: 'Sam', company: 'Current Co' },
+      schools: ['Duke University'],
+      proof: [
+        { value: '40%', label: 'faster close', where: 'Rail Inc.' },
+        { value: '3', label: 'launches', where: 'Current Co' },
+      ],
+    }
+    const s = peopleSearches('Stripe', { jobTitle: 'Backend Engineer', profile: p })
+    const labels = s.map((x) => x.label)
+    expect(labels).toContain('Duke University alumni')
+    expect(labels).toContain('Rail Inc. people')
+    // the current employer is never searched
+    expect(labels.some((l) => l.includes('Current Co'))).toBe(false)
+    const alumni = s.find((x) => x.label === 'Duke University alumni')!
+    expect(alumni.url).toContain(encodeURIComponent('"Duke University" Stripe'))
+  })
+
   it('guesses who a role reports to', () => {
     expect(managerFor('Senior Data Analyst, Growth')).toBe('head of data')
     expect(managerFor('Forward Deployed Engineer')).toBe('engineering manager')

@@ -48,14 +48,23 @@ export function managerFor(title: string | undefined): string | null {
   return rules.find(([re]) => re.test(t))?.[1] ?? null
 }
 
-/** Places on the sender's profile: employers and schools, for "who shares my background". */
-function backgrounds(profile: Profile | undefined): string[] {
-  const out: string[] = []
-  for (const p of profile?.proof ?? []) {
-    const w = p.where?.trim()
-    if (w && !out.some((x) => x.toLowerCase() === w.toLowerCase())) out.push(w)
+/**
+ * Warm paths: the sender's schools and past employers, for "who shares my background". People
+ * answer someone from their own school or old team far more often than a stranger.
+ */
+export function backgrounds(
+  profile: Profile | undefined,
+): { name: string; kind: 'school' | 'employer' }[] {
+  const out: { name: string; kind: 'school' | 'employer' }[] = []
+  const add = (name: string | undefined, kind: 'school' | 'employer') => {
+    const n = name?.trim()
+    if (n && !out.some((x) => x.name.toLowerCase() === n.toLowerCase())) out.push({ name: n, kind })
   }
-  return out.slice(0, 2)
+  for (const s of (profile?.schools ?? []).slice(0, 2)) add(s, 'school')
+  for (const p of profile?.proof ?? []) add(p.where, 'employer')
+  // the current employer stays out of every search
+  const now = profile?.sender.company?.trim().toLowerCase()
+  return out.filter((x) => x.name.toLowerCase() !== now).slice(0, 5)
 }
 
 export function peopleSearches(
@@ -109,11 +118,19 @@ export function peopleSearches(
       url: linkedin(`founder OR head ${company}`),
     })
   for (const b of backgrounds(opts.profile))
-    out.push({
-      label: `${b} people`,
-      hint: `Shares your ${b} background`,
-      url: linkedin(`${b} ${company}`),
-    })
+    out.push(
+      b.kind === 'school'
+        ? {
+            label: `${b.name} alumni`,
+            hint: `Went to ${b.name} like you; alumni answer each other`,
+            url: linkedin(`"${b.name}" ${company}`),
+          }
+        : {
+            label: `${b.name} people`,
+            hint: `Worked at ${b.name} like you`,
+            url: linkedin(`"${b.name}" ${company}`),
+          },
+    )
   return out
 }
 

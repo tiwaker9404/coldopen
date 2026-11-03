@@ -33,6 +33,8 @@ export const ProfileSchema = z.object({
       .regex(/^https:\/\/\S{4,300}$/, 'a booking link starts with https://')
       .optional(),
   }),
+  /** schools they went to ("Duke University"): who to reach includes alumni at the company */
+  schools: z.array(z.string().trim().min(2).max(60)).max(4).optional(),
   /** skills and tools they have, in their words ("Kubernetes", "Salesforce"): counted by Fit check */
   skills: z.array(z.string().trim().min(1).max(40)).max(40).optional(),
   /** optional sender brand for the end card */

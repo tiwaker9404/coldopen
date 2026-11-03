@@ -180,6 +180,13 @@ describe('interview brief', () => {
     expect(b.questions).toHaveLength(3)
     expect(b.questions[0]).toContain('4,000 finance teams.”')
     expect(b.questions[1]).toContain('first 90 days')
+    // interview prep: the usual openers, answered from the profile, then the post's own asks
+    expect(b.expect[0]!.q).toBe('Walk me through your background.')
+    expect(b.expect[0]!.a).toBe(b.pitch)
+    expect(b.expect[1]!.q).toBe('Why Acme?')
+    expect(b.expect[1]!.a).toContain('4,000 finance teams')
+    expect(b.expect.some((x) => x.q.includes('technical demos'))).toBe(true)
+    expect(b.expect.length).toBeLessThanOrEqual(6)
   })
 })
 

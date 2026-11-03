@@ -22,6 +22,7 @@ import { FollowUps } from './FollowUps.tsx'
 import { GettingStarted, GuidePanel, ToolsPanel } from './Guide.tsx'
 import { Jobs } from './Jobs.tsx'
 import { Onboarding } from './Onboarding.tsx'
+import { Openers } from './Openers.tsx'
 import { ProfileEditor } from './ProfileEditor.tsx'
 import { ProfilesPage } from './Profiles.tsx'
 import { Startups } from './Startups.tsx'
@@ -202,6 +203,7 @@ export function App() {
               />
               <GettingStarted films={list} onOpen={setOpen} onGuide={() => setSide('guide')} />
               <FollowUps onOpen={setOpen} />
+              <Openers />
               <Jobs onMade={setOpen} variant="preview" />
               <Recent list={list} name={name} open={open} onOpen={setOpen} />
             </>

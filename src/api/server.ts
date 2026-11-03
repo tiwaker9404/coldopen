@@ -17,7 +17,7 @@ import type { Sql } from '../db/index.ts'
 import { FilmInputSchema, type FilmResult } from '../film.ts'
 import { newId } from '../ids.ts'
 import { type BoardSchema, type FetchFn, parseBoardLink } from '../jobs/boards.ts'
-import { RAISED_COUNT, YC_BOARDS, ycOf } from '../jobs/companies.ts'
+import { RAISED_COUNT, raisedBySite, YC_BOARDS, ycOf } from '../jobs/companies.ts'
 import { SearchSchema } from '../jobs/rank.ts'
 import {
   getSearch,
@@ -52,7 +52,7 @@ import {
   watchedFrom,
 } from '../outreach/followup.ts'
 import { type CrmState, checkHubSpot, HubSpotError, syncFilm } from '../outreach/hubspot.ts'
-import { addressed, draftMessages } from '../outreach/messages.ts'
+import { addressed, draftMessages, openerFor } from '../outreach/messages.ts'
 import {
   type Connection,
   companyKey,
@@ -348,6 +348,8 @@ export async function buildApi({
   app.decorateRequest('owner', 'team')
   app.addHook('onRequest', async (req, reply) => {
     if (!req.url.startsWith('/v1/')) return
+    // the hosted app's totals are public: the landing page's counter reads them, signed out
+    if (cfg.HOSTED && req.method === 'GET' && req.url.split('?')[0] === '/v1/stats') return
     const h = req.headers.authorization ?? ''
     const token = h.startsWith('Bearer ') ? h.slice(7) : ''
     const keyOk = !!token && keys.some((k) => timingSafeEqual(k, digest(token)))
@@ -1633,6 +1635,47 @@ export async function buildApi({
   )
 
   app.get(
+    '/v1/me/openers',
+    {
+      schema: {
+        tags: ['films'],
+        summary:
+          'Which email opener gets you more replies: the film first, or your best number first',
+        description:
+          "Half your films' drafts lead with the film and half with your strongest number. Counts films you marked sent in the last 180 days.",
+      },
+    },
+    async (req) => {
+      const rows = await sql<FilmRow[]>`
+        select * from runs where agent = 'film' and owner = ${req.owner} and status = 'succeeded'
+          and outreach is not null and created_at > now() - interval '180 days'
+        order by id desc limit 500`
+      const seen = await summariesFor(rows)
+      const arms = {
+        film: { sent: 0, watched: 0, replied: 0 },
+        proof: { sent: 0, watched: 0, replied: 0 },
+      }
+      for (const r of rows) {
+        // a film with no number to lead with always opened with the film
+        const arm = r.output?.highlights?.proof?.length ? openerFor(r.id) : 'film'
+        const a = arms[arm]
+        a.sent++
+        if ((seen.get(r.id)?.plays ?? 0) > 0) a.watched++
+        if (r.outreach?.status === 'replied' || r.outreach?.status === 'interview') a.replied++
+      }
+      const rate = (a: { sent: number; replied: number }) => (a.sent ? a.replied / a.sent : 0)
+      // a winner needs enough sends on each side to mean something
+      const leader =
+        arms.film.sent >= 5 && arms.proof.sent >= 5 && rate(arms.film) !== rate(arms.proof)
+          ? rate(arms.film) > rate(arms.proof)
+            ? 'film'
+            : 'proof'
+          : null
+      return { ...arms, leader }
+    },
+  )
+
+  app.get(
     '/v1/followups',
 
     {
@@ -1674,6 +1717,8 @@ export async function buildApi({
                     draftMessages(r.output, r.input.profile, film.share, {
                       detail: r.detail ?? null,
                       fresh: await freshFact(r),
+                      opener: openerFor(r.id),
+                      raised: raisedBySite(r.output.host),
                     }),
                     r.recipient?.name,
                   )
@@ -1822,9 +1867,18 @@ export async function buildApi({
 
   app.get(
     '/v1/stats',
-    { schema: { tags: ['ops'], summary: 'Film counts and render throughput' } },
-    async () => {
-      const [counts, perf] = await Promise.all([
+    {
+      schema: {
+        tags: ['ops'],
+        summary: 'Film counts, render throughput and the reply rate on sent films',
+        description:
+          "Totals only, nothing about any one person. Readable from any site, for the landing page's counter.",
+      },
+    },
+    async (_req, reply) => {
+      reply.header('access-control-allow-origin', '*')
+      reply.header('cache-control', 'public, max-age=300')
+      const [counts, perf, [o]] = await Promise.all([
         sql<
           { status: string; n: number }[]
         >`select status, count(*)::int as n from runs where agent = 'film' group by status`,
@@ -1833,11 +1887,16 @@ export async function buildApi({
           avg(extract(epoch from completed_at - created_at))::float8 as avg,
           (select count(distinct run_id)::int from run_log l where l.kind = 'worker_lost') as recovered
         from runs where agent = 'film' and status = 'succeeded'`,
+        sql<{ sent: number; replied: number }[]>`
+        select count(*)::int as sent,
+          count(*) filter (where outreach->>'status' in ('replied', 'interview'))::int as replied
+        from runs where agent = 'film' and outreach is not null`,
       ])
       return {
         films: Object.fromEntries(counts.map((c) => [c.status, c.n])),
         avgSecondsPerFilm: perf[0]?.avg ? Math.round(perf[0].avg) : null,
         recoveredFromCrashes: perf[0]?.recovered ?? 0,
+        outreach: { sent: o?.sent ?? 0, replied: o?.replied ?? 0 },
       }
     },
   )
@@ -1918,6 +1977,8 @@ export async function buildApi({
         draftMessages(run.output, run.input.profile, link, {
           detail: row.detail ?? null,
           fresh: await freshFact(row),
+          opener: openerFor(run.id),
+          raised: raisedBySite(run.output.host),
         }),
         run.recipient?.name,
       )

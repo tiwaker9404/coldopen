@@ -374,6 +374,16 @@ describe('films', () => {
       replyRate: 0.5,
     })
 
+    // which opener did better, and the public totals for the landing page
+    const op = (await app.inject({ url: '/v1/me/openers', headers: auth })).json()
+    expect(op.film.sent + op.proof.sent).toBe(2)
+    expect(op.film.replied + op.proof.replied).toBe(1)
+    expect(op.leader).toBeNull()
+    expect(typeof m.opener).toBe('string')
+    const stats = await app.inject({ url: '/v1/stats', headers: auth })
+    expect(stats.headers['access-control-allow-origin']).toBe('*')
+    expect(stats.json().outreach).toMatchObject({ sent: 2, replied: 1 })
+
     expect((await mark(b, null)).json().outreach).toBeNull()
     expect((await app.inject({ url: '/v1/outreach', headers: auth })).json().sent).toBe(1)
   })

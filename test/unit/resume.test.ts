@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { LlmProvider } from '../../src/llm/types.ts'
 import { checkDraft, type Draft, draftProfile } from '../../src/profile/draft.ts'
-import { deterministicDraft, parseResume, statOf } from '../../src/profile/parse.ts'
+import { deterministicDraft, parseResume, schoolsOf, statOf } from '../../src/profile/parse.ts'
 import { resumeText } from '../../src/profile/read.ts'
 import { ProfileSchema } from '../../src/script/types.ts'
 
@@ -35,6 +35,19 @@ describe('reading a résumé', () => {
     expect(parseResume(fixture('priya-analyst.md'), ['Your Employer']).unmatchedExcludes).toEqual([
       'Your Employer',
     ])
+  })
+
+  it('finds the schools, for alumni at the companies you film', () => {
+    expect(
+      schoolsOf([
+        'EDUCATION',
+        'Duke University, Fuqua School of Business — Durham, NC   2025 - 2026',
+        'Master of Quantitative Management: Business Analytics',
+        'Vellore Institute of Technology | B.Tech Computer Science | 2018 - 2022',
+        '• Led the analytics club at Duke University for two years',
+      ]),
+    ).toEqual(['Duke University', 'Vellore Institute of Technology'])
+    expect(priya.schools).toEqual(['University of Texas at Austin'])
   })
 
   it('reads text files and refuses empty or unsupported ones', async () => {

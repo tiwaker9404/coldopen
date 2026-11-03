@@ -755,6 +755,43 @@ small,
   justify-content: flex-end;
 }
 
+/* ------------------------------------------------------------------ openers */
+
+.openers {
+  display: grid;
+  gap: 10px;
+}
+
+.opener-arms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.opener-arms .arm {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.opener-arms .arm.lead {
+  border-color: var(--go);
+}
+
+.arm-rate {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.opener-note {
+  margin-top: 4px;
+}
+
 /* -------------------------------------------------------------------- jobs */
 
 .jobs {

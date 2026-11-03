@@ -163,3 +163,14 @@ export function raisedOf(board: string): { date: string; filer: string } | null 
   const r = RAISED[board]
   return r && Date.now() - Date.parse(r.date) < 366 * 86_400_000 ? r : null
 }
+
+const boardByHost = new Map(
+  DEFAULT_BOARDS.filter((b) => b.site).map((b) => [host(b.site), boardKey(b)] as const),
+)
+
+/** The company's latest Form D, found by its website (a film knows the site, not the board) */
+export function raisedBySite(site: string): { date: string; filer: string } | null {
+  const h = host(/^https?:\/\//.test(site) ? site : `https://${site}`)
+  const key = h && boardByHost.get(h)
+  return key ? raisedOf(key) : null
+}

@@ -160,6 +160,17 @@ export interface Messages {
   intro: string
   /** how the email measures up: short, about them, your detail, one ask */
   checks: { words: number; short: boolean; aboutThem: boolean; detail: boolean; oneAsk: boolean }
+  /** which way this film's drafts open: half your films lead with the film, half with your best number */
+  opener?: 'film' | 'proof'
+  /** opens on their recent funding round */
+  whyNow?: boolean
+}
+
+/** how each opener is doing: films you marked sent, watched and replied */
+export interface Openers {
+  film: { sent: number; watched: number; replied: number }
+  proof: { sent: number; watched: number; replied: number }
+  leader: 'film' | 'proof' | null
 }
 
 /** "3 min ago", "yesterday", "Oct 12" */
@@ -215,6 +226,8 @@ export interface ProfileData {
   cta: { line: string; contact: string; book?: string }
   /** skills and tools, counted by Fit check */
   skills?: string[]
+  /** schools, for alumni at the companies you film */
+  schools?: string[]
   color?: string
 }
 
@@ -490,4 +503,6 @@ export interface Brief {
   } | null
   pitch: string
   questions: string[]
+  /** what they'll likely ask you, with your answer from your record (null: prepare one) */
+  expect?: { q: string; a: string | null }[]
 }

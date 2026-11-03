@@ -52,6 +52,13 @@ export function ProfileEditor({
         ...(d.skills
           ? { skills: [...new Set(d.skills.map((k) => k.trim()).filter(Boolean))].slice(0, 40) }
           : {}),
+        ...(d.schools
+          ? {
+              schools: [...new Set(d.schools.map((k) => k.trim()).filter((k) => k.length >= 2))]
+                .map((k) => k.slice(0, 60))
+                .slice(0, 4),
+            }
+          : {}),
         proof: d.proof
           .filter((p) => p.value.trim() && p.label.trim())
           .map((p) => ({
@@ -237,6 +244,29 @@ export function ProfileEditor({
             placeholder="SQL, Python, Salesforce"
           />
         </fieldset>
+
+        {job && (
+          <fieldset>
+            <legend>Schools</legend>
+            <p className="hint">
+              Comma-separated, like Duke University. Who to reach adds alumni at each company you
+              film: they answer each other far more often than strangers.
+            </p>
+            <input
+              aria-label="Schools"
+              value={(d.schools ?? []).join(', ')}
+              onChange={(e) =>
+                set({
+                  schools: e.target.value
+                    .split(',')
+                    .map((x) => x.trimStart())
+                    .slice(0, 4),
+                })
+              }
+              placeholder="Duke University, Vellore Institute of Technology"
+            />
+          </fieldset>
+        )}
 
         <fieldset>
           <legend>Results with numbers</legend>

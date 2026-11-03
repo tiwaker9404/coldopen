@@ -262,6 +262,16 @@ describe('signing in with Google', () => {
   })
 })
 
+describe('the public totals', () => {
+  it('serves the landing page counter to anyone, with no cookie set', async () => {
+    const r = await app.inject({ url: '/v1/stats' })
+    expect(r.statusCode).toBe(200)
+    expect(r.headers['set-cookie']).toBeUndefined()
+    expect(r.headers['access-control-allow-origin']).toBe('*')
+    expect(r.json().outreach).toMatchObject({ sent: expect.any(Number) })
+  })
+})
+
 describe('the owner', () => {
   it('shows the funnel to the operator only, counting each visitor once a day', async () => {
     const visit = await app.inject({ url: '/v1/me' })

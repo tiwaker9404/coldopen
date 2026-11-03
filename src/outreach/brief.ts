@@ -24,6 +24,8 @@ export interface Brief {
   /** your story in two lines: what you offer, backed by your strongest numbers */
   pitch: string
   questions: string[]
+  /** interview prep: what they'll likely ask you, with your answer from your own record */
+  expect: { q: string; a: string | null }[]
 }
 
 interface KitLike {
@@ -90,5 +92,35 @@ export function briefOf(
       : `What is the team's biggest priority for the next 90 days?`,
   )
   questions.push('What separates someone who is good in this role from someone who is great?')
-  return { company, what: what ? clip(what, 240) : null, facts, role, pitch, questions }
+
+  // what they'll ask you: the openers every screen starts with, then the post's own asks
+  const expect: Brief['expect'] = []
+  if (pitch) expect.push({ q: 'Walk me through your background.', a: pitch })
+  expect.push({
+    q: `Why ${company}?`,
+    a: stat
+      ? `Start from what they said: “${bare(stat)}.” Then say which part of it you want to help with.`
+      : what
+        ? `Start from what they do: ${bare(clip(what, 160))}. Then say which part you want to own.`
+        : null,
+  })
+  for (const m of role?.matches ?? [])
+    expect.push({
+      q: `The post asks for “${bare(m.asks)}.” When have you done that?`,
+      a: `${bare(m.you)}. Tell it as the situation, what you did, and the result.`,
+    })
+  for (const gap of (role?.prepare ?? []).slice(0, 2))
+    expect.push({
+      q: `The post asks for “${bare(gap)}.” How would you handle that?`,
+      a: null,
+    })
+  return {
+    company,
+    what: what ? clip(what, 240) : null,
+    facts,
+    role,
+    pitch,
+    questions,
+    expect: expect.slice(0, 6),
+  }
 }

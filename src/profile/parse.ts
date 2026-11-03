@@ -19,6 +19,35 @@ export interface ParsedResume {
   text: string
   /** exclude terms that matched nothing, usually a typo or a placeholder left in */
   unmatchedExcludes: string[]
+  /** schools named on it ("Duke University"), for alumni at the companies you film */
+  schools: string[]
+}
+
+const SCHOOL = /\b(universit(y|ät|é|à|ad)|college|institute|polytechnic|school of)\b/i
+
+/** "Duke University, Fuqua School of Business — MQM, 2026" -> "Duke University" */
+export function schoolsOf(lines: string[], max = 3): string[] {
+  const out: string[] = []
+  for (const line of lines) {
+    if (!line || BULLET.test(line) || line.length > 160 || !SCHOOL.test(line)) continue
+    const part = line
+      .replace(DATES, ' ')
+      .split(/\s[|·–—-]\s|,\s|\s{2,}|\t/)
+      .map((x) =>
+        collapse(x)
+          .replace(/\b(19|20)\d{2}\b.*$/, '')
+          .replace(/\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s*$/i, '')
+          .trim(),
+      )
+      .find((x) => SCHOOL.test(x) && x.split(' ').length <= 8)
+    DATES.lastIndex = 0
+    if (!part || part.length < 4 || part.length > 60) continue
+    // "Bachelor of Science, Computer Science Institute" is a degree line, not the school
+    if (/^(bachelor|master|b\.?s|m\.?s|ph\.?d|mba|degree)\b/i.test(part)) continue
+    if (!out.some((x) => x.toLowerCase() === part.toLowerCase())) out.push(part)
+    if (out.length === max) break
+  }
+  return out
 }
 
 const BULLET = /^\s*[•●▪◦‣∙·\-–*]\s+/
@@ -87,7 +116,15 @@ export function parseResume(raw: string, exclude: string[] = []): ParsedResume {
   const unmatchedExcludes = exclude.filter(
     (x) => x.trim() && !lower.includes(x.trim().toLowerCase()),
   )
-  return { name, email, summary, entries: kept, text: collapse(raw), unmatchedExcludes }
+  return {
+    name,
+    email,
+    summary,
+    entries: kept,
+    text: collapse(raw),
+    unmatchedExcludes,
+    schools: schoolsOf(lines),
+  }
 }
 
 /** "Rail Inc. Mar 2026 - May 2026" -> "Rail Inc." */
@@ -311,6 +348,7 @@ export function deterministicDraft(
         ? points
         : [...points, 'Delivers measurable results', 'Works closely with stakeholders'].slice(0, 2),
     proof: proof.length ? proof : [{ value: '1', label: 'résumé to turn into proof points' }],
+    ...(resume.schools?.length ? { schools: resume.schools } : {}),
     cta: {
       line: 'Could we talk this week?',
       contact: opts.contact ?? resume.email ?? 'you@example.com',

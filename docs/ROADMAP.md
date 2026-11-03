@@ -1,6 +1,6 @@
 # Roadmap
 
-What's shipped, what's next, and why. Updated 2 November 2026 (evening). The reasoning behind each move is in
+What's shipped, what's next, and why. Updated 3 November 2026. The reasoning behind each move is in
 the unit-by-unit review against the leaders in each category (Jobright, Teal, Sendspark, Apollo,
 Huntr and others).
 
@@ -17,6 +17,7 @@ Huntr and others).
 | 2 Nov    | **Send:** who each film is for (drafts greet them, follow-ups open addressed); find their email with your own Hunter key or the usual patterns; intro requests to people you know there |
 | 2 Nov    | **Public beta:** a clearer app (Today, Jobs, Films, Profile), a films board by stage, Sign in with Google                                                                               |
 | 3 Nov    | **YC jobs (merging Tue):** 398 hiring YC startups in Jobs for you, a YC companies only filter, Sort by Hiring fastest, founder links for YC companies                                   |
+| 3 Nov    | **Launch batch:** warm paths (alumni of your schools, people from past teams); two email openers, half and half, with What's working on Today; a why-now line for companies that raised in the last six months; interview prep in the call brief; the reply rate on the landing page's counter |
 | 2 Nov    | **Share page button:** Book 15 minutes (your booking link) or Reply, with presses counted next to plays                                                                                 |
 
 ## Next, in order
@@ -38,7 +39,7 @@ Huntr and others).
 ### December onward
 
 8. **Better films:** an optional clip of you, recorded once; voiceover; recent company news; two
-   hooks per film to learn which wins.
+   hooks inside the film itself, building on the two email openers.
 9. A Pro plan (Stripe, test mode first), a career center pilot (Duke first), then the recruiting
    agency direction and the YC application.
 

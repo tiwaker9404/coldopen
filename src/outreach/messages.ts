@@ -19,6 +19,32 @@ export interface Messages {
   intro: string
   /** how the email measures up to what makes cold email work */
   checks: EmailChecks
+  /** which opener these drafts lead with: half your films get each, so you learn which wins */
+  opener: Opener
+  /** the email opens on their recent funding round (an SEC Form D in the last six months) */
+  whyNow: boolean
+}
+
+/**
+ * Two ways to open: with the film ("I made a 30-second film for…") or with your best number
+ * ("40% faster onboarding at Rail Inc."). Each film gets one, by its id, so about half of what
+ * you send leads each way and the replies show which works for you.
+ */
+export type Opener = 'film' | 'proof'
+
+export function openerFor(id: string): Opener {
+  let h = 0
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return h % 2 === 0 ? 'film' : 'proof'
+}
+
+/** A round counts as news for six months after its Form D */
+const FRESH_ROUND_DAYS = 183
+
+export function freshRound(raised: { date: string } | null | undefined, now = Date.now()): boolean {
+  if (!raised) return false
+  const at = Date.parse(raised.date)
+  return Number.isFinite(at) && now - at >= 0 && now - at < FRESH_ROUND_DAYS * 86_400_000
 }
 
 export interface EmailChecks {
@@ -78,6 +104,10 @@ export function draftMessages(
     detail?: string | null
     /** something from their site the film didn't use, for the follow-up to bring */
     fresh?: string | null
+    /** which opener to lead with (see openerFor); the film one when there's no number to lead with */
+    opener?: Opener
+    /** their latest private round, from SEC Form D filings: a reason to write now */
+    raised?: { date: string } | null
   } = {},
 ): Messages {
   const company = out.company
@@ -110,18 +140,34 @@ export function draftMessages(
     headline && !/^why i fit\b|\brole$/i.test(headline) ? `${headline.replace(/[!?]$/, '')}.` : ''
 
   const detail = more.detail ? clean(more.detail) : ''
+  // lead with the best number only when there is one
+  const lead: Opener = more.opener === 'proof' && proof.length ? 'proof' : 'film'
+  const whyNow = freshRound(more.raised)
+  const best = proof[0] ? `${proof[0][0]!.toUpperCase()}${proof[0].slice(1)}` : ''
+  const rest = proof.slice(1)
+  const evidenceAfterLead = rest.length
+    ? ` with more of what I've done: ${rest.join('; ')}.`
+    : candidate
+      ? ', and everything about me in it comes from my résumé.'
+      : '.'
   const email = {
-    subject: role
-      ? `A 30-second film for ${company}'s ${role} team`
-      : `A 30-second film for ${company}`,
+    subject:
+      lead === 'proof'
+        ? `${company}: ${proof[0]}`
+        : role
+          ? `A 30-second film for ${company}'s ${role} team`
+          : `A 30-second film for ${company}`,
     body: [
       'Hi [First name],',
       '',
+      ...(whyNow ? [`Congratulations on the new funding round.`, ''] : []),
       ...(detail ? [`I've been using ${company}, and ${lower(detail)}.`, ''] : []),
-      `${detail ? 'So I' : 'I'} made a 30-second film ${forWhat}:`,
+      ...(lead === 'proof'
+        ? [`${best}. I made a 30-second film ${forWhat} on what I'd bring:`]
+        : [`${detail ? 'So I' : 'I'} made a 30-second film ${forWhat}:`]),
       link,
       '',
-      `${opener}${evidence}`,
+      `${opener}${lead === 'proof' ? evidenceAfterLead : evidence}`,
       ...(pitch ? ['', pitch] : []),
       '',
       ask,
@@ -133,7 +179,13 @@ export function draftMessages(
 
   const long = `Hi [First name], I made a 30-second film ${forWhat}: ${link} ${ask} – ${first}`
   const short = `Hi [First name], I made a short film for ${company}: ${link} ${ask} – ${first}`
-  const linkedin = long.length <= LINKEDIN_LIMIT ? long : short.slice(0, LINKEDIN_LIMIT)
+  const led = `Hi [First name], ${proof[0] ?? ''}. I made a 30-second film ${forWhat}: ${link} ${ask} – ${first}`
+  const linkedin =
+    lead === 'proof' && led.length <= LINKEDIN_LIMIT
+      ? led
+      : long.length <= LINKEDIN_LIMIT
+        ? long
+        : short.slice(0, LINKEDIN_LIMIT)
 
   const fresh = more.fresh ? clean(more.fresh) : ''
   const followUp = [
@@ -187,6 +239,8 @@ export function draftMessages(
     linkedinFollowUp,
     intro,
     checks: checkEmail(email, company, detail || null),
+    opener: lead,
+    whyNow,
   }
 }
 

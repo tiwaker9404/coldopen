@@ -15,11 +15,12 @@ coldopen is an open-source agent for personalized video outreach. Give it a pros
 - **Find the role.** Open roles from 450+ companies' public job boards, including about 400 hiring YC startups, ranked against the roles you want. Each shows its pay, a YC badge linking the founders, whether the company sponsors H-1B visas, how fast it's hiring, and who you already know there. Another ~900 YC startups post roles only on YC's Work at a Startup, which has no feed; Startups lists them, founders first.
 - **Fit it.** Fit check scores how well your profile answers each post, by meaning as well as shared words ([eval](evals/fit/results.md)). Fit gaps shows the skills your best matches keep asking for, one click to add.
 - **Make the film.** One click per job, or tick ten and make them all. Each film quotes a requirement from the post and answers it with your own numbers.
-- **Reach the right person.** For YC startups, the founders come first. Find their email with your own free Hunter key, and the message opens as a ready draft.
+- **Reach the right person.** For YC startups, the founders come first. Warm paths add alumni of your schools and people from your past teams at each company. Find their email with your own free Hunter key, and the message opens as a ready draft.
+- **Learn what gets replies.** Half your drafts open with the film, half with your best number; Today shows which one is winning. When a company raised a round in the last six months (from SEC Form D filings), the email opens by congratulating them.
 - **Into your CRM.** Connect HubSpot's free CRM and each film you send becomes a company, a contact and a timeline note: sent, watched, replied, interview.
 - **From your AI assistant.** coldopen is an MCP server: Claude, Cursor or ChatGPT can search jobs and YC startups, make films, draft the messages and list follow-ups for you ([setup](#use-it-from-claude-or-cursor-mcp)).
 - **From any job post.** The [Chrome extension](extension/README.md) adds a Make film button to Greenhouse, Lever, Ashby, LinkedIn and YC job posts.
-- **Follow up, then prepare.** A follow-up comes due 4 days later, or sooner when they watch without replying. When they reply, you get a brief for the call: the company, where you fit, what to prepare and three questions to ask.
+- **Follow up, then prepare.** A follow-up comes due 4 days later, or sooner when they watch without replying. When they reply, you get a brief for the call: the company, where you fit, the questions they'll likely ask with your answers from your own record, and three questions to ask. Copy it as prep notes in one click.
 
 ## See it work
 

@@ -385,6 +385,22 @@ function SendSteps({ film }: { film: FilmDetail }) {
 }
 
 /** They replied: what to know and ask on the call, from the film's own research */
+/** The brief as plain text, to paste into notes before the call */
+function briefText(b: Brief): string {
+  const out = [`Call with ${b.company}`, '']
+  if (b.what) out.push(b.what, '')
+  if (b.facts.length) out.push('Worth knowing', ...b.facts.map((f) => `- ${f}`), '')
+  if (b.pitch) out.push('My story', b.pitch, '')
+  if (b.expect?.length)
+    out.push(
+      'They may ask',
+      ...b.expect.flatMap((x) => [`- ${x.q}`, `  ${x.a ?? 'Prepare a short story.'}`]),
+      '',
+    )
+  out.push('I will ask', ...b.questions.map((x, i) => `${i + 1}. ${x}`))
+  return out.join('\n')
+}
+
 function CallBrief({ id }: { id: string }) {
   const q = useQuery({
     queryKey: ['brief', id],
@@ -437,12 +453,29 @@ function CallBrief({ id }: { id: string }) {
           <p>{b.pitch}</p>
         </>
       )}
+      {b.expect && b.expect.length > 0 && (
+        <>
+          <h4>What they'll likely ask you</h4>
+          <ol>
+            {b.expect.map((x) => (
+              <li key={x.q}>
+                {x.q}
+                <br />
+                <span className="quiet">
+                  {x.a ?? 'Not on your profile yet: prepare a short, honest story for this one.'}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
       <h4>Questions to ask</h4>
       <ol>
         {b.questions.map((x) => (
           <li key={x}>{x}</li>
         ))}
       </ol>
+      <Copy text={briefText(b)} label="Copy as prep notes" done="Prep notes copied" />
     </section>
   )
 }
@@ -879,6 +912,15 @@ function Message({
       </div>
       {kind === 'email' && <Detail id={id} />}
       {kind === 'email' && <Checks c={m.checks} />}
+      {kind !== 'followUp' && m.opener && (
+        <p className="small muted opener-note">
+          {m.opener === 'proof'
+            ? 'This one leads with your best number.'
+            : 'This one leads with the film.'}{' '}
+          Half your films open each way; Today shows which gets more replies.
+          {m.whyNow && ' It also congratulates them on their recent funding round.'}
+        </p>
+      )}
       <p className="small muted">
         {kind === 'email'
           ? 'Your first message, with the film’s link in it.'

@@ -213,6 +213,7 @@ export async function draftProfile(opts: {
     offer: offerOk ? d.offer.replace(/\.$/, '') : fallback.offer,
     points: points.slice(0, 6),
     proof: proof.slice(0, 8),
+    ...(fallback.schools ? { schools: fallback.schools } : {}),
     cta: fallback.cta,
   })
   return {

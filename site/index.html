@@ -233,17 +233,28 @@ pnpm film https://jobs.ashbyhq.com/acme/123 -p me.json</code></pre>
   </footer>
 </div>
 <script>
-// the live counter: films made on the hosted app (views aren't shown: most get downloaded and shared)
-fetch('https://coldopen-share.tiwaker9404.workers.dev/stats')
-  .then((r) => (r.ok ? r.json() : null))
-  .then((s) => {
-    if (!s || s.films < 10) return // a counter only helps once there's something to count
-    const n = (x) => x.toLocaleString('en-US')
-    const el = document.getElementById('count')
-    el.textContent = `${n(s.films)} films made so far.`
-    el.hidden = false
-  })
-  .catch(() => {})
+// the live counter: films made, and the share of sent films that got a reply (views aren't
+// shown: most films get downloaded and shared)
+const json = (url) =>
+  fetch(url, { signal: AbortSignal.timeout(9000) })
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null)
+Promise.all([
+  json('https://coldopen-share.tiwaker9404.workers.dev/stats'),
+  json('https://coldopen-nk8o.onrender.com/v1/stats'),
+]).then(([share, app]) => {
+  const films = share?.films ?? 0
+  if (films < 10) return // a counter only helps once there's something to count
+  const n = (x) => x.toLocaleString('en-US')
+  const o = app?.outreach
+  // a rate means something only once enough films went out
+  const rate = o && o.sent >= 20 ? Math.round((o.replied / o.sent) * 100) : null
+  const el = document.getElementById('count')
+  el.textContent = rate
+    ? `${n(films)} films made so far. ${rate}% of those sent got a reply.`
+    : `${n(films)} films made so far.`
+  el.hidden = false
+})
 
 // swap a poster for its film on click; one film plays at a time
 document.querySelectorAll('.film button').forEach((b) => {
