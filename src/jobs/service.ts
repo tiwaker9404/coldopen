@@ -1,6 +1,7 @@
 import type { Sql } from '../db/index.ts'
 import type { Fit } from '../job/fit.ts'
 import { fitOf, type Gap, gapsOf, stemOf } from '../job/fit.ts'
+import { semanticNow } from '../job/semantic.ts'
 import { type Connection, companyKey, knownAt } from '../outreach/people.ts'
 import type { Profile } from '../script/types.ts'
 import {
@@ -476,6 +477,14 @@ export async function suggestions(
         profile || byReqs
           ? await requirementsFor(sql, candidates, { ...opts, pay: paid })
           : new Map<string, string[]>()
+      // matching by meaning, when it's on and loaded: one batch for every requirement shown
+      const sem = profile ? semanticNow() : null
+      const meaning =
+        sem && profile
+          ? await sem
+              .best(profile, [...new Set(candidates.flatMap((j) => reqs.get(j.id) ?? []))])
+              .catch(() => undefined)
+          : undefined
       const fitted: JobWithFit[] = candidates.flatMap((j) => {
         const years = yearsAsked(reqs.get(j.id) ?? [])
         if (sq.maxYears !== null && years !== null && years > sq.maxYears) return []
@@ -484,7 +493,7 @@ export async function suggestions(
         if (sq.noCitizenOnly && CITIZEN_ONLY.test(text)) return []
         if (sq.skills.length && !sq.skills.some((k) => names(text, k))) return []
         if (sq.excludeSkills.some((k) => names(text, k))) return []
-        const fit = profile ? fitOf(reqs.get(j.id) ?? [], profile) : null
+        const fit = profile ? fitOf(reqs.get(j.id) ?? [], profile, meaning) : null
         const yc = ycBoard(j) ?? ycOf({ site: j.site })
         const hiring = pace.get(j.board)
         const visa = visaOf(j.board)

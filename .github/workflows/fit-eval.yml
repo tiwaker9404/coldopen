@@ -1,0 +1,46 @@
+name: Fit eval
+
+# Scores coldopen's fit matching (shared words, sentence embeddings, both) against the
+# hand-labeled pairs in evals/fit, and commits the results and the cut-offs it picked.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      [
+        src/job/fit.ts,
+        src/job/semantic.ts,
+        evals/fit/pairs.ts,
+        evals/fit/run.ts,
+        .github/workflows/fit-eval.yml,
+      ]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fit-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile --prod
+        env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/@huggingface/transformers/.cache
+          key: fit-models-v1
+      - name: Run the fit eval
+        run: node evals/fit/run.ts >> "$GITHUB_STEP_SUMMARY"
+      - name: Commit the results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add evals/fit/results.md evals/fit/threshold.json
+          git diff --cached --quiet || (git commit -m "Fit eval: results" && git push)
