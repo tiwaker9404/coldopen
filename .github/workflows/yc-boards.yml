@@ -6,7 +6,10 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "41 14 * * 1"
+  # on main only: these commit their results, and must not commit onto other branches (a
+  # Dependabot branch once picked up a stray results commit)
   push:
+    branches: [main]
     paths:
       - src/jobs/yc-build.ts
       - src/jobs/startups-build.ts
@@ -25,8 +28,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile --prod
         env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
