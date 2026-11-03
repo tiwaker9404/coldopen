@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: fct_company_day
+    description: Each company's open and newly posted roles, per snapshot day.
+    columns:
+      - name: board
+        tests: [not_null]
+      - name: open_roles
+        tests: [not_null]
+
+  - name: fct_family_day
+    description: Open US roles (internships excluded) by job family per day, with pay quartiles.
+    columns:
+      - name: job_family
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - Forward Deployed Engineering
+                  - Solutions & Sales Engineering
+                  - GTM Engineering & RevOps
+                  - AI & ML
+                  - Data
+                  - Software Engineering
+                  - Product
+                  - Design
+                  - Sales
+                  - Marketing
+                  - Customer Success
+                  - Operations & other
+
+  - name: fct_family_week
+    description: Roles open on the latest day, by the week they were posted and job family.

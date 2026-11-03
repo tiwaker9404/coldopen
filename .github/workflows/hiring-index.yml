@@ -1,0 +1,86 @@
+name: Hiring Index
+
+# The hiring signals pipeline, daily: snapshot every open role on 450+ job boards (raw, kept on
+# the `data` branch), model the snapshots with dbt in DuckDB (tested), export the Hiring Index's
+# numbers, and publish the page with the landing site on GitHub Pages.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 13 * * *"
+  push:
+    branches: [main]
+    paths: [analytics/**, site/hiring-index/**, .github/workflows/hiring-index.yml]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: hiring-index
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile --prod
+        env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install "dbt-duckdb~=1.10" "duckdb~=1.4"
+
+      - name: The data branch, as a folder
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git rev-parse --verify -q origin/data >/dev/null; then
+            git worktree add -B data data origin/data
+          else
+            git worktree add --orphan -b data data
+          fi
+          mkdir -p data/snapshots data/hiring-index
+
+      - name: Snapshot every job board
+        run: node analytics/snapshot.ts data/snapshots
+
+      - name: Model with dbt (and run its tests)
+        working-directory: analytics
+        env:
+          WAREHOUSE: ${{ runner.temp }}/warehouse.duckdb
+          SNAPSHOTS: ${{ github.workspace }}/data/snapshots
+        run: |
+          dbt build --profiles-dir . --vars "{snapshots: '$SNAPSHOTS'}"
+
+      - name: Export the Hiring Index
+        env:
+          WAREHOUSE: ${{ runner.temp }}/warehouse.duckdb
+        run: python analytics/export.py "$WAREHOUSE" data/hiring-index/data.json
+
+      - name: Keep the snapshot and the numbers on the data branch
+        working-directory: data
+        run: |
+          git add snapshots hiring-index
+          git diff --cached --quiet || git commit -m "Hiring Index: snapshot $(date -u +%F)"
+          git push origin data
+
+      - name: Publish with the landing page
+        if: github.ref == 'refs/heads/main'
+        run: cp data/hiring-index/data.json site/hiring-index/data.json
+      - if: github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v5
+      - if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+      - if: github.ref == 'refs/heads/main'
+        id: deployment
+        uses: actions/deploy-pages@v4

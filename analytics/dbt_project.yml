@@ -1,0 +1,20 @@
+name: hiring_signals
+version: "1.0.0"
+config-version: 2
+profile: hiring_signals
+
+model-paths: ["models"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target"]
+
+vars:
+  # where the daily snapshots are: <dir>/YYYY-MM-DD.csv.gz
+  snapshots: "snapshots"
+
+models:
+  hiring_signals:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
