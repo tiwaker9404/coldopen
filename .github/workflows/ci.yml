@@ -56,7 +56,7 @@ jobs:
         run: pnpm test:chaos
       - name: Quality evals (brand fidelity, grounding, contrast, overflow)
         run: pnpm evals
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with: { name: eval-report, path: evals/results.md }
       - name: UI audit (accessibility, console errors, phone overflow, security headers)
