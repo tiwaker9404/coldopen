@@ -301,6 +301,15 @@ export function deterministicScript(kit: BrandKit, profile: Profile): Script {
   }
 }
 
+/** "Deployed AI agents at 14 warehouses" -> "You did this: deployed AI agents at 14 warehouses" */
+function youDid(point: string): string | null {
+  const t = point.trim().replace(/[.;]$/, '')
+  const line = `You did this: ${t[0]!.toLowerCase()}${t.slice(1)}`
+  if (words(line) <= LIMITS.why) return line
+  const cut = trimAtBreak(t, LIMITS.why - 3)
+  return cut ? `You did this: ${cut[0]!.toLowerCase()}${cut.slice(1)}` : null
+}
+
 /** "Hi Priya, from Northwind": the candidate by first name, and who is writing */
 function recruiterHook(them: string | undefined, name: string, first: string): string {
   const who = them ? `Hi ${them}, from` : 'A role for you at'
@@ -405,8 +414,15 @@ function jobScript(kit: BrandKit, profile: Profile, title: string): Script {
   // in the first person, as long as it isn't just their requirement read back to them)
   const recruiter = profile.preset === 'recruiter'
   const claim = best.point.i >= 0 && !recruiter ? firstPerson(profile.points[best.point.i]!) : null
-  const why =
-    best.proof.f >= 0.34 || (best.point.f >= 0.34 && best.proof.f > 0)
+  // a recruiter's film: when one of the candidate's own bullets answers the requirement better
+  // than any number does, say that bullet ("You did this: Deployed AI agents with evals…")
+  const theirBullet =
+    recruiter && best.point.i >= 0 && best.point.f >= 0.34 && best.point.f > best.proof.f
+      ? youDid(profile.points[best.point.i]!)
+      : null
+  const why = theirBullet
+    ? theirBullet
+    : best.proof.f >= 0.34 || (best.point.f >= 0.34 && best.proof.f > 0)
       ? answerLine(profile.proof[answer]!, true, recruiter)
       : best.point.f >= 0.34 && claim && overlap(claim, req.text) <= 0.6
         ? claim
@@ -434,6 +450,8 @@ function jobScript(kit: BrandKit, profile: Profile, title: string): Script {
     pitch: {
       headline: clip(headline, LIMITS.headline),
       points: byFit(profile.points, allReqs)
+        // the bullet that answered the requirement is already on screen
+        .filter((x) => !(theirBullet && x.i === best.point.i) || profile.points.length <= 2)
         .map((x) => profile.points[x.i]!)
         .sort((a, b) => Number(words(a) > LIMITS.point) - Number(words(b) > LIMITS.point))
         .slice(0, 3)
