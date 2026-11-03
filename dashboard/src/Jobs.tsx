@@ -129,7 +129,7 @@ export function Jobs({
       ) : q.isError ? (
         <p className="error">Couldn’t load jobs: {q.error.message}</p>
       ) : (
-        <SearchForm search={r!.search} first={noRoles} />
+        <SearchForm search={r!.search} first={noRoles} raisable={(r!.raisedCompanies ?? 0) > 0} />
       )}
 
       {r && !noRoles && (
@@ -141,6 +141,7 @@ export function Jobs({
               (r.search.locations.length ? ', or remote' : ', anywhere or remote')}
             {r.search.ycOnly && ' at YC companies'}
             {r.search.visaOnly && ' that sponsor H-1B visas'}
+            {r.search.raisedOnly && ', raised in the last year'}
             {r.search.sort === 'fastest' && ', hiring fastest first'}
             {`. ${r.data.length} matches across ${r.companies} companies`}
             {r.updatedAt && `, checked ${ago(r.updatedAt)}`}
@@ -291,6 +292,18 @@ function JobRow({
               title={`${job.hiring.open} open roles, ${job.hiring.recent} posted in the last 30 days`}
             >
               {job.hiring.recent} new {job.hiring.recent === 1 ? 'role' : 'roles'} this month
+            </span>
+          )}
+          {job.raised && (
+            <span
+              className="tag raised"
+              title={`${job.raised.filer} filed an SEC Form D (a private funding round) on ${job.raised.date}`}
+            >
+              Raised{' '}
+              {new Date(`${job.raised.date}T12:00:00`).toLocaleDateString(undefined, {
+                month: 'short',
+                year: 'numeric',
+              })}
             </span>
           )}
           {job.visa && (
@@ -516,7 +529,15 @@ function money(p: { min: number; max: number; currency: string }) {
   return p.min === p.max ? k(p.min) : `${k(p.min)}–${k(p.max)}`
 }
 
-function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
+function SearchForm({
+  search,
+  first,
+  raisable,
+}: {
+  search: JobSearch
+  first: boolean
+  raisable: boolean
+}) {
   const qc = useQueryClient()
   const [roles, setRoles] = useState(search.roles.join(', '))
   const [places, setPlaces] = useState(search.locations.join(', '))
@@ -526,6 +547,7 @@ function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
   const [sort, setSort] = useState(search.sort)
   const [within, setWithin] = useState(search.within)
   const [visaOnly, setVisaOnly] = useState(search.visaOnly)
+  const [raisedOnly, setRaisedOnly] = useState(search.raisedOnly)
   const [exclude, setExclude] = useState(search.exclude.join(', '))
   const [minPay, setMinPay] = useState(
     search.minPay ? String(Math.round(search.minPay / 1000)) : '',
@@ -554,6 +576,7 @@ function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
         sort,
         within,
         visaOnly,
+        raisedOnly,
         exclude: list(exclude).slice(0, 50),
         minPay: minPay.trim() ? Math.max(0, Math.round(Number(minPay) || 0)) * 1000 || null : null,
         boards: list(boards),
@@ -617,6 +640,16 @@ function SearchForm({ search, first }: { search: JobSearch; first: boolean }) {
           />
           Sponsors H-1B visas
         </label>
+        {(raisable || raisedOnly) && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={raisedOnly}
+              onChange={(e) => setRaisedOnly(e.target.checked)}
+            />
+            Raised in the last year
+          </label>
+        )}
         <label className="check sort">
           Sort by
           <select value={sort} onChange={(e) => setSort(e.target.value as JobSearch['sort'])}>

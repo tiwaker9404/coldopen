@@ -359,6 +359,8 @@ export interface JobSuggestion {
   hiring?: { open: number; recent: number }
   /** H-1B petitions the company had approved in the latest fiscal year */
   visa?: { approvals: number; year: number }
+  /** the company's latest SEC Form D (a private round) in the last year */
+  raised?: { date: string; filer: string }
   /** yearly base pay the post lists */
   pay?: { min: number; max: number; currency: string }
   /** people you know there, from your LinkedIn connections */
@@ -385,6 +387,8 @@ export interface JobSearch {
   sort: 'best' | 'fastest'
   /** only companies with H-1B approvals last year */
   visaOnly: boolean
+  /** only companies that raised a private round in the last year */
+  raisedOnly: boolean
   /** only roles posted in the last week or month */
   within: 'any' | 'week' | 'month'
   /** companies to leave out */
@@ -412,6 +416,8 @@ export interface JobSuggestions {
   companies: number
   /** how many of them are YC companies */
   ycCompanies: number
+  /** how many have a recent funding round on file */
+  raisedCompanies?: number
   failed: string[]
   updatedAt: string | null
   search: JobSearch

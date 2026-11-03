@@ -1,15 +1,10 @@
 name: Raised recently
 
 # Rebuilds src/jobs/raised.json: which companies in Jobs for you filed an SEC Form D in the last
-# 12 months, from EDGAR. Weekly, by hand, or when the builder changes.
+# 12 months, from EDGAR. Run by hand.
 on:
+  # manual only for now: EDGAR throttles GitHub's runners, and a run can take half an hour
   workflow_dispatch:
-  schedule:
-    - cron: "53 14 * * 2"
-  push:
-    paths:
-      - src/jobs/raised-build.ts
-      - .github/workflows/raised-recently.yml
 
 permissions:
   contents: write
