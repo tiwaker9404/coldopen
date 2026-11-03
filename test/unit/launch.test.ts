@@ -276,6 +276,26 @@ describe('raised recently', () => {
       ),
     ).toBe('2026-03-02')
   })
+
+  it('picks up where the last run stopped, and keeps what earlier runs found', async () => {
+    const { dueBoards, mergeRaised } = await import('../../src/jobs/raised-build.ts')
+    const boards = ['a', 'b', 'c', 'd']
+    const checked = { a: '2026-11-01', b: '2026-10-20', d: '2026-10-25' }
+    // never checked first, then the oldest; anything from the last week waits
+    expect(dueBoards(boards, (x) => x, checked, '2026-11-03')).toEqual(['c', 'b', 'd'])
+    const merged = mergeRaised(
+      {
+        a: { date: '2026-06-01', filer: 'A Inc' },
+        b: { date: '2026-05-01', filer: 'B Inc' },
+        old: { date: '2025-01-01', filer: 'Old Inc' },
+      },
+      { c: { date: '2026-09-01', filer: 'C Inc' } },
+      ['b', 'c'],
+      '2025-11-03',
+    )
+    // a kept (not looked up), b dropped (looked up, nothing recent), c added, old expired
+    expect(Object.keys(merged)).toEqual(['a', 'c'])
+  })
 })
 
 describe('where and how senior', () => {
