@@ -250,3 +250,23 @@ describe('founders from Hunter', () => {
     expect(l[0]).toMatchObject({ name: 'Ann Lee', status: 'valid' })
   })
 })
+
+describe('raised recently', () => {
+  it("matches the company's own filer, never a vehicle named after it", async () => {
+    const { sameFiler, latestFormD } = await import('../../src/jobs/raised-build.ts')
+    expect(sameFiler('Ramp', 'Ramp Business Corp')).toBe(true)
+    expect(sameFiler('Anthropic', 'Anthropic, PBC')).toBe(true)
+    expect(sameFiler('Ramp', 'EPIC Ramp LP')).toBe(false)
+    expect(sameFiler('Ramp', 'Ramp SPV Series I')).toBe(false)
+    expect(sameFiler('Notion', 'Notion Health Inc')).toBe(false)
+    expect(
+      latestFormD(
+        {
+          form: ['10-K', 'D', 'D/A', 'D'],
+          filingDate: ['2026-05-01', '2025-01-01', '2026-03-02', '2026-02-01'],
+        },
+        '2025-11-02',
+      ),
+    ).toBe('2026-03-02')
+  })
+})

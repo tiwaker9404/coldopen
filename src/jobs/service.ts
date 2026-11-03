@@ -13,7 +13,7 @@ import {
   type Pay,
   readBoard,
 } from './boards.ts'
-import { DEFAULT_BOARDS, visaOf, ycOf } from './companies.ts'
+import { DEFAULT_BOARDS, raisedOf, visaOf, ycOf } from './companies.ts'
 import { detailsFromBoard, greenhouseDetails } from './details.ts'
 import { defaultSearch, rank, type Search, SearchSchema, type Suggestion, spread } from './rank.ts'
 
@@ -442,7 +442,8 @@ export async function suggestions(
       const jobs = all.filter(
         (j) =>
           (!state.search.ycOnly || ycOf({ site: j.site }) || ycBoard(j)) &&
-          (!state.search.visaOnly || visaOf(j.board)),
+          (!state.search.visaOnly || visaOf(j.board)) &&
+          (!state.search.raisedOnly || raisedOf(j.board)),
       )
       const pace = momentum(all, opts.now)
       // the best title matches, then how well the person's record answers each one's requirements
@@ -466,6 +467,7 @@ export async function suggestions(
         const yc = ycBoard(j) ?? ycOf({ site: j.site })
         const hiring = pace.get(j.board)
         const visa = visaOf(j.board)
+        const raised = raisedOf(j.board)
         return {
           ...j,
           ...(fit ? { fit, score: j.score + FIT_BONUS[fit.level] } : {}),
@@ -473,6 +475,7 @@ export async function suggestions(
           ...(yc?.batch ? { yc: yc.batch } : {}),
           ...(hiring ? { hiring } : {}),
           ...(visa ? { visa } : {}),
+          ...(raised ? { raised } : {}),
         }
       })
       const fastest = state.search.sort === 'fastest'

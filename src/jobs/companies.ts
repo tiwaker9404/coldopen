@@ -144,3 +144,22 @@ const VISA: Record<string, { approvals: number; year: number }> = (() => {
 export function visaOf(board: string): { approvals: number; year: number } | null {
   return VISA[board] ?? null
 }
+
+/** Each board's latest SEC Form D in the last 12 months, from src/jobs/raised.json (weekly) */
+const RAISED: Record<string, { date: string; filer: string }> = (() => {
+  try {
+    const raw = JSON.parse(readFileSync(new URL('./raised.json', import.meta.url), 'utf8'))
+    return raw && typeof raw === 'object' ? raw : {}
+  } catch {
+    return {}
+  }
+})()
+
+/** how many companies have a recent Form D on file: the filter shows only when there are some */
+export const RAISED_COUNT = Object.keys(RAISED).length
+
+/** When the company last filed a Form D (a private round), if in the last 12 months */
+export function raisedOf(board: string): { date: string; filer: string } | null {
+  const r = RAISED[board]
+  return r && Date.now() - Date.parse(r.date) < 366 * 86_400_000 ? r : null
+}

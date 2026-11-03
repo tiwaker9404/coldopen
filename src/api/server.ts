@@ -17,7 +17,7 @@ import type { Sql } from '../db/index.ts'
 import { FilmInputSchema, type FilmResult } from '../film.ts'
 import { newId } from '../ids.ts'
 import { type BoardSchema, type FetchFn, parseBoardLink } from '../jobs/boards.ts'
-import { YC_BOARDS, ycOf } from '../jobs/companies.ts'
+import { RAISED_COUNT, YC_BOARDS, ycOf } from '../jobs/companies.ts'
 import { SearchSchema } from '../jobs/rank.ts'
 import {
   getSearch,
@@ -796,6 +796,7 @@ export async function buildApi({
         gaps: r.gaps,
         companies: r.companies,
         ycCompanies: YC_BOARDS.length,
+        raisedCompanies: RAISED_COUNT,
         failed: r.failed,
         updatedAt: r.updatedAt,
         search: {

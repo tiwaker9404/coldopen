@@ -20,6 +20,8 @@ export const SearchSchema = z.object({
   ycOnly: z.boolean().default(false),
   /** only companies with H-1B approvals last year */
   visaOnly: z.boolean().default(false),
+  /** only companies that filed a Form D (raised a private round) in the last year */
+  raisedOnly: z.boolean().default(false),
   /** best fit first, or the companies adding the most roles lately first */
   sort: z.enum(['best', 'fastest']).default('best'),
   /** only roles posted in the last week or month */
@@ -39,6 +41,8 @@ export interface Suggestion extends Job {
   hiring?: { open: number; recent: number }
   /** H-1B petitions the company had approved in the latest fiscal year */
   visa?: { approvals: number; year: number }
+  /** the company's latest SEC Form D (a private round) in the last year */
+  raised?: { date: string; filer: string }
   /** short reasons, shown as chips: "Forward Deployed Engineer", "San Francisco", "New this week" */
   why: string[]
 }
