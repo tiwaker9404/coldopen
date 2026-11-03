@@ -480,6 +480,16 @@ function CallBrief({ id }: { id: string }) {
   )
 }
 
+/** a link on YC's own site */
+function isYc(url: string): boolean {
+  try {
+    const h = new URL(url).hostname
+    return h === 'ycombinator.com' || h.endsWith('.ycombinator.com')
+  } catch {
+    return false
+  }
+}
+
 /** Who to send it to: people they know there first, then LinkedIn searches they run themselves. */
 function WhoToSend({ film }: { film: FilmDetail }) {
   const id = film.id
@@ -567,12 +577,12 @@ function WhoToSend({ film }: { film: FilmDetail }) {
               <small>{s.hint}</small>
             </span>
             <a className="button" href={safeUrl(s.url)} target="_blank" rel="noreferrer">
-              {s.url.includes('ycombinator.com') ? 'Open YC page' : 'Search LinkedIn'} <Out />
+              {isYc(s.url) ? 'Open YC page' : 'Search LinkedIn'} <Out />
             </a>
           </li>
         ))}
       </ul>
-      {p.searches.some((s) => s.url.includes('ycombinator.com')) && <Founders film={film} />}
+      {p.searches.some((s) => isYc(s.url)) && <Founders film={film} />}
       {p.connections === 0 && (
         <p className="small muted">
           Upload your LinkedIn connections on your Profile page to see who you already know here.

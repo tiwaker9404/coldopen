@@ -1,9 +1,11 @@
 // A "Make film" button on job posts. It shows only on a single post (not a list of jobs) and
 // sends nothing until it's clicked.
 ;(() => {
+  // linkedin.com or one of its subdomains; "notlinkedin.com" doesn't count
+  const onLinkedIn = (host) => host === 'linkedin.com' || host.endsWith('.linkedin.com')
   const isPost = () => {
     const { host, pathname, search } = location
-    if (host.endsWith('linkedin.com'))
+    if (onLinkedIn(host))
       return /\/jobs\/view\/\d+/.test(pathname) || /currentJobId=\d+/.test(search)
     if (host === 'www.ycombinator.com') return /\/companies\/[^/]+\/jobs\/[^/]+/.test(pathname)
     if (host === 'wellfound.com') return /\/jobs\/\d+/.test(pathname)
@@ -13,7 +15,7 @@
   const postUrl = () => {
     // LinkedIn's search page keeps the post in the query; send the post's own link
     const id = new URLSearchParams(location.search).get('currentJobId')
-    return id && location.host.endsWith('linkedin.com')
+    return id && onLinkedIn(location.host)
       ? `https://www.linkedin.com/jobs/view/${id}/`
       : location.href
   }

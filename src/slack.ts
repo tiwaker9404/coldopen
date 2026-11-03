@@ -26,7 +26,9 @@ export function verifySlackSignature(opts: {
 }
 
 /** Slack formats links as <https://acme.com|acme.com>; plain text is accepted too. */
-export function urlFromMention(text: string): string | null {
+export function urlFromMention(raw: string): string | null {
+  // a mention is a sentence or two; a pasted essay shouldn't make these patterns slow
+  const text = raw.slice(0, 2000)
   const link = text.match(/<(https?:\/\/[^|>\s]+)(?:\|[^>]*)?>/)
   if (link) return link[1]!
   const bare = text.match(/\b((?:https?:\/\/)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/\S*)?)/i)

@@ -27,6 +27,7 @@ const ascii = (s: string) =>
 /** "Priya K. Shah" -> { first: "priya", last: "shah" } */
 export function splitName(name: string): { first: string; last: string } | null {
   const parts = name
+    .slice(0, 200)
     .replace(/\([^)]*\)|,.*$/g, ' ')
     .trim()
     .split(/\s+/)

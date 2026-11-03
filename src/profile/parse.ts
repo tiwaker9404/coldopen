@@ -65,7 +65,13 @@ export const collapse = (s: string) => s.replace(/\s+/g, ' ').trim()
  */
 export function parseResume(raw: string, exclude: string[] = []): ParsedResume {
   const lines = raw.split('\n').map((l) => l.trim())
-  const email = raw.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)?.[0] ?? null
+  // an email is a short token: matching word by word keeps a long run of dots and letters fast
+  const email =
+    raw
+      .split(/\s+/)
+      .filter((w) => w.length <= 254)
+      .map((w) => w.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)?.[0])
+      .find(Boolean) ?? null
   const name = titleCase(
     lines.find((l) => l && !/@|\d{3}/.test(l) && l.split(' ').length <= 5) ?? '',
   )

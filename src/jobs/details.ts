@@ -49,9 +49,13 @@ export function htmlToText(html: string): string {
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
+  // until nothing changes: "<scr<script></script>ipt>" can't leave a script tag behind
+  for (let before = ''; before !== h; ) {
+    before = h
+    h = h.replace(/<(script|style)[\s\S]*?<\/\1>/gi, '')
+  }
   return decode(
     h
-      .replace(/<(script|style)[\s\S]*?<\/\1>/gi, '')
       // a list item is one bullet line, whatever paragraphs or spans are inside it
       .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_m, inner: string) => `\n• ${flat(inner)}\n`)
       // headings, and paragraphs that are only bold text, are section headings

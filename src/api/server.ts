@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { existsSync, readdirSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import fastifyStatic from '@fastify/static'
 import fastifySwagger from '@fastify/swagger'
 import fastifySwaggerUi from '@fastify/swagger-ui'
@@ -218,6 +218,11 @@ export async function buildApi({
   crmFetch = fetch,
 }: ApiDeps) {
   const filmsDir = resolve(cfg.FILMS_DIR)
+  /** a film's file, or null if the id or name would point outside the films folder */
+  const filmFile = (id: string, name: string): string | null => {
+    const path = resolve(filmsDir, id, name)
+    return path.startsWith(filmsDir + sep) ? path : null
+  }
   const publicUrl = cfg.PUBLIC_URL
   const share =
     cfg.SHARE_URL && cfg.SHARE_TOKEN
@@ -1232,7 +1237,7 @@ export async function buildApi({
       if (!FILE_NAMES.test(req.params.name))
         return reply.status(404).send({ error: { code: 'not_found', message: 'unknown file' } })
       if (!(await ownFilm(req.params.id, req.owner))) return notFound(reply)
-      if (!existsSync(join(filmsDir, req.params.id, req.params.name))) {
+      if (!existsSync(filmFile(req.params.id, req.params.name) ?? '\0')) {
         return reply
           .status(404)
           .send({ error: { code: 'not_ready', message: 'file not rendered yet' } })
@@ -2175,7 +2180,7 @@ export async function buildApi({
       if (!PUBLIC_FILES.test(req.params.name)) return reply.status(404).send('not found')
       const [ok] =
         await sql`select 1 from runs where id = ${req.params.id} and agent = 'film' and status = 'succeeded'`
-      if (!ok || !existsSync(join(filmsDir, req.params.id, req.params.name)))
+      if (!ok || !existsSync(filmFile(req.params.id, req.params.name) ?? '\0'))
         return reply.status(404).send('not found')
       reply.header('cache-control', 'public, max-age=86400')
       const dl = attachment(

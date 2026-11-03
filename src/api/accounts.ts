@@ -52,13 +52,16 @@ export function unsign(secret: string, signed: string | undefined): string | nul
 }
 
 export function cookies(req: FastifyRequest): Record<string, string> {
-  const out: Record<string, string> = {}
+  // no prototype: a cookie named "__proto__" or "constructor" is just a key, never a property
+  const out: Record<string, string> = Object.create(null)
   for (const part of (req.headers.cookie ?? '').split(';')) {
     const i = part.indexOf('=')
     if (i < 1) continue
+    const name = part.slice(0, i).trim()
+    if (name === '__proto__' || name === 'constructor' || name === 'prototype') continue
     // a malformed cookie (a stray "%") is ignored, not a 500 on every request
     try {
-      out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim())
+      out[name] = decodeURIComponent(part.slice(i + 1).trim())
     } catch {}
   }
   return out
