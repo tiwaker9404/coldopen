@@ -116,6 +116,8 @@ const RecipientSchema = z.object({
 type Recipient = z.infer<typeof RecipientSchema>
 
 interface FilmRow extends Run {
+  /** the sender's one detail from using the company's product, in their words */
+  detail?: string | null
   input: z.infer<typeof FilmInputSchema>
   output: FilmResult | null
   outreach?: Outreach | null
@@ -164,6 +166,8 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
       : null,
     /** who it's going to (or went to), when the sender said */
     recipient: r.recipient ?? null,
+    /** the sender's one detail from using their product */
+    detail: r.detail ?? null,
     /** the first film, when this one re-renders it with an edited script */
     editOf: r.input.editOf ?? null,
   }
@@ -1389,26 +1393,34 @@ export async function buildApi({
         .map((s) => s.next.dueAt)
         .sort()
       return {
-        data: due.map(({ r, next }) => {
-          const film = filmDto(r, publicUrl, seen.get(r.id))
-          const m =
-            r.output && film.share
-              ? addressed(draftMessages(r.output, r.input.profile, film.share), r.recipient?.name)
-              : null
-          return {
-            film,
-            next,
-            message:
-              m && next.kind === 'follow_up'
-                ? {
-                    subject: `Re: ${m.email.subject}`,
-                    body: next.step === 1 ? m.followUp : m.lastNote,
-                    linkedin: m.linkedinFollowUp,
-                    to: r.recipient?.email ?? null,
-                  }
-                : null,
-          }
-        }),
+        data: await Promise.all(
+          due.map(async ({ r, next }) => {
+            const film = filmDto(r, publicUrl, seen.get(r.id))
+            const m =
+              r.output && film.share
+                ? addressed(
+                    draftMessages(r.output, r.input.profile, film.share, {
+                      detail: r.detail ?? null,
+                      fresh: await freshFact(r),
+                    }),
+                    r.recipient?.name,
+                  )
+                : null
+            return {
+              film,
+              next,
+              message:
+                m && next.kind === 'follow_up'
+                  ? {
+                      subject: `Re: ${m.email.subject}`,
+                      body: next.step === 1 ? m.followUp : m.lastNote,
+                      linkedin: m.linkedinFollowUp,
+                      to: r.recipient?.email ?? null,
+                    }
+                  : null,
+            }
+          }),
+        ),
         waiting: upcoming.length,
         nextDueAt: upcoming[0] ?? null,
       }
@@ -1629,7 +1641,51 @@ export async function buildApi({
       const run = await ownFilm(req.params.id, req.owner)
       if (!run?.output) return notFound(reply)
       const link = filmDto(run, publicUrl).share!
-      return addressed(draftMessages(run.output, run.input.profile, link), run.recipient?.name)
+      const row = run as FilmRow
+      return addressed(
+        draftMessages(run.output, run.input.profile, link, {
+          detail: row.detail ?? null,
+          fresh: await freshFact(row),
+        }),
+        run.recipient?.name,
+      )
+    },
+  )
+
+  /** a line from their site the film didn't quote, for a follow-up that brings something new */
+  const freshFact = async (run: FilmRow): Promise<string | null> => {
+    const [st] = await sql<{ output: { facts?: { text: string; kind: string }[] } | null }[]>`
+      select output from steps where run_id = any(${[run.id, run.input.editOf].filter(Boolean) as string[]})
+        and key = 'research' and status = 'completed' limit 1`
+    const used = (run.output?.highlights?.quote.text ?? '').toLowerCase()
+    const fact = (st?.output?.facts ?? []).find(
+      (f) =>
+        (f.kind === 'stat' || f.kind === 'claim') &&
+        f.text.length >= 20 &&
+        f.text.length <= 110 &&
+        !used.includes(f.text.toLowerCase()) &&
+        !f.text.toLowerCase().includes(used || '\u0000'),
+    )
+    return fact?.text.replace(/\s+/g, ' ').trim() ?? null
+  }
+
+  app.put(
+    '/v1/films/:id/detail',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Save your one detail from using their product',
+        description:
+          'In your own words, like "the export to CSV dropped every custom field, so I rebuilt my report by hand". The email opens with it. Send null to clear.',
+        params: z.object({ id: RunId }),
+        body: z.object({ detail: z.string().trim().min(10).max(240).nullable() }),
+      },
+    },
+    async (req, reply) => {
+      if (!(await ownFilm(req.params.id, req.owner))) return notFound(reply)
+      const [r] = await sql<FilmRow[]>`
+        update runs set detail = ${req.body.detail} where id = ${req.params.id} returning *`
+      return { detail: r!.detail ?? null }
     },
   )
 

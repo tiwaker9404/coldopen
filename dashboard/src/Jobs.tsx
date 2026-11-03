@@ -330,11 +330,16 @@ function JobRow({
               Sponsors H-1B
             </span>
           )}
-          {job.pay && (
-            <span className="tag pay" title="Base pay this post lists, per year">
-              {money(job.pay)}
-            </span>
-          )}
+          {job.pay &&
+            (intern(job) ? (
+              <span className="tag pay" title="Pay this post lists, per month">
+                {money({ ...job.pay, min: job.pay.min / 12, max: job.pay.max / 12 }, true)}/mo
+              </span>
+            ) : (
+              <span className="tag pay" title="Base pay this post lists, per year">
+                {money(job.pay)}
+              </span>
+            ))}
           {job.type && job.type !== 'full_time' && (
             <span className="tag">{TYPE_LABEL[job.type]}</span>
           )}
@@ -578,8 +583,11 @@ function Picks<K extends string>({
   )
 }
 
-/** $150k–$200k */
-function money(p: { min: number; max: number; currency: string }) {
+/** internships list pay by the month, so it shows that way */
+const intern = (j: JobSuggestion) => j.type === 'intern' || /\bintern(ship)?\b/i.test(j.title)
+
+/** $150k–$200k, or $6.5k–$10k for monthly pay */
+function money(p: { min: number; max: number; currency: string }, monthly = false) {
   const sym =
     p.currency === 'USD'
       ? '$'
@@ -588,7 +596,8 @@ function money(p: { min: number; max: number; currency: string }) {
         : p.currency === 'GBP'
           ? '£'
           : `${p.currency} `
-  const k = (n: number) => `${sym}${Math.round(n / 1000)}k`
+  const k = (n: number) =>
+    `${sym}${monthly && n < 20_000 ? Math.round(n / 100) / 10 : Math.round(n / 1000)}k`
   return p.min === p.max ? k(p.min) : `${k(p.min)}–${k(p.max)}`
 }
 

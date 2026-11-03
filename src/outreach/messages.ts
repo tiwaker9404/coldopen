@@ -17,6 +17,48 @@ export interface Messages {
   linkedinFollowUp: string
   /** to someone you already know there: would they pass the film on */
   intro: string
+  /** how the email measures up to what makes cold email work */
+  checks: EmailChecks
+}
+
+export interface EmailChecks {
+  words: number
+  /** under 125 words */
+  short: boolean
+  /** the subject names their company, not "internship inquiry" */
+  aboutThem: boolean
+  /** your own detail from using their product is in it */
+  detail: boolean
+  /** one question to answer, not several */
+  oneAsk: boolean
+}
+
+const GENERIC_SUBJECT =
+  /\b(inquiry|enquiry|application|applying|opportunit|internship|job|resume|cv)\b/i
+
+/** What makes a cold email work, checked: short, about them, one personal detail, one small ask */
+export function checkEmail(
+  email: { subject: string; body: string },
+  company: string,
+  detail?: string | null,
+): EmailChecks {
+  // the signature and the link aren't the message
+  const words = email.body
+    .split('\n')
+    .filter((l) => !/^https?:\/\//.test(l.trim()))
+    .join(' ')
+    .split(/\s+/)
+    .filter(Boolean).length
+  const asks = (email.body.match(/\?/g) ?? []).length
+  return {
+    words,
+    short: words <= 125,
+    aboutThem:
+      email.subject.toLowerCase().includes(company.toLowerCase()) &&
+      !GENERIC_SUBJECT.test(email.subject.replace(company, '')),
+    detail: !!detail && email.body.toLowerCase().includes(detail.toLowerCase()),
+    oneAsk: asks === 1,
+  }
 }
 
 const LINKEDIN_LIMIT = 300
@@ -31,6 +73,12 @@ export function draftMessages(
   out: Pick<FilmResult, 'company' | 'job' | 'highlights' | 'script'>,
   profile: Profile,
   link: string,
+  more: {
+    /** the sender's one detail from using their product, in their words */
+    detail?: string | null
+    /** something from their site the film didn't use, for the follow-up to bring */
+    fresh?: string | null
+  } = {},
 ): Messages {
   const company = out.company
   const role = out.job?.title
@@ -61,12 +109,16 @@ export function draftMessages(
   const pitch =
     headline && !/^why i fit\b|\brole$/i.test(headline) ? `${headline.replace(/[!?]$/, '')}.` : ''
 
+  const detail = more.detail ? clean(more.detail) : ''
   const email = {
-    subject: `A 30-second film I made for ${company}${role ? ` (${role})` : ''}`,
+    subject: role
+      ? `A 30-second film for ${company}'s ${role} team`
+      : `A 30-second film for ${company}`,
     body: [
       'Hi [First name],',
       '',
-      `I made a 30-second film ${forWhat}:`,
+      ...(detail ? [`I've been using ${company}, and ${lower(detail)}.`, ''] : []),
+      `${detail ? 'So I' : 'I'} made a 30-second film ${forWhat}:`,
       link,
       '',
       `${opener}${evidence}`,
@@ -83,12 +135,15 @@ export function draftMessages(
   const short = `Hi [First name], I made a short film for ${company}: ${link} ${ask} – ${first}`
   const linkedin = long.length <= LINKEDIN_LIMIT ? long : short.slice(0, LINKEDIN_LIMIT)
 
+  const fresh = more.fresh ? clean(more.fresh) : ''
   const followUp = [
     'Hi [First name],',
     '',
-    `Bumping this in case it got buried: the film I made ${forWhat} is here, ${link}`,
+    fresh
+      ? `One more thing since I wrote: your site says "${fresh}", and it's exactly the kind of work I'd want to help with. The film I made ${forWhat} is here: ${link}`
+      : `Bumping this in case it got buried: the film I made ${forWhat} is here, ${link}`,
     '',
-    `Happy to walk you through how it was made. ${ask}`,
+    fresh ? ask : `Happy to walk you through how it was made. ${ask}`,
     '',
     first,
   ].join('\n')
@@ -124,8 +179,20 @@ export function draftMessages(
     first,
   ].join('\n')
 
-  return { email, linkedin, followUp, lastNote, linkedinFollowUp, intro }
+  return {
+    email,
+    linkedin,
+    followUp,
+    lastNote,
+    linkedinFollowUp,
+    intro,
+    checks: checkEmail(email, company, detail || null),
+  }
 }
+
+/** "The one thing I kept hitting" -> "the one thing I kept hitting", keeping "I" and names */
+const lower = (s: string) =>
+  /^[A-Z][a-z]/.test(s) && !/^I\b/.test(s) ? s[0]!.toLowerCase() + s.slice(1) : s
 
 /**
  * The same messages addressed to one person: "[First name]" becomes their first name in all of
@@ -138,6 +205,7 @@ export function addressed(m: Messages, name: string | undefined): Messages {
   return {
     ...m,
     email: { subject: m.email.subject, body: fill(m.email.body) },
+    checks: m.checks,
     linkedin: fill(m.linkedin),
     followUp: fill(m.followUp),
     lastNote: fill(m.lastNote),

@@ -320,6 +320,10 @@ export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
       } else continue
     } else if (j.remote) why.push('Remote')
 
+    // full-time roles come first; internships follow unless the search asks for them
+    const wantsIntern = s.levels.includes('intern') || s.types.includes('intern')
+    if (!wantsIntern && (j.type === 'intern' || levelOf(j.title) === 'intern')) score -= 1.5
+
     const days = ago(j.posted, now)
     if (days !== null) {
       if (days <= 7) {
