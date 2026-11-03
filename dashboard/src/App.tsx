@@ -24,6 +24,7 @@ import { Jobs } from './Jobs.tsx'
 import { Onboarding } from './Onboarding.tsx'
 import { ProfileEditor } from './ProfileEditor.tsx'
 import { ProfilesPage } from './Profiles.tsx'
+import { Startups } from './Startups.tsx'
 import { notify, useToast } from './ui.tsx'
 
 const FORMATS: { id: Format; label: string }[] = [
@@ -155,6 +156,14 @@ export function App() {
               />
               <Jobs onMade={setOpen} variant="full" />
             </>
+          ) : place === 'startups' ? (
+            <>
+              <PageTitle
+                title="Startups to reach out to"
+                sub="Every active YC startup, hiring or not. Plenty never post a role: a film to the founder can start the conversation before one exists."
+              />
+              <Startups onMade={setOpen} />
+            </>
           ) : place === 'films' ? (
             <>
               <PageTitle
@@ -250,10 +259,11 @@ export function App() {
 
 /* ------------------------------------------------------------------ places */
 
-type Place = 'today' | 'jobs' | 'films' | 'profile'
+type Place = 'today' | 'jobs' | 'startups' | 'films' | 'profile'
 const PLACES: { id: Place; label: string }[] = [
   { id: 'today', label: 'Today' },
   { id: 'jobs', label: 'Jobs' },
+  { id: 'startups', label: 'Startups' },
   { id: 'films', label: 'Films' },
   { id: 'profile', label: 'Profile' },
 ]

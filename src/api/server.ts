@@ -29,6 +29,7 @@ import {
   suggestions,
   warmBoards,
 } from '../jobs/service.ts'
+import { searchStartups } from '../jobs/startups.ts'
 import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
@@ -808,6 +809,60 @@ export async function buildApi({
           boards: r.search.boards.map(boardDto),
           suggested: r.search.suggested,
         },
+      }
+    },
+  )
+
+  app.get(
+    '/v1/startups',
+    {
+      schema: {
+        tags: ['jobs'],
+        summary: 'YC startups to reach out to, hiring or not',
+        description:
+          "Every active YC startup from YC's directory, newest batch first, for reaching founders before a role is posted. Each says whether it's hiring on YC and whether its open roles are in Jobs for you, and links its YC page (which names the founders).",
+        querystring: z.object({
+          q: z.string().trim().max(80).optional(),
+          industry: z.string().trim().max(60).optional(),
+          since: z.coerce.number().int().min(2005).max(2100).optional(),
+          maxTeam: z.coerce.number().int().min(1).max(100_000).optional(),
+          hiring: z.enum(['any', 'hiring', 'quiet']).default('any'),
+          us: z
+            .enum(['true', 'false'])
+            .default('true')
+            .transform((v) => v === 'true'),
+          limit: z.coerce.number().int().min(1).max(60).default(30),
+          offset: z.coerce.number().int().min(0).max(10_000).default(0),
+        }),
+      },
+    },
+    async (req) => {
+      const r = searchStartups(req.query)
+      // the ones they already made a film for
+      const hosts = r.data.flatMap((s) => {
+        try {
+          return s.website ? [new URL(s.website).hostname.replace(/^www\./, '')] : []
+        } catch {
+          return []
+        }
+      })
+      const made = hosts.length
+        ? await sql<{ id: string; host: string }[]>`
+            select distinct on (output->>'host') id, output->>'host' as host from runs
+            where agent = 'film' and owner = ${req.owner} and status = 'succeeded'
+              and replace(output->>'host', 'www.', '') = any(${hosts})
+            order by output->>'host', id desc`
+        : []
+      const film = new Map(made.map((m) => [m.host.replace(/^www\./, ''), m.id]))
+      return {
+        ...r,
+        data: r.data.map((s) => {
+          let id: string | undefined
+          try {
+            id = s.website ? film.get(new URL(s.website).hostname.replace(/^www\./, '')) : undefined
+          } catch {}
+          return id ? { ...s, filmId: id } : s
+        }),
       }
     },
   )
