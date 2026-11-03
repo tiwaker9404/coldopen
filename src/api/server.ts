@@ -853,7 +853,7 @@ export async function buildApi({
           industry: z.string().trim().max(60).optional(),
           since: z.coerce.number().int().min(2005).max(2100).optional(),
           maxTeam: z.coerce.number().int().min(1).max(100_000).optional(),
-          hiring: z.enum(['any', 'hiring', 'quiet']).default('any'),
+          hiring: z.enum(['any', 'hiring', 'yc-only', 'quiet']).default('any'),
           us: z
             .enum(['true', 'false'])
             .default('true')

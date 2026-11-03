@@ -361,6 +361,8 @@ export interface JobSuggestion {
   why: string[]
   /** the company's YC batch, "W24", when it's a YC company */
   yc?: string
+  /** its page on ycombinator.com: the founders, and roles it posts on Work at a Startup */
+  ycPage?: string
   /** the company's open roles, and how many went up in the last 30 days */
   hiring?: { open: number; recent: number }
   /** H-1B petitions the company had approved in the latest fiscal year */

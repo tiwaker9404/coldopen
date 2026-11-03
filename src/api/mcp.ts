@@ -85,7 +85,7 @@ export function buildMcp(call: Call): McpServer {
     {
       title: 'Find YC startups',
       description:
-        'Active YC startups, hiring or not, newest batch first: for reaching founders before a role is posted. Each links its YC page, which names the founders.',
+        'Active YC startups, hiring or not, newest batch first: for reaching founders before a role is posted. hiring "yc-only" finds the ones whose roles are only on YC’s Work at a Startup, not in search_jobs. Each links its YC page, which names the founders.',
       inputSchema: {
         q: z
           .string()
@@ -95,7 +95,7 @@ export function buildMcp(call: Call): McpServer {
         industry: z.string().max(60).optional(),
         since: z.number().int().optional().describe('batches from this year on'),
         maxTeam: z.number().int().optional(),
-        hiring: z.enum(['any', 'hiring', 'quiet']).default('any'),
+        hiring: z.enum(['any', 'hiring', 'yc-only', 'quiet']).default('any'),
         limit: z.number().int().min(1).max(30).default(10),
       },
       annotations: { readOnlyHint: true },

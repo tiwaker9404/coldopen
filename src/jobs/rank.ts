@@ -66,6 +66,8 @@ export interface Suggestion extends Job {
   score: number
   /** the company's YC batch, "W24", when it's a YC company */
   yc?: string
+  /** its page on ycombinator.com (founders, and the roles it posts on Work at a Startup) */
+  ycPage?: string
   /** how fast the company is hiring: open roles on its board, and how many went up in 30 days */
   hiring?: { open: number; recent: number }
   /** H-1B petitions the company had approved in the latest fiscal year */

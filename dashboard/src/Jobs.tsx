@@ -163,6 +163,7 @@ export function Jobs({
             {r.updatedAt && `, checked ${ago(r.updatedAt)}`}
             {r.failed.length > 0 && `. Couldn’t read ${r.failed.join(', ')}`}.
           </p>
+          {r.search.ycOnly && <YcOnlyNote />}
           {r.gaps.length > 0 && <Gaps gaps={r.gaps} />}
           {!visitor && <KnowNudge />}
           {r.data.length === 0 ? (
@@ -297,11 +298,22 @@ function JobRow({
               {FIT_LABEL[job.fit.level]} · {job.fit.answered} of {job.fit.of}
             </span>
           )}
-          {job.yc && (
-            <span className="tag yc" title={`Y Combinator, ${job.yc} batch`}>
-              YC {job.yc}
-            </span>
-          )}
+          {job.yc &&
+            (job.ycPage ? (
+              <a
+                className="tag yc"
+                href={job.ycPage}
+                target="_blank"
+                rel="noreferrer"
+                title={`Y Combinator, ${job.yc} batch: the founders, and roles it posts on Work at a Startup`}
+              >
+                YC {job.yc} · founders
+              </a>
+            ) : (
+              <span className="tag yc" title={`Y Combinator, ${job.yc} batch`}>
+                YC {job.yc}
+              </span>
+            ))}
           {job.hiring && job.hiring.recent > 0 && (
             <span
               className={job.hiring.recent >= 5 ? 'tag hot' : 'tag quiet'}
@@ -921,5 +933,23 @@ function SearchForm({
         </button>
       </div>
     </form>
+  )
+}
+
+/** YC startups whose roles are only on Work at a Startup, which no API reads: point to them */
+function YcOnlyNote() {
+  const q = useQuery({
+    queryKey: ['startups', 'yc-only-count'],
+    queryFn: () => api<{ total: number }>('/v1/startups?hiring=yc-only&limit=1'),
+    staleTime: 60 * 60_000,
+  })
+  if (!q.data?.total) return null
+  return (
+    <p className="jobs-note">
+      {q.data.total.toLocaleString()} more YC startups post their roles only on YC’s Work at a
+      Startup, which has no public feed to read.{' '}
+      <a href="?hiring=yc-only#startups">See them in Startups</a>, each with its founders and its
+      jobs on YC.
+    </p>
   )
 }

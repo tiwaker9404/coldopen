@@ -25,8 +25,8 @@ export interface StartupQuery {
   since?: number | undefined
   /** at most this many people */
   maxTeam?: number | undefined
-  /** 'hiring': hiring on YC; 'quiet': not posting roles */
-  hiring?: 'any' | 'hiring' | 'quiet' | undefined
+  /** 'hiring': hiring on YC; 'yc-only': hiring, but only on YC's Work at a Startup (not in Jobs); 'quiet': not posting roles */
+  hiring?: 'any' | 'hiring' | 'yc-only' | 'quiet' | undefined
   /** only startups with people in the US (the default) */
   us?: boolean | undefined
   limit?: number | undefined
@@ -84,6 +84,7 @@ export function searchStartups(query: StartupQuery): {
       (!query.since || s.y >= query.since) &&
       (!query.maxTeam || (s.t !== undefined && s.t <= query.maxTeam)) &&
       (query.hiring !== 'hiring' || s.h) &&
+      (query.hiring !== 'yc-only' || (s.h && !WITH_BOARD.has(s.s))) &&
       (query.hiring !== 'quiet' || !s.h),
   )
   const counts = new Map<string, number>()
