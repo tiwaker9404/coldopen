@@ -3750,3 +3750,14 @@ a.tag {
 .gh-list small {
   color: var(--muted);
 }
+
+.hiring-path {
+  margin-top: 18px;
+  font-size: 14.5px;
+  color: var(--muted);
+}
+
+.hiring-path a {
+  color: var(--ink);
+  font-weight: 600;
+}

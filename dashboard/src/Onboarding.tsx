@@ -74,6 +74,10 @@ export function Onboarding({
           </select>
         </label>
       </ResumeDraft>
+      <p className="hiring-path">
+        Hiring instead? <a href="#pitch">Pitch your role to a candidate</a>, or post a hiring film.
+        No résumé needed.
+      </p>
     </section>
   )
 }

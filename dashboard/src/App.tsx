@@ -102,7 +102,8 @@ export function App() {
     queryFn: () => api<{ data: unknown[] }>('/v1/followups'),
   })
   const dueCount = followups.data?.data.length ?? 0
-  const onboarding = !loading && noProfile && list.length === 0
+  // Pitch a role needs no profile: a recruiter arriving from a share page goes straight there
+  const onboarding = !loading && noProfile && list.length === 0 && place !== 'pitch'
   const name = (f: Film) => nameOf(f, list)
 
   return (
