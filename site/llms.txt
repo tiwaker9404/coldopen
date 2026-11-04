@@ -1,0 +1,22 @@
+# coldopen
+
+> Free, open-source tool that turns a job link into a 30-second personalized film for that company: their brand, one requirement quoted from the job post, and the sender's own results from their résumé. Every number on screen is checked against its source. In a beta of about 300 films sent by 30 people, 57% got a reply.
+
+## For job seekers
+- Paste a job link or company website; get a film, a share link that shows when they watch, and email and LinkedIn drafts
+- Homework: what the company published in the last 90 days, ready to open the email
+- Who to write to first: founders at YC startups, else the hiring manager; email finder and intro requests
+- Jobs from 450+ companies' boards, ranked by fit; pay, visa sponsorship and recent funding filters
+
+## For recruiters and founders
+- Pitch a role: a film in your brand that answers your role with one candidate's own record, plus a short InMail
+- Hiring film: announce an open role to everyone, with a LinkedIn post ready to paste
+
+## For developers
+- [Developers page](https://tiwaker9404.github.io/coldopen/developers/): REST API, MCP server, CLI, self-hosting
+- [Source code](https://github.com/tiwaker9404/coldopen) (MIT), durable rendering on Postgres
+
+## Links
+- [App](https://coldopen-nk8o.onrender.com)
+- [Hiring Index](https://tiwaker9404.github.io/coldopen/hiring-index/): open roles at 450+ tech companies, updated daily
+- Built by Ashwin Tiwari
