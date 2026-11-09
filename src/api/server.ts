@@ -78,6 +78,7 @@ import { applyEdit, precheckEdit } from '../script/checks.ts'
 import { ProfileSchema } from '../script/types.ts'
 import { oneFilmViews, shareViews, unshare } from '../share/client.ts'
 import { attachment } from '../share/download.ts'
+import { gifEmbed } from '../share/embed.ts'
 import { sharePage, viewFromRun } from '../share/page.ts'
 import { filmViews, NO_VIEWS, pgViewStore, viewSummaries } from '../share/pg.ts'
 import { recordBeacon, type ViewSummary } from '../share/views.ts'
@@ -1292,11 +1293,12 @@ export async function buildApi({
           error: s.error,
         })),
         timeline,
+        // the GIF wrapped in a link to the share page, copied as rich text for an email
         embed: run.output
-          ? (() => {
-              const link = run.output.shared?.link ?? `${publicUrl.replace(/\/$/, '')}/f/${run.id}`
-              return `<a href="${link}"><img src="${link}/preview.gif" width="480" alt="A 30-second video made for ${run.output.company}"></a>`
-            })()
+          ? gifEmbed(
+              run.output.shared?.link ?? `${publicUrl.replace(/\/$/, '')}/f/${run.id}`,
+              run.output.company,
+            )
           : null,
       }
     },

@@ -20,6 +20,7 @@ import {
   type ViewSession,
   type ViewSummary,
 } from './api.ts'
+import { copyRich } from './clipboard.ts'
 import { host, Outreach } from './FilmRow.tsx'
 import { safeUrl } from './safe.ts'
 import { canNotify, ErrorNote, Out, useToast } from './ui.tsx'
@@ -50,13 +51,20 @@ export function jobUnreadable(f: Pick<Film, 'status' | 'errorCode' | 'error'>): 
 
 export function Copy({
   text,
+  html,
   label,
   done = 'Copied',
+  fallback = 'Copied',
   className,
 }: {
+  /** what's copied as plain text (with html: the plain-text twin, and the fallback) */
   text: string
+  /** copy this as rich text instead, so it pastes as formatted content */
+  html?: string
   label: string
   done?: string
+  /** said when the browser can't copy rich text and only text was copied */
+  fallback?: string
   className?: string
 }) {
   const [ok, setOk] = useState(false)
@@ -67,9 +75,10 @@ export function Copy({
       className={className}
       onClick={async () => {
         try {
-          await navigator.clipboard.writeText(text)
+          const rich = html ? await copyRich(html, text) : false
+          if (!rich) await navigator.clipboard.writeText(text)
           setOk(true)
-          toast({ text: done })
+          toast({ text: html && !rich ? fallback : done })
           setTimeout(() => setOk(false), 1600)
         } catch {
           toast({ text: 'Your browser blocked copying. Select the text and copy it instead.' })
@@ -325,12 +334,23 @@ function FilmActions({ film: f }: { film: FilmDetail }) {
         <a className="button" href={downloadUrl(f, 'film')} download={`${fileName(f)}.mp4`}>
           Download MP4
         </a>
-        {f.embed && (
+        {f.embed && f.share && (
           <Copy
-            text={f.embed}
+            html={f.embed}
+            text={f.share}
             label="Copy GIF for email"
             done="GIF copied. Paste it into your email"
+            fallback="Your browser can only copy the link. Download the GIF and drag it into your email instead"
           />
+        )}
+        {f.files && (
+          <a
+            className="button"
+            href={downloadUrl(f, 'preview.gif')}
+            download={`${fileName(f)}.gif`}
+          >
+            Download GIF
+          </a>
         )}
       </div>
       <p className="explain">
@@ -342,8 +362,8 @@ function FilmActions({ film: f }: { film: FilmDetail }) {
           </a>
         )}
         <br />
-        The MP4 saves as “{fileName(f)}.mp4”. The GIF plays inside Gmail or Outlook and links to the
-        film.
+        Copy GIF for email pastes a playing preview that opens the film. Download GIF saves “
+        {fileName(f)}.gif” to attach to a LinkedIn message.
       </p>
     </div>
   )

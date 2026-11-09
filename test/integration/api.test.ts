@@ -225,6 +225,7 @@ describe('films', () => {
     const detail = (await app.inject({ url: `/v1/films/${id}`, headers: auth })).json()
     expect(detail.share).toBe(`https://films.example.com/f/${id}`)
     expect(detail.embed).toContain(`https://films.example.com/f/${id}/preview.gif`)
+    expect(detail.embed).toMatch(new RegExp(`^<a href="https://films.example.com/f/${id}"`))
 
     const page = await app.inject({ url: `/f/${id}` })
     expect(page.statusCode).toBe(200)
