@@ -1,5 +1,6 @@
 import type { FilmResult } from '../film.ts'
 import type { Profile } from '../script/types.ts'
+import { emailWords } from './checks.ts'
 
 /**
  * The messages that carry a film: an email, a LinkedIn note (300 characters, LinkedIn's limit
@@ -75,13 +76,8 @@ export function checkEmail(
   company: string,
   detail?: string | null,
 ): EmailChecks {
-  // the signature and the link aren't the message
-  const words = email.body
-    .split('\n')
-    .filter((l) => !/^https?:\/\//.test(l.trim()))
-    .join(' ')
-    .split(/\s+/)
-    .filter(Boolean).length
+  // the link isn't the message
+  const words = emailWords(email.body)
   const asks = (email.body.match(/\?/g) ?? []).length
   return {
     words,

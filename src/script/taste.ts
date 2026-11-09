@@ -72,6 +72,26 @@ export const BANNED = [
   'passionate',
 ] as const
 
+/**
+ * Words that turn a message into a favor asked of a stranger. Outreach offers something (the
+ * film) and asks one small, easy thing; it never asks to be referred, passed along or rescued.
+ * Matched as whole phrases, case-insensitively.
+ */
+export const BEGGING = [
+  'refer me',
+  'referral',
+  'any openings',
+  'any opportunities',
+  'grateful if you could',
+  "I'd be grateful for",
+  'pass my resume',
+  'pick your brain',
+  'just checking in',
+  'desperate',
+  'please consider me',
+  'sorry to bother',
+] as const
+
 export const TASTE_RULES = `
 Taste rules (these are checked in code; a violation means a rewrite):
 - Be specific. Mention one concrete thing that is actually on their homepage.

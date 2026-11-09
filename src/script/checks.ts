@@ -279,7 +279,8 @@ export function editViolations(script: Script, kit: BrandKit, profile: Profile):
   )
 }
 
-const sameNumber = (a: string, b: string) => {
+/** "40,000+" may stand for "40,000", and "15minutes" for "15", but "12x" may not stand for "1" */
+export const sameNumber = (a: string, b: string) => {
   const [long, short] = a.length >= b.length ? [a, b] : [b, a]
   return long.startsWith(short) && !/\d/.test(long.slice(short.length))
 }
