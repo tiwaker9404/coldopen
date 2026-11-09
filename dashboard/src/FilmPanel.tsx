@@ -39,6 +39,15 @@ function stepLabel(key: string) {
   return STEP_LABEL[key] ?? key
 }
 
+/** It stopped at the job post (a login wall, or a page with nothing to read): pasting fixes it. */
+export function jobUnreadable(f: Pick<Film, 'status' | 'errorCode' | 'error'>): boolean {
+  return (
+    f.status === 'failed' &&
+    f.errorCode === 'non_retryable' &&
+    /job (post|page|description)|need a login/i.test(f.error ?? '')
+  )
+}
+
 export function Copy({
   text,
   label,
@@ -79,12 +88,15 @@ export function FilmPanel({
   name,
   onClose,
   onOpen,
+  onPasteJob,
 }: {
   id: string
   /** the company, when the film doesn't know it yet */
   name?: string
   onClose: () => void
   onOpen: (id: string) => void
+  /** back to the composer, to paste the description of a job post that couldn't be read */
+  onPasteJob?: (film: Film) => void
 }) {
   const qc = useQueryClient()
   const ref = useRef<HTMLDivElement>(null)
@@ -198,6 +210,11 @@ export function FilmPanel({
             {f.errorCode !== 'non_retryable' && (
               <button type="button" onClick={() => retry.mutate()} disabled={retry.isPending}>
                 Try again from where it stopped
+              </button>
+            )}
+            {onPasteJob && jobUnreadable(f) && (
+              <button type="button" className="primary" onClick={() => onPasteJob(f)}>
+                Paste the description instead
               </button>
             )}
           </div>

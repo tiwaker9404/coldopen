@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { assertPublicUrl, guardPage } from '../brand/guard.ts'
 import { getBrowser } from '../browser.ts'
+import { NonRetryableError } from '../runtime/errors.ts'
 import {
   cleanTitle,
   homepageFor,
@@ -9,22 +10,42 @@ import {
   type JobPost,
   JobPostSchema,
   jobFromText,
+  needsPastedText,
+  needsTextMessage,
   pickRequirements,
 } from './post.ts'
+
+/** A sign-in page, judged by where it ended up and what it says. */
+export function looksLikeLoginWall(finalUrl: string, text: string, hasPassword: boolean): boolean {
+  let path = ''
+  try {
+    path = new URL(finalUrl).pathname
+  } catch {}
+  if (
+    /\/(login|log-in|signin|sign-in|sign_in|authwall|uas\/login|auth\/login|account\/login)\b/i.test(
+      path,
+    )
+  )
+    return true
+  const asks =
+    /\b(sign|log) ?in (to|or (create|join|sign up)) (see|view|continue|apply|read)|join (now )?to (see|view)|you must (sign|log) ?in|please (sign|log) ?in\b/i
+  // a real post is long; a wall is a short page with a password box or a sign-in ask
+  return text.length < 3000 && (hasPassword || asks.test(text))
+}
 
 /**
  * Reads a job post from its page. Works on company careers pages and the usual applicant
  * tracking systems (Greenhouse, Lever, Ashby, Workable), which all render the description
- * as headings followed by lists. LinkedIn job pages need a login, so paste those as text.
+ * as headings followed by lists. LinkedIn, Indeed and Glassdoor job pages need a login, so
+ * those fail at once with a NonRetryableError asking for the pasted text, as does any page
+ * that turns out to be a sign-in wall.
  */
 export async function fetchJob(
   url: string,
   opts: { allowPrivateNetworks?: boolean; timeoutMs?: number } = {},
 ): Promise<JobPost> {
-  if (/linkedin\.com\/jobs/i.test(url))
-    throw new Error(
-      'LinkedIn job pages need a login. Copy the job description into a text file and pass that instead: --job job.txt',
-    )
+  // retrying won't log in, so these fail at once, in words the web app can show
+  if (needsPastedText(url)) throw new NonRetryableError(needsTextMessage(url))
   if (!opts.allowPrivateNetworks) await assertPublicUrl(url)
   const browser = await getBrowser()
   const context = await browser.createBrowserContext()
@@ -103,16 +124,28 @@ export async function fetchJob(
       const og = document.querySelector<HTMLMetaElement>('meta[property="og:title"]')?.content
       const site = document.querySelector<HTMLMetaElement>('meta[property="og:site_name"]')?.content
       return {
+        finalUrl: location.href,
+        hasPassword: !!document.querySelector('input[type=password]'),
         title: h1?.innerText.trim() || og || document.title,
         site: site ?? '',
         items,
         text: document.body.innerText.slice(0, 30000),
         company: outward[0] ? new URL(outward[0].href).origin : '',
       }
-    })) as { title: string; site: string; items: JobItem[]; text: string; company: string }
-
+    })) as {
+      finalUrl: string
+      hasPassword: boolean
+      title: string
+      site: string
+      items: JobItem[]
+      text: string
+      company: string
+    }
     const title = cleanTitle(raw.title, raw.site || undefined)
     const requirements = pickRequirements(raw.items)
+    // nothing to read and it asks to sign in: a login wall, which no retry gets past
+    if (requirements.length === 0 && looksLikeLoginWall(raw.finalUrl, raw.text, raw.hasPassword))
+      throw new NonRetryableError(needsTextMessage(url))
     // a careers page on the company's own site: its homepage. A job board: the site it links to.
     const own = isJobPage(url) ? homepageFor(url) : null
     const companyUrl = own ?? (raw.company ? `${raw.company}/` : undefined)

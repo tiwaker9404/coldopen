@@ -74,6 +74,13 @@ export interface ScriptEdit {
   cta?: string
 }
 
+/** job links that need a login (LinkedIn, Indeed, Glassdoor): the same check the API makes */
+export {
+  needsPastedText,
+  needsSiteMessage,
+  needsTextMessage,
+  walledSite,
+} from '../../src/job/walled.ts'
 /** on-screen word limits: the same ones the renderer enforces */
 export { LIMITS } from '../../src/script/taste.ts'
 

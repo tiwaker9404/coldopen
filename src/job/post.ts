@@ -1,5 +1,14 @@
 import { z } from 'zod'
 import { tidy } from '../brand/text.ts'
+import { needsPastedText } from './walled.ts'
+
+export {
+  needsPastedText,
+  needsSiteMessage,
+  needsTextMessage,
+  pastedTextProblem,
+  walledSite,
+} from './walled.ts'
 
 /**
  * A job post, reduced to what a film can answer: the role's title and the requirements,
@@ -157,7 +166,8 @@ export function isJobPage(url: string): boolean {
   } catch {
     return false
   }
-  if (/linkedin\.com$/i.test(u.hostname) && /^\/jobs\//.test(u.pathname)) return true
+  // LinkedIn, Indeed and Glassdoor posts are job pages too, though only their pasted text reads
+  if (needsPastedText(url)) return true
   if (isBoardHost(u.hostname)) return u.pathname.split('/').filter(Boolean).length >= 2
   return /\/(careers?|jobs?|positions?|openings?|roles?)\/[^/]+/i.test(u.pathname)
 }
@@ -165,6 +175,7 @@ export function isJobPage(url: string): boolean {
 /** A careers page on the company's own site: its homepage is the same origin. */
 export function homepageFor(url: string): string | null {
   const u = new URL(url)
-  if (isBoardHost(u.hostname) || /linkedin\.com$/i.test(u.hostname)) return null
+  if (isBoardHost(u.hostname) || /linkedin\.com$/i.test(u.hostname) || needsPastedText(url))
+    return null
   return `${u.protocol}//${u.host.replace(/^(careers|jobs)\./i, '')}/`
 }

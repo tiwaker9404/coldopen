@@ -27,6 +27,7 @@ import { Openers } from './Openers.tsx'
 import { Pitch } from './Pitch.tsx'
 import { ProfileEditor } from './ProfileEditor.tsx'
 import { ProfilesPage } from './Profiles.tsx'
+import { jobBoxNote, pasteBody, pasteNote, pasting, walledInList } from './pasteJob.ts'
 import { Startups } from './Startups.tsx'
 import { ErrorNote, notify, useToast } from './ui.tsx'
 
@@ -42,6 +43,8 @@ export function App() {
   const qc = useQueryClient()
   const [open, setOpen] = useState<string | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
+  // a failed film's job post, sent back to the composer to paste its description
+  const [paste, setPaste] = useState<PasteDraft | null>(null)
   const [stats, setStats] = useState(false)
   const [side, setSide] = useState<'guide' | 'tools' | null>(null)
   const toast = useToast()
@@ -210,6 +213,7 @@ export function App() {
               <Composer
                 me={me.data}
                 profiles={profiles.data?.data ?? []}
+                draft={paste}
                 onMade={setOpen}
                 onEdit={(p) => setEditing({ profile: p })}
               />
@@ -243,6 +247,11 @@ export function App() {
             })()}
             onClose={() => setOpen(null)}
             onOpen={setOpen}
+            onPasteJob={(f) => {
+              setOpen(null)
+              setPaste(pasteDraftFor(f))
+              if (place !== 'today') window.location.hash = 'today'
+            }}
           />
         </DrawerBoundary>
       )}
@@ -452,15 +461,31 @@ function whatHappens(
     : `The film is about what ${host} says on its homepage. Have a job link for it? Paste that instead, or add it under Options.`
 }
 
+/** A job link to film again with its description pasted; `n` makes each request new. */
+interface PasteDraft {
+  link: string
+  site: string
+  n: number
+}
+
+/** From a film that couldn't read its job post: the link, and the website when it's known. */
+export function pasteDraftFor(f: Film): PasteDraft {
+  const link = f.job?.url ?? f.url
+  const site = f.url !== link ? f.url : f.host ? `https://${f.host}` : ''
+  return { link, site, n: Date.now() }
+}
+
 /** The one thing the page is for: paste a link, make a film. Everything else is tucked away. */
 function Composer({
   me,
   profiles,
+  draft,
   onMade,
   onEdit,
 }: {
   me: Me | undefined
   profiles: Profile[]
+  draft?: PasteDraft | null
   onMade: (id: string) => void
   onEdit: (p: Profile) => void
 }) {
@@ -480,9 +505,30 @@ function Composer({
   const [profileId, setProfileId] = useState('')
   const [picks, setPicks] = useState<number[]>([])
   const [job, setJob] = useState('')
+  const [site, setSite] = useState('')
+  const [forced, setForced] = useState(false)
   const [batch, setBatch] = useState<{ id: string; count: number } | null>(null)
   const visitor = !!me?.hosted && !me.user
   const input = useRef<HTMLInputElement>(null)
+  const description = useRef<HTMLTextAreaElement>(null)
+  // a LinkedIn-style link: ask for its description (and the company's site) before anything runs
+  const paste = { link: text, text: job, site, forced }
+  const asking = !many && pasting(paste)
+  const ready = asking ? pasteBody(paste) : null
+  // the moment such a link lands, move to the box that's needed
+  useEffect(() => {
+    if (asking) description.current?.focus()
+  }, [asking])
+  // "Paste the description instead" from a film that failed
+  useEffect(() => {
+    if (!draft) return
+    setMany(false)
+    setText(draft.link)
+    setSite(draft.site)
+    setJob('')
+    setForced(true)
+    window.scrollTo(0, 0)
+  }, [draft])
   // "/" anywhere jumps to the link field, as on most tools people know
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -511,7 +557,14 @@ function Composer({
       if (urls.length === 0)
         throw new Error('Paste a company website, like acme.com, or a job link')
       const proof = picks.length ? { proof: picks } : {}
+      if (asking) {
+        if (!ready) throw new Error(pasteNote(paste))
+        const f = await send<Film>('POST', '/v1/films', { ...ready, profileId, format, ...proof })
+        return { film: f, batch: null }
+      }
       if (many && urls.length > 1) {
+        const walled = walledInList(urls)
+        if (walled) throw new Error(walled)
         const b = await send<{ batch: string; films: number }>('POST', '/v1/batches', {
           urls,
           profileId,
@@ -521,6 +574,8 @@ function Composer({
         return { film: null, batch: { id: b.batch, count: b.films } }
       }
       const j = job.trim()
+      const boxNote = jobBoxNote(j)
+      if (boxNote) throw new Error(boxNote)
       if (j && !JOB_LINK.test(j) && j.length < 40)
         throw new Error('Paste the job post’s link, or its whole description')
       const f = await send<Film>('POST', '/v1/films', {
@@ -535,6 +590,8 @@ function Composer({
     onSuccess: (r) => {
       setText('')
       setJob('')
+      setSite('')
+      setForced(false)
       void qc.invalidateQueries({ queryKey: ['me'] })
       void qc.invalidateQueries({ queryKey: ['films'] })
       if (r.film) onMade(r.film.id)
@@ -572,7 +629,10 @@ function Composer({
               aria-label="Company website or job link"
               placeholder="linear.app, or jobs.ashbyhq.com/…"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value)
+                setForced(false)
+              }}
               ref={input}
               aria-describedby="what-happens"
               autoComplete="off"
@@ -581,14 +641,47 @@ function Composer({
               autoFocus
             />
           )}
-          <button type="submit" className="primary" disabled={make.isPending || !profile}>
+          <button
+            type="submit"
+            className="primary"
+            disabled={make.isPending || !profile || (asking && !ready) || !!jobBoxNote(job)}
+          >
             {label}
           </button>
         </div>
 
-        <p className="what" id="what-happens" aria-live="polite">
-          {whatHappens(text, urls, many, job, profile?.data.preset)}
+        <p
+          className={asking && !ready ? 'what ask-more' : 'what'}
+          id="what-happens"
+          aria-live="polite"
+        >
+          {asking ? pasteNote(paste) : whatHappens(text, urls, many, job, profile?.data.preset)}
         </p>
+
+        {asking && (
+          <div className="paste-job">
+            <label>
+              <span>Job description</span>
+              <textarea
+                ref={description}
+                value={job}
+                onChange={(e) => setJob(e.target.value)}
+                rows={6}
+                placeholder="Open the post, select everything from the title to the last requirement, and paste it here"
+              />
+            </label>
+            <label>
+              <span>Company website</span>
+              <input
+                value={site}
+                onChange={(e) => setSite(e.target.value)}
+                placeholder="acme.com"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+          </div>
+        )}
 
         <div className="under">
           {profiles.length > 0 && (
@@ -680,15 +773,23 @@ function Composer({
               </div>
             )}
 
-            {!many && (
+            {!many && !asking && (
               <label className="row">
                 <span>Job post</span>
-                <textarea
-                  value={job}
-                  onChange={(e) => setJob(e.target.value)}
-                  rows={2}
-                  placeholder="If you pasted the company’s website above: the job’s link or its description"
-                />
+                <span className="stack">
+                  <textarea
+                    value={job}
+                    onChange={(e) => setJob(e.target.value)}
+                    rows={2}
+                    placeholder="If you pasted the company’s website above: the job’s link or its description"
+                    aria-describedby={jobBoxNote(job) ? 'job-box-note' : undefined}
+                  />
+                  {jobBoxNote(job) && (
+                    <small className="ask-more" id="job-box-note">
+                      {jobBoxNote(job)}
+                    </small>
+                  )}
+                </span>
               </label>
             )}
 

@@ -10,7 +10,7 @@ import type { BrandKit } from './brand/types.ts'
 import { closeBrowser } from './browser.ts'
 import { createFilmAgent, type FilmResult } from './film.ts'
 import type { JobPost } from './job/post.ts'
-import { isJobPage } from './job/post.ts'
+import { isJobPage, needsPastedText, walledSite } from './job/post.ts'
 import { readJob } from './job/read.ts'
 import { buildLlm } from './llm/chain.ts'
 import { draftProfile } from './profile/draft.ts'
@@ -201,6 +201,11 @@ async function loadJob(source: string, filmsDir: string, quiet?: boolean): Promi
     `${createHash('sha1').update(source).digest('hex').slice(0, 10)}.json`,
   )
   if (existsSync(cache)) return JSON.parse(await readFile(cache, 'utf8')) as JobPost
+  // the web app asks for the pasted text; here it's a file
+  if (needsPastedText(source))
+    throw new Error(
+      `${walledSite(source)} job pages need a login. Copy the job description into a text file and pass that instead: --job job.txt`,
+    )
   if (!quiet) status(`  reading the job post`)
   const post = await readJob(source, { allowPrivateNetworks: true })
   await mkdir(dirname(cache), { recursive: true })

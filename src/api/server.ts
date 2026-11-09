@@ -16,6 +16,7 @@ import type { Config } from '../config.ts'
 import type { Sql } from '../db/index.ts'
 import { FilmInputSchema, type FilmResult } from '../film.ts'
 import { newId } from '../ids.ts'
+import { pastedTextProblem } from '../job/walled.ts'
 import { type BoardSchema, type FetchFn, parseBoardLink } from '../jobs/boards.ts'
 import { RAISED_COUNT, raisedBySite, YC_BOARDS, ycOf } from '../jobs/companies.ts'
 import { SearchSchema } from '../jobs/rank.ts'
@@ -1101,11 +1102,14 @@ export async function buildApi({
         tags: ['films'],
         summary: 'Make a film for one company',
         description:
-          "Queues research, script, render and encode. Poll GET /v1/films/:id for progress. Send an Idempotency-Key header to make retries safe. Add `job` (a job post URL or its pasted text) and the film quotes one of its requirements and answers it with the sender's proof.",
+          "Queues research, script, render and encode. Poll GET /v1/films/:id for progress. Send an Idempotency-Key header to make retries safe. Add `job` (a job post URL or its pasted text) and the film quotes one of its requirements and answers it with the sender's proof. LinkedIn, Indeed and Glassdoor posts need a login: send the company's website as `url` and the post as `job: { url, text }`, or the film is refused with 422 `job_needs_text` or `job_needs_site`.",
         body: FilmBody,
       },
     },
     async (req, reply) => {
+      // a LinkedIn (or other login-walled) post would only fail in the worker: ask now
+      const walled = pastedTextProblem(req.body)
+      if (walled) return reply.status(422).send({ error: walled })
       const profile = await resolveProfile(req.body, req.owner)
       const input = FilmInputSchema.parse({
         ...req.body,
@@ -1144,7 +1148,7 @@ export async function buildApi({
         tags: ['films'],
         summary: 'Make one film per prospect, or per job post',
         description:
-          'Send `urls` (company websites) for one film each, or `jobs` (job post links, each with the company website when you know it) for one film per job post, each answering that post.',
+          'Send `urls` (company websites) for one film each, or `jobs` (job post links, each with the company website when you know it) for one film per job post, each answering that post. LinkedIn, Indeed and Glassdoor posts need a login, so send their `text` and `site` too, or the batch is refused with 422 `job_needs_text` or `job_needs_site`.',
         body: z
           .object({
             urls: z.array(z.string().min(3)).min(1).max(1000).optional(),
@@ -1155,6 +1159,8 @@ export async function buildApi({
                   url: z.string().url(),
                   /** the company's own website; without it, the post's link to it is used */
                   site: z.string().url().optional(),
+                  /** the post's pasted text, for links that need a login (LinkedIn) */
+                  text: z.string().min(40).max(30_000).optional(),
                 }),
               )
               .min(1)
@@ -1169,14 +1175,25 @@ export async function buildApi({
       },
     },
     async (req, reply) => {
+      // check every link before queueing any, so a batch never half-starts
+      for (const p of [
+        ...(req.body.urls ?? []).map((url) => ({ url })),
+        ...(req.body.jobs ?? []).map((j) => ({
+          url: j.site ?? j.url,
+          job: { url: j.url, ...(j.text ? { text: j.text } : {}) },
+        })),
+      ]) {
+        const walled = pastedTextProblem(p)
+        if (walled) return reply.status(422).send({ error: walled })
+      }
       const profile = await resolveProfile(req.body, req.owner)
       const batch = newId('bat')
       // one film per company website, or per job post (a job without a known site is filmed from
       // its link, which names the company)
-      const items: { url: string; job?: { url: string } }[] = req.body.jobs
+      const items: { url: string; job?: { url: string; text?: string } }[] = req.body.jobs
         ? [...new Map(req.body.jobs.map((j) => [j.url, j])).values()].map((j) => ({
             url: j.site ?? j.url,
-            ...(j.site ? { job: { url: j.url } } : {}),
+            ...(j.site ? { job: { url: j.url, ...(j.text ? { text: j.text } : {}) } } : {}),
           }))
         : [...new Set(req.body.urls!.map(normalizeUrl))].map((url) => ({ url }))
       if (!unlimited(req)) {

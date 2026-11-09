@@ -175,6 +175,8 @@ export function createFilmAgent(opts: FilmAgentOptions) {
             { retries: 1 },
           )
         } catch (err) {
+          // already worded for the person (a login wall): say it as is
+          if (err instanceof NonRetryableError) throw err
           // an unreadable post won't read on the next attempt either
           throw new NonRetryableError(
             `could not read the job post: ${err instanceof Error ? err.message.split('\n')[0] : err}`,

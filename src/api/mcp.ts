@@ -126,10 +126,21 @@ export function buildMcp(call: Call): McpServer {
       inputSchema: {
         url: z.string().describe('the company’s website, or a job post link'),
         jobUrl: z.string().optional().describe('a job post the film should answer'),
+        jobText: z
+          .string()
+          .optional()
+          .describe(
+            'the job post’s description, pasted; needed for LinkedIn, Indeed and Glassdoor posts, which need a login (then url is the company’s website)',
+          ),
       },
     },
-    async ({ url, jobUrl }) =>
-      answer(call, 'POST', '/v1/films', { url, ...(jobUrl ? { job: { url: jobUrl } } : {}) }),
+    async ({ url, jobUrl, jobText }) =>
+      answer(call, 'POST', '/v1/films', {
+        url,
+        ...(jobUrl || jobText
+          ? { job: { ...(jobUrl ? { url: jobUrl } : {}), ...(jobText ? { text: jobText } : {}) } }
+          : {}),
+      }),
   )
 
   mcp.registerTool(

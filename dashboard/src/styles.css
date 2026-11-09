@@ -1957,6 +1957,50 @@ dl.tally dd {
   color: var(--ink);
 }
 
+/* a job link that needs its description pasted: what's missing, said once, in ink not alarm red */
+.ask-more {
+  font-weight: 600;
+  border-left: 3px solid var(--stock);
+  padding-left: 10px;
+}
+
+.paste-job {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  max-width: 820px;
+}
+
+.paste-job label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.paste-job textarea,
+.paste-job input {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.paste-job input {
+  max-width: 360px;
+}
+
+.more .stack {
+  display: grid;
+  gap: 6px;
+}
+
+.more small.ask-more {
+  font-size: 13px;
+  color: var(--ink);
+}
+
 /* ---------------------------------------------------------- getting started */
 
 .start {
