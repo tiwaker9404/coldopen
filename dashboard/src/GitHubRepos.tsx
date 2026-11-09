@@ -1,40 +1,46 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, type Me } from './api.ts'
-import { fetchRepos, type Repo } from './github.ts'
+import { fetchRepos, MAX_PROJECTS, type Project, toggleRepo } from './github.ts'
 import { ErrorNote } from './ui.tsx'
 
 /**
  * Pick projects straight from GitHub: your public repositories (not forks or archived ones),
  * most starred and most recently worked on first, each with its own description. The browser
  * asks GitHub directly, so it counts against your own rate limit, not the app's.
+ *
+ * It's a checklist over the profile's own projects: a tick adds the repository, an untick
+ * removes it, and the profile's one Save keeps whatever is ticked. It lives inside the profile
+ * form, so Enter in the username looks the repositories up and never submits the profile.
  */
 
 export function GitHubRepos({
-  taken,
-  room,
-  onAdd,
+  projects,
+  onChange,
 }: {
-  /** links already in the profile */
-  taken: string[]
-  /** how many more projects fit */
-  room: number
-  onAdd: (repos: Repo[]) => void
+  projects: Project[]
+  onChange: (projects: Project[]) => void
 }) {
   const me = useQuery({ queryKey: ['me'], queryFn: () => api<Me>('/v1/me') })
   // a GitHub sign-in's login is the username; a Google sign-in's is an email
   const login = me.data?.user?.login
-  const [user, setUser] = useState(login && !login.includes('@') ? login : '')
+  const known = login && !login.includes('@') ? login : ''
   const [open, setOpen] = useState(false)
-  const [picked, setPicked] = useState<string[]>([])
+  const [user, setUser] = useState(known)
+  // the username we last looked up: typing alone doesn't ask GitHub on every key
+  const [looked, setLooked] = useState('')
+  const lookup = looked || (open ? known : '')
   const repos = useQuery({
-    queryKey: ['github-repos', user.trim().toLowerCase()],
-    queryFn: () => fetchRepos(user.trim()),
-    enabled: open && user.trim().length > 0,
+    queryKey: ['github-repos', lookup.toLowerCase()],
+    queryFn: () => fetchRepos(lookup),
+    enabled: open && lookup.length > 0,
     staleTime: 10 * 60_000,
     retry: false,
   })
-  const list = (repos.data ?? []).filter((r) => !taken.includes(r.url))
+  const list = repos.data ?? []
+  const filled = projects.filter((p) => p.name.trim() || p.url.trim() || p.line.trim()).length
+  const full = filled >= MAX_PROJECTS
+  const find = () => setLooked(user.trim())
 
   if (!open)
     return (
@@ -44,71 +50,67 @@ export function GitHubRepos({
     )
   return (
     <div className="gh-repos">
-      <label>
-        GitHub username
-        <input
-          value={user}
-          onChange={(e) => {
-            setUser(e.target.value)
-            setPicked([])
-          }}
-          placeholder="your-username"
-          autoComplete="off"
-          spellCheck={false}
-        />
-      </label>
-      {repos.isLoading && user.trim() && <p className="small muted">Reading your repositories…</p>}
+      <div className="gh-find">
+        <label>
+          GitHub username
+          <input
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return
+              // inside the profile form, Enter would save the whole profile
+              e.preventDefault()
+              find()
+            }}
+            placeholder="your-username"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </label>
+        <button type="button" onClick={find} disabled={!user.trim()}>
+          Show repositories
+        </button>
+      </div>
+      {repos.isLoading && lookup && <p className="small muted">Reading your repositories…</p>}
       <ErrorNote error={repos.error} />
       {repos.data && list.length === 0 && (
-        <p className="small muted">No public repositories left to add.</p>
+        <p className="small muted">No public repositories to pick from.</p>
       )}
       {list.length > 0 && (
         <>
           <p className="small muted">
-            Pick up to {room}. Repositories without a description need one line from you after.
+            Ticked ones go straight into your projects and save with your profile.
+            {full ? ` That's ${MAX_PROJECTS}, the most a profile holds.` : ''}
           </p>
           <ul className="gh-list">
             {list.slice(0, 30).map((r) => {
-              const on = picked.includes(r.url)
+              const on = projects.some((p) => p.url === r.url)
               return (
                 <li key={r.url}>
                   <label>
                     <input
                       type="checkbox"
                       checked={on}
-                      disabled={!on && picked.length >= room}
-                      onChange={() =>
-                        setPicked(on ? picked.filter((u) => u !== r.url) : [...picked, r.url])
-                      }
+                      disabled={!on && full}
+                      onChange={() => onChange(toggleRepo(projects, r, !on))}
                     />
                     <span>
                       <b>
                         {r.name}
                         {r.stars > 0 && <small> · {r.stars}★</small>}
                       </b>
-                      <small>{r.line || 'No description on GitHub yet'}</small>
+                      <small>
+                        {r.line ||
+                          (on
+                            ? 'No description on GitHub. Add one line in its row above.'
+                            : 'No description on GitHub yet')}
+                      </small>
                     </span>
                   </label>
                 </li>
               )
             })}
           </ul>
-          <div className="actions">
-            <button
-              type="button"
-              disabled={picked.length === 0}
-              onClick={() => {
-                onAdd(list.filter((r) => picked.includes(r.url)))
-                setPicked([])
-                setOpen(false)
-              }}
-            >
-              Add {picked.length || ''} {picked.length === 1 ? 'project' : 'projects'}
-            </button>
-            <button type="button" className="link" onClick={() => setOpen(false)}>
-              Cancel
-            </button>
-          </div>
         </>
       )}
     </div>

@@ -1882,13 +1882,76 @@ dl.tally dd {
 .listrow {
   display: flex;
   gap: 12px;
+  align-items: flex-start;
+}
+
+.listrow > .link {
+  min-height: 40px;
+}
+
+.listrow > .field {
+  flex: 1;
+}
+
+/* a profile field: the input, then a counter near its limit, then what's wrong with it */
+.field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.field input {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--rec);
+}
+
+/* a field that's asking for something, not complaining: a project with no line yet */
+.field input.needs {
+  border-color: var(--stock);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--stock) 35%, transparent);
+}
+
+.field .counter {
+  justify-self: end;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.field .counter.over {
+  color: var(--rec-text);
+  font-weight: 600;
+}
+
+.field-error {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--rec-text);
+}
+
+.field-ask {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* closing with unsaved changes */
+.leave {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 8px 16px;
 }
 
 .proof {
   display: grid;
   grid-template-columns: 90px 1fr 140px;
   gap: 8px;
+  align-items: start;
 }
 
 .proof-head span {
@@ -2462,7 +2525,7 @@ kbd {
     grid-template-columns: 76px 1fr;
   }
 
-  .proof input:nth-child(3) {
+  .proof > :nth-child(3) {
     grid-column: 1 / -1;
   }
 
@@ -3747,6 +3810,7 @@ a.tag {
 .project {
   display: grid;
   grid-template-columns: 180px 1fr;
+  align-items: start;
   gap: 8px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--rule);
@@ -3767,6 +3831,16 @@ a.tag {
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px 20px;
+}
+
+.gh-find {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+}
+
+.gh-find label {
+  flex: 1;
 }
 
 .gh-repos {

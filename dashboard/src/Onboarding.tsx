@@ -163,6 +163,12 @@ export function ResumeDraft({
             value={role}
             placeholder="Solutions engineer"
             onChange={(e) => setRole(e.target.value)}
+            onKeyDown={(e) => {
+              // this box can sit inside the profile form, where Enter would save the profile
+              if (e.key !== 'Enter') return
+              e.preventDefault()
+              draft.mutate()
+            }}
           />
         </label>
         <label>

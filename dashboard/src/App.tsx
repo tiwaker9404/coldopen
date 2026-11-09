@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { AccountMenu, FramedNotice, StatsPanel } from './Account.tsx'
 import {
   ApiError,
@@ -25,11 +25,15 @@ import { Jobs } from './Jobs.tsx'
 import { Onboarding } from './Onboarding.tsx'
 import { Openers } from './Openers.tsx'
 import { Pitch } from './Pitch.tsx'
-import { ProfileEditor } from './ProfileEditor.tsx'
 import { ProfilesPage } from './Profiles.tsx'
 import { jobBoxNote, pasteBody, pasteNote, pasting, walledInList } from './pasteJob.ts'
 import { Startups } from './Startups.tsx'
 import { ErrorNote, notify, useToast } from './ui.tsx'
+
+// the editor checks against the server's own schema, so it brings Zod: load it when opened
+const ProfileEditor = lazy(() =>
+  import('./ProfileEditor.tsx').then((m) => ({ default: m.ProfileEditor })),
+)
 
 const FORMATS: { id: Format; label: string }[] = [
   { id: 'square', label: 'Square' },
@@ -257,16 +261,18 @@ export function App() {
       )}
       {editing && (
         <DrawerBoundary onClose={() => setEditing(null)}>
-          <ProfileEditor
-            profile={editing.profile}
-            draft={editing.draft}
-            notice={editing.notice}
-            onClose={() => setEditing(null)}
-            onSaved={() => {
-              setEditing(null)
-              void qc.invalidateQueries({ queryKey: ['profiles'] })
-            }}
-          />
+          <Suspense fallback={null}>
+            <ProfileEditor
+              profile={editing.profile}
+              draft={editing.draft}
+              notice={editing.notice}
+              onClose={() => setEditing(null)}
+              onSaved={() => {
+                setEditing(null)
+                void qc.invalidateQueries({ queryKey: ['profiles'] })
+              }}
+            />
+          </Suspense>
         </DrawerBoundary>
       )}
       {stats && <StatsPanel onClose={() => setStats(false)} />}
