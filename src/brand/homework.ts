@@ -1,3 +1,4 @@
+import { overlap } from '../script/checks.ts'
 import { assertPublicUrl } from './guard.ts'
 
 /**
@@ -18,6 +19,11 @@ export interface HomeworkItem {
   url: string
   /** ISO date, when the feed gives one */
   date?: string
+  /**
+   * the first sentence of what the post says (its description or summary), tags stripped, at
+   * most 200 characters. Absent when the feed gives none, or it only repeats the title.
+   */
+  summary?: string
 }
 
 export interface Homework {
@@ -134,12 +140,41 @@ export function sectionLinks(html: string, base: string): { kind: HomeworkKind; 
   return [...found].map(([kind, url]) => ({ kind, url }))
 }
 
+const SUMMARY_MAX = 200
+
+/**
+ * The first sentence of a feed item's description, as plain text. Feeds send HTML either in
+ * CDATA or escaped (Atom's type="html"), so tags are stripped again once entities are decoded.
+ * Long sentences are cut at a word, never mid-word. Returns undefined when what's left is too
+ * short to say anything, or says nothing the title doesn't.
+ */
+export function summaryOf(raw: string, title: string): string | undefined {
+  // block tags (raw or escaped) end a sentence's run of text: keep a space where they were,
+  // or two paragraphs glue together ("…every lane.Turn it on")
+  const spaced = raw.replace(
+    /(?:<|&lt;)\/?(?:p|div|li|ul|ol|br|h[1-6]|blockquote|figure|section)\b[\s\S]*?(?:>|&gt;)/gi,
+    ' ',
+  )
+  let text = decode(spaced)
+  if (/<\/?[a-z][^>]*>/i.test(text)) text = decode(text)
+  // the first sentence: ends at . ! or ? followed by a space and a capital, digit or quote
+  const first = text.split(/(?<=[.!?])\s+(?=[A-Z0-9"“‘'])/)[0]?.trim() ?? ''
+  let s = first
+  if (s.length > SUMMARY_MAX) {
+    const cut = s.slice(0, SUMMARY_MAX - 1)
+    s = `${cut.slice(0, cut.lastIndexOf(' ') > 0 ? cut.lastIndexOf(' ') : cut.length).replace(/[\s,;:–—-]+$/, '')}…`
+  }
+  if (s.length < 20) return undefined
+  if (overlap(s, title) >= 1) return undefined
+  return s
+}
+
 /** items from an RSS or Atom feed */
 export function parseFeed(
   xml: string,
   base: string,
-): { title: string; url: string; date?: string }[] {
-  const out: { title: string; url: string; date?: string }[] = []
+): { title: string; url: string; date?: string; summary?: string }[] {
+  const out: { title: string; url: string; date?: string; summary?: string }[] = []
   const blocks = xml.match(/<(item|entry)\b[\s\S]*?<\/\1>/gi) ?? []
   for (const b of blocks.slice(0, 40)) {
     const title = decode(b.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '')
@@ -156,10 +191,16 @@ export function parseFeed(
       continue
     }
     const t = when ? Date.parse(decode(when)) : Number.NaN
+    // RSS <description>, Atom <summary>, then the full <content> (or content:encoded) as a last resort
+    const body =
+      b.match(/<(description|summary)\b[^>]*>([\s\S]*?)<\/\1>/i)?.[2] ??
+      b.match(/<(content:encoded|content)\b[^>]*>([\s\S]*?)<\/\1>/i)?.[2]
+    const summary = body ? summaryOf(body, title) : undefined
     out.push({
       title: title.length > 140 ? `${title.slice(0, 139)}…` : title,
       url,
       ...(Number.isFinite(t) ? { date: new Date(t).toISOString().slice(0, 10) } : {}),
+      ...(summary ? { summary } : {}),
     })
   }
   return out
@@ -270,4 +311,39 @@ export async function readHomework(site: string, opts: HomeworkOptions = {}): Pr
     return n <= 4
   })
   return { items: kept.slice(0, 8), pages }
+}
+
+/** kinds that say what a company built or learned, so they make a research line about the work */
+const RESEARCHABLE: HomeworkKind[] = ['changelog', 'engineering', 'blog']
+
+/**
+ * The one item an email's research line should be about: recent, ideally a changelog,
+ * engineering or blog post that shares words with the role, its requirements and the sender's
+ * points. Ranked in tiers (the right kind and on topic, then on topic, then the right kind,
+ * then anything recent), then by how much it shares, then newest first. Null when nothing is
+ * from the last 90 days, so the email drops the line rather than citing something stale.
+ */
+export function pickResearch(
+  homework: Homework,
+  about: { role?: string; requirements?: string[]; points?: string[] },
+  now = Date.now(),
+): HomeworkItem | null {
+  const cutoff = now - RECENT_DAYS * 86_400_000
+  const topic = [about.role ?? '', ...(about.requirements ?? []), ...(about.points ?? [])].join(' ')
+  const ranked = homework.items
+    .filter((i) => {
+      const t = i.date ? Date.parse(i.date) : Number.NaN
+      return Number.isFinite(t) && t >= cutoff && t <= now + 86_400_000
+    })
+    .map((i) => {
+      const share = topic.trim() ? overlap(`${i.title} ${i.summary ?? ''}`, topic) : 0
+      const kind = RESEARCHABLE.includes(i.kind)
+      const tier = kind && share > 0 ? 0 : share > 0 ? 1 : kind ? 2 : 3
+      return { i, tier, share }
+    })
+    .sort(
+      (a, b) =>
+        a.tier - b.tier || b.share - a.share || (b.i.date ?? '').localeCompare(a.i.date ?? ''),
+    )
+  return ranked[0]?.i ?? null
 }

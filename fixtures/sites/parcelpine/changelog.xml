@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Parcelpine's changelog, as an Atom feed: summaries are escaped HTML, as most feeds send them.
+     Not linked from the homepage on purpose, so films of the fixture stay the same as dates age;
+     tests and evals read it directly. -->
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Parcelpine changelog</title>
+  <entry>
+    <title>Route planning, now with live traffic</title>
+    <link rel="alternate" href="/parcelpine/changelog/live-traffic"/>
+    <updated>2026-10-28T00:00:00Z</updated>
+    <summary type="html">&lt;p&gt;Route planning now reroutes trucks around live traffic before a delivery runs late, for every lane.&lt;/p&gt;&lt;p&gt;Turn it on in &lt;a href="/settings"&gt;Settings&lt;/a&gt;.&lt;/p&gt;</summary>
+  </entry>
+  <entry>
+    <title>Proof of delivery photos</title>
+    <link rel="alternate" href="/parcelpine/changelog/pod-photos"/>
+    <updated>2026-09-15T00:00:00Z</updated>
+    <summary type="html">&lt;p&gt;Drivers can attach a photo at the door, and customers see it in the tracking link within a minute.&lt;/p&gt;</summary>
+  </entry>
+  <entry>
+    <title>Dark mode for dispatch</title>
+    <link rel="alternate" href="/parcelpine/changelog/dark-mode"/>
+    <updated>2026-05-02T00:00:00Z</updated>
+    <summary>Dark mode for dispatch.</summary>
+  </entry>
+</feed>

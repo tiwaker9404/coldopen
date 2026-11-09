@@ -282,11 +282,8 @@ export function knownFor(
     ? [s.hook, s.noticed, s.insight.why, s.pitch.headline, ...s.pitch.points, s.cta]
     : []
   const proof = (out.highlights?.proof ?? []).map((p) => `${p.value} ${p.label} ${p.where ?? ''}`)
-  // a feed item's summary arrives with homework's step 3; until then only titles are known
-  const posts = (homework?.items ?? []).flatMap((i) => [
-    i.title,
-    (i as { summary?: string }).summary ?? '',
-  ])
+  // what each post is called and what it says (the first line of its description)
+  const posts = (homework?.items ?? []).flatMap((i) => [i.title, i.summary ?? ''])
   return [
     out.company ?? '',
     out.job?.title ?? '',

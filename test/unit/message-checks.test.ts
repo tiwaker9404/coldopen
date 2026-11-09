@@ -1,14 +1,19 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { parseFeed } from '../../src/brand/homework.ts'
 import {
   type Check,
   type CheckRule,
   checkMessage,
+  knownFor,
   MESSAGE_LIMITS,
   passed,
   RESEARCH_OVERLAP,
 } from '../../src/outreach/checks.ts'
 import { checkEmail } from '../../src/outreach/messages.ts'
 import { BEGGING } from '../../src/script/taste.ts'
+import { profile } from '../helpers/index.ts'
 
 const link = 'https://share.example/f/ab12cd'
 const ctx = {
@@ -314,5 +319,21 @@ describe('message checks', () => {
         ),
       ).toBeUndefined()
     })
+  })
+})
+
+describe('knownFor', () => {
+  it('includes what a fixture post says, so a number from its summary counts as theirs', () => {
+    const xml = readFileSync(
+      join(import.meta.dirname, '../../fixtures/sites/parcelpine/changelog.xml'),
+      'utf8',
+    )
+    const items = parseFeed(xml, 'http://127.0.0.1/').map((i) => ({
+      kind: 'changelog' as const,
+      ...i,
+    }))
+    const known = knownFor({ company: 'Parcelpine' }, profile('candidate'), { items, pages: [] })
+    expect(known).toContain('reroutes trucks around live traffic before a delivery runs late')
+    expect(known).toContain('customers see it in the tracking link within a minute')
   })
 })
