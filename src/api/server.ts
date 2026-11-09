@@ -53,7 +53,7 @@ import {
   watchedFrom,
 } from '../outreach/followup.ts'
 import { type CrmState, checkHubSpot, HubSpotError, syncFilm } from '../outreach/hubspot.ts'
-import { addressed, draftMessages, openerFor } from '../outreach/messages.ts'
+import { addressed, messagesFor, openerFor } from '../outreach/messages.ts'
 import {
   type Connection,
   companyKey,
@@ -1799,11 +1799,12 @@ export async function buildApi({
             const m =
               r.output && film.share
                 ? addressed(
-                    draftMessages(r.output, r.output.profile ?? r.input.profile, film.share, {
+                    messagesFor(r.output, r.output.profile ?? r.input.profile, film.share, {
                       detail: r.detail ?? null,
                       fresh: await freshFact(r),
                       opener: openerFor(r.id),
                       raised: raisedBySite(r.output.host),
+                      now: new Date(r.createdAt).getTime(),
                     }),
                     r.recipient?.name,
                   )
@@ -2050,9 +2051,9 @@ export async function buildApi({
     {
       schema: {
         tags: ['films'],
-        summary: 'Draft the email, LinkedIn note and follow-up that go with a film',
+        summary: 'Draft the LinkedIn sequence, the email and the follow-ups that go with a film',
         description:
-          'Written from what the film says, with a [First name] placeholder. Nothing is sent.',
+          'The connection note (200 characters, no link), the message once they accept, InMail, the warm email and the follow-ups, with a [First name] placeholder. `writer` says which drafts the model wrote and which are templates; `flags` says why a draft fell back or what code left out. Nothing is sent.',
         params: z.object({ id: RunId }),
       },
     },
@@ -2062,11 +2063,13 @@ export async function buildApi({
       const link = filmDto(run, publicUrl).share!
       const row = run as FilmRow
       return addressed(
-        draftMessages(run.output, run.output.profile ?? run.input.profile, link, {
+        messagesFor(run.output, run.output.profile ?? run.input.profile, link, {
           detail: row.detail ?? null,
           fresh: await freshFact(row),
           opener: openerFor(run.id),
           raised: raisedBySite(run.output.host),
+          // the research pick is the one the film had when it was made
+          now: new Date(run.createdAt).getTime(),
         }),
         run.recipient?.name,
       )

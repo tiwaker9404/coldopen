@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { parseFeed } from '../../src/brand/homework.ts'
 import type { BrandKit } from '../../src/brand/types.ts'
 import type { FilmResult } from '../../src/film.ts'
 import {
@@ -10,7 +11,17 @@ import {
   type MessageKind,
   passed,
 } from '../../src/outreach/checks.ts'
-import { addressed, draftMessages, freshRound, openerFor } from '../../src/outreach/messages.ts'
+import {
+  addressed,
+  draftMessages,
+  freshRound,
+  messagesFor,
+  openerFor,
+  researchSentence,
+  wholeClause,
+} from '../../src/outreach/messages.ts'
+import type { FilmMessages } from '../../src/outreach/writer.ts'
+import { hiringProfile, withRole } from '../../src/profile/pitch.ts'
 import { buildStoryboard } from '../../src/script/storyboard.ts'
 import { BEGGING } from '../../src/script/taste.ts'
 import { type Profile, ProfileSchema } from '../../src/script/types.ts'
@@ -415,7 +426,7 @@ describe('the warm email in five parts', () => {
     film: body.includes(
       `I made a 30-second film for your Operations Analyst role at Parcelpine:\n${LINK}`,
     ),
-    research: body.includes('I read "Route planning, now with live traffic", and route planning'),
+    research: body.includes('I read that route planning now reroutes trucks around live traffic'),
     fit: body.includes("What I'd bring: 40% faster month-end close at Initech"),
     ask: body.includes(`\n${p.cta.line}\n`),
   })
@@ -457,7 +468,7 @@ describe('the warm email in five parts', () => {
         })
         expect(checks.find((c) => c.rule === 'length')?.ok, e.body).toBe(true)
         // research is the last thing to go, so it stays in every fixture
-        expect(e.body).toContain('I read "Route planning')
+        expect(e.body).toContain('I read that route planning')
       }
   })
 
@@ -504,5 +515,285 @@ describe('addressed to one person', () => {
     expect(m.inmail?.body.startsWith('Hi Dana,')).toBe(true)
     // the intro goes to someone else (the person you know there), so it keeps the placeholder
     expect(JSON.stringify({ ...m, intro: '' })).not.toContain('[First name]')
+  })
+})
+
+/* ------------------------------------------------ hiring films pass the checks too */
+
+describe('hiring films pass the checks', () => {
+  // the drafts a hiring film has: the note, the message once they accept and the follow-ups (no InMail)
+  for (const kit of KITS.filter((k) => k.job))
+    it(`${kit.name}: the note, after-accept and follow-ups`, () => {
+      const p = withRole(
+        hiringProfile({
+          recruiter: { name: 'Hannah Brooks', company: kit.name },
+          role: kit.job!.title,
+        }),
+        kit,
+        'https://jobs.example/apply',
+      )
+      const film = filmFor(kit, p)
+      const m = draftMessages(film, p, LINK)
+      expect(m.inmail).toBeUndefined()
+      const ctx = { company: kit.name, known: knownFor(film, p), link: LINK }
+      const drafts: [MessageKind, string][] = [
+        ['note', m.linkedin],
+        ['afterAccept', m.afterAccept!],
+        ['followUp', m.followUp],
+        ['lastNote', m.lastNote],
+        ['linkedinFollowUp', m.linkedinFollowUp],
+      ]
+      for (const [kind, text] of drafts) {
+        const checks = checkMessage(kind, text, ctx)
+        expect(passed(checks), `${kind}: ${failures(checks)}\n${text}`).toBe(true)
+      }
+    })
+})
+
+/* ------------------------------------------------ the research line, said once */
+
+describe('the research line names the post once and ends on a whole clause', () => {
+  const xml = readFileSync(join(root, 'fixtures/sites/parcelpine/changelog.xml'), 'utf8')
+  const item = parseFeed(xml, 'https://parcelpine.example/').find((i) =>
+    i.title.startsWith('Route planning'),
+  )!
+
+  it('leaves the title out when the summary already says it ("Route planning…")', () => {
+    expect(item.summary).toMatch(/^Route planning now reroutes/)
+    const s = researchSentence(item.title, item.summary!)
+    expect(s).toBe(
+      'I read that route planning now reroutes trucks around live traffic before a delivery runs late, for every lane.',
+    )
+    expect(s.toLowerCase().split('route planning')).toHaveLength(2)
+    const body = draftMessages(out as never, profile('candidate'), LINK, {
+      research: { line: item.summary!, source: item.summary!, title: item.title },
+    }).email.body
+    expect(body.toLowerCase().split('route planning')).toHaveLength(2)
+  })
+
+  it('names the post when the summary says something else', () => {
+    expect(
+      researchSentence(
+        'Live traffic, every lane',
+        'Trucks now go around jams before a delivery runs late',
+      ),
+    ).toBe(
+      'I read "Live traffic, every lane", and trucks now go around jams before a delivery runs late.',
+    )
+  })
+
+  it('never ends on the "…" of a cut summary: the last whole clause, or no line at all', () => {
+    const cut =
+      'Route planning now reroutes trucks around live traffic before a delivery runs late, and drivers see the new stop order on their…'
+    expect(wholeClause(cut)).toBe(
+      'Route planning now reroutes trucks around live traffic before a delivery runs late',
+    )
+    expect(wholeClause('Reroutes trucks around…')).toBe('')
+    const body = draftMessages(out as never, profile('candidate'), LINK, {
+      research: { line: cut, source: cut.replace(/…$/, ''), title: item.title },
+    }).email.body
+    expect(body).not.toContain('…')
+    expect(body).toContain('before a delivery runs late.')
+    // still the post's own words
+    const checks = checkMessage(
+      'email',
+      { subject: 's Parcelpine', body },
+      {
+        company: 'Parcelpine',
+        known: knownFor(out as never, profile('candidate')),
+        link: LINK,
+        research: { line: wholeClause(cut), source: cut.replace(/…$/, '') },
+      },
+    )
+    expect(checks.find((c) => c.rule === 'research_grounded')?.ok).toBe(true)
+  })
+})
+
+/* ------------------------------------------------ the model's drafts, served */
+
+describe("messagesFor: the model's drafts with the real link, checked again", () => {
+  const p = profile('candidate')
+  const homework = {
+    items: [
+      {
+        kind: 'changelog' as const,
+        title: 'Route planning, now with live traffic',
+        url: 'https://parcelpine.example/changelog/route-planning',
+        date: '2026-10-28',
+        summary:
+          'Route planning now reroutes trucks around live traffic before a delivery runs late, for every lane.',
+      },
+    ],
+    pages: [],
+  }
+  const research =
+    'Route planning now reroutes trucks around live traffic before a delivery runs late'
+  /** an email of the model's, `extra` words longer than its plainest form */
+  const email = (extra = 0) => ({
+    subject: 'Dashboards for Parcelpine operations',
+    body: [
+      'Hi [First name],',
+      '',
+      'I saw the Operations Analyst role at Parcelpine.',
+      '',
+      'I made a 30-second film for your Operations Analyst role at Parcelpine:',
+      '[film]',
+      '',
+      `${research}.`,
+      '',
+      `I build dashboards operations teams use every day${' and keep them running'.repeat(extra / 4)}.`,
+      '',
+      'Could we find 15 minutes this week?',
+      '',
+      'Alex Rivera',
+      'alex@example.com',
+    ].join('\n'),
+  })
+  const stored = (o: Partial<FilmMessages> = {}): FilmMessages => ({
+    drafts: {
+      note: 'Hi [First name], I build dashboards for operations teams and made something for Parcelpine. – Alex',
+      afterAccept:
+        'Hi [First name],\n\nThanks for connecting. I made a 30-second film for Parcelpine: [film]\n\nCould we find 15 minutes this week?\n\nAlex',
+      inmail: {
+        subject: 'A film for Parcelpine',
+        body: 'Hi [First name],\n\nI made a 30-second film for Parcelpine: [film]\n\nCould we find 15 minutes this week?\n\nAlex',
+      },
+      email: email(),
+    },
+    writer: { note: 'model', afterAccept: 'model', inmail: 'model', email: 'model' },
+    flags: {},
+    research: { itemUrl: homework.items[0]!.url, line: research },
+    model: 'test',
+    rounds: 1,
+    firstTry: ['note', 'afterAccept', 'inmail', 'email'],
+    ...o,
+  })
+  const film = (m: FilmMessages | undefined) =>
+    ({ ...(out as never as object), homework, messages: m }) as never
+  const now = Date.parse('2026-11-03')
+
+  it("swaps in the model's drafts with the real link, and says the model wrote them", () => {
+    const m = messagesFor(film(stored()), p, LINK, { opener: 'film', now })
+    expect(m.writer).toMatchObject({
+      note: 'model',
+      afterAccept: 'model',
+      inmail: 'model',
+      email: 'model',
+    })
+    expect(m.afterAccept).toContain(LINK)
+    expect(m.inmail?.body).toContain(LINK)
+    expect(m.email.body).toContain(`:\n${LINK}\n`)
+    expect(JSON.stringify(m)).not.toContain('[film]')
+    expect(m.flags).toEqual({})
+    // the follow-ups stay templates
+    expect(m.writer.followUp).toBe('template')
+    expect(m.checks.words).toBeGreaterThan(0)
+  })
+
+  it('a draft that fell back in the film comes back as a fresh template, with its reasons', () => {
+    const why = [
+      { rule: 'length' as const, ok: false, why: 'The message is 431 of 400 characters' },
+    ]
+    const m = messagesFor(
+      film(
+        stored({
+          writer: { note: 'model', afterAccept: 'model', inmail: 'template', email: 'model' },
+          flags: { inmail: why },
+        }),
+      ),
+      p,
+      LINK,
+      { opener: 'film', now },
+    )
+    expect(m.writer.inmail).toBe('template')
+    expect(m.inmail?.body).toContain(LINK)
+    expect(m.inmail?.subject).not.toBe('A film for Parcelpine')
+    expect(m.flags.inmail).toEqual(why)
+  })
+
+  it('checks again with the real link, and falls back when a long one no longer fits', () => {
+    const long = `https://share.example/f/${'x'.repeat(420)}`
+    const m = messagesFor(film(stored()), p, long, { opener: 'film', now })
+    expect(m.writer.afterAccept).toBe('template')
+    expect(m.flags.afterAccept?.[0]).toMatchObject({ rule: 'length', ok: false })
+    expect(m.flags.afterAccept?.[0]?.why).toMatch(/of 500 characters/)
+  })
+
+  it('adds the detail saved after the film as the line after the opening', () => {
+    const detail = 'the export to CSV dropped every custom field, so I rebuilt my report by hand'
+    const m = messagesFor(film(stored()), p, LINK, { opener: 'film', now, detail })
+    expect(m.writer.email).toBe('model')
+    expect(m.email.body).toContain(
+      "I saw the Operations Analyst role at Parcelpine.\nI've been using Parcelpine, and the export to CSV",
+    )
+    expect(m.checks.detail).toBe(true)
+  })
+
+  it('drops the funding line first, then uses the template (which keeps the detail), each flagged', () => {
+    const raised = { date: new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10) }
+    const words = (b: string) =>
+      b
+        .split('\n')
+        .filter((l) => !l.startsWith('http'))
+        .join(' ')
+        .split(/\s+/)
+        .filter(Boolean).length
+    // room for the detail but not the funding line too
+    const tight = email(Math.floor((125 - words(email().body.replace('[film]', LINK)) - 6) / 4) * 4)
+    const detail = 'I read your post on lanes'
+    const kept = messagesFor(
+      film(stored({ drafts: { ...stored().drafts, email: tight } })),
+      p,
+      LINK,
+      {
+        opener: 'film',
+        now,
+        detail,
+        raised,
+      },
+    )
+    expect(kept.writer.email).toBe('model')
+    expect(kept.email.body).toContain('I read your post on lanes.')
+    expect(kept.email.body).not.toContain('Congratulations')
+    expect(kept.whyNow).toBe(false)
+    expect(kept.flags.email?.[0]?.why).toBe('Left out the funding line to stay under 125 words')
+
+    // a detail too long for the model's email: the template comes back with it, and says why
+    const long =
+      'the export to CSV dropped every custom field across all of our lanes and depots, so I rebuilt the weekly report by hand for the whole team'
+    const back = messagesFor(
+      film(stored({ drafts: { ...stored().drafts, email: tight } })),
+      p,
+      LINK,
+      {
+        opener: 'film',
+        now,
+        detail: long,
+      },
+    )
+    expect(back.writer.email).toBe('template')
+    expect(back.email.body).toContain('the export to CSV dropped every custom field')
+    expect(back.flags.email?.[0]?.why).toMatch(
+      /^With your saved detail the model's email ran to \d+ of 125 words, so this is the template version, which keeps the detail$/,
+    )
+  })
+
+  it('keeps the best number in the subject when the film leads with it', () => {
+    const m = messagesFor(film(stored()), p, LINK, { opener: 'proof', now })
+    expect(m.opener).toBe('proof')
+    expect(m.email.subject).toContain('40%')
+    expect(m.flags.email?.some((c) => /best number \(40%\)/.test(c.why ?? ''))).toBe(true)
+  })
+
+  it('an old film without model drafts gets templates, with the research it had when it was made', () => {
+    const m = messagesFor(film(undefined), p, LINK, { opener: 'film', now })
+    expect(Object.values(m.writer).every((w) => w === 'template')).toBe(true)
+    expect(m.email.body).toContain('I read that route planning now reroutes trucks')
+    // a year on, the same film reads the same post only when its own date is used
+    const later = messagesFor(film(undefined), p, LINK, {
+      opener: 'film',
+      now: now + 365 * 86_400_000,
+    })
+    expect(later.email.body).not.toContain('I read')
   })
 })

@@ -266,6 +266,9 @@ export function checkMessage(
 
 export const passed = (checks: Check[]) => checks.every((c) => c.ok)
 
+/** The length of the email's ask, part of its structure rather than a claim */
+export const ASK_LENGTH = '15 minutes, a 15-minute call'
+
 /**
  * Everything a message may take a number from, joined into one text for CheckContext.known:
  * what the film shows from their site (the quoted line and the film's own lines, which passed
@@ -297,6 +300,9 @@ export function knownFor(
     profile.sender.company ?? '',
     profile.sender.role ?? '',
     profile.cta.line,
+    // the email's ask is always for 15 minutes (its fifth part), so that number is ours to say,
+    // whether the model or a template wrote the ask
+    ASK_LENGTH,
     ...posts,
   ]
     .filter(Boolean)

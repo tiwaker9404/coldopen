@@ -336,4 +336,14 @@ describe('knownFor', () => {
     expect(known).toContain('reroutes trucks around live traffic before a delivery runs late')
     expect(known).toContain('customers see it in the tracking link within a minute')
   })
+
+  it("counts the email's 15-minute ask as known, so a model's own ask passes the re-check", () => {
+    const known = knownFor({ company: 'Parcelpine' }, profile('candidate'))
+    const checks = checkMessage(
+      'afterAccept',
+      'Hi Dana, thanks for connecting. A film for Parcelpine: https://x.example/f/1 Could we find 15 minutes this week? – Alex',
+      { company: 'Parcelpine', known, link: 'https://x.example/f/1' },
+    )
+    expect(checks.find((c) => c.rule === 'grounded')).toEqual({ rule: 'grounded', ok: true })
+  })
 })
