@@ -10,6 +10,8 @@ import { withJob } from './job/kit.ts'
 import { isJobPage, JobPostSchema, jobFromText } from './job/post.ts'
 import { fetchJob } from './job/read.ts'
 import { LlmHttpError } from './llm/openai.ts'
+import { openerFor } from './outreach/messages.ts'
+import { type FilmMessages, MessagesSchema, writeMessages } from './outreach/writer.ts'
 import { withRole } from './profile/pitch.ts'
 import { relatedWork } from './profile/related.ts'
 import { compose, FORMATS, type Format, siteShot } from './render/composition.ts'
@@ -107,6 +109,12 @@ export interface FilmResult {
     quote: { text: string; source: string }
     proof: { value: string; label: string; where?: string }[]
   }
+  /**
+   * the connection note, the message once they accept, InMail and the email, written by the
+   * model and checked in code (outreach/writer.ts). Absent when no model wrote them: the API
+   * uses the templates then.
+   */
+  messages?: FilmMessages
 }
 
 export interface FilmAgentOptions {
@@ -309,6 +317,49 @@ export function createFilmAgent(opts: FilmAgentOptions) {
         picked?.length ? { ...script, proof: picked } : script,
       )
       const storyboardFile = join(dir, 'storyboard.json')
+      const highlights = highlightsOf(board)
+
+      // the messages that carry the film, written before compose, so a crash mid-render replays
+      // them from the journal instead of calling the model again. An edited film writes them
+      // again: its lines may be the ones a draft used.
+      let messages: FilmMessages | null = null
+      if (opts.llmModel && (profile.preset === 'candidate' || profile.preset === 'sales')) {
+        ctx.progress({ stage: 'script', label: `Writing the messages for ${kit.name}` })
+        // the research pick depends on the date: journaled, so a replay picks the same post
+        const now = await ctx.step('messages-clock', async () => Date.now())
+        const model = opts.llmModel
+        const film = {
+          company: kit.name,
+          ...(kit.job ? { job: kit.job } : {}),
+          script,
+          highlights,
+          ...(related ? { related } : {}),
+          requirements: kit.facts.filter((f) => f.kind === 'requirement').map((f) => f.text),
+        }
+        let written: FilmMessages | null = null
+        try {
+          written = await writeMessages({
+            film,
+            profile,
+            homework,
+            opener: openerFor(ctx.runId),
+            model,
+            now,
+            complete: (key, m) => ctx.llm(key, { schema: MessagesSchema, messages: m }),
+          })
+        } catch (err) {
+          // every model is rate limited or down, or can't keep to the shape: the templates write
+          // the messages (the API falls back to them), and the film still ships
+          if (
+            !(err instanceof LlmHttpError) &&
+            !/HTTP (429|5\d\d)|fetch failed|timeout|ECONN|failed validation/i.test(String(err))
+          )
+            throw err
+          ctx.log(`messages fell back to templates: ${String(err).split('\n')[0]}`)
+        }
+        const result = written
+        messages = await ctx.step('messages', async () => result)
+      }
 
       ctx.progress({ stage: 'design', label: `Matching ${kit.name}'s brand` })
       const composed = await ctx.step('compose', async () => {
@@ -522,7 +573,8 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           render: { frames, ms },
           ...(kit.job ? { job: kit.job } : {}),
           ...(shared ? { shared } : {}),
-          highlights: highlightsOf(board),
+          highlights,
+          ...(messages ? { messages } : {}),
           ...(homework.items.length || homework.pages.length ? { homework } : {}),
           ...(related ? { related } : {}),
           // a hiring film's profile was filled in from the post and the site

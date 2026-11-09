@@ -15,9 +15,20 @@ import { parseArgs } from 'node:util'
 import { serveFixtures } from '../fixtures/serve.ts'
 import { contrast, distance, parseColor } from '../src/brand/color.ts'
 import { extractBrand } from '../src/brand/extract.ts'
+import { type Homework, parseFeed, pickResearch } from '../src/brand/homework.ts'
 import type { BrandKit } from '../src/brand/types.ts'
 import { closeBrowser } from '../src/browser.ts'
 import { buildLlm } from '../src/llm/chain.ts'
+import { ScriptedProvider } from '../src/llm/scripted.ts'
+import { openerFor } from '../src/outreach/messages.ts'
+import {
+  briefFor,
+  DRAFTS,
+  type FilmMessages,
+  MessagesSchema,
+  scriptedMessages,
+  writeMessages,
+} from '../src/outreach/writer.ts'
 import { compose, type Format } from '../src/render/composition.ts'
 import { openComposition, seek } from '../src/render/render.ts'
 import { buildTheme } from '../src/render/theme.ts'
@@ -49,6 +60,9 @@ const DESCRIPTIONS: Record<string, string> = {
   'copy.no-fallback': 'The model wrote every line itself; no built-in line was swapped in',
   'copy.quote-on-their-site': 'The fact shown on screen appears verbatim on their homepage',
   'copy.uses-a-stat': 'The featured fact is a number, which reads strongest on screen',
+  'messages.first-try':
+    'Each message draft (note, after accept, InMail, email) passed every check on the first try',
+  'messages.no-fallback': "Each message draft kept the writer's own words; no template swapped in",
   'design.text-contrast': 'Every text color meets WCAG AA (4.5:1) on its background',
   'design.brand-fonts-loaded': "The site's own font files were embedded, not a fallback",
   'design.no-text-overflow':
@@ -121,6 +135,64 @@ async function script(
   }
 }
 
+/**
+ * Homework for the messages eval: the Parcelpine fixture changelog, read directly and picked on
+ * a pinned day, because its dates are fixed (it isn't linked from the fixture site on purpose).
+ */
+const HOMEWORK: Homework = {
+  items: parseFeed(
+    readFileSync(join(ROOT, 'fixtures/sites/parcelpine/changelog.xml'), 'utf8'),
+    'http://127.0.0.1/',
+  ).map((i) => ({ kind: 'changelog' as const, ...i })),
+  pages: [],
+}
+const MESSAGES_NOW = Date.parse('2026-11-03T12:00:00Z')
+
+/** per draft kind: how many passed on the first try, and how many fell back to the template */
+const byDraft = new Map<string, { first: number; fallback: number; total: number }>()
+
+async function messages(
+  kit: BrandKit,
+  profile: Profile,
+  s: Script,
+  homework: Homework | null,
+  id: string,
+): Promise<FilmMessages> {
+  const board = buildStoryboard(kit, profile, s)
+  const insight = board.scenes.find((x) => x.kind === 'insight')
+  const proof = board.scenes.find((x) => x.kind === 'proof')
+  const film = {
+    company: kit.name,
+    script: s,
+    highlights: {
+      quote:
+        insight?.kind === 'insight'
+          ? { text: insight.text, source: insight.source }
+          : { text: '', source: '' },
+      proof: proof?.kind === 'proof' ? proof.stats : [],
+    },
+  }
+  const opener = openerFor(id)
+  const item = homework ? pickResearch(homework, { points: profile.points }, MESSAGES_NOW) : null
+  // without --model, the built-in stand-in answers through ScriptedProvider, as a model would
+  const provider =
+    llm ??
+    new ScriptedProvider(
+      () => JSON.stringify(scriptedMessages(briefFor(film, profile, item, opener))),
+      [0, 1],
+    )
+  const ctx = new LocalContext({ runId: id, llm: provider })
+  return writeMessages({
+    film,
+    profile,
+    homework,
+    opener,
+    model: values.model ?? 'scripted-v1',
+    now: MESSAGES_NOW,
+    complete: (key, m) => ctx.llm(key, { schema: MessagesSchema, messages: m }),
+  })
+}
+
 const { server, url } = await serveFixtures()
 const writer = llm ? `model ${values.model}` : 'deterministic writer'
 console.log(`coldopen evals (${writer})\n`)
@@ -189,6 +261,36 @@ try {
         pass: fact?.kind === 'stat',
         detail: `featured a ${fact?.kind} fact; numbers land harder`,
       })
+
+      // --- the messages that carry the film, with and without the fixture changelog
+      for (const homework of [null, HOMEWORK]) {
+        const m = await messages(
+          kit,
+          profile,
+          s.script,
+          homework,
+          `eval_${site}_${preset}_${homework ? 'research' : 'plain'}`,
+        )
+        const tag = homework ? 'with research' : 'no research'
+        for (const d of DRAFTS) {
+          const first = m.firstTry.includes(d)
+          const fell = m.writer[d] === 'template'
+          const t = byDraft.get(d) ?? { first: 0, fallback: 0, total: 0 }
+          byDraft.set(d, {
+            first: t.first + Number(first),
+            fallback: t.fallback + Number(fell),
+            total: t.total + 1,
+          })
+          const why = (m.flags[d] ?? []).map((c) => c.why).join('; ')
+          record({ ...base, eval: 'messages.first-try', pass: first, detail: `${d}, ${tag}` })
+          record({
+            ...base,
+            eval: 'messages.no-fallback',
+            pass: !fell,
+            detail: `${d}, ${tag}: ${why}`,
+          })
+        }
+      }
 
       // --- design quality
       const board = buildStoryboard(kit, profile, s.script)
@@ -265,6 +367,15 @@ const lines = [
     const rs = results.filter((r) => r.eval === e)
     return `| \`${e}\` | ${rs.filter((r) => r.pass).length}/${rs.length} | ${DESCRIPTIONS[e] ?? ''} |`
   }),
+  '',
+  '## Messages by draft',
+  '',
+  '| Draft | Passed on the first try | Fell back to the template |',
+  '|---|---:|---:|',
+  ...[...byDraft].map(
+    ([d, t]) =>
+      `| ${d} | ${t.first}/${t.total} (${Math.round((100 * t.first) / t.total)}%) | ${t.fallback}/${t.total} (${Math.round((100 * t.fallback) / t.total)}%) |`,
+  ),
   '',
   ...(results.some((r) => !r.pass)
     ? [

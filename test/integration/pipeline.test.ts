@@ -4,8 +4,11 @@ import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { closeBrowser } from '../../src/browser.ts'
 import { createFilmAgent, type FilmResult } from '../../src/film.ts'
+import { ScriptedProvider } from '../../src/llm/scripted.ts'
+import { FILM, type ModelMessages } from '../../src/outreach/writer.ts'
 import { LocalContext } from '../../src/runtime/local.ts'
-import { fixtureServer, profile, tmp } from '../helpers/index.ts'
+import { deterministicScript } from '../../src/script/writer.ts'
+import { fixtureServer, kitFor, profile, tmp } from '../helpers/index.ts'
 
 afterAll(async () => {
   await closeBrowser()
@@ -36,6 +39,8 @@ describe('film pipeline (no database)', () => {
 
     expect(r.company).toBe('Parcelpine')
     expect(r.qa.issues).toEqual([])
+    // no model: no messages stored, so the API uses the templates
+    expect(r.messages).toBeUndefined()
     for (const f of Object.values(r.files)) expect(existsSync(join(filmsDir, f)), f).toBe(true)
     expect(new Set(progress)).toEqual(new Set(['research', 'script', 'design', 'render', 'encode']))
 
@@ -111,5 +116,61 @@ describe('film pipeline (no database)', () => {
         script: { ...first.script, hook: 'Lumen grew 97% with me' },
       }),
     ).rejects.toThrow(/edited script can't be used: hook mentions "97%"/)
+  }, 360_000)
+
+  it('stores the messages the model wrote with the film, and replays them without a second call', async () => {
+    const { url } = await fixtureServer()
+    const { kit } = await kitFor('parcelpine')
+    const p = profile('candidate')
+    const reply: ModelMessages = {
+      note: "I'd like to work with the Parcelpine team and made a short film for you. Would like to connect.",
+      afterAccept: `Thanks for connecting. I made a 30-second film for Parcelpine: ${FILM} Could we talk this week?`,
+      inmail: {
+        subject: 'A 30-second film for Parcelpine',
+        body: `I made a 30-second film for Parcelpine: ${FILM} Could we talk this week?`,
+      },
+      email: {
+        subject: 'A 30-second film for Parcelpine',
+        opening: "I've been following what Parcelpine is building.",
+        research: null,
+        fit: "What I'd bring: 6 open-source AI projects shipped.",
+        ask: 'Could we find 15 minutes this week?',
+      },
+    }
+    let messageCalls = 0
+    // the built-in stand-in model: the deterministic script, and these messages
+    const llm = new ScriptedProvider(
+      (req) => {
+        if (req.messages[0]!.content.startsWith('You write the short messages')) {
+          messageCalls++
+          return JSON.stringify(reply)
+        }
+        return JSON.stringify(deterministicScript(kit, p))
+      },
+      [0, 1],
+    )
+    const filmsDir = tmp('films-')
+    const agent = createFilmAgent({ filmsDir, llmModel: 'scripted-v1', allowPrivateNetworks: true })
+    const input = { url: `${url}/parcelpine/`, profile: p, format: 'square' as const }
+    const journalFile = join(filmsDir, 'run_msgs', '.journal.json')
+
+    const r = await agent.run(new LocalContext({ runId: 'run_msgs', llm, journalFile }), input)
+    expect(r.messages?.writer).toEqual({
+      note: 'model',
+      afterAccept: 'model',
+      inmail: 'model',
+      email: 'model',
+    })
+    expect(r.messages?.model).toBe('scripted-v1')
+    expect(r.messages?.drafts.note).toBe(`Hi [First name], ${reply.note} – Alex`)
+    expect(r.messages?.drafts.email.body).toContain(`\n${FILM}\n`)
+    expect(messageCalls).toBe(1)
+
+    const second = new LocalContext({ runId: 'run_msgs', llm, journalFile })
+    await second.load()
+    const again = await agent.run(second, input)
+    expect(second.replayed).toEqual(expect.arrayContaining(['messages-1', 'messages']))
+    expect(again.messages).toEqual(r.messages)
+    expect(messageCalls).toBe(1)
   }, 360_000)
 })
