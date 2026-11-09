@@ -1,16 +1,24 @@
 import type { FilmResult } from '../film.ts'
+import { BANNED } from '../script/taste.ts'
 import type { Profile } from '../script/types.ts'
-import { emailWords } from './checks.ts'
+import { type Check, emailWords, MESSAGE_LIMITS, type MessageKind } from './checks.ts'
 
 /**
- * The messages that carry a film: an email, a LinkedIn note (300 characters, LinkedIn's limit
- * for a connection request) and a follow-up. Written from what the film already says, so they
- * can't claim anything the film doesn't, and with a [First name] placeholder for the person
- * they go to.
+ * The messages that carry a film, in the order you send them: a LinkedIn connection note
+ * (200 characters, a free account's limit, with no link and no ask), the message once they
+ * accept (the film and one ask), an InMail, the warm email in five parts, and the follow-ups.
+ * Written from what the film already says, so they can't claim anything the film doesn't, and
+ * with a [First name] placeholder for the person they go to. Every one passes checkMessage
+ * (checks.ts), because these templates are the fallback when a model's draft doesn't.
  */
 export interface Messages {
   email: { subject: string; body: string }
+  /** the connection note (the key is kept for older clients): no link, no question */
   linkedin: string
+  /** the first message once they accept: thanks, the film, one ask */
+  afterAccept?: string
+  /** InMail, which is free only to an Open Profile or someone in a group with you */
+  inmail?: { subject: string; body: string }
   followUp: string
   /** the second and last follow-up: short, and easy to answer either way */
   lastNote: string
@@ -31,7 +39,14 @@ export interface Messages {
   opener?: Opener
   /** the email opens on their recent funding round (an SEC Form D in the last month) */
   whyNow: boolean
+  /** who wrote each draft: the model, or these templates (all templates until the model writes them) */
+  writer: Partial<Record<DraftName, 'model' | 'template'>>
+  /** the checks a draft failed, by draft, and why it fell back to the template */
+  flags: Record<string, Check[]>
 }
+
+/** A draft, named by the kind of message it is (the connection note is the `linkedin` field). */
+export type DraftName = MessageKind
 
 /**
  * Two ways to open: with the film ("I made a 30-second film for…") or with your best number
@@ -90,13 +105,28 @@ export function checkEmail(
   }
 }
 
-const LINKEDIN_LIMIT = 300
-
 const clean = (s: string) =>
   s
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/[.,;:]$/, '')
+
+/**
+ * Words from their site or the film can only go into a message the checks would pass: a quoted
+ * line with a question or an exclamation mark would add an ask or shout, and a banned word would
+ * read as ours. Such a line is left out (and the plainer sentence used) rather than edited.
+ */
+const quotable = (s: string) => {
+  const t = s.toLowerCase().replace(/[‘’]/g, "'")
+  return !!s && !/[?!]/.test(s) && !BANNED.some((b) => t.includes(b.replace(/[‘’]/g, "'")))
+}
+
+/** The first draft that fits, in order: the drafts run from fullest to plainest. */
+const firstFit = <T>(drafts: T[], fits: (d: T) => boolean): T =>
+  drafts.find(fits) ?? drafts[drafts.length - 1]!
+
+/** The headline the film's noticed line quotes ("Northwind leads with “Every pallet…”") */
+const promiseIn = (noticed: string | undefined) => noticed?.match(/\u201c([^\u201d]+)\u201d/)?.[1]
 
 export function draftMessages(
   out: Pick<FilmResult, 'company' | 'job' | 'highlights' | 'script' | 'related'>,
@@ -111,6 +141,11 @@ export function draftMessages(
     opener?: Opener
     /** their latest private round, from SEC Form D filings: a reason to write now */
     raised?: { date: string } | null
+    /**
+     * one thing they published lately (homework), for the email's research line: the line
+     * itself, the text it came from, and the post's title
+     */
+    research?: { line: string; source: string; title?: string } | null
   } = {},
 ): Messages {
   if (profile.preset === 'recruiter') return recruiterMessages(out, profile, link)
@@ -120,41 +155,114 @@ export function draftMessages(
   const me = profile.sender.name
   const first = me.split(' ')[0]!
   const candidate = profile.preset === 'candidate'
-  const quote = out.highlights?.quote.text ? clean(out.highlights.quote.text) : ''
+  const rawQuote = out.highlights?.quote.text ? clean(out.highlights.quote.text) : ''
+  const quote = quotable(rawQuote) ? rawQuote : ''
   const fromPost = /post$/.test(out.highlights?.quote.source ?? '')
   const proof = (out.highlights?.proof ?? [])
     .slice(0, 2)
     .map((p) => clean(`${p.value} ${p.label}${p.where ? ` at ${p.where}` : ''}`))
+    .filter(quotable)
   const ask = clean(profile.cta.line).replace(/\?*$/, '?')
   // "for your Operations Analyst role at Parcelpine", or just "for Parcelpine"
   const forWhat = role ? `for your ${role} role at ${company}` : `for ${company}`
 
-  const opener = quote
-    ? fromPost
-      ? `It answers one line from the post, "${quote}",`
-      : `It starts from your own site ("${quote}")`
-    : `It's in your brand and starts from your homepage`
-  const evidence = proof.length
-    ? ` with what I've done: ${proof.join('; ')}.`
-    : candidate
-      ? ', and everything about me in it comes from my résumé.'
-      : '.'
-  // the film's headline, unless it only restates the role ("Why I fit your … role")
+  // the film's headline, unless it only restates the role or the opening ("Why I fit your … role")
   const headline = out.script?.pitch.headline ? clean(out.script.pitch.headline) : ''
   const pitch =
-    headline && !/^why i fit\b|\brole$/i.test(headline) ? `${headline.replace(/[!?]$/, '')}.` : ''
+    headline && !/^(why i fit|what i would bring)\b|\brole$/i.test(headline) && quotable(headline)
+      ? `${headline.replace(/[!?]$/, '')}.`
+      : ''
 
   const detail = more.detail ? clean(more.detail) : ''
   // lead with the best number only when there is one
   const lead: Opener = more.opener === 'proof' && proof.length ? 'proof' : 'film'
   const whyNow = freshRound(more.raised)
   const best = proof[0] ? `${proof[0][0]!.toUpperCase()}${proof[0].slice(1)}` : ''
-  const rest = proof.slice(1)
-  const evidenceAfterLead = rest.length
-    ? ` with more of what I've done: ${rest.join('; ')}.`
-    : candidate
-      ? ', and everything about me in it comes from my résumé.'
-      : '.'
+  const rest = lead === 'proof' ? proof.slice(1) : proof
+
+  /* ------------------------------------------------------------ the warm email */
+
+  // (1) the opening: the role they posted, or the promise their homepage leads with
+  const promise = promiseIn(out.script?.noticed)
+  const siteQuote = !fromPost && quote ? quote : ''
+  const opening = role
+    ? `I saw the ${role} role at ${company}.`
+    : promise && quotable(promise)
+      ? `I saw that ${company} leads with "${clean(promise)}".`
+      : siteQuote
+        ? `I saw that ${company}'s site says "${siteQuote}".`
+        : `I've been following what ${company} is building.`
+  // the film's own first line: its quote, unless the opening already said it
+  const filmLine = (withQuote: boolean) =>
+    quote && withQuote && !opening.includes(quote)
+      ? fromPost
+        ? `It answers one line from the post: "${quote}".`
+        : `It starts from your own site: "${quote}".`
+      : `It's in your brand and starts from your homepage.`
+  // (3) one line on something they published lately, only when there is one
+  const research = more.research?.line ? clean(more.research.line) : ''
+  const read = research
+    ? `I read ${more.research?.title ? `"${clean(more.research.title)}"` : 'your recent post'}, and ${lower(research)}.`
+    : ''
+  // (4) why I fit: the proof the film shows
+  const whyIFit = (all: boolean) => {
+    const shown = all ? rest : rest.slice(0, 1)
+    if (shown.length)
+      return `${lead === 'proof' ? "More of what I've done" : "What I'd bring"}: ${shown.join('; ')}.`
+    if (lead === 'proof') return ''
+    return candidate ? 'Everything about me in it comes from my résumé.' : ''
+  }
+  const emailBody = (o: { quote: boolean; pitch: boolean; related: boolean; all: boolean }) =>
+    [
+      'Hi [First name],',
+      '',
+      ...(whyNow ? ['Congratulations on the new funding round.', ''] : []),
+      // part 1, with the best number when this film leads with it
+      lead === 'proof' ? `${opening} ${best}.` : opening,
+      // a detail in their own voice ("I read your post…") stands as it is
+      ...(detail
+        ? [
+            /^I\b/.test(detail)
+              ? `${detail.replace(/[.!]$/, '')}.`
+              : `I've been using ${company}, and ${lower(detail)}.`,
+          ]
+        : []),
+      '',
+      // part 2: the film
+      lead === 'proof'
+        ? `I made a 30-second film ${forWhat} on what I'd bring:`
+        : `${detail ? 'So I' : 'I'} made a 30-second film ${forWhat}:`,
+      link,
+      filmLine(o.quote),
+      // part 3: what they published
+      ...(read ? ['', read] : []),
+      // part 4: why I fit
+      ...(() => {
+        const lines = [whyIFit(o.all), o.pitch ? pitch : ''].filter(Boolean)
+        return lines.length ? ['', lines.join(' ')] : []
+      })(),
+      // real work they can open in one click, when one of the sender's projects is close
+      ...(o.related && out.related
+        ? [
+            '',
+            `Something I built that's close to what you do: ${out.related.name}, ${out.related.url}`,
+          ]
+        : []),
+      '',
+      // part 5: one small ask
+      ask,
+      '',
+      me,
+      profile.cta.contact,
+    ].join('\n')
+  // shorten step by step: the headline, then related work, then the quote, then a proof item
+  const bodies = [
+    { quote: true, pitch: true, related: true, all: true },
+    { quote: true, pitch: false, related: true, all: true },
+    { quote: true, pitch: false, related: false, all: true },
+    { quote: false, pitch: false, related: false, all: true },
+    { quote: false, pitch: false, related: false, all: false },
+  ].map(emailBody)
   const email = {
     subject:
       lead === 'proof'
@@ -162,52 +270,79 @@ export function draftMessages(
         : role
           ? `A 30-second film for ${company}'s ${role} team`
           : `A 30-second film for ${company}`,
-    body: [
-      'Hi [First name],',
+    body: firstFit(bodies, (b) => emailWords(b) <= MESSAGE_LIMITS.emailWords),
+  }
+
+  /* ------------------------------------------------------------ LinkedIn */
+
+  // the connection note: who you are to them, and that you made something. No link and no
+  // question: the film goes in the message once they accept. Shortened step by step, never cut.
+  const hello = 'Hi [First name],'
+  const sign = `Would like to connect. – ${first}`
+  const about = (withRole: boolean) =>
+    candidate
+      ? withRole && role
+        ? `I'm applying for the ${role} role at ${company} and made something for the team.`
+        : `I'd like to work with the ${company} team and made something for you.`
+      : withRole && role
+        ? `I made something for the ${company} team about the ${role} role.`
+        : `I made something for the ${company} team.`
+  const notes = [
+    ...(lead === 'proof' ? [true, false].map((r) => `${hello} ${best}. ${about(r)} ${sign}`) : []),
+    `${hello} ${about(true)} ${sign}`,
+    `${hello} ${about(false)} ${sign}`,
+    `${hello} I made something for the ${company} team. – ${first}`,
+    `${hello} I made something for ${company}.`,
+  ]
+  const linkedin = firstFit(notes, (n) => n.length <= MESSAGE_LIMITS.note)
+
+  // once they accept: thanks, the film, what it shows, one ask
+  const accepts = [true, false].map((withProof) =>
+    [
+      `${hello} thanks for connecting.`,
       '',
-      ...(whyNow ? [`Congratulations on the new funding round.`, ''] : []),
-      // a detail in their own voice ("I read your post…") stands as it is
-      ...(detail
-        ? [
-            /^I\b/.test(detail)
-              ? `${detail.replace(/[.!]$/, '')}.`
-              : `I've been using ${company}, and ${lower(detail)}.`,
-            '',
-          ]
-        : []),
-      ...(lead === 'proof'
-        ? [`${best}. I made a 30-second film ${forWhat} on what I'd bring:`]
-        : [`${detail ? 'So I' : 'I'} made a 30-second film ${forWhat}:`]),
-      link,
-      '',
-      `${opener}${lead === 'proof' ? evidenceAfterLead : evidence}`,
-      ...(pitch ? ['', pitch] : []),
-      // real work they can open in one click, when one of the sender's projects is close
-      ...(out.related
-        ? [
-            '',
-            `Something I built that's close to what you do: ${out.related.name}, ${out.related.url}`,
-          ]
-        : []),
+      lead === 'proof'
+        ? `${best}. I made a 30-second film ${forWhat} on what I'd bring: ${link}`
+        : `I made a 30-second film ${forWhat}: ${link}`,
+      ...(withProof && rest.length ? ['', `${whyIFit(true)}`] : []),
       '',
       ask,
       '',
-      me,
-      profile.cta.contact,
+      first,
     ].join('\n'),
+  )
+  const afterAccept = firstFit(accepts, (a) => a.length <= MESSAGE_LIMITS.afterAccept)
+
+  // InMail: the email's job in LinkedIn's shorter room
+  const inmailSubjects = [
+    ...(lead === 'proof' ? [`${company}: ${proof[0]}`] : []),
+    ...(role ? [`A 30-second film for ${company}'s ${role} team`] : []),
+    `A 30-second film for ${company}`,
+    `A film for ${company}`,
+    company,
+  ]
+  const inmailBodies = [true, false].map((withProof) =>
+    [
+      hello,
+      '',
+      lead === 'proof' ? `${opening} ${best}.` : opening,
+      '',
+      `I made a 30-second film ${forWhat}: ${link}`,
+      ...(withProof && rest.length ? ['', whyIFit(false)] : []),
+      '',
+      ask,
+      '',
+      first,
+    ].join('\n'),
+  )
+  const inmail = {
+    subject: firstFit(inmailSubjects, (t) => t.length <= MESSAGE_LIMITS.inmailSubject),
+    body: firstFit(inmailBodies, (b) => b.length <= MESSAGE_LIMITS.inmailBody),
   }
 
-  const long = `Hi [First name], I made a 30-second film ${forWhat}: ${link} ${ask} – ${first}`
-  const short = `Hi [First name], I made a short film for ${company}: ${link} ${ask} – ${first}`
-  const led = `Hi [First name], ${proof[0] ?? ''}. I made a 30-second film ${forWhat}: ${link} ${ask} – ${first}`
-  const linkedin =
-    lead === 'proof' && led.length <= LINKEDIN_LIMIT
-      ? led
-      : long.length <= LINKEDIN_LIMIT
-        ? long
-        : short.slice(0, LINKEDIN_LIMIT)
+  /* ------------------------------------------------------------ follow-ups */
 
-  const fresh = more.fresh ? clean(more.fresh) : ''
+  const fresh = more.fresh && quotable(clean(more.fresh)) ? clean(more.fresh) : ''
   const followUp = [
     'Hi [First name],',
     '',
@@ -220,21 +355,20 @@ export function draftMessages(
     first,
   ].join('\n')
 
+  // easy to answer either way, and asking nothing more of them
   const lastNote = [
     'Hi [First name],',
     '',
     `One last note on the film I made ${forWhat}: ${link}`,
     '',
-    candidate
-      ? `If the timing isn't right, no problem at all. If someone else on the team is the better person to talk to about the role, I'd be grateful for a pointer.`
-      : `If the timing isn't right, no problem at all. If someone else on the team is the better person to talk to, I'd be grateful for a pointer.`,
+    `If the timing isn't right, no problem at all. Thanks for taking a look.`,
     '',
     first,
   ].join('\n')
 
   const fu = `Hi [First name], following up on the film I made for ${company}: ${link} ${ask} – ${first}`
   const linkedinFollowUp =
-    fu.length <= LINKEDIN_LIMIT
+    fu.length <= MESSAGE_LIMITS.afterAccept
       ? fu
       : `Hi [First name], following up on my film: ${link} – ${first}`
 
@@ -265,6 +399,8 @@ export function draftMessages(
   return {
     email,
     linkedin,
+    afterAccept,
+    inmail,
     followUp,
     lastNote,
     linkedinFollowUp,
@@ -273,8 +409,21 @@ export function draftMessages(
     checks: checkEmail(email, company, detail || null),
     opener: lead,
     whyNow,
+    writer: allTemplate(true),
+    flags: {},
   }
 }
+
+/** Every draft written by these templates (step 5's model replaces some of them) */
+const allTemplate = (inmail: boolean): Messages['writer'] => ({
+  note: 'template',
+  afterAccept: 'template',
+  ...(inmail ? { inmail: 'template' as const } : {}),
+  email: 'template',
+  followUp: 'template',
+  lastNote: 'template',
+  linkedinFollowUp: 'template',
+})
 
 /** "The one thing I kept hitting" -> "the one thing I kept hitting", keeping "I" and names */
 const lower = (s: string) =>
@@ -293,14 +442,13 @@ export function addressed(m: Messages, name: string | undefined): Messages {
     email: { subject: m.email.subject, body: fill(m.email.body) },
     checks: m.checks,
     linkedin: fill(m.linkedin),
+    ...(m.afterAccept ? { afterAccept: fill(m.afterAccept) } : {}),
+    ...(m.inmail ? { inmail: { subject: m.inmail.subject, body: fill(m.inmail.body) } } : {}),
     followUp: fill(m.followUp),
     lastNote: fill(m.lastNote),
     linkedinFollowUp: fill(m.linkedinFollowUp),
   }
 }
-
-/** LinkedIn's limit for InMail is longer, but short ones get more replies (under 400 characters: +22%) */
-const INMAIL_LIMIT = 400
 
 /**
  * Messages for a recruiter's film: to the candidate, about the role, in the recruiter's voice.
@@ -342,9 +490,33 @@ function recruiterMessages(
     ].join('\n'),
   }
   const at = best?.where ? ` at ${clean(best.where)}` : ''
+  // InMail (or the message once they accept): short ones get more replies (under 400: +22%)
   const full = `Hi [First name], I made you a 30-second film about ${what}. It starts from your own work${at}: ${link} ${ask} – ${first}`
   const plain = `Hi [First name], I made you a 30-second film about ${what}: ${link} ${ask} – ${first}`
-  const linkedin = full.length <= INMAIL_LIMIT ? full : plain.slice(0, INMAIL_LIMIT)
+  const message = firstFit([full, plain], (t) => t.length <= MESSAGE_LIMITS.inmailBody)
+  const inmail = {
+    subject: firstFit(
+      [
+        ...(role ? [`${company}'s ${role} role, made for you`] : []),
+        `A role at ${company}, made for you`,
+        `A role at ${company}`,
+      ],
+      (t) => t.length <= MESSAGE_LIMITS.inmailSubject,
+    ),
+    body: message,
+  }
+  // the connection note: no link and no question, so it reads as a person, not a pitch
+  const who = profile.sender.role
+    ? `${profile.sender.role.toLowerCase()} at ${company}`
+    : `hiring at ${company}`
+  const linkedin = firstFit(
+    [
+      `Hi [First name], I'm ${first}, ${who}. I made you a 30-second film about ${what}. Would like to connect. – ${first}`,
+      `Hi [First name], I'm ${first}, hiring at ${company}. I made you a short film about a role. Would like to connect.`,
+      `Hi [First name], I'm ${first} at ${company}. Would like to connect.`,
+    ],
+    (t) => t.length <= MESSAGE_LIMITS.note,
+  )
   const followUp = [
     'Hi [First name],',
     '',
@@ -381,12 +553,16 @@ function recruiterMessages(
   return {
     email: { subject: email.subject, body: to(email.body) },
     linkedin: to(linkedin),
+    afterAccept: to(message),
+    inmail: { subject: inmail.subject, body: to(inmail.body) },
     followUp: to(followUp),
     lastNote: to(lastNote),
     linkedinFollowUp: to(linkedinFollowUp),
     intro,
     checks: checkEmail(email, company, null),
     whyNow: false,
+    writer: allTemplate(true),
+    flags: {},
   }
 }
 
@@ -430,7 +606,16 @@ function hiringMessages(
       me,
     ].join('\n'),
   }
-  const linkedin = `Hi [First name], we're hiring a ${role} at ${company} and I thought of you. A 30-second film about it: ${link} – ${first}`
+  // the connection note goes without the link; the film follows once they accept
+  const linkedin = firstFit(
+    [
+      `Hi [First name], we're hiring a ${role} at ${company} and I thought of you. Would like to connect. – ${first}`,
+      `Hi [First name], we're hiring at ${company} and I thought of you. Would like to connect. – ${first}`,
+      `Hi [First name], we're hiring at ${company}. Would like to connect.`,
+    ],
+    (t) => t.length <= MESSAGE_LIMITS.note,
+  )
+  const afterAccept = `Hi [First name], thanks for connecting. We're hiring a ${role} at ${company} and I thought of you. A 30-second film about it: ${link} – ${first}`
   const followUp = [
     'Hi [First name],',
     '',
@@ -440,7 +625,8 @@ function hiringMessages(
   ].join('\n')
   return {
     email,
-    linkedin: linkedin.length <= LINKEDIN_LIMIT ? linkedin : linkedin.slice(0, LINKEDIN_LIMIT),
+    linkedin,
+    afterAccept,
     followUp,
     lastNote: followUp,
     linkedinFollowUp: `Hi [First name], one more nudge on our ${role} role: ${link} – ${first}`,
@@ -448,5 +634,7 @@ function hiringMessages(
     post,
     checks: checkEmail(email, company, null),
     whyNow: false,
+    writer: allTemplate(false),
+    flags: {},
   }
 }

@@ -5,8 +5,11 @@
  * with the reasons, or swapped for its template, and the person can see why.
  * Pure: no network, no clock.
  */
+import type { Homework } from '../brand/homework.ts'
+import type { FilmResult } from '../film.ts'
 import { numbersIn, overlap, sameNumber } from '../script/checks.ts'
 import { BANNED, BEGGING } from '../script/taste.ts'
+import type { Profile } from '../script/types.ts'
 
 export const MESSAGE_LIMITS = {
   /** a connection note on a free LinkedIn account */
@@ -262,3 +265,43 @@ export function checkMessage(
 }
 
 export const passed = (checks: Check[]) => checks.every((c) => c.ok)
+
+/**
+ * Everything a message may take a number from, joined into one text for CheckContext.known:
+ * what the film shows from their site (the quoted line and the film's own lines, which passed
+ * the script's grounding), the job, related work, the sender's profile (offer, points, proof and
+ * the ask, so "Worth a 15-minute look?" counts as theirs) and what they published lately.
+ */
+export function knownFor(
+  out: Partial<Pick<FilmResult, 'company' | 'job' | 'highlights' | 'script' | 'related'>>,
+  profile: Profile,
+  homework?: Homework | null,
+): string {
+  const s = out.script
+  const film = s
+    ? [s.hook, s.noticed, s.insight.why, s.pitch.headline, ...s.pitch.points, s.cta]
+    : []
+  const proof = (out.highlights?.proof ?? []).map((p) => `${p.value} ${p.label} ${p.where ?? ''}`)
+  // a feed item's summary arrives with homework's step 3; until then only titles are known
+  const posts = (homework?.items ?? []).flatMap((i) => [
+    i.title,
+    (i as { summary?: string }).summary ?? '',
+  ])
+  return [
+    out.company ?? '',
+    out.job?.title ?? '',
+    out.highlights?.quote.text ?? '',
+    ...proof,
+    ...film,
+    out.related ? `${out.related.name} ${out.related.line}` : '',
+    profile.offer,
+    ...profile.points,
+    ...profile.proof.map((p) => `${p.value} ${p.label} ${p.where ?? ''}`),
+    profile.sender.company ?? '',
+    profile.sender.role ?? '',
+    profile.cta.line,
+    ...posts,
+  ]
+    .filter(Boolean)
+    .join('\n')
+}

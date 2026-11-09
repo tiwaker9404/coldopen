@@ -161,7 +161,12 @@ export interface ViewSession {
 
 export interface Messages {
   email: { subject: string; body: string }
+  /** the connection note: 200 characters, no link and no ask */
   linkedin: string
+  /** the first message once they accept: the film and one ask */
+  afterAccept?: string
+  /** InMail: free only to an Open Profile or someone in a group with you */
+  inmail?: { subject: string; body: string }
   followUp: string
   lastNote: string
   linkedinFollowUp: string
@@ -177,6 +182,10 @@ export interface Messages {
   opener?: 'film' | 'proof'
   /** opens on their recent funding round */
   whyNow?: boolean
+  /** who wrote each draft (note, afterAccept, inmail, email, followUp, lastNote, linkedinFollowUp) */
+  writer?: Partial<Record<string, 'model' | 'template'>>
+  /** the checks a draft failed, by draft, each with why in plain words */
+  flags?: Record<string, { rule: string; ok: boolean; why?: string }[]>
 }
 
 /** how each opener is doing: films you marked sent, watched and replied */

@@ -383,7 +383,9 @@ describe('films', () => {
     const m = (await app.inject({ url: `/v1/films/${a}/messages`, headers: auth })).json()
     expect(m.email.subject).toBeTruthy()
     expect(m.email.body).toContain('https://films.example.com/f/')
-    expect(m.linkedin.length).toBeLessThanOrEqual(300)
+    expect(m.linkedin.length).toBeLessThanOrEqual(200)
+    expect(m.linkedin).not.toContain('http')
+    expect(m.afterAccept).toContain('https://films.example.com/f/')
 
     const mark = (id: string, status: string | null) =>
       app.inject({
