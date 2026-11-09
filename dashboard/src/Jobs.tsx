@@ -16,7 +16,7 @@ import {
 } from './api.ts'
 import { FUNCTIONS } from './functions.ts'
 import { safeUrl } from './safe.ts'
-import { useToast } from './ui.tsx'
+import { ErrorNote, useToast } from './ui.tsx'
 
 const SHOWN = 6
 
@@ -116,7 +116,7 @@ export function Jobs({
             Reading open roles from hundreds of companies’ job boards…
           </p>
         ) : q.isError ? (
-          <p className="error">Couldn’t load jobs: {q.error.message}</p>
+          <ErrorNote error={q.error} lead="Couldn’t load jobs: " />
         ) : r!.data.length === 0 ? (
           <p className="empty">
             No open roles fit your search right now. <a href="#jobs">Change your search</a>
@@ -143,7 +143,7 @@ export function Jobs({
           Reading open roles from hundreds of companies’ job boards…
         </p>
       ) : q.isError ? (
-        <p className="error">Couldn’t load jobs: {q.error.message}</p>
+        <ErrorNote error={q.error} lead="Couldn’t load jobs: " />
       ) : (
         <SearchForm
           search={r!.search}
@@ -215,7 +215,7 @@ export function Jobs({
                   )}
                 </div>
               )}
-              {makeMany.error && <p className="error">{makeMany.error.message}</p>}
+              <ErrorNote error={makeMany.error} />
               <ul className="job-list">
                 {(all ? r.data : r.data.slice(0, SHOWN)).map((j) => (
                   <li key={j.id}>
@@ -405,7 +405,7 @@ function JobRow({
             <span>You have: {job.fit.best.with}</span>
           </span>
         )}
-        {make.error && <span className="error">{make.error.message}</span>}
+        <ErrorNote error={make.error} inline />
       </div>
       <div className="job-do">
         {job.filmId ? (
@@ -527,7 +527,7 @@ function Gaps({ gaps }: { gaps: FitGap[] }) {
           </li>
         ))}
       </ul>
-      {answer.error && <p className="error">{answer.error.message}</p>}
+      <ErrorNote error={answer.error} />
     </section>
   )
 }
@@ -570,7 +570,7 @@ function KnowNudge() {
           }}
         />
       </label>
-      {upload.error && <p className="error">{upload.error.message}</p>}
+      <ErrorNote error={upload.error} />
     </div>
   )
 }
@@ -951,7 +951,7 @@ function SearchForm({
           </small>
         </label>
       </details>
-      {save.error && <p className="error">{save.error.message}</p>}
+      <ErrorNote error={save.error} />
       <div className="job-search-do">
         {save.isSuccess && !save.isPending && <span className="saved">Saved. Results updated</span>}
         <button type="submit" className="primary" disabled={save.isPending}>

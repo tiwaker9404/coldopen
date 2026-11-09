@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, type Me } from './api.ts'
 import { fetchRepos, type Repo } from './github.ts'
+import { ErrorNote } from './ui.tsx'
 
 /**
  * Pick projects straight from GitHub: your public repositories (not forks or archived ones),
@@ -57,7 +58,7 @@ export function GitHubRepos({
         />
       </label>
       {repos.isLoading && user.trim() && <p className="small muted">Reading your repositories…</p>}
-      {repos.error && <p className="error">{(repos.error as Error).message}</p>}
+      <ErrorNote error={repos.error} />
       {repos.data && list.length === 0 && (
         <p className="small muted">No public repositories left to add.</p>
       )}

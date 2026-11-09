@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { api, type Me, type Stats, send } from './api.ts'
+import { ErrorNote } from './ui.tsx'
 
 /** Inside an iframe (the Hugging Face page), cookies and GitHub sign-in don't work. */
 const framed = (() => {
@@ -222,7 +223,7 @@ export function StatsPanel({ onClose }: { onClose: () => void }) {
             </button>
           ))}
         </div>
-        {q.error && <p className="error">{q.error.message}</p>}
+        <ErrorNote error={q.error} />
         {s && (
           <>
             <ol className="funnel">

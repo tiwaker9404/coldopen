@@ -22,7 +22,7 @@ import {
 } from './api.ts'
 import { host, Outreach } from './FilmRow.tsx'
 import { safeUrl } from './safe.ts'
-import { canNotify, Out, useToast } from './ui.tsx'
+import { canNotify, ErrorNote, Out, useToast } from './ui.tsx'
 
 const STEP_LABEL: Record<string, string> = {
   job: 'Read the job post',
@@ -839,7 +839,7 @@ function Founders({ film }: { film: FilmDetail }) {
         </ul>
       )}
       {!people && <small className="muted"> Uses one search from your free Hunter key.</small>}
-      {find.error && <p className="error">{find.error.message}</p>}
+      <ErrorNote error={find.error} />
     </div>
   )
 }
@@ -962,7 +962,7 @@ function Recipient({ film }: { film: FilmDetail }) {
           </div>
         </div>
       )}
-      {(find.error || save.error) && <p className="error">{(find.error ?? save.error)!.message}</p>}
+      <ErrorNote error={find.error ?? save.error} />
       <div className="actions">
         <button type="submit" className="primary" disabled={!name.trim() || save.isPending}>
           {save.isPending ? 'Saving…' : 'Save'}
@@ -1028,7 +1028,7 @@ function Detail({ id }: { id: string }) {
           {save.isPending ? 'Saving…' : 'Add to email'}
         </button>
       </div>
-      {save.error && <p className="error">{save.error.message}</p>}
+      <ErrorNote error={save.error} />
     </div>
   )
 }
@@ -1296,7 +1296,7 @@ function ScriptEditor({ film, onMade }: { film: FilmDetail; onMade: (id: string)
               ? `Written by ${film.scriptMeta.model}.`
               : ''}
       </p>
-      {save.error && <p className="error">{save.error.message}</p>}
+      <ErrorNote error={save.error} />
       <div className="actions">
         <button type="submit" className="primary" disabled={!dirty || save.isPending}>
           {save.isPending ? 'Starting…' : 'Render with these lines'}

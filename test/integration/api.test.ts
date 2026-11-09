@@ -116,6 +116,40 @@ describe('auth and profiles', () => {
     expect(bad.statusCode).toBe(400)
   })
 
+  it('explains a profile it cannot save in plain words, field by field', async () => {
+    const data = structuredClone(profile('sales'))
+    data.proof[0]!.label = 'x'
+    data.proof[0]!.value = 'way more than twelve'
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/profiles/maya',
+      headers: auth,
+      payload: { name: 'Maya at Tessellate', data },
+    })
+    expect(res.statusCode).toBe(400)
+    const { error } = res.json()
+    expect(error.code).toBe('invalid_request')
+    expect(error.message).toBe(
+      '2 things need fixing. First: the number in result 1 can be at most 12 characters.',
+    )
+    expect(error.fields).toEqual([
+      { path: 'proof.0.value', message: 'The number in result 1 can be at most 12 characters' },
+      { path: 'proof.0.label', message: 'What result 1 measures needs at least 3 characters' },
+    ])
+    expect(error.message).not.toMatch(/body\/|expected|>=/)
+  })
+
+  it("says a garbled request isn't valid JSON instead of echoing the parser", async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/profiles/maya',
+      headers: { ...auth, 'content-type': 'application/json' },
+      payload: '{not json',
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error.message).toBe("That request wasn't valid JSON.")
+  })
+
   it('drafts a profile from an uploaded résumé, leaving excluded employers out', async () => {
     const resume = readFileSync(
       join(import.meta.dirname, '../../fixtures/resumes/marco-marketer.md'),

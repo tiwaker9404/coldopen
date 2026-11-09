@@ -4,6 +4,7 @@ import { type Profile, type ProfileData, send } from './api.ts'
 import { BLANK } from './examples.ts'
 import { GitHubRepos } from './GitHubRepos.tsx'
 import { ResumeDraft } from './Onboarding.tsx'
+import { ErrorNote } from './ui.tsx'
 
 const slug = (s: string) =>
   s
@@ -440,7 +441,7 @@ export function ProfileEditor({
           </label>
         </fieldset>
 
-        {save.error && <p className="error">{save.error.message}</p>}
+        <ErrorNote error={save.error} />
         <div className="drawer-foot">
           <button type="submit" className="primary" disabled={save.isPending}>
             {save.isPending ? 'Saving…' : 'Save profile'}

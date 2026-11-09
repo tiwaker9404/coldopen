@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, type Film, send } from './api.ts'
 import { safeUrl } from './safe.ts'
+import { ErrorNote } from './ui.tsx'
 
 /** one YC startup, hiring or not */
 interface Startup {
@@ -115,7 +116,7 @@ export function Startups({ onMade }: { onMade: (id: string) => void }) {
           ? `${d.total.toLocaleString()} YC startups with people in the US, newest first. The founders are named on each YC page; at this size they read their own inbox.`
           : 'Reading YC’s directory…'}
       </p>
-      {r.isError && <p className="error">Couldn’t load startups: {r.error.message}</p>}
+      {r.isError && <ErrorNote error={r.error} lead="Couldn’t load startups: " />}
       <ul className="job-list">
         {d?.data.map((s) => (
           <li key={s.slug}>
@@ -190,7 +191,7 @@ function StartupRow({ s, onMade }: { s: Startup; onMade: (id: string) => void })
             </a>
           )}
         </span>
-        {make.error && <span className="error">{make.error.message}</span>}
+        <ErrorNote error={make.error} inline />
       </div>
       <div className="job-do">
         {s.filmId ? (

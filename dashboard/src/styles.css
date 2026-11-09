@@ -322,6 +322,31 @@ small,
   margin-top: 10px;
 }
 
+.error p {
+  margin: 0;
+}
+
+.error ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+/* the page that shows when something broke while rendering */
+.broke {
+  max-width: 520px;
+  margin: 18vh auto 0;
+  padding: 0 20px;
+}
+
+.broke h1 {
+  font-family: var(--display);
+  margin: 0 0 8px;
+}
+
+.broke p {
+  margin: 0 0 16px;
+}
+
 .note {
   padding: 10px 14px;
   border-radius: var(--r);

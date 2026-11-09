@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { type Film, type ProfileData, send } from './api.ts'
+import { ErrorNote } from './ui.tsx'
 
 /**
  * Pitch a role: the recruiter side of coldopen. A recruiter or founder pastes their job post
@@ -230,7 +231,7 @@ export function Pitch({ onMade }: { onMade: (id: string) => void }) {
           InMail.
         </span>
       </div>
-      {make.error && <p className="error">{(make.error as Error).message}</p>}
+      <ErrorNote error={make.error} />
     </form>
   )
 }

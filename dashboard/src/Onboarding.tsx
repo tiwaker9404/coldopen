@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { draftFromResume, type ProfileData } from './api.ts'
 import { BLANK, EXAMPLES } from './examples.ts'
+import { ErrorNote } from './ui.tsx'
 
 /** a real film, from the project's own landing page */
 const SAMPLE = 'https://tiwaker9404.github.io/coldopen/media'
@@ -175,7 +176,7 @@ export function ResumeDraft({
           />
         </label>
       </div>
-      {draft.error && <p className="error">{draft.error.message}</p>}
+      <ErrorNote error={draft.error} />
       <div className="actions">
         <button
           type="button"

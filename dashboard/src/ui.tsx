@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { ApiError, SERVER_TROUBLE } from './api.ts'
 
 /* -------------------------------------------------------------------- toasts */
 
@@ -49,6 +50,49 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 export const useToast = () => useContext(ToastContext)
+
+/* -------------------------------------------------------------------- errors */
+
+/**
+ * How every failure is shown: the plain sentence the server (or api.ts) wrote, and, when a
+ * form was sent back, one line per field. `lead` frames it ("Couldn't load jobs: ").
+ */
+export function ErrorNote({
+  error,
+  lead,
+  inline,
+}: {
+  error: unknown
+  lead?: string
+  inline?: boolean
+}) {
+  if (!error) return null
+  const message =
+    error instanceof Error ? error.message : typeof error === 'string' ? error : SERVER_TROUBLE
+  const fields = error instanceof ApiError ? error.fields : []
+  if (inline)
+    return (
+      <span className="error" role="alert">
+        {lead}
+        {message}
+      </span>
+    )
+  return (
+    <div className="error" role="alert">
+      <p>
+        {lead}
+        {message}
+      </p>
+      {fields.length > 1 && (
+        <ul>
+          {fields.map((f) => (
+            <li key={f.path}>{f.message}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 /* -------------------------------------------------------------------- drawer */
 

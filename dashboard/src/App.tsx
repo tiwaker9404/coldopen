@@ -16,6 +16,7 @@ import {
   setApiKey,
 } from './api.ts'
 import { Board } from './Board.tsx'
+import { DrawerBoundary } from './ErrorBoundary.tsx'
 import { FilmPanel } from './FilmPanel.tsx'
 import { FilmRow } from './FilmRow.tsx'
 import { FollowUps } from './FollowUps.tsx'
@@ -27,7 +28,7 @@ import { Pitch } from './Pitch.tsx'
 import { ProfileEditor } from './ProfileEditor.tsx'
 import { ProfilesPage } from './Profiles.tsx'
 import { Startups } from './Startups.tsx'
-import { notify, useToast } from './ui.tsx'
+import { ErrorNote, notify, useToast } from './ui.tsx'
 
 const FORMATS: { id: Format; label: string }[] = [
   { id: 'square', label: 'Square' },
@@ -142,7 +143,7 @@ export function App() {
       <div className="main">
         <main className="page">
           {hosted && <FramedNotice />}
-          {signinError && <p className="error">Sign-in didn't work: {signinError}</p>}
+          <ErrorNote error={signinError} lead="Sign-in didn't work: " />
           {unauthorized && !hosted && <KeyForm />}
 
           {loading ? null : onboarding ? (
@@ -233,28 +234,31 @@ export function App() {
       </nav>
 
       {open && (
-        <FilmPanel
-          key={open}
-          id={open}
-          name={(() => {
-            const f = list.find((x) => x.id === open)
-            return f ? nameOf(f, list) : undefined
-          })()}
-          onClose={() => setOpen(null)}
-          onOpen={setOpen}
-        />
+        <DrawerBoundary key={open} onClose={() => setOpen(null)}>
+          <FilmPanel
+            id={open}
+            name={(() => {
+              const f = list.find((x) => x.id === open)
+              return f ? nameOf(f, list) : undefined
+            })()}
+            onClose={() => setOpen(null)}
+            onOpen={setOpen}
+          />
+        </DrawerBoundary>
       )}
       {editing && (
-        <ProfileEditor
-          profile={editing.profile}
-          draft={editing.draft}
-          notice={editing.notice}
-          onClose={() => setEditing(null)}
-          onSaved={() => {
-            setEditing(null)
-            void qc.invalidateQueries({ queryKey: ['profiles'] })
-          }}
-        />
+        <DrawerBoundary onClose={() => setEditing(null)}>
+          <ProfileEditor
+            profile={editing.profile}
+            draft={editing.draft}
+            notice={editing.notice}
+            onClose={() => setEditing(null)}
+            onSaved={() => {
+              setEditing(null)
+              void qc.invalidateQueries({ queryKey: ['profiles'] })
+            }}
+          />
+        </DrawerBoundary>
       )}
       {stats && <StatsPanel onClose={() => setStats(false)} />}
       {side === 'guide' && (
@@ -704,7 +708,7 @@ function Composer({
           </div>
         )}
 
-        {make.error && <p className="error">{make.error.message}</p>}
+        <ErrorNote error={make.error} />
         {batch && (
           <p className="note">
             {batch.count} films started.{' '}

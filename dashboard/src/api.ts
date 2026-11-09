@@ -268,12 +268,46 @@ export interface Me {
   providers?: ('google' | 'github')[]
 }
 
+/** one field the server couldn't accept, for the form to show next to that input */
+export interface FieldError {
+  path: string
+  message: string
+}
+
+/**
+ * Every failed call becomes one of these, with a message a person can read: the server's own
+ * sentence when it sent one, or ours when the server couldn't be reached or answered oddly.
+ */
 export class ApiError extends Error {
   readonly status: number
-  constructor(status: number, message: string) {
+  readonly code: string
+  readonly fields: FieldError[]
+  constructor(status: number, message: string, code = 'error', fields: FieldError[] = []) {
     super(message)
+    this.name = 'ApiError'
     this.status = status
+    this.code = code
+    this.fields = fields
   }
+}
+
+export const SERVER_TROUBLE = 'Something went wrong on our side. Try again in a minute.'
+
+/** What to say when a response isn't what the server normally sends. */
+export function failure(
+  status: number,
+  body: { error?: { code?: string; message?: string; fields?: FieldError[] } } | null,
+): ApiError {
+  // Render's free plan sleeps; its proxy answers 502-504 while the app starts again
+  if (status === 502 || status === 503 || status === 504)
+    return new ApiError(status, 'coldopen is waking up. Try again in a minute.', 'waking')
+  const e = body?.error
+  if (status >= 500 || !e?.message) {
+    if (status >= 500) return new ApiError(status, SERVER_TROUBLE, e?.code ?? 'internal')
+    if (status === 404) return new ApiError(status, "We couldn't find that.", 'not_found')
+    return new ApiError(status, `That didn't work (error ${status}). Try again.`, 'bad_response')
+  }
+  return new ApiError(status, e.message, e.code ?? 'error', e.fields ?? [])
 }
 
 const KEY = 'coldopen.apiKey'
@@ -309,16 +343,35 @@ export function media(
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const k = apiKey()
-  const res = await fetch(path, {
-    ...init,
-    headers: {
-      ...(init.body ? { 'content-type': 'application/json' } : {}),
-      ...(k ? { authorization: `Bearer ${k}` } : {}),
-      ...init.headers,
-    },
-  })
-  const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-  if (!res.ok) throw new ApiError(res.status, body.error?.message ?? `HTTP ${res.status}`)
+  let res: Response
+  try {
+    res = await fetch(path, {
+      ...init,
+      headers: {
+        ...(init.body ? { 'content-type': 'application/json' } : {}),
+        ...(k ? { authorization: `Bearer ${k}` } : {}),
+        ...init.headers,
+      },
+    })
+  } catch {
+    // fetch only rejects when nothing came back at all
+    throw typeof navigator !== 'undefined' && navigator.onLine === false
+      ? new ApiError(0, "You're offline. Check your connection and try again.", 'offline')
+      : new ApiError(0, "We couldn't reach coldopen. Try again in a minute.", 'unreachable')
+  }
+  const text = await res.text().catch(() => '')
+  let body: unknown = {}
+  let parsed = true
+  if (text) {
+    try {
+      body = JSON.parse(text)
+    } catch {
+      parsed = false
+    }
+  }
+  if (!res.ok) throw failure(res.status, parsed ? (body as never) : null)
+  // a page instead of data: a proxy or a sleeping server answered for us
+  if (!parsed) throw failure(res.status >= 500 ? res.status : 503, null)
   return body as T
 }
 

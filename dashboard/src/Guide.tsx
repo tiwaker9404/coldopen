@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, type Film, type Me, send } from './api.ts'
-import { Drawer, Out, store, useToast } from './ui.tsx'
+import { Drawer, ErrorNote, Out, store, useToast } from './ui.tsx'
 
 const REPO = 'https://github.com/tiwaker9404/coldopen'
 
@@ -252,7 +252,7 @@ export function Tools({ me }: { me: Me | undefined }) {
             />
           </label>
         )}
-        {upload.error && <p className="error">{upload.error.message}</p>}
+        <ErrorNote error={upload.error} />
       </li>
       <li>
         <HunterKey />
@@ -435,7 +435,7 @@ function McpAccess() {
           ))}
         </ul>
       )}
-      {make.error && <p className="error">{make.error.message}</p>}
+      <ErrorNote error={make.error} />
     </div>
   )
 }
@@ -504,9 +504,7 @@ function HubSpotKey() {
             </button>
           </form>
         )}
-        {(save.error || sync.error) && (
-          <p className="error">{(save.error ?? sync.error)!.message}</p>
-        )}
+        {(save.error || sync.error) && <ErrorNote error={save.error ?? sync.error} />}
       </div>
       {saved && (
         <div className="tool-state">
@@ -591,7 +589,7 @@ function HunterKey() {
             </button>
           </form>
         )}
-        {save.error && <p className="error">{save.error.message}</p>}
+        <ErrorNote error={save.error} />
       </div>
       {saved && (
         <div className="tool-state">

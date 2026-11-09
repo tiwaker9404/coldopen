@@ -99,6 +99,7 @@ import {
   used,
 } from './accounts.ts'
 import { renderDispatcher } from './dispatch.ts'
+import { humanize } from './errors.ts'
 import { deleteKey, listKeys, readKey, saveKey } from './keys.ts'
 import { registerMcp } from './mcp.ts'
 import { privacyPage } from './privacy.ts'
@@ -272,22 +273,32 @@ export async function buildApi({
     }
   })
 
-  app.setErrorHandler((err: Error & { statusCode?: number; validation?: unknown }, _req, reply) => {
-    const status = err.statusCode ?? 500
-    if (status >= 500) app.log.error({ err }, 'request failed')
-    reply.status(status).send({
-      error: {
-        code: err.validation
-          ? 'invalid_request'
-          : status === 429
-            ? 'rate_limited'
-            : status >= 500
-              ? 'internal'
-              : 'bad_request',
-        message: status >= 500 ? 'internal error' : err.message,
-      },
-    })
-  })
+  app.setErrorHandler(
+    (
+      err: Error & { statusCode?: number; validation?: unknown; validationContext?: string },
+      _req,
+      reply,
+    ) => {
+      const status = err.statusCode ?? 500
+      if (status >= 500) app.log.error({ err }, 'request failed')
+      // validation: plain sentences plus one per field, never Zod's own wording
+      if (err.validation) {
+        const { message, fields } = humanize(err.validation, err.validationContext)
+        return reply.status(400).send({ error: { code: 'invalid_request', message, fields } })
+      }
+      reply.status(status).send({
+        error: {
+          code: status === 429 ? 'rate_limited' : status >= 500 ? 'internal' : 'bad_request',
+          message:
+            status >= 500
+              ? 'internal error'
+              : err instanceof SyntaxError
+                ? "That request wasn't valid JSON."
+                : err.message,
+        },
+      })
+    },
+  )
 
   await app.register(fastifySwagger, {
     openapi: {
