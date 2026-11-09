@@ -93,7 +93,7 @@ docker compose up --build       # web app, API, renderer and Postgres on http://
 
 ![The coldopen web app](docs/media/dashboard.png)
 
-- **Web app.** Paste a job link, a company's website or a list of hundreds, and watch films render live. The page says what each film will be about before you press the button, and a short getting-started guide walks a new person from résumé to first reply.
+- **Web app.** Paste a job link, a company's website or a list of hundreds, and watch films render live. The page says what each film will be about before you press the button, and a short getting-started guide walks a new person from résumé to first reply. When something goes wrong, the app says what happened and what to do in a plain sentence, and names the field to fix; it never shows code or a blank page. The profile has one Save for everything, cleans up pasted bullet lists, and keeps every project you tick in the GitHub picker.
 - **Send it from where you work.** Each film suggests who to write to (people you already know there first, with an intro request ready; for a YC startup, its founders, named on its YC page; then recruiters and the likely hiring manager). Say who it's for and the drafts greet them by name; find their work email with your own free Hunter key, or pick from the usual patterns for their domain. The email opens as a ready draft, already addressed, in Gmail, Outlook or your mail app. The share page's button books a call (your Calendly or Cal.com link) or replies, and presses are counted next to plays. Downloads are named after the company. Mark each film Sent, Replied or Interview right in the list, and a Follow up today list brings back films with no reply after 4 days (or 2 days after they watch it), with the follow-up written and one click from Gmail, then a shorter last note a week later. Mark it Replied and the film gets a brief for the call: what the company says, where you fit the role, what to prepare and three questions to ask (`GET /v1/films/:id/brief`).
 - **Fix a line without starting over.** Rewrite any line of a finished film and render it again, without reading the site again. Numbers still have to come from your profile or their site, checked before and during the render (`POST /v1/films/:id/edit`).
 - **Launch numbers.** The owner of a hosted app sees its funnel: visitors, people who made a film, sign-ups, films sent, watched and replied, and the most common reasons films failed (`GET /v1/funnel`).
@@ -154,11 +154,12 @@ It reads a PDF, Word, Markdown or text résumé and picks the bullets that fit t
 
 Applying to different kinds of roles? Keep one profile per résumé in a folder and pass the folder (`-p me/`). coldopen reads each company's site, suggests the profile that fits, and asks before it renders.
 
-**Paste a job link.** Give coldopen a Greenhouse, Lever, Ashby or Workable link (or a careers page on the company's site) in place of the website. It reads the post, finds the company's site from it, and the film answers one of the post's requirements with your proof. From the CLI: `coldopen https://jobs.lever.co/acme/123 -p me.json`. LinkedIn job pages can't be read; paste the text with `--job post.txt`.
+**Paste a job link.** Give coldopen a Greenhouse, Lever, Ashby or Workable link (or a careers page on the company's site) in place of the website. It reads the post, finds the company's site from it, and the film answers one of the post's requirements with your proof. From the CLI: `coldopen https://jobs.lever.co/acme/123 -p me.json`. LinkedIn, Indeed and Glassdoor job pages only show the post to someone signed in, so coldopen can't read them. In the web app, paste one of those links and it asks for the job description straight away, before anything is queued; the film then answers the text you pasted. From the CLI, paste the text with `--job post.txt`.
 
 **Then send it.** Each finished film comes with:
 
 - **A drafted email, LinkedIn note (under 300 characters) and follow-up**, written from what the film shows, so they can't claim more than it does.
+- **A GIF that pastes as a picture.** Copy GIF for email puts a playing preview on the clipboard, linked to the share page, so it lands in Gmail or Outlook as the film itself, not a line of HTML. Download GIF saves it for a LinkedIn message.
 - **Who to send it to:** LinkedIn searches for the company's recruiters and the role's likely hiring manager, which you run yourself. Upload the Connections.csv LinkedIn lets you download, and it also lists the people you already know there. coldopen never scrapes LinkedIn or messages anyone.
 - **Did they reply?** Mark each film sent, replied, interview or no reply, and the dashboard shows your reply rate.
 
@@ -167,7 +168,7 @@ Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show*
 ## Quality, measured
 
 ```bash
-pnpm test         # 214 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, Slack, model path
+pnpm test         # 388 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
 ```

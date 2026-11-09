@@ -83,7 +83,7 @@ coldopen https://deel.com -p me/ --job deel-fde.txt      # the description, past
 - **The pitch and proof** lead with what fits the role.
 - **With a profile folder,** the job's title and requirements decide which profile fits, not just the homepage.
 
-**What it reads.** Company careers pages and the common job boards (Greenhouse, Lever, Ashby, Workable). It takes the requirements and the "what you'll do" lists, and leaves out benefits, pay and legal text. LinkedIn job pages need a login, so paste the description into a `.txt` file instead.
+**What it reads.** Company careers pages and the common job boards (Greenhouse, Lever, Ashby, Workable). It takes the requirements and the "what you'll do" lists, and leaves out benefits, pay and legal text. LinkedIn, Indeed and Glassdoor job pages need a login, so paste the description instead: in the web app, the box for it opens as soon as you paste one of those links; from the CLI, put it in a `.txt` file.
 
 **What it won't do.** The answer has to come from your profile. The job's numbers are what they want, not what you've done: if the post says "3+ years", the film can't say you have 3 years unless your profile does. When nothing on your record plainly matches, the film says _"My closest match"_ instead of _"I did this"_.
 

@@ -1,48 +1,42 @@
 # Roadmap
 
-What's shipped, what's next, and why. Updated 3 November 2026. The reasoning behind each move is in
-the unit-by-unit review against the leaders in each category (Jobright, Teal, Sendspark, Apollo,
-Huntr and others).
+What's shipped, what's next, and why. Updated 13 November 2026.
+
+## Where we stand
+
+The product is wide now: jobs, YC startups, fit, films, send, follow-ups, MCP and CRM sync. For
+now the main user is its maker, and his daily loop is:
+
+1. Find an opening.
+2. Make the film.
+3. Find the founder or recruiter.
+4. Connect on LinkedIn, then message them (sometimes InMail), or send a warm email.
+
+Every batch below makes that loop better, and each one is small enough to ship in a week or two.
 
 ## Shipped
 
-| When     | What                                                                                                                                                                                                                                                                                                                   |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Oct 2026 | Film from a company URL or a job link; email and LinkedIn note; who to reach; LinkedIn connections; share links with view tracking; hosted app on free plans                                                                                                                                                           |
-| 2 Nov    | **Jobs for you:** open roles from 70 companies' public job boards, ranked by role, place and recency                                                                                                                                                                                                                   |
-| 2 Nov    | **Make several films at once** from Jobs for you                                                                                                                                                                                                                                                                       |
-| 2 Nov    | **Fit check:** strong, good or stretch per job, with the requirement you answer best                                                                                                                                                                                                                                   |
-| 2 Nov    | **Follow up today:** a nudge at day 4, a last note at day 11, then mark no reply                                                                                                                                                                                                                                       |
-| 2 Nov    | **Gemini as a third model**, after both Groq models                                                                                                                                                                                                                                                                    |
-| 2 Nov    | **Send:** who each film is for (drafts greet them, follow-ups open addressed); find their email with your own Hunter key or the usual patterns; intro requests to people you know there                                                                                                                                |
-| 2 Nov    | **Public beta:** a clearer app (Today, Jobs, Films, Profile), a films board by stage, Sign in with Google                                                                                                                                                                                                              |
-| 3 Nov    | **YC jobs (merging Tue):** 398 hiring YC startups in Jobs for you, a YC companies only filter, Sort by Hiring fastest, founder links for YC companies                                                                                                                                                                  |
-| 3 Nov    | **Redesign:** an identity built on the film slate ([BRAND.md](BRAND.md)); Today is a call sheet (due today, in production, best fits), Films are the dailies (a filmstrip per stage), and every film carries a slate                                                                                                   |
-| 3 Nov    | **Launch batch:** warm paths (alumni of your schools, people from past teams); two email openers, half and half, with What's working on Today; companies that raised in the last 3 months, with a why-now line for last month's rounds; interview prep in the call brief; the reply rate on the landing page's counter |
-| 2 Nov    | **Share page button:** Book 15 minutes (your booking link) or Reply, with presses counted next to plays                                                                                                                                                                                                                |
+| When     | What                                                                                                                                                                                                                                                                                                  |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Oct 2026 | Film from a company URL or a job link; email and LinkedIn note; who to reach; LinkedIn connections; share links with view tracking; hosted app on free plans                                                                                                                                          |
+| 2 Nov    | Jobs for you, batch films, Fit check, Follow up today, Gemini as a third model, Send, public beta with Google sign-in, YC jobs, pay, visas, people you know, fit gaps, call briefs, the Chrome extension, Startups, the MCP server, HubSpot sync, the Hiring Index, OpenTelemetry and semantic fit    |
+| 3 Nov    | Launch batch (warm paths, opener A/B, why-now, interview prep), Raised recently, the film-slate redesign ([BRAND.md](BRAND.md)), Pitch a role and the hiring film, Homework, related work, the developers page                                                                                        |
+| 4 Nov    | Public beta launch; tables locked against Supabase's public API                                                                                                                                                                                                                                       |
+| 13 Nov   | **Batch 1, Solid ground:** errors that read like a person wrote them, never code or a blank page; LinkedIn, Indeed and Glassdoor job links ask for the description up front; one Save for the whole profile, clean pasting, no lost GitHub picks; the GIF pastes into Gmail as a picture; GitHub tidy |
 
 ## Next, in order
 
-### Week of 4 Nov (after the launch on 4 Nov, 9am Pacific)
+| Batch                                | When         | What                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **2. The message that gets a reply** | 16–20 Nov    | The LinkedIn sequence: a connection note (200 characters, no link and no ask), a message once they accept, and InMail (subject and body). A warm email in a set structure: the opening, the film, one research line from their blog or changelog matched to the role, why you fit, and a 15-minute ask. Written by the model from the film's facts and checked in code (grounded numbers, no begging or referral words, one ask, length), with today's templates as the fallback |
+| **3. Trust first**                   | 23 Nov–4 Dec | A stranger should see who sent it before they click. A sender card on the share page (name, LinkedIn, why you got this); a GIF-first email with the whole draft copied as rich text; link previews that name the sender; Download GIF for LinkedIn messages                                                                                                                                                                                                                      |
+| **4. The perfect reel**              | December     | Review before sending: scene by scene, weak lines flagged, swap the featured fact (including a recent blog post), two hooks to pick from, and re-render one scene instead of the whole film                                                                                                                                                                                                                                                                                      |
+| **5. The right person**              | December     | Hiring manager and recruiter suggestions from the post, the team page and the careers page, each with a confidence score                                                                                                                                                                                                                                                                                                                                                         |
+| **Later**                            |              | Alerts and a weekly email; an optional clip of you or a voiceover; drafts of build-in-public posts from the changelog                                                                                                                                                                                                                                                                                                                                                            |
 
-1. Fix what launch breaks; talk to the first users.
-2. **Raised recently:** a badge and filter from SEC Form D filings.
-3. **YC Work at a Startup links,** so YC companies without a public board still appear.
-4. **Newer visa data:** USCIS's downloadable data stops at fiscal year 2023; add the Labor
-   Department's H-1B filings for 2025.
+## Parked while it's mostly one user
 
-### 11 to 24 Nov: closing the loop
-
-5. **Alerts:** new roles at companies you filmed and new matches, on Today and in a weekly email.
-6. **Chrome extension:** a Make film button on any job post you're viewing.
-7. The last follow-up can switch to LinkedIn; the dashboard's files served from Cloudflare.
-
-### December onward
-
-8. **Better films:** an optional clip of you, recorded once; voiceover; recent company news; two
-   hooks inside the film itself, building on the two email openers.
-9. A Pro plan (Stripe, test mode first), a career center pilot (Duke first), then the recruiting
-   agency direction and the YC application.
+Scaling and load-hardening, a Pro plan, a career center pilot and the recruiting agency direction.
 
 ## Keeping as is
 
@@ -51,4 +45,6 @@ API and the front-end stack: each is current, free, and works.
 
 ## Not doing
 
-Auto-apply, résumé rewriting, sending email from coldopen, and reading people's Gmail for replies (Google's restricted-scope review costs money and weeks). The first three are crowded, paid everywhere, and work against quality over volume.
+Auto-apply, résumé rewriting, sending email or LinkedIn messages for you, and reading people's
+Gmail for replies (Google's restricted-scope review costs money and weeks). The first three are
+crowded, paid everywhere, and work against quality over volume.
