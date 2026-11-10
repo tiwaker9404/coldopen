@@ -246,6 +246,18 @@ Run `pnpm evals --model <name>` to grade a real model's scripts the same way.
 
 Every kind of draft falls back at most 8% of the time, and a fallback still passes every check.
 
+**Brand extraction, measured on live sites.** The [extract eval](evals/extract/) reads 20 real homepages, from YC startups to Apple, Nike and the BBC, one at a time with the network guard on, and checks each field automatically. A pass means plausible, not hand-verified. On 10 Nov ([run](https://github.com/tiwaker9404/coldopen/actions/runs/42861541477)), 14 of 20 sites passed every field:
+
+| Field                                           | Passed |
+| ----------------------------------------------- | -----: |
+| Hero screenshot (not blank)                     |  19/20 |
+| Colors (a brand color, and AA text in the film) |  18/20 |
+| Fonts (their own, embedded)                     |  18/20 |
+| Headline box (on screen, readable)              |  18/20 |
+| Logo (captured, bigger than a favicon)          |  16/20 |
+
+The misses are listed in the run: one site took longer than 60 seconds, Apple's system font can't be embedded, and three headers drew their logo in a way it wasn't captured.
+
 The [fit eval](evals/fit/results.md) grades job matching: does "this line of your record answers that requirement" agree with a person? On 128 hand-labeled pairs, built so many share words without answering (and many answer without sharing words), shared-word matching finds 15% of real answers (F1 0.25). A small sentence-embedding model, bge-small-en-v1.5 run on the CPU through ONNX with no API, finds 76% at 74% precision (F1 0.75, AUC 0.83). Its cut-off is picked on half the pairs and scored on the other half, and fit uses it when `FIT_SEMANTIC=on`. The workflow reruns the eval whenever the matching changes (`pnpm eval:fit`).
 
 The fixture companies in [fixtures/sites](fixtures/sites) (a freight platform, a health-tech startup and an e-commerce returns tool) are fictional, but they're built like real sites: web fonts, stat tiles, testimonials and CTAs.
