@@ -62,7 +62,7 @@ jobs:
           n=$(psql "$DATABASE_URL" -tAc "select count(*) from runs where (status = 'queued' and next_run_at <= now() + interval '5 minutes') or (status = 'running' and lease_expires_at < now())" 2>/dev/null || echo 1)
           echo "pending=$n" >> "$GITHUB_OUTPUT"
       - if: steps.queue.outputs.pending != '0'
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - if: steps.queue.outputs.pending != '0'
         uses: pnpm/action-setup@v6
       - if: steps.queue.outputs.pending != '0'

@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     if: vars.HF_SPACE != ''
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build the Space's tree
         run: |
           # a Space is a git repo with its own README and Dockerfile; binary media stays on GitHub
