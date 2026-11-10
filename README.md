@@ -158,7 +158,7 @@ Applying to different kinds of roles? Keep one profile per résumé in a folder 
 
 **Then send it.** Each finished film comes with:
 
-- **A drafted email, LinkedIn note (under 300 characters) and follow-up**, written from what the film shows, so they can't claim more than it does.
+- **The messages, in the order you send them:** a LinkedIn connection note (200 characters, no link), the message once they accept, InMail when they have an Open Profile, a warm email and the follow-up. Each is written from what the film shows, so it can't claim more than it does, and each copies in one click. A draft that fell back to its template says why, and one that code adjusted says what changed.
 - **A GIF that pastes as a picture.** Copy GIF for email puts a playing preview on the clipboard, linked to the share page, so it lands in Gmail or Outlook as the film itself, not a line of HTML. Download GIF saves it for a LinkedIn message.
 - **Who to send it to:** LinkedIn searches for the company's recruiters and the role's likely hiring manager, which you run yourself. Upload the Connections.csv LinkedIn lets you download, and it also lists the people you already know there. coldopen never scrapes LinkedIn or messages anyone.
 - **Did they reply?** Mark each film sent, replied, interview or no reply, and the dashboard shows your reply rate.
@@ -168,7 +168,7 @@ Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show*
 ## Quality, measured
 
 ```bash
-pnpm test         # 491 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path
+pnpm test         # 500 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
 ```

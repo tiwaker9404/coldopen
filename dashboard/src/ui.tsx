@@ -110,7 +110,7 @@ export function Drawer({
   children: ReactNode
   wide?: boolean
 }) {
-  const ref = useRef<HTMLElement>(null)
+  const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -121,7 +121,7 @@ export function Drawer({
     // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop closes; Escape and the Close button do the same
     // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users close with Escape or the Close button
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <aside
+      <div
         className={`drawer${wide ? ' wide' : ''}`}
         role="dialog"
         aria-modal="true"
@@ -137,7 +137,7 @@ export function Drawer({
           <CloseButton onClick={onClose} />
         </header>
         {children}
-      </aside>
+      </div>
     </div>
   )
 }

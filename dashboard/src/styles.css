@@ -245,10 +245,17 @@ a.link:hover {
   text-decoration-color: currentColor;
 }
 
+/* a step that can't be undone: high-contrast ink, and the wording and a confirm step carry the
+   danger, never the color alone (Tally red is kept for live states) */
 button.danger {
-  background: var(--rec);
-  border-color: var(--rec);
-  color: #fff;
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+  font-weight: 650;
+}
+
+button.danger:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--ink) 82%, var(--bg));
 }
 
 input,
@@ -316,10 +323,35 @@ small,
   color: var(--muted);
 }
 
+/* a failure: Slate text on a Rule edge, marked with "!" so it never rests on color alone
+   (WCAG 1.4.1); Tally red stays for live states only */
 .error {
-  color: var(--rec);
+  position: relative;
+  color: var(--ink);
   font-size: 14px;
   margin-top: 10px;
+  padding: 2px 0 2px 34px;
+  border-left: 3px solid var(--rule);
+}
+
+.error::before {
+  content: "!";
+  position: absolute;
+  left: 9px;
+  top: 3px;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+
+span.error {
+  display: inline-block;
+  margin-top: 0;
 }
 
 .error p {
@@ -374,6 +406,9 @@ small,
 /* a two-option or three-option switch */
 .switch {
   display: inline-flex;
+  /* five messages don't fit a phone in one row: they wrap rather than push the drawer wider */
+  flex-wrap: wrap;
+  max-width: 100%;
   padding: 3px;
   border-radius: 9px;
   background: var(--soft);
@@ -536,8 +571,14 @@ small,
 }
 
 .menu .menu-confirm button.danger {
-  background: var(--rec);
-  color: #fff;
+  justify-content: center;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.menu .menu-confirm button.danger:hover {
+  background: color-mix(in oklab, var(--ink) 82%, var(--bg));
 }
 
 /* -------------------------------------------------------------- onboarding */
@@ -3903,4 +3944,25 @@ a.tag {
 .hiring-path a {
   color: var(--ink);
   font-weight: 600;
+}
+
+/* under a draft: why it's the template version, what code changed. Closed and small, since most
+   drafts have neither and show nothing */
+.draft-note {
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.draft-note summary {
+  cursor: pointer;
+  width: max-content;
+  max-width: 100%;
+}
+
+.draft-note ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
 }

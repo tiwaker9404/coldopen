@@ -538,7 +538,7 @@ export function ProfileEditor({
           {leaving ? (
             <div className="leave">
               <b>Discard your changes?</b>
-              <button type="button" onClick={onClose}>
+              <button type="button" className="danger" onClick={onClose}>
                 Discard
               </button>
               <button type="button" className="link" ref={keep} onClick={() => setLeaving(false)}>

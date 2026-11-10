@@ -49,9 +49,11 @@ export function details(error: Error, stack: string): string {
 function BrokePage({ error, stack }: { error: Error; stack: string }) {
   const [copied, setCopied] = useState(false)
   return (
-    <main className="broke" role="alert">
-      <h1>Something on this page broke.</h1>
-      <p>Your work is saved. Reload the page to pick up where you left off.</p>
+    <main className="broke">
+      <div role="alert">
+        <h1>Something on this page broke.</h1>
+        <p>Your work is saved. Reload the page to pick up where you left off.</p>
+      </div>
       <div className="actions">
         <button type="button" className="primary" onClick={() => location.reload()}>
           Reload
@@ -89,7 +91,35 @@ export function DrawerBoundary({
         onClose()
       }}
     >
+      <Break at="drawer" />
       {children}
     </ErrorBoundary>
   )
+}
+
+/* ---------------------------------------------------------- a test-only break */
+
+export type BreakAt = 'app' | 'drawer'
+
+/**
+ * Where `?break=app` or `?break=drawer` asks the page to break, so the boundaries above can be
+ * seen working. Only in development, or when the UI audit sets `window.__coldopenAudit` before
+ * the page loads; anyone else's `?break=` does nothing.
+ */
+export function breakAt(search: string, enabled: boolean): BreakAt | null {
+  if (!enabled) return null
+  const v = new URLSearchParams(search).get('break')
+  return v === 'app' || v === 'drawer' ? v : null
+}
+
+const testing = () =>
+  import.meta.env.DEV ||
+  (typeof window !== 'undefined' &&
+    (window as unknown as { __coldopenAudit?: boolean }).__coldopenAudit === true)
+
+/** Throws while rendering when the page was asked to break here; otherwise renders nothing. */
+export function Break({ at }: { at: BreakAt }) {
+  if (typeof location !== 'undefined' && breakAt(location.search, testing()) === at)
+    throw new Error(`A test break (?break=${at})`)
+  return null
 }

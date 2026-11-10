@@ -22,6 +22,15 @@ import {
 } from './api.ts'
 import { copyRich } from './clipboard.ts'
 import { host, Outreach } from './FilmRow.tsx'
+import {
+  disclosures,
+  draftOf,
+  HINT,
+  type MessageTab,
+  messageTabs,
+  noteCount,
+  openingTab,
+} from './messageTabs.ts'
 import { safeUrl } from './safe.ts'
 import { canNotify, ErrorNote, Out, useToast } from './ui.tsx'
 
@@ -144,7 +153,7 @@ export function FilmPanel({
     // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop closes; Escape and the Close button do the same
     // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users close with Escape or the Close button
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <aside
+      <div
         className="drawer"
         role="dialog"
         aria-modal="true"
@@ -255,7 +264,7 @@ export function FilmPanel({
           </div>
         )}
         {f && !done && f.steps.length > 0 && <Details film={f} />}
-      </aside>
+      </div>
     </div>
   )
 }
@@ -550,7 +559,7 @@ function ToEveryone({ film }: { film: FilmDetail }) {
       <h3>Post it on LinkedIn</h3>
       <p>
         Download the MP4 above and attach it to the post below: a native video reaches more people
-        than a link. Then send the LinkedIn note to the few people you’d most like to apply.
+        than a link. Then send the connection note to the few people you’d most like to apply.
       </p>
       {film.files && (
         <div className="actions">
@@ -570,8 +579,8 @@ function ToCandidate({ name }: { name: string }) {
     <section className="block">
       <h3>Send it to {name}</h3>
       <p>
-        Their name is already in the messages below. Send the InMail on LinkedIn, or the email if
-        you have their address.
+        Their name is already in the messages below. Send the connection note on LinkedIn, or the
+        email if you have their address.
       </p>
       <div className="actions">
         <a className="button" href={search} target="_blank" rel="noreferrer">
@@ -1107,43 +1116,40 @@ function Message({
     queryFn: () => api<Messages>(`/v1/films/${id}/messages`),
     staleTime: Number.POSITIVE_INFINITY,
   })
-  const [picked, setKind] = useState<'post' | 'email' | 'linkedin' | 'followUp' | null>(
-    followUp ? 'followUp' : null,
-  )
+  const [picked, setKind] = useState<MessageTab | null>(followUp ? 'followUp' : null)
   const m = q.data
-  // a hiring film opens on its LinkedIn post
-  const kind = picked ?? (m?.post ? 'post' : 'email')
   if (!m)
     return (
       <section className="block">
         <h3>Send the message</h3>
       </section>
     )
+  const tabs = messageTabs(m)
+  // a hiring film opens on its LinkedIn post, any other on the connection note
+  const kind = picked && tabs.some((t) => t.id === picked) ? picked : openingTab(m, followUp)
   const body =
     kind === 'post'
       ? (m.post ?? '')
       : kind === 'email'
         ? m.email.body
-        : kind === 'linkedin'
+        : kind === 'note'
           ? m.linkedin
-          : last
-            ? m.lastNote
-            : m.followUp
+          : kind === 'afterAccept'
+            ? (m.afterAccept ?? '')
+            : kind === 'inmail'
+              ? (m.inmail?.body ?? '')
+              : last
+                ? m.lastNote
+                : m.followUp
   const subject = kind === 'followUp' ? `Re: ${m.email.subject}` : m.email.subject
+  const told = disclosures(m, draftOf(kind, last))
   const enc = encodeURIComponent
   return (
     <section className="block">
       <div className="block-head">
         <h3>Send the message</h3>
-        <div className="switch" role="radiogroup" aria-label="Where you're sending it">
-          {(
-            [
-              ...(m.post ? ([['post', 'LinkedIn post']] as const) : []),
-              ['email', 'Email'],
-              ['linkedin', 'LinkedIn note'],
-              ['followUp', 'Follow-up'],
-            ] as const
-          ).map(([k, label]) => (
+        <div className="switch" role="radiogroup" aria-label="Which message">
+          {tabs.map(({ id: k, label }) => (
             // biome-ignore lint/a11y/useSemanticElements: radio-styled buttons are the WAI-ARIA pattern for this control
             <button
               key={k}
@@ -1169,20 +1175,19 @@ function Message({
         </p>
       )}
       <p className="small muted">
-        {kind === 'post'
-          ? 'Post it on LinkedIn with the film attached (Download MP4 above): a native video reaches more people than a link.'
-          : kind === 'email'
-            ? 'Your first message, with the film’s link in it.'
-            : kind === 'linkedin'
-              ? 'For a LinkedIn connection request, which allows 300 characters.'
-              : last
-                ? 'Your last note: short, and easy to answer either way. After this, let it go.'
-                : 'A friendly nudge for 4 or 5 days later, if you haven’t heard back.'}
+        {kind === 'followUp' && last
+          ? 'Your last note: short, and easy to answer either way. After this, let it go.'
+          : HINT[kind]}
       </p>
       <div className="letter">
-        {kind !== 'linkedin' && kind !== 'post' && (
+        {(kind === 'email' || kind === 'followUp') && (
           <p className="subject">
             <span>Subject</span> {subject}
+          </p>
+        )}
+        {kind === 'inmail' && m.inmail && (
+          <p className="subject">
+            <span>Subject</span> {m.inmail.subject}
           </p>
         )}
         <pre>{body}</pre>
@@ -1193,14 +1198,32 @@ function Message({
             Replace <b>[First name]</b> before sending, or say who it’s for above.
           </>
         ) : (
-          to && `Opens addressed to ${to}.`
+          to && kind !== 'post' && `Opens addressed to ${to}.`
         )}
-        {kind === 'linkedin' && ` ${m.linkedin.length} of 300 characters.`}
+        {kind === 'note' && ` ${noteCount(m.linkedin)}.`}
       </p>
-      {kind === 'linkedin' ? (
+      <Disclosure title="Why this is the template version" lines={told.why} />
+      <Disclosure title="What was changed" lines={told.changed} />
+      {kind === 'note' || kind === 'afterAccept' || kind === 'post' ? (
         <div className="actions">
-          <Copy className="primary" text={body} label="Copy note" done="Note copied" />
-          <small>Then on their LinkedIn profile: Connect, Add a note, paste.</small>
+          <Copy
+            className="primary"
+            text={body}
+            label={kind === 'note' ? 'Copy note' : kind === 'post' ? 'Copy post' : 'Copy message'}
+            done={
+              kind === 'note' ? 'Note copied' : kind === 'post' ? 'Post copied' : 'Message copied'
+            }
+          />
+        </div>
+      ) : kind === 'inmail' && m.inmail ? (
+        <div className="actions">
+          <Copy text={m.inmail.subject} label="Copy subject" done="Subject copied" />
+          <Copy
+            className="primary"
+            text={m.inmail.body}
+            label="Copy message"
+            done="InMail copied"
+          />
         </div>
       ) : (
         <div className="actions">
@@ -1230,6 +1253,21 @@ function Message({
         </div>
       )}
     </section>
+  )
+}
+
+/** A small, closed note under a draft; nothing at all when there's nothing to say. */
+function Disclosure({ title, lines }: { title: string; lines: string[] }) {
+  if (!lines.length) return null
+  return (
+    <details className="draft-note">
+      <summary>{title}</summary>
+      <ul>
+        {lines.map((l) => (
+          <li key={l}>{l}</li>
+        ))}
+      </ul>
+    </details>
   )
 }
 

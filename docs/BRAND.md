@@ -33,6 +33,10 @@ stays the accent, ink becomes `#F2F2EE`.
 
 Stock is never used for text on Screen (it fails contrast); text on Stock is always Slate.
 
+Errors aren't live states, so they never use Tally: an error note is Slate text on a 3px Rule
+edge with a small "!" mark, so it never rests on color alone. A button that can't be undone
+("Delete everything", "Discard") is solid ink; its wording and a confirm step carry the danger.
+
 ## Type
 
 - **Big Shoulders Display** for display type: headlines, the slate's fields, timecodes. A

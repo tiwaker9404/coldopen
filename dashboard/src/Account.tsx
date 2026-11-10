@@ -107,13 +107,26 @@ export function AccountMenu({ me, onStats }: { me: Me; onStats: () => void }) {
           )}
           {canDelete &&
             (confirming ? (
-              <div className="menu-confirm">
-                <p>Delete your profiles, films and share links? This can’t be undone.</p>
+              // biome-ignore lint/a11y/useSemanticElements: inside role="menu" only a group may hold the confirm step's items
+              <div className="menu-confirm" role="group" aria-labelledby="delete-what">
+                <p id="delete-what">
+                  Delete your profiles, films and share links? This can’t be undone.
+                </p>
                 <div>
-                  <button type="button" className="danger" onClick={() => wipe.mutate()}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="danger"
+                    onClick={() => wipe.mutate()}
+                  >
                     {wipe.isPending ? 'Deleting…' : 'Delete everything'}
                   </button>
-                  <button type="button" className="link" onClick={() => setConfirming(false)}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="link"
+                    onClick={() => setConfirming(false)}
+                  >
                     Keep it
                   </button>
                 </div>
@@ -197,7 +210,7 @@ export function StatsPanel({ onClose }: { onClose: () => void }) {
     // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop closes; Escape and the Close button do the same
     // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users close with Escape or the Close button
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <aside className="drawer" role="dialog" aria-modal="true" aria-label="Launch numbers">
+      <div className="drawer" role="dialog" aria-modal="true" aria-label="Launch numbers">
         <header className="drawer-head">
           <div>
             <h2>Launch numbers</h2>
@@ -255,7 +268,7 @@ export function StatsPanel({ onClose }: { onClose: () => void }) {
             )}
           </>
         )}
-      </aside>
+      </div>
     </div>
   )
 }
