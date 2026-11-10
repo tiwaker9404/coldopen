@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Northwind's changelog, as an Atom feed with escaped HTML summaries, like Parcelpine's.
+     Not linked from the homepage on purpose, so films of the fixture stay the same as dates age;
+     tests and evals read it directly. -->
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Northwind Freight changelog</title>
+  <entry>
+    <title>Routing agents now move dock appointments</title>
+    <link rel="alternate" href="/northwind/changelog/routing-agents-docks"/>
+    <updated>2026-10-21T00:00:00Z</updated>
+    <summary type="html">&lt;p&gt;Routing agents now move a dock appointment on their own when a carrier runs late, and the warehouse and the carrier both see the new slot.&lt;/p&gt;&lt;p&gt;Turn it on per warehouse in &lt;a href="/settings/docks"&gt;Dock settings&lt;/a&gt;.&lt;/p&gt;</summary>
+  </entry>
+  <entry>
+    <title>Shipment data straight from your ERP</title>
+    <link rel="alternate" href="/northwind/changelog/erp-imports"/>
+    <updated>2026-09-24T00:00:00Z</updated>
+    <summary type="html">&lt;p&gt;Shipment data from customer ERPs now flows into Northwind through one pipeline, so a new shipper sees every lane live on the first day.&lt;/p&gt;</summary>
+  </entry>
+  <entry>
+    <title>Exception alerts in Microsoft Teams</title>
+    <link rel="alternate" href="/northwind/changelog/teams-alerts"/>
+    <updated>2026-08-27T00:00:00Z</updated>
+    <summary type="html">&lt;p&gt;Exception alerts can now go to a Microsoft Teams channel as well as Slack, with the reason a load drifted off its ETA and a suggested fix.&lt;/p&gt;</summary>
+  </entry>
+</feed>

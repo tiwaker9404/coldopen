@@ -158,15 +158,25 @@ async function script(
 }
 
 /**
- * Homework for the messages eval: the Parcelpine fixture changelog, read directly and picked on
- * a pinned day, because its dates are fixed (it isn't linked from the fixture site on purpose).
+ * Homework for the messages eval: each fixture site's own feed, read directly and picked on a
+ * pinned day, because their dates are fixed (none is linked from its fixture site, on purpose).
+ * Each site gets its own posts, so a research line is always about the company it's sent to.
  */
-const HOMEWORK: Homework = {
-  items: parseFeed(
-    readFileSync(join(ROOT, 'fixtures/sites/parcelpine/changelog.xml'), 'utf8'),
-    'http://127.0.0.1/',
-  ).map((i) => ({ kind: 'changelog' as const, ...i })),
-  pages: [],
+const FEEDS: Record<string, { file: string; kind: 'changelog' | 'blog' }> = {
+  parcelpine: { file: 'parcelpine/changelog.xml', kind: 'changelog' },
+  northwind: { file: 'northwind/changelog.xml', kind: 'changelog' },
+  lumen: { file: 'lumen/blog.xml', kind: 'blog' },
+}
+const homeworkFor = (site: string): Homework => {
+  const feed = FEEDS[site]
+  if (!feed) throw new Error(`no fixture feed for ${site}; add one to FEEDS`)
+  return {
+    items: parseFeed(
+      readFileSync(join(ROOT, 'fixtures/sites', feed.file), 'utf8'),
+      'http://127.0.0.1/',
+    ).map((i) => ({ kind: feed.kind, ...i })),
+    pages: [],
+  }
 }
 const MESSAGES_NOW = Date.parse('2026-11-03T12:00:00Z')
 
@@ -334,8 +344,8 @@ try {
         })
       }
 
-      // --- the messages that carry the film, with and without the fixture changelog
-      for (const homework of [null, HOMEWORK]) {
+      // --- the messages that carry the film, with and without the site's own latest posts
+      for (const homework of [null, homeworkFor(site)]) {
         const filmId = `eval_${site}_${preset}_${homework ? 'research' : 'plain'}`
         if (PACE_MS && films++) await sleep(PACE_MS)
         let run: Omit<MessageRun, 'film'>
@@ -518,6 +528,21 @@ function messagesReport(): string[] {
     '## Why drafts fell back to the template (after the rewrite)',
     '',
     ...(fellBack.length ? ['| Count | Draft: why |', '|---:|---|', ...top(fellBack)] : ['None.']),
+    '',
+    // which post each email's research line is about: each site's own, never another company's
+    '## Research lines',
+    '',
+    ...(() => {
+      const rows = runs
+        .filter((r) => r.m.research)
+        .map(
+          (r) =>
+            `| ${r.film} | ${new URL(r.m.research!.itemUrl).pathname} | ${r.m.writer.email} | ${r.m.research!.line.replaceAll('|', '\\|')} |`,
+        )
+      return rows.length
+        ? ['| Film | Post | Email written by | Line |', '|---|---|---|---|', ...rows]
+        : ['None.']
+    })(),
     '',
     '## Example drafts',
     '',

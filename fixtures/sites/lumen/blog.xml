@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lumen Health's blog, as an RSS feed. Not linked from the homepage on purpose, so films of the
+     fixture stay the same as dates age; tests and evals read it directly. -->
+<rss version="2.0">
+  <channel>
+    <title>Lumen Health blog</title>
+    <link>/lumen/blog</link>
+    <item>
+      <title>A weekly dashboard for every clinic</title>
+      <link>/lumen/blog/clinic-dashboard</link>
+      <pubDate>Wed, 14 Oct 2026 00:00:00 GMT</pubDate>
+      <description>&lt;p&gt;Every clinic on Lumen now gets a weekly dashboard showing how many patients finished intake before arrival and how much documentation time it saved.&lt;/p&gt;&lt;p&gt;Find it under Reports.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>What we learned measuring which clinics grow</title>
+      <link>/lumen/blog/which-clinics-grow</link>
+      <pubDate>Wed, 16 Sep 2026 00:00:00 GMT</pubDate>
+      <description>&lt;p&gt;We tracked which clinics grow fastest after switching to Lumen, and the clearest signal was sending the intake link the day before the visit.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Intake in Vietnamese and Tagalog</title>
+      <link>/lumen/blog/vietnamese-tagalog</link>
+      <pubDate>Wed, 19 Aug 2026 00:00:00 GMT</pubDate>
+      <description>Patients can now answer intake questions in Vietnamese and Tagalog, and clinicians still read the structured note in English.</description>
+    </item>
+  </channel>
+</rss>
