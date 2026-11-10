@@ -51,6 +51,34 @@ Matched case-insensitively anywhere in a line:
 
 To add your own house rules, edit [src/script/taste.ts](../src/script/taste.ts). The prompt and the checks both read from it, so the model is told about a rule the moment it's enforced.
 
+## Message rules
+
+The messages that go with a film are checked too ([src/outreach/checks.ts](../src/outreach/checks.ts)). A model draft that breaks a rule is sent back once with the reasons. If it still fails, its template is used instead, and every template passes the same rules on every fixture. Limits live in `MESSAGE_LIMITS` only.
+
+| Rule                | What it checks                                                                                                                                                                                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `length`            | Connection note at most 200 characters (a free LinkedIn account's limit); after-accept message 500; InMail subject 60 and body 400; email and follow-ups at most 125 words, not counting a line that's only a link |
+| `grounded`          | Every number appears in their site, the film, the job post, your profile or their recent posts. The film's own length ("30-second") needs no source                                                                |
+| `no_begging`        | None of the begging or referral words below                                                                                                                                                                        |
+| `one_ask`           | The note asks nothing (the ask comes once they accept). The after-accept message, InMail and email ask exactly one question. A follow-up never asks two                                                            |
+| `names_company`     | The note, after-accept message, InMail and email name the company                                                                                                                                                  |
+| `no_link`           | The note has no link: a note with a link reads as spam                                                                                                                                                             |
+| `has_link`          | The after-accept message, InMail and email carry the film's link exactly once                                                                                                                                      |
+| `banned`            | None of the banned phrases above                                                                                                                                                                                   |
+| `no_exclamation`    | No exclamation marks                                                                                                                                                                                               |
+| `research_grounded` | The email's research line stays close to what their post says: a word overlap of at least 0.6 with the post. A restatement, never an invention                                                                     |
+| `film_once`         | The email says "film" or "video" once, in the line code writes before the link                                                                                                                                     |
+
+A failed rule comes back as a flag with a plain sentence saying why, which the film panel shows under "Why this is the template version". When code changes a kept draft (for example, leaving out the funding line to stay under 125 words), that's a note, not a flag.
+
+### Begging and referral words
+
+Matched case-insensitively as whole phrases, with curly apostrophes counted as straight ones:
+
+> refer me, referral, any openings, any opportunities, grateful if you could, I'd be grateful for, pass my resume, pick your brain, just checking in, desperate, please consider me, sorry to bother
+
+They live in `BEGGING` in [src/script/taste.ts](../src/script/taste.ts). The ask is always one small, clear thing: a 15-minute call, after you've offered the film.
+
 ## Design rules (also enforced)
 
 - Every text color meets WCAG AA (4.5:1) on its background, and accents meet 3:1. The brand's own colors are tried first, then the same hue shaded until it passes, then near-black or white.

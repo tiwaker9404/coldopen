@@ -100,7 +100,7 @@ docker compose up --build       # web app, API, renderer and Postgres on http://
 - **Jobs for you.** Say which roles you want and where, and the app lists open ones from the public job boards of 450+ companies (Greenhouse, Lever and Ashby): 70 picked by hand and about 400 hiring YC startups, found weekly from YC's own directory and kept only when the board is clearly the company's own. Each job shows why it fits, its pay (most Ashby and Lever posts list it), a YC badge, whether the company had H-1B petitions approved (from USCIS's H-1B Employer Data Hub), how many roles the company posted this month, and people you know there from your LinkedIn connections. Filter by YC only, H-1B sponsors, minimum pay, posted this week or month, or leave companies out; sort by best fit or hiring fastest. Fit check shows how well your profile answers each post's requirements, and Fit gaps lists the skills your best matches keep asking for, with one click to add one to your profile. Tick several jobs to make their films in one go, or add any other careers board with a link. Boards are read with no key, in the background, and cached for a few hours (`GET /v1/jobs/suggested`).
 - **Answer a job post.** Add `--job <link or file>` and the film quotes one of the role's requirements word for word, then answers it with your proof. See [docs/PROFILES.md](docs/PROFILES.md#answer-a-job-post).
 - **Know who watched.** Share pages report opens, plays, how far people got and who finished, with bots, link previews and email scanners left out. Get a Slack or Discord ping when someone starts watching. Using the CLI? `pnpm share:setup` puts your share links on Cloudflare's free plan, then `coldopen share films` and `coldopen views`. See [docs/SHARING.md](docs/SHARING.md).
-- **Batches.** `POST /v1/batches` with a list of URLs, then download `results.csv` with share, GIF and video links per prospect, ready for a CRM or a sequencer like Apollo, Outreach or HubSpot.
+- **Batches.** `POST /v1/batches` with a list of URLs or jobs. For a LinkedIn job, or any other post behind a sign-in, add the description as `jobs[].text`; without it, the batch returns 422 `job_needs_text` and nothing is queued. Then download `results.csv` with share, GIF and video links per prospect, ready for a CRM or a sequencer like Apollo, Outreach or HubSpot.
 - **Slack.** Mention `@coldopen acme.com` in any channel and the finished film is posted back into the thread. Requests are signature-verified, and Slack's retries never start a second film. See [docs/SLACK.md](docs/SLACK.md).
 - **API.** Everything above is a REST call. OpenAPI docs are served at `/docs`; set `API_KEYS` to require a bearer key.
 - **Scale.** Run more renderers with `docker compose up -d --scale worker=4`. Each worker claims films with `FOR UPDATE SKIP LOCKED` and holds a heartbeated lease; finished work is never redone.
@@ -113,7 +113,7 @@ coldopen serves the [Model Context Protocol](https://modelcontextprotocol.io) at
 claude mcp add --transport http coldopen https://coldopen-nk8o.onrender.com/mcp --header "Authorization: Bearer co_…"
 ```
 
-Ten tools, each a thin call to the REST API as you (so limits, ownership and checks are the app's own): `search_jobs`, `find_startups`, `make_film`, `get_film`, `list_films`, `draft_messages`, `find_founders`, `set_recipient`, `follow_ups_due` and `call_brief`. Read-only tools are marked as such. Nothing is ever sent for you. Then ask: _"Find Forward Deployed Engineer roles at YC startups that sponsor visas, make films for the top three, and draft the emails."_
+Ten tools, each a thin call to the REST API as you (so limits, ownership and checks are the app's own): `search_jobs`, `find_startups`, `make_film`, `get_film`, `list_films`, `draft_messages`, `find_founders`, `set_recipient`, `follow_ups_due` and `call_brief`. Read-only tools are marked as such. `make_film` takes `jobText` with the description pasted in, for LinkedIn and other job links behind a sign-in. Nothing is ever sent for you. Then ask: _"Find Forward Deployed Engineer roles at YC startups that sponsor visas, make films for the top three, and draft the emails."_
 
 ## Writing scripts with a model (free)
 
@@ -165,12 +165,38 @@ Applying to different kinds of roles? Keep one profile per résumé in a folder 
 
 Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show** chips in the web app. Otherwise the writer picks the three that fit each company.
 
+## The messages that go with it
+
+A film only helps if someone opens the message it's in. Each candidate and sales film comes with the messages for the whole sequence:
+
+- **A LinkedIn connection note** of 200 characters at most, the limit on a free account. It has no link and no ask: it only asks to connect.
+- **A message for once they accept,** with the film's link and one question.
+- **An InMail** (subject and body), labeled honestly: it's free only when they have an Open Profile or you share a group. Otherwise, send the connection note.
+- **A warm email in five parts:** the opening, the film, one research line from their own blog or changelog, why you fit, and a 15-minute ask. Under 125 words.
+
+**The model writes them and code checks them.** One small model call in the film's durable `messages` step writes the note, the after-accept message, the InMail and the email from the film's own facts. Code then checks each draft ([src/outreach/checks.ts](src/outreach/checks.ts)):
+
+- the length fits
+- every number comes from their site or your profile
+- no begging or referral words ("refer me", "pick your brain", "sorry to bother")
+- one ask
+- the company is named
+- links only where they belong (never in the note, once in the rest)
+- the research line sticks to what their post says
+- the film is mentioned once
+
+A draft that fails is sent back once with the reasons. If it still fails, it falls back to a template that passes the same checks, and every preset's templates pass on every fixture. Recruiter and hiring films, films made before this, and films made without a model use the templates. Follow-ups are templates too, and they run through the same checks.
+
+**Some lines are added in code, not by the model:** the detail you saved about the company, then the funding line when they raised in the last month. If the email runs long, the funding line goes first. If the saved detail still breaks a check, the template email comes back with the detail in it.
+
+**Flags and notes.** A flag means a draft failed a check and fell back to its template; the film panel says why under "Why this is the template version". A note means code changed a kept draft, for example leaving out the funding line to stay under 125 words; it shows under "What was changed". Neither appears when there's nothing to say. `GET /v1/films/:id/messages`, `GET /v1/followups` and the MCP `draft_messages` tool return the same drafts with `afterAccept`, `inmail`, `writer`, `flags` and `notes`.
+
 ## Quality, measured
 
 ```bash
 pnpm test         # 500 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
-pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2 presets
+pnpm evals        # 168 quality checks across 14 evals on 3 fixture companies x 2 presets
 ```
 
 [Evals](evals/results.md) grade the output, not the code:
@@ -181,6 +207,17 @@ pnpm evals        # 72 quality checks across 12 evals on 3 fixture companies x 2
 - **Design:** WCAG contrast, no text overflow in any of three formats, and pixel-identical re-renders.
 
 Run `pnpm evals --model <name>` to grade a real model's scripts the same way.
+
+**Messages, measured on a real model.** The [messages eval](.github/workflows/messages-eval.yml) runs Groq's `openai/gpt-oss-120b` against the message checks on every fixture film. It's started by hand from Actions, since it spends the free tier's minute. On 12 films:
+
+| Draft             | Passed on the first try | Fell back to the template |
+| ----------------- | ----------------------: | ------------------------: |
+| Connection note   |                    100% |                        0% |
+| After they accept |                    100% |                        0% |
+| InMail            |                     92% |                        0% |
+| Email             |                     67% |                        8% |
+
+Every kind of draft falls back at most 8% of the time, and a fallback still passes every check.
 
 The [fit eval](evals/fit/results.md) grades job matching: does "this line of your record answers that requirement" agree with a person? On 128 hand-labeled pairs, built so many share words without answering (and many answer without sharing words), shared-word matching finds 15% of real answers (F1 0.25). A small sentence-embedding model, bge-small-en-v1.5 run on the CPU through ONNX with no API, finds 76% at 74% precision (F1 0.75, AUC 0.83). Its cut-off is picked on half the pairs and scored on the other half, and fit uses it when `FIT_SEMANTIC=on`. The workflow reruns the eval whenever the matching changes (`pnpm eval:fit`).
 
