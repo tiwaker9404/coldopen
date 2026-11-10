@@ -41,6 +41,7 @@ export type CheckRule =
   | 'banned'
   | 'no_exclamation'
   | 'research_grounded'
+  | 'film_once'
 
 export interface Check {
   rule: CheckRule
@@ -75,8 +76,28 @@ const HAS_LINK: MessageKind[] = ['afterAccept', 'inmail', 'email']
 
 const URL = /\bhttps?:\/\/\S+|\bwww\.\S+/gi
 const PLACEHOLDER = /\[[^\]]*\]/g
-// the film's length is coldopen's own fact, true of every film, so it needs no source
-const FILM_LENGTH = /\b30-second\b/gi
+
+/**
+ * How long every film is. The messages' film lines ("I made a 30-second film for…") are written
+ * from this, and knownFor counts it as known, so the two can't drift apart.
+ */
+export const FILM_SECONDS = 30
+/** "30-second", as the film lines say it */
+export const FILM_LENGTH = `${FILM_SECONDS}-second`
+/**
+ * The film's length, however a draft spells it ("30-second", "30 seconds", "30‑sec"): coldopen's
+ * own fact, true of every film, so it needs no source.
+ */
+const FILM_LENGTH_RE = new RegExp(`\\b${FILM_SECONDS}[\\s\u2010-\u2015-]*sec(?:ond)?s?\\b`, 'gi')
+/**
+ * What knownFor says about the film's length. It's known as a phrase, not as a bare number: a
+ * bare 30 would also ground "cut churn 30%".
+ */
+export const FILM_KNOWN = `Every film is ${FILM_LENGTH}, ${FILM_SECONDS} seconds long.`
+
+/** The one email line allowed to say "film": the one code writes ("I made a 30-second film for …") */
+const isFilmLine = (line: string) => line.includes(`${FILM_LENGTH} film`)
+const FILM_WORDS = /\b(film|video)s?\b/i
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 /** curly apostrophes count as straight ones, so "I’d be grateful for" still matches */
@@ -131,11 +152,11 @@ export function checkMessage(
   const checks: Check[] = [...lengthChecks(kind, subject, body)]
 
   // grounding: the link, URLs and placeholders aren't claims, so their digits don't count
-  const known = numbersIn(ctx.known)
+  const known = numbersIn(ctx.known.replaceAll(FILM_KNOWN, ' '))
   const claims = (ctx.link ? all.replaceAll(ctx.link, ' ') : all)
     .replace(URL, ' ')
     .replace(PLACEHOLDER, ' ')
-    .replace(FILM_LENGTH, ' ')
+    .replace(FILM_LENGTH_RE, ' ')
   const unknown = [...new Set(numbersIn(claims))].filter(
     (n) => !known.some((k) => sameNumber(k, n)),
   )
@@ -249,6 +270,29 @@ export function checkMessage(
       : { rule: 'no_exclamation', ok: true },
   )
 
+  // the email says "film" once, in the line code writes before the link; anywhere else in the
+  // body says it twice. The subject is a subject, so a film there is fine.
+  if (kind === 'email') {
+    const lines = body.split('\n')
+    const at = lines.findIndex(isFilmLine)
+    const rest = lines
+      .filter((_, i) => i !== at)
+      .join('\n')
+      // the link (or its [film] placeholder) isn't the message saying it
+      .replaceAll(ctx.link || '\u0000', ' ')
+      .replace(URL, ' ')
+      .replace(PLACEHOLDER, ' ')
+    checks.push(
+      FILM_WORDS.test(rest)
+        ? {
+            rule: 'film_once',
+            ok: false,
+            why: 'Mentions the film again; the film line already does',
+          }
+        : { rule: 'film_once', ok: true },
+    )
+  }
+
   if (kind === 'email' && ctx.research) {
     const o = overlap(ctx.research.line, ctx.research.source)
     checks.push(
@@ -303,6 +347,8 @@ export function knownFor(
     // the email's ask is always for 15 minutes (its fifth part), so that number is ours to say,
     // whether the model or a template wrote the ask
     ASK_LENGTH,
+    // and how long every film is, from the constant the film lines are written with
+    FILM_KNOWN,
     ...posts,
   ]
     .filter(Boolean)

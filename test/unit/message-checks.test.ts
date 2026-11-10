@@ -6,12 +6,14 @@ import {
   type Check,
   type CheckRule,
   checkMessage,
+  FILM_LENGTH,
   knownFor,
   MESSAGE_LIMITS,
   passed,
   RESEARCH_OVERLAP,
 } from '../../src/outreach/checks.ts'
 import { checkEmail } from '../../src/outreach/messages.ts'
+import { overlap } from '../../src/script/checks.ts'
 import { BEGGING } from '../../src/script/taste.ts'
 import { profile } from '../helpers/index.ts'
 
@@ -287,6 +289,65 @@ describe('message checks', () => {
     })
   })
 
+  describe('film_once', () => {
+    const withOpening = (opening: string, fit = '40% faster month-end close at Initech.') => ({
+      subject: 'A 30-second film for Parcelpine',
+      body: [
+        'Hi [First name],',
+        '',
+        opening,
+        '',
+        'I made a 30-second film for your Operations Analyst role at Parcelpine:',
+        link,
+        '',
+        fit,
+        '',
+        'Could we talk for 15 minutes this week?',
+        '',
+        'Ashwin Tiwari',
+      ].join('\n'),
+    })
+    const ok = { ...ctx, known: `${ctx.known} 15 minutes` }
+
+    it('passes an email that says "film" only in the line code writes, and in its subject', () => {
+      const checks = checkMessage(
+        'email',
+        withOpening('I saw the Operations Analyst role at Parcelpine.'),
+        ok,
+      )
+      expect(rule(checks, 'film_once')).toEqual({ rule: 'film_once', ok: true })
+      expect(passed(checks)).toBe(true)
+      // the stored draft's [film] placeholder isn't the email saying it again
+      const stored = withOpening('I saw the Operations Analyst role at Parcelpine.')
+      expect(
+        fails(
+          checkMessage('email', { ...stored, body: stored.body.replace(link, '[film]') }, ok),
+          'film_once',
+        ),
+      ).toBe(false)
+    })
+
+    it('fails an opening that says "I made you a video", with its why', () => {
+      const checks = checkMessage('email', withOpening('I made you a video about Parcelpine.'), ok)
+      expect(rule(checks, 'film_once')).toEqual({
+        rule: 'film_once',
+        ok: false,
+        why: 'Mentions the film again; the film line already does',
+      })
+    })
+
+    it('fails "film" anywhere else in the body too, and is only asked of the email', () => {
+      const fit = 'The film shows 40% faster month-end close at Initech.'
+      expect(
+        fails(
+          checkMessage('email', withOpening('I saw the role at Parcelpine.', fit), ok),
+          'film_once',
+        ),
+      ).toBe(true)
+      expect(rule(checkMessage('afterAccept', afterAccept, ok), 'film_once')).toBeUndefined()
+    })
+  })
+
   describe('research_grounded', () => {
     const source =
       'We rebuilt route planning so dispatchers can re-plan a whole day of deliveries in seconds.'
@@ -308,6 +369,29 @@ describe('message checks', () => {
       expect(
         rule(checkMessage('email', email, { ...ctx, research }), 'research_grounded')?.why,
       ).toMatch(/doesn't/)
+    })
+
+    it('passes a restatement with a few words of reaction (0.75), and fails one that adds its own claim', () => {
+      // Parcelpine's live-traffic post, and lines like the real model's from step 6d
+      const post =
+        'Route planning now reroutes trucks around live traffic before a delivery runs late, for every lane.'
+      const reaction = 'Your route planning reroutes trucks around traffic, which caught my eye'
+      expect(overlap(reaction, post)).toBe(0.75)
+      expect(
+        fails(
+          checkMessage('email', email, { ...ctx, research: { line: reaction, source: post } }),
+          'research_grounded',
+        ),
+      ).toBe(false)
+      const claim =
+        'Route planning that reroutes around live traffic means your dispatch team can promise tighter delivery windows to every customer'
+      expect(overlap(claim, post)).toBeLessThan(RESEARCH_OVERLAP)
+      expect(
+        fails(
+          checkMessage('email', email, { ...ctx, research: { line: claim, source: post } }),
+          'research_grounded',
+        ),
+      ).toBe(true)
     })
 
     it('is only checked on emails that carry research', () => {
@@ -335,6 +419,25 @@ describe('knownFor', () => {
     const known = knownFor({ company: 'Parcelpine' }, profile('candidate'), { items, pages: [] })
     expect(known).toContain('reroutes trucks around live traffic before a delivery runs late')
     expect(known).toContain('customers see it in the tracking link within a minute')
+  })
+
+  it(`counts the film's length as known: "a ${FILM_LENGTH} film" passes grounded, "cut churn 30%" doesn't`, () => {
+    const known = knownFor({ company: 'Parcelpine' }, profile('candidate'))
+    const at = { company: 'Parcelpine', known, link: 'https://x.example/f/1' }
+    for (const said of ['a 30-second film', 'a 30 seconds film', 'a 30\u2011second film'])
+      expect(
+        rule(
+          checkMessage('note', `Hi Dana, I made ${said} for Parcelpine. – Alex`, at),
+          'grounded',
+        ),
+        said,
+      ).toEqual({ rule: 'grounded', ok: true })
+    expect(
+      fails(
+        checkMessage('note', 'Hi Dana, I cut churn 30% at Initech for Parcelpine. – Alex', at),
+        'grounded',
+      ),
+    ).toBe(true)
   })
 
   it("counts the email's 15-minute ask as known, so a model's own ask passes the re-check", () => {

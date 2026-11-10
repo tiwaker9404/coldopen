@@ -15,6 +15,7 @@ import {
   type Check,
   checkMessage,
   emailWords,
+  FILM_LENGTH,
   knownFor,
   MESSAGE_LIMITS,
   type MessageKind,
@@ -111,7 +112,7 @@ const forWhat = (film: MessageFilm) =>
 
 const hello = 'Hi [First name],'
 const noteSign = (p: Profile) => ` – ${firstName(p)}`
-const filmLine = (film: MessageFilm) => `I made a 30-second film ${forWhat(film)}:`
+const filmLine = (film: MessageFilm) => `I made a ${FILM_LENGTH} film ${forWhat(film)}:`
 
 /**
  * The model's text with the parts code owns: the greeting, the link and the signature, laid out
@@ -226,7 +227,7 @@ export function briefFor(
   }
 }
 
-const SYSTEM = `You write the short messages that carry a 30-second personalized film, made by the sender for one company, to one person there.
+const SYSTEM = `You write the short messages that carry a ${FILM_LENGTH} personalized film, made by the sender for one company, to one person there.
 Write text only. Never write a greeting, a signature or a URL: code adds them. Where the film's link goes, write ${FILM}.
 
 ${TASTE_RULES}
@@ -257,9 +258,9 @@ SENDER: ${b.sender}. The ask: ${b.ask}
 
 THE MESSAGES (limits are checked in code; going over means a rewrite):
 - note: a LinkedIn connection note, at most ${b.budgets.note} characters. Who you are to them and that you made something for ${b.company}. No link, no ${FILM}, no question, no ask.
-- afterAccept: sent once they accept, at most ${b.budgets.afterAccept} characters. Thanks for connecting, ${FILM} once, then exactly one question: the ask.
-- inmail: subject at most ${b.budgets.inmailSubject} characters and names ${b.company}; body at most ${b.budgets.inmailBody} characters, with ${FILM} once and exactly one question.
-- email (code adds the film's link after the opening): subject names ${b.company}, not "inquiry" or "application". opening: one sentence. research: ${b.research ? "one sentence on what that post means for the role or for them, kept to what the post says, without repeating the post's title word for word" : 'null'}. fit: one or two sentences on why the sender fits, from the proof. ask: one question asking for 15 minutes. All four parts together at most ${b.budgets.emailWords} words. The email has exactly one question, in the ask.
+- afterAccept: sent once they accept, at most ${b.budgets.afterAccept} characters. Thanks for connecting, then ${FILM} (required, exactly once, where the link goes), then exactly one question: the ask.
+- inmail: subject at most ${b.budgets.inmailSubject} characters and names ${b.company}; body at most ${b.budgets.inmailBody} characters, with ${FILM} (required, exactly once, where the link goes) and exactly one question.
+- email: no ${FILM} in any part; code adds "I made a ${FILM_LENGTH} film…" and the link right after the opening, so no part mentions the film or a video. subject names ${b.company}, not "inquiry" or "application". opening: one sentence. research: ${b.research ? 'one short sentence restating what the post says in your own words, keeping its key words (the check counts how many of your words come from the post). You may add at most a few words of reaction, such as "which caught my eye". No new claims about what it means for them or for the role' : 'null'}. fit: one or two sentences on why the sender fits, from the proof. ask: one question asking for 15 minutes. All four parts together at most ${b.budgets.emailWords} words. The email has exactly one question, in the ask.
 - ${lead}
 - Every message names ${b.company}. No exclamation marks. Numbers only from the proof or the role.
 - Never beg or ask a favor: no "refer me", "referral", "any openings", "pass my resume", "pick your brain", "just checking in", "I'd be grateful".`
@@ -274,6 +275,17 @@ export const promptTokens = (messages: ChatMessage[]) =>
   estimateTokens(messages.map((m) => m.content).join('\n'))
 
 /* ------------------------------------------------------------ write, check, fall back */
+
+/**
+ * What the rewrite request says about a failed check: its why, except for a missing or doubled
+ * link, where the model needs to be told what to write (it can't write the link itself).
+ */
+export const resend = (c: Check) =>
+  c.rule === 'has_link'
+    ? /\d+ times/.test(c.why ?? '')
+      ? `Put ${FILM} where the link goes, once only`
+      : `Put ${FILM} where the link goes`
+    : (c.why ?? c.rule)
 
 /**
  * One model call writes all four drafts. Code assembles and checks each; drafts that fail go
@@ -335,7 +347,7 @@ export async function writeMessages(opts: {
   if (failed.length) {
     rounds = 2
     const problems = failed.flatMap((d) =>
-      firstChecks[d].filter((c) => !c.ok).map((c) => `- ${d}: ${c.why ?? c.rule}`),
+      firstChecks[d].filter((c) => !c.ok).map((c) => `- ${d}: ${resend(c)}`),
     )
     const second = await opts.complete('messages-2', [
       ...messages,
@@ -414,20 +426,20 @@ export function scriptedMessages(b: MessageBrief): ModelMessages {
   ].find((n) => fits(n, b.budgets.note))!
   const proofLine = b.proof.length ? `It shows ${b.proof.slice(0, 2).join(' and ')}.` : ''
   const afterAccept = [
-    `Thanks for connecting. I made a 30-second film ${b.role ? `for the ${b.role} role at ${b.company}` : `for ${b.company}`}: ${FILM} ${proofLine} ${b.ask}`,
+    `Thanks for connecting. I made a ${FILM_LENGTH} film ${b.role ? `for the ${b.role} role at ${b.company}` : `for ${b.company}`}: ${FILM} ${proofLine} ${b.ask}`,
     `Thanks for connecting. Here's the film I made for ${b.company}: ${FILM} ${b.ask}`,
   ]
     .map((t) => t.replace(/\s+/g, ' ').trim())
     .find((t) => fits(t, b.budgets.afterAccept))!
   const inmailBody = [
-    `${b.role ? `I saw the ${b.role} role at ${b.company}` : `I've been following ${b.company}`}, and I made a 30-second film for the team: ${FILM} ${proofLine} ${b.ask}`,
-    `I made a 30-second film for ${b.company}: ${FILM} ${b.ask}`,
+    `${b.role ? `I saw the ${b.role} role at ${b.company}` : `I've been following ${b.company}`}, and I made a ${FILM_LENGTH} film for the team: ${FILM} ${proofLine} ${b.ask}`,
+    `I made a ${FILM_LENGTH} film for ${b.company}: ${FILM} ${b.ask}`,
   ]
     .map((t) => t.replace(/\s+/g, ' ').trim())
     .find((t) => fits(t, b.budgets.inmailBody))!
   const subjects = [
-    b.role ? `${b.company}'s ${b.role} role: a 30-second film` : '',
-    `A 30-second film for ${b.company}`,
+    b.role ? `${b.company}'s ${b.role} role: a ${FILM_LENGTH} film` : '',
+    `A ${FILM_LENGTH} film for ${b.company}`,
     b.company,
   ].filter(Boolean)
   const opening = b.role

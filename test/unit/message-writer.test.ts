@@ -238,6 +238,47 @@ describe('the model writes the messages, and code checks them', () => {
     )
   })
 
+  it('says in the prompt where [film] goes in each draft, and that the email opening leaves the film out', () => {
+    const prompt = buildMessagePrompt(film, candidate, item, 'film')[1]!.content
+    const line = (draft: string) => prompt.split('\n').find((l) => l.startsWith(`- ${draft}:`))!
+    expect(line('note')).toContain(`no ${FILM}`)
+    expect(line('afterAccept')).toContain(`${FILM} (required, exactly once, where the link goes)`)
+    expect(line('inmail')).toContain(`${FILM} (required, exactly once, where the link goes)`)
+    expect(line('email')).toContain(`no ${FILM} in any part`)
+    expect(line('email')).toContain(
+      'code adds "I made a 30-second film…" and the link right after the opening, so no part mentions the film or a video',
+    )
+  })
+
+  it('tells the model to put [film] where the link goes when a draft left it out', async () => {
+    const reply = good()
+    const noLink = {
+      ...reply,
+      afterAccept: 'Thanks for connecting. Parcelpine looks great to me. Free for 15 minutes?',
+    }
+    const m = model(noLink, good())
+    const r = await write(m.complete)
+    const resent = m.sent[1]!.at(-1)!.content
+    expect(resent).toContain(`- afterAccept: Put ${FILM} where the link goes`)
+    expect(resent).not.toContain('Leaves out the link')
+    expect(r.writer.afterAccept).toBe('model')
+  })
+
+  it('sends back an email whose opening mentions the film, since code adds the film line', async () => {
+    const reply = good()
+    const twice = {
+      ...reply,
+      email: { ...reply.email, opening: 'I made you a video for Parcelpine' },
+    }
+    const m = model(twice, good())
+    const r = await write(m.complete)
+    expect(r.firstTry).not.toContain('email')
+    expect(m.sent[1]!.at(-1)!.content).toContain(
+      '- email: Mentions the film again; the film line already does',
+    )
+    expect(r.writer.email).toBe('model')
+  })
+
   it('opens with the film when there is no number to lead with', () => {
     const none = { ...film, highlights: { quote: film.highlights!.quote, proof: [] } }
     expect(briefFor(none, candidate, null, 'proof').opener).toBe('film')
@@ -283,6 +324,16 @@ describe('the research line, from the fixture changelog read on a pinned day', (
     expect(r.research).toBeNull()
     expect(r.writer.email).toBe('model')
     expect(r.drafts.email.body.split('\n\n')).toHaveLength(6)
+  })
+
+  it('asks for a restatement of the post, with at most a few words of reaction and no new claims', () => {
+    const prompt = buildMessagePrompt(film, candidate, item, 'film')[1]!.content
+    expect(prompt).toContain(
+      'restating what the post says in your own words, keeping its key words',
+    )
+    expect(prompt).toContain('at most a few words of reaction, such as "which caught my eye"')
+    expect(prompt).toContain('No new claims about what it means for them or for the role')
+    expect(prompt).not.toContain('what that post means')
   })
 
   it('drops the trailing "…" of a cut summary before the model sees it', () => {

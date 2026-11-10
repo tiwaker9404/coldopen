@@ -6,6 +6,7 @@ import {
   type Check,
   checkMessage,
   emailWords,
+  FILM_LENGTH,
   knownFor,
   MESSAGE_LIMITS,
   type MessageKind,
@@ -237,8 +238,8 @@ export function draftMessages(
       '',
       // part 2: the film
       lead === 'proof'
-        ? `I made a 30-second film ${forWhat} on what I'd bring:`
-        : `${detail ? 'So I' : 'I'} made a 30-second film ${forWhat}:`,
+        ? `I made a ${FILM_LENGTH} film ${forWhat} on what I'd bring:`
+        : `${detail ? 'So I' : 'I'} made a ${FILM_LENGTH} film ${forWhat}:`,
       link,
       filmLine(o.quote),
       // part 3: what they published
@@ -275,8 +276,8 @@ export function draftMessages(
       lead === 'proof'
         ? `${company}: ${proof[0]}`
         : role
-          ? `A 30-second film for ${company}'s ${role} team`
-          : `A 30-second film for ${company}`,
+          ? `A ${FILM_LENGTH} film for ${company}'s ${role} team`
+          : `A ${FILM_LENGTH} film for ${company}`,
     body: firstFit(bodies, (b) => emailWords(b) <= MESSAGE_LIMITS.emailWords),
   }
 
@@ -309,8 +310,8 @@ export function draftMessages(
       `${hello} thanks for connecting.`,
       '',
       lead === 'proof'
-        ? `${best}. I made a 30-second film ${forWhat} on what I'd bring: ${link}`
-        : `I made a 30-second film ${forWhat}: ${link}`,
+        ? `${best}. I made a ${FILM_LENGTH} film ${forWhat} on what I'd bring: ${link}`
+        : `I made a ${FILM_LENGTH} film ${forWhat}: ${link}`,
       ...(withProof && rest.length ? ['', `${whyIFit(true)}`] : []),
       '',
       ask,
@@ -323,8 +324,8 @@ export function draftMessages(
   // InMail: the email's job in LinkedIn's shorter room
   const inmailSubjects = [
     ...(lead === 'proof' ? [`${company}: ${proof[0]}`] : []),
-    ...(role ? [`A 30-second film for ${company}'s ${role} team`] : []),
-    `A 30-second film for ${company}`,
+    ...(role ? [`A ${FILM_LENGTH} film for ${company}'s ${role} team`] : []),
+    `A ${FILM_LENGTH} film for ${company}`,
     `A film for ${company}`,
     company,
   ]
@@ -334,7 +335,7 @@ export function draftMessages(
       '',
       lead === 'proof' ? `${opening} ${best}.` : opening,
       '',
-      `I made a 30-second film ${forWhat}: ${link}`,
+      `I made a ${FILM_LENGTH} film ${forWhat}: ${link}`,
       ...(withProof && rest.length ? ['', whyIFit(false)] : []),
       '',
       ask,
@@ -383,8 +384,8 @@ export function draftMessages(
     'Hi [First name],',
     '',
     role
-      ? `Hope you're doing well! I'm applying for the ${role} role at ${company}, and I made a 30-second film for the team: ${link}`
-      : `Hope you're doing well! I'd love to work with the team at ${company}, and I made a 30-second film for them: ${link}`,
+      ? `Hope you're doing well! I'm applying for the ${role} role at ${company}, and I made a ${FILM_LENGTH} film for the team: ${link}`
+      : `Hope you're doing well! I'd love to work with the team at ${company}, and I made a ${FILM_LENGTH} film for them: ${link}`,
     '',
     `Would you be open to passing it to the hiring manager, or pointing me to the right person? Here's a short note you can forward as is:`,
     '',
@@ -397,8 +398,8 @@ export function draftMessages(
   // the note they forward: everything it says is on the film or the profile
   const forward = [
     role
-      ? `${me} is interested in our ${role} role and made a 30-second film for the team: ${link}`
-      : `${me} would love to work with us and made a 30-second film for the team: ${link}`,
+      ? `${me} is interested in our ${role} role and made a ${FILM_LENGTH} film for the team: ${link}`
+      : `${me} would love to work with us and made a ${FILM_LENGTH} film for the team: ${link}`,
     ...(proof.length ? [`Highlights: ${proof.join('; ')}.`] : []),
     `Reach ${first} at ${profile.cta.contact}.`,
   ].join('\n')
@@ -532,7 +533,7 @@ function recruiterMessages(
     body: [
       'Hi [First name],',
       '',
-      `I'm ${first}, ${profile.sender.role ? `a ${profile.sender.role.toLowerCase()}` : 'hiring'} at ${company}. Instead of a long message about ${what}, I made you a 30-second film:`,
+      `I'm ${first}, ${profile.sender.role ? `a ${profile.sender.role.toLowerCase()}` : 'hiring'} at ${company}. Instead of a long message about ${what}, I made you a ${FILM_LENGTH} film:`,
       link,
       '',
       noticed
@@ -549,8 +550,8 @@ function recruiterMessages(
   // InMail (or the message once they accept): short ones get more replies (under 400: +22%)
   // this message goes on its own (after they accept, or as an InMail), so it names the company
   const whatAt = role ? `our ${role} role at ${company}` : what
-  const full = `Hi [First name], I made you a 30-second film about ${whatAt}. It starts from your own work${at}: ${link} ${ask} – ${first}`
-  const plain = `Hi [First name], I made you a 30-second film about ${whatAt}: ${link} ${ask} – ${first}`
+  const full = `Hi [First name], I made you a ${FILM_LENGTH} film about ${whatAt}. It starts from your own work${at}: ${link} ${ask} – ${first}`
+  const plain = `Hi [First name], I made you a ${FILM_LENGTH} film about ${whatAt}: ${link} ${ask} – ${first}`
   const message = firstFit([full, plain], (t) => t.length <= MESSAGE_LIMITS.inmailBody)
   const inmail = {
     subject: firstFit(
@@ -569,7 +570,7 @@ function recruiterMessages(
     : `hiring at ${company}`
   const linkedin = firstFit(
     [
-      `Hi [First name], I'm ${first}, ${who}. I made you a 30-second film about ${what}. Would like to connect. – ${first}`,
+      `Hi [First name], I'm ${first}, ${who}. I made you a ${FILM_LENGTH} film about ${what}. Would like to connect. – ${first}`,
       `Hi [First name], I'm ${first}, hiring at ${company}. I made you a short film about a role. Would like to connect.`,
       `Hi [First name], I'm ${first} at ${company}. Would like to connect.`,
     ],
@@ -597,7 +598,7 @@ function recruiterMessages(
   const intro = [
     'Hi [First name],',
     '',
-    `We're hiring for ${what}, and I made a 30-second film for a candidate you may know: ${link}`,
+    `We're hiring for ${what}, and I made a ${FILM_LENGTH} film for a candidate you may know: ${link}`,
     '',
     'Would you be open to introducing us?',
     '',
@@ -650,7 +651,7 @@ function hiringMessages(
     '',
     ...(lines.length ? ['What you would do:', ...lines.map((l) => `→ ${l}`), ''] : []),
     ...(stat && /\d/.test(stat) ? [`${stat[0]!.toUpperCase()}${stat.slice(1)}.`, ''] : []),
-    `Watch the 30-second film: ${link}`,
+    `Watch the ${FILM_LENGTH} film: ${link}`,
     `Apply: ${apply}`,
     '',
     'Know someone who would be great at this? Tag them or send this their way.',
@@ -660,7 +661,7 @@ function hiringMessages(
     body: [
       'Hi [First name],',
       '',
-      `We're hiring ${hiringFor} at ${company}, and I made a 30-second film about the role: ${link}`,
+      `We're hiring ${hiringFor} at ${company}, and I made a ${FILM_LENGTH} film about the role: ${link}`,
       '',
       `Who's the best person you know for it? The post is here: ${apply}`,
       '',
@@ -678,7 +679,7 @@ function hiringMessages(
     (t) => t.length <= MESSAGE_LIMITS.note,
   )
   // once they accept, one easy question: the film is the whole pitch
-  const afterAccept = `Hi [First name], thanks for connecting. We're hiring ${hiringFor} at ${company} and I thought of you. A 30-second film about it: ${link} Would you take a look? – ${first}`
+  const afterAccept = `Hi [First name], thanks for connecting. We're hiring ${hiringFor} at ${company} and I thought of you. A ${FILM_LENGTH} film about it: ${link} Would you take a look? – ${first}`
   const followUp = [
     'Hi [First name],',
     '',

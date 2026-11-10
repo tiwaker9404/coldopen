@@ -359,6 +359,8 @@ describe('every template passes the checks', () => {
                 passed(checks),
                 `${who}, ${kind}: ${failures(checks)}\n${JSON.stringify(text)}`,
               ).toBe(true)
+              // the email says "film" once, in its film line
+              if (kind === 'email') expect(checks.map((c) => c.rule)).toContain('film_once')
             }
             expect(Object.values(m.writer).every((w) => w === 'template')).toBe(true)
             expect(m.flags).toEqual({})
