@@ -1,0 +1,46 @@
+name: Messages eval
+
+# Measures a real model (Groq's gpt-oss-120b) against the message checks: the connection note,
+# the message once they accept, InMail and the warm email, on every fixture site. Started by
+# hand only (it spends the free tier's minute), reads the code and the existing LLM_API_KEY
+# secret, writes its report to the job summary, and never commits.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: messages-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+        env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
+      # the fixture sites are read in headless Chromium, as a film's research step reads them
+      - run: pnpm exec puppeteer browsers install chrome
+      - name: Run the messages eval against Groq
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        # --pace 40: about one film's messages (two calls at most) per 40 seconds keeps under
+        # Groq's 8k tokens a minute; a 429 still gets one wait-and-retry
+        run: >
+          node evals/run.ts --only messages
+          --model openai/gpt-oss-120b
+          --base-url https://api.groq.com/openai/v1
+          --pace 40
+          --out messages-eval.md
+      - name: Job summary
+        if: always()
+        run: test -f messages-eval.md && cat messages-eval.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: { name: messages-eval, path: messages-eval.md, if-no-files-found: ignore }

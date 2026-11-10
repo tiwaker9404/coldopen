@@ -21,7 +21,7 @@ import {
   wholeClause,
 } from '../../src/outreach/messages.ts'
 import type { FilmMessages } from '../../src/outreach/writer.ts'
-import { hiringProfile, withRole } from '../../src/profile/pitch.ts'
+import { hiringProfile, recruiterProfile, withRole } from '../../src/profile/pitch.ts'
 import { buildStoryboard } from '../../src/script/storyboard.ts'
 import { BEGGING } from '../../src/script/taste.ts'
 import { type Profile, ProfileSchema } from '../../src/script/types.ts'
@@ -518,36 +518,77 @@ describe('addressed to one person', () => {
   })
 })
 
-/* ------------------------------------------------ hiring films pass the checks too */
+/* ------------------------------------------------ recruiter and hiring films pass the checks too */
 
-describe('hiring films pass the checks', () => {
-  // the drafts a hiring film has: the note, the message once they accept and the follow-ups (no InMail)
-  for (const kit of KITS.filter((k) => k.job))
-    it(`${kit.name}: the note, after-accept and follow-ups`, () => {
-      const p = withRole(
-        hiringProfile({
-          recruiter: { name: 'Hannah Brooks', company: kit.name },
-          role: kit.job!.title,
-        }),
-        kit,
-        'https://jobs.example/apply',
-      )
-      const film = filmFor(kit, p)
-      const m = draftMessages(film, p, LINK)
-      expect(m.inmail).toBeUndefined()
-      const ctx = { company: kit.name, known: knownFor(film, p), link: LINK }
-      const drafts: [MessageKind, string][] = [
-        ['note', m.linkedin],
-        ['afterAccept', m.afterAccept!],
-        ['followUp', m.followUp],
-        ['lastNote', m.lastNote],
-        ['linkedinFollowUp', m.linkedinFollowUp],
+/** A Pitch a role profile, as the recruiter makes it: the candidate's résumé, the recruiter's company */
+const recruiterFor = (kit: BrandKit) =>
+  recruiterProfile({
+    candidateText: readFileSync(join(root, 'fixtures/resumes/priya-analyst.md'), 'utf8'),
+    recruiter: { name: 'Hannah Brooks', company: kit.name, contact: 'hannah@example.com' },
+    ...(kit.job ? { role: kit.job.title } : {}),
+  })
+
+/** Every draft a preset's film has: a hiring film has no InMail */
+function draftsOf(m: ReturnType<typeof draftMessages>) {
+  const drafts: [MessageKind, string | { subject: string; body: string }][] = [
+    ['note', m.linkedin],
+    ['afterAccept', m.afterAccept!],
+    ...(m.inmail ? [['inmail', m.inmail] as [MessageKind, { subject: string; body: string }]] : []),
+    ['email', m.email],
+    ['followUp', m.followUp],
+    ['lastNote', m.lastNote],
+    ['linkedinFollowUp', m.linkedinFollowUp],
+  ]
+  return drafts
+}
+
+describe('recruiter and hiring templates pass the checks', () => {
+  for (const kit of KITS)
+    it(`${kit.name}${kit.job ? ', with its job' : ''}: every recruiter and hiring draft`, () => {
+      const presets: [string, Profile][] = [
+        ['recruiter', recruiterFor(kit)],
+        // without the candidate's name, the drafts keep the placeholder
+        ['recruiter, no name', ProfileSchema.parse({ ...recruiterFor(kit), recipient: undefined })],
+        [
+          'hiring',
+          withRole(
+            hiringProfile({
+              recruiter: { name: 'Hannah Brooks', company: kit.name },
+              ...(kit.job ? { role: kit.job.title } : {}),
+            }),
+            kit,
+            'https://jobs.example/apply',
+          ),
+        ],
       ]
-      for (const [kind, text] of drafts) {
-        const checks = checkMessage(kind, text, ctx)
-        expect(passed(checks), `${kind}: ${failures(checks)}\n${text}`).toBe(true)
+      for (const [who, p] of presets) {
+        const film = filmFor(kit, p)
+        const m = draftMessages(film, p, LINK)
+        const company = p.sender.company ?? kit.name
+        expect(p.preset, who).toBe(who.split(',')[0])
+        if (p.preset === 'hiring') expect(m.inmail).toBeUndefined()
+        else expect(m.inmail).toBeDefined()
+        const ctx = { company, known: knownFor(film, p), link: LINK }
+        for (const [kind, text] of draftsOf(m)) {
+          const checks = checkMessage(kind, text, ctx)
+          expect(
+            passed(checks),
+            `${who}, ${kind}: ${failures(checks)}\n${JSON.stringify(text)}`,
+          ).toBe(true)
+          const all = typeof text === 'string' ? text : `${text.subject}\n${text.body}`
+          expect(all, `${who}, ${kind}`).not.toContain('!')
+          for (const b of BEGGING) expect(all.toLowerCase()).not.toContain(b.toLowerCase())
+        }
       }
     })
+
+  it("the recruiter's last note ends easy either way, without asking a favor", () => {
+    const p = recruiterFor(KITS[5]!)
+    expect(p.preset).toBe('recruiter')
+    const m = draftMessages(out as never, p, LINK)
+    expect(m.lastNote).not.toContain('grateful')
+    expect(m.lastNote).toContain("If the timing isn't right, no problem at all.")
+  })
 })
 
 /* ------------------------------------------------ the research line, said once */
@@ -685,9 +726,23 @@ describe("messagesFor: the model's drafts with the real link, checked again", ()
     expect(m.email.body).toContain(`:\n${LINK}\n`)
     expect(JSON.stringify(m)).not.toContain('[film]')
     expect(m.flags).toEqual({})
+    expect(m.notes).toEqual({})
     // the follow-ups stay templates
     expect(m.writer.followUp).toBe('template')
     expect(m.checks.words).toBeGreaterThan(0)
+  })
+
+  it('an email that fails on its own falls back with its flags and no notes', () => {
+    const shouty = { ...email(), body: email().body.replace('this week?', 'this week?!') }
+    const m = messagesFor(
+      film(stored({ drafts: { ...stored().drafts, email: shouty } })),
+      p,
+      LINK,
+      { opener: 'film', now },
+    )
+    expect(m.writer.email).toBe('template')
+    expect(m.flags.email?.map((c) => c.rule)).toEqual(['no_exclamation'])
+    expect(m.notes?.email).toBeUndefined()
   })
 
   it('a draft that fell back in the film comes back as a fresh template, with its reasons', () => {
@@ -729,7 +784,7 @@ describe("messagesFor: the model's drafts with the real link, checked again", ()
     expect(m.checks.detail).toBe(true)
   })
 
-  it('drops the funding line first, then uses the template (which keeps the detail), each flagged', () => {
+  it('drops the funding line first (a note, not a flag), then uses the template, which keeps the detail', () => {
     const raised = { date: new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10) }
     const words = (b: string) =>
       b
@@ -756,7 +811,9 @@ describe("messagesFor: the model's drafts with the real link, checked again", ()
     expect(kept.email.body).toContain('I read your post on lanes.')
     expect(kept.email.body).not.toContain('Congratulations')
     expect(kept.whyNow).toBe(false)
-    expect(kept.flags.email?.[0]?.why).toBe('Left out the funding line to stay under 125 words')
+    // a kept draft that code changed has notes and no flags
+    expect(kept.flags.email).toBeUndefined()
+    expect(kept.notes?.email).toEqual(['Left out the funding line to stay under 125 words'])
 
     // a detail too long for the model's email: the template comes back with it, and says why
     const long =
@@ -773,7 +830,12 @@ describe("messagesFor: the model's drafts with the real link, checked again", ()
     )
     expect(back.writer.email).toBe('template')
     expect(back.email.body).toContain('the export to CSV dropped every custom field')
-    expect(back.flags.email?.[0]?.why).toMatch(
+    // both: the check the model's email failed, and what code did about it
+    expect(back.flags.email).toHaveLength(1)
+    expect(back.flags.email?.[0]).toMatchObject({ rule: 'length', ok: false })
+    expect(back.flags.email?.[0]?.why).toMatch(/^\d+ of 125 words$/)
+    expect(back.notes?.email).toHaveLength(1)
+    expect(back.notes?.email?.[0]).toMatch(
       /^With your saved detail the model's email ran to \d+ of 125 words, so this is the template version, which keeps the detail$/,
     )
   })
@@ -782,7 +844,9 @@ describe("messagesFor: the model's drafts with the real link, checked again", ()
     const m = messagesFor(film(stored()), p, LINK, { opener: 'proof', now })
     expect(m.opener).toBe('proof')
     expect(m.email.subject).toContain('40%')
-    expect(m.flags.email?.some((c) => /best number \(40%\)/.test(c.why ?? ''))).toBe(true)
+    expect(m.writer.email).toBe('model')
+    expect(m.flags.email).toBeUndefined()
+    expect(m.notes?.email?.some((n) => /best number \(40%\)/.test(n))).toBe(true)
   })
 
   it('an old film without model drafts gets templates, with the research it had when it was made', () => {

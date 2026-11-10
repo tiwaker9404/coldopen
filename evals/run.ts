@@ -3,6 +3,9 @@
  *
  *   node evals/run.ts                       # deterministic writer, all fixture sites
  *   node evals/run.ts --model qwen2.5:7b    # grade a real model's scripts (Ollama by default)
+ *   node evals/run.ts --only messages --model openai/gpt-oss-120b \
+ *     --base-url https://api.groq.com/openai/v1 --pace 40 --out messages.md
+ *                                           # only the message drafts, against a real model
  *
  * Tests check that code works. Evals check that output is good: on-brand, grounded,
  * readable, tasteful. Every check is scored on every fixture site and both presets, and
@@ -11,6 +14,7 @@
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { setTimeout as sleep } from 'node:timers/promises'
 import { parseArgs } from 'node:util'
 import { serveFixtures } from '../fixtures/serve.ts'
 import { contrast, distance, parseColor } from '../src/brand/color.ts'
@@ -19,14 +23,19 @@ import { type Homework, parseFeed, pickResearch } from '../src/brand/homework.ts
 import type { BrandKit } from '../src/brand/types.ts'
 import { closeBrowser } from '../src/browser.ts'
 import { buildLlm } from '../src/llm/chain.ts'
+import { LlmHttpError } from '../src/llm/openai.ts'
 import { ScriptedProvider } from '../src/llm/scripted.ts'
 import { openerFor } from '../src/outreach/messages.ts'
 import {
+  assemble,
   briefFor,
   DRAFTS,
+  FILM,
   type FilmMessages,
   MessagesSchema,
+  type ModelMessages,
   scriptedMessages,
+  type WrittenDraft,
   writeMessages,
 } from '../src/outreach/writer.ts'
 import { compose, type Format } from '../src/render/composition.ts'
@@ -47,9 +56,22 @@ const { values } = parseArgs({
     },
     'api-key': { type: 'string', default: process.env.LLM_API_KEY ?? 'ollama' },
     'fallback-model': { type: 'string', default: process.env.LLM_FALLBACK_MODEL },
-    out: { type: 'string', default: join(import.meta.dirname, 'results.md') },
+    out: { type: 'string' },
+    /** `messages`: only the message drafts (no brand, copy or design checks, no rendering) */
+    only: { type: 'string' },
+    /** seconds to wait between films, for a free tier's tokens-a-minute limit (Groq: 8k) */
+    pace: { type: 'string', default: '0' },
   },
 })
+const messagesOnly = values.only === 'messages'
+if (values.only && !messagesOnly) {
+  console.error(`--only takes "messages", not "${values.only}"`)
+  process.exit(2)
+}
+// the full report is tracked in the repo; a messages-only run is a measurement, written elsewhere
+const OUT =
+  values.out ?? join(import.meta.dirname, messagesOnly ? 'messages-results.md' : 'results.md')
+const PACE_MS = Math.max(0, Number(values.pace) || 0) * 1000
 
 const DESCRIPTIONS: Record<string, string> = {
   'brand.primary-color': 'Extracted signature color matches the site (OKLab distance under 0.03)',
@@ -151,13 +173,29 @@ const MESSAGES_NOW = Date.parse('2026-11-03T12:00:00Z')
 /** per draft kind: how many passed on the first try, and how many fell back to the template */
 const byDraft = new Map<string, { first: number; fallback: number; total: number }>()
 
+/** what each film's messages did, for the messages report */
+interface MessageRun {
+  film: string
+  m: FilmMessages
+  /** the reasons drafts were sent back after the first try, as the rewrite request listed them */
+  sentBack: { draft: string; why: string }[]
+  /** the model's own drafts from its last reply, assembled as they'd be sent */
+  modelDrafts: ReturnType<typeof assemble> | null
+}
+const runs: MessageRun[] = []
+/** films whose messages couldn't be measured (the model was unavailable after a retry) */
+const unmeasured: { film: string; why: string }[] = []
+
+const isRateLimit = (e: unknown) =>
+  (e instanceof LlmHttpError && e.status === 429) || /\bHTTP 429\b/.test(String(e))
+
 async function messages(
   kit: BrandKit,
   profile: Profile,
   s: Script,
   homework: Homework | null,
   id: string,
-): Promise<FilmMessages> {
+): Promise<Omit<MessageRun, 'film'>> {
   const board = buildStoryboard(kit, profile, s)
   const insight = board.scenes.find((x) => x.kind === 'insight')
   const proof = board.scenes.find((x) => x.kind === 'proof')
@@ -181,21 +219,48 @@ async function messages(
       () => JSON.stringify(scriptedMessages(briefFor(film, profile, item, opener))),
       [0, 1],
     )
-  const ctx = new LocalContext({ runId: id, llm: provider })
-  return writeMessages({
-    film,
-    profile,
-    homework,
-    opener,
-    model: values.model ?? 'scripted-v1',
-    now: MESSAGES_NOW,
-    complete: (key, m) => ctx.llm(key, { schema: MessagesSchema, messages: m }),
-  })
+  const attempt = async () => {
+    const ctx = new LocalContext({ runId: id, llm: provider })
+    const sentBack: MessageRun['sentBack'] = []
+    let last: ModelMessages | null = null
+    const m = await writeMessages({
+      film,
+      profile,
+      homework,
+      opener,
+      model: values.model ?? 'scripted-v1',
+      now: MESSAGES_NOW,
+      complete: async (key, msgs) => {
+        // the rewrite request lists each problem as "- draft: why"
+        if (key === 'messages-2')
+          for (const line of (msgs.at(-1)?.content ?? '').split('\n')) {
+            const hit = line.match(/^- (\w+): (.+)$/)
+            if (hit) sentBack.push({ draft: hit[1]!, why: hit[2]! })
+          }
+        last = await ctx.llm(key, { schema: MessagesSchema, messages: msgs })
+        return last
+      },
+    })
+    // the shape writeMessages assembled with: the opener it settled on, and research when picked
+    const shape = { opener: briefFor(film, profile, item, opener).opener, research: !!item }
+    const reply = last as ModelMessages | null
+    return { m, sentBack, modelDrafts: reply ? assemble(reply, film, profile, FILM, shape) : null }
+  }
+  try {
+    return await attempt()
+  } catch (e) {
+    if (!isRateLimit(e)) throw e
+    // a free tier's minute ran out despite the pacing: wait a full minute, then once more
+    console.log(`  rate limited on ${id}; waiting 60s and retrying once`)
+    await sleep(60_000)
+    return attempt()
+  }
 }
 
 const { server, url } = await serveFixtures()
 const writer = llm ? `model ${values.model}` : 'deterministic writer'
-console.log(`coldopen evals (${writer})\n`)
+console.log(`coldopen evals (${writer}${messagesOnly ? ', messages only' : ''})\n`)
+let films = 0
 const started = Date.now()
 
 try {
@@ -213,64 +278,77 @@ try {
       const profile = profiles[preset]!
       const base = { site, preset }
 
-      // --- brand fidelity
-      const dE = distance(parseColor(kit.colors.primary)!, parseColor(want.primary)!)
-      record({
-        ...base,
-        eval: 'brand.primary-color',
-        pass: dE < 0.03,
-        detail: `${kit.colors.primary} vs ${want.primary}`,
-      })
-      record({
-        ...base,
-        eval: 'brand.display-font',
-        pass: kit.fonts.display.family === want.display,
-        detail: kit.fonts.display.family,
-      })
-      record({ ...base, eval: 'brand.name', pass: kit.name === want.name, detail: kit.name })
-      record({
-        ...base,
-        eval: 'brand.logo',
-        pass: Boolean(kit.logo) === want.logo,
-        detail: kit.logo ? 'captured' : 'missing',
-      })
+      if (!messagesOnly) {
+        // --- brand fidelity
+        const dE = distance(parseColor(kit.colors.primary)!, parseColor(want.primary)!)
+        record({
+          ...base,
+          eval: 'brand.primary-color',
+          pass: dE < 0.03,
+          detail: `${kit.colors.primary} vs ${want.primary}`,
+        })
+        record({
+          ...base,
+          eval: 'brand.display-font',
+          pass: kit.fonts.display.family === want.display,
+          detail: kit.fonts.display.family,
+        })
+        record({ ...base, eval: 'brand.name', pass: kit.name === want.name, detail: kit.name })
+        record({
+          ...base,
+          eval: 'brand.logo',
+          pass: Boolean(kit.logo) === want.logo,
+          detail: kit.logo ? 'captured' : 'missing',
+        })
+      }
 
-      // --- copy quality
-      const s = await script(kit, profile, `eval_${site}_${preset}`)
-      const v = checkScript(s.script, kit, profile)
-      record({ ...base, eval: 'copy.taste-rules', pass: v.length === 0, detail: v.join('; ') })
-      record({
-        ...base,
-        eval: 'copy.no-fallback',
-        pass: !s.fallback && s.replaced.length === 0,
-        detail: s.fallback
-          ? 'model never complied; deterministic fallback used'
-          : `built-in lines swapped in for: ${s.replaced.join(', ')}`,
-      })
-      const fact = kit.facts.find((f) => f.id === s.script.insight.factId)
-      const norm = (x: string) => x.replace(/[“”"]/g, '').replace(/\s+/g, ' ').toLowerCase()
-      record({
-        ...base,
-        eval: 'copy.quote-on-their-site',
-        pass: Boolean(fact) && norm(pageText).includes(norm(fact!.text).slice(0, 60)),
-        detail: fact?.text ?? 'no fact',
-      })
-      record({
-        ...base,
-        eval: 'copy.uses-a-stat',
-        pass: fact?.kind === 'stat',
-        detail: `featured a ${fact?.kind} fact; numbers land harder`,
-      })
+      // --- copy quality. A messages-only run keeps the model's minute for the messages, so the
+      // film's script comes from the built-in writer (the same one every time)
+      const s = messagesOnly
+        ? { script: deterministicScript(kit, profile), rounds: 1, fallback: false, replaced: [] }
+        : await script(kit, profile, `eval_${site}_${preset}`)
+      if (!messagesOnly) {
+        const v = checkScript(s.script, kit, profile)
+        record({ ...base, eval: 'copy.taste-rules', pass: v.length === 0, detail: v.join('; ') })
+        record({
+          ...base,
+          eval: 'copy.no-fallback',
+          pass: !s.fallback && s.replaced.length === 0,
+          detail: s.fallback
+            ? 'model never complied; deterministic fallback used'
+            : `built-in lines swapped in for: ${s.replaced.join(', ')}`,
+        })
+        const fact = kit.facts.find((f) => f.id === s.script.insight.factId)
+        const norm = (x: string) => x.replace(/[“”"]/g, '').replace(/\s+/g, ' ').toLowerCase()
+        record({
+          ...base,
+          eval: 'copy.quote-on-their-site',
+          pass: Boolean(fact) && norm(pageText).includes(norm(fact!.text).slice(0, 60)),
+          detail: fact?.text ?? 'no fact',
+        })
+        record({
+          ...base,
+          eval: 'copy.uses-a-stat',
+          pass: fact?.kind === 'stat',
+          detail: `featured a ${fact?.kind} fact; numbers land harder`,
+        })
+      }
 
       // --- the messages that carry the film, with and without the fixture changelog
       for (const homework of [null, HOMEWORK]) {
-        const m = await messages(
-          kit,
-          profile,
-          s.script,
-          homework,
-          `eval_${site}_${preset}_${homework ? 'research' : 'plain'}`,
-        )
+        const filmId = `eval_${site}_${preset}_${homework ? 'research' : 'plain'}`
+        if (PACE_MS && films++) await sleep(PACE_MS)
+        let run: Omit<MessageRun, 'film'>
+        try {
+          run = await messages(kit, profile, s.script, homework, filmId)
+        } catch (e) {
+          // still unavailable after the retry: say so, rather than count it against the model
+          if (!llm || !isRateLimit(e)) throw e
+          unmeasured.push({ film: filmId, why: String(e).slice(0, 160) })
+          continue
+        }
+        runs.push({ film: filmId, ...run })
+        const { m } = run
         const tag = homework ? 'with research' : 'no research'
         for (const d of DRAFTS) {
           const first = m.firstTry.includes(d)
@@ -291,6 +369,8 @@ try {
           })
         }
       }
+
+      if (messagesOnly) continue
 
       // --- design quality
       const board = buildStoryboard(kit, profile, s.script)
@@ -354,6 +434,105 @@ try {
   server.close()
 }
 
+/** Per draft kind: first-try pass, fallback, average rounds, and why drafts failed */
+function messagesReport(): string[] {
+  const pct = (n: number, d: number) => (d ? `${Math.round((100 * n) / d)}%` : 'n/a')
+  // a draft takes one round when it passes first, two when it's sent back
+  const table = DRAFTS.map((d) => {
+    const n = runs.length
+    const first = runs.filter((r) => r.m.firstTry.includes(d)).length
+    const fell = runs.filter((r) => r.m.writer[d] === 'template').length
+    const rounds = runs.reduce((sum, r) => sum + (r.m.firstTry.includes(d) ? 1 : 2), 0)
+    return `| ${d} | ${first}/${n} (${pct(first, n)}) | ${fell}/${n} (${pct(fell, n)}) | ${n ? (rounds / n).toFixed(2) : 'n/a'} |`
+  })
+  // numbers vary from draft to draft ("131 of 125 words"), so they're grouped as N
+  const top = (lines: { draft: string; why: string }[]) => {
+    const counts = new Map<string, { n: number; example: string }>()
+    for (const l of lines) {
+      const key = `${l.draft}: ${l.why.replace(/\d+/g, 'N')}`
+      const c = counts.get(key) ?? { n: 0, example: `${l.draft}: ${l.why}` }
+      counts.set(key, { ...c, n: c.n + 1 })
+    }
+    return [...counts]
+      .sort((x, y) => y[1].n - x[1].n)
+      .slice(0, 10)
+      .map(([, c]) => `| ${c.n} | ${c.example.replaceAll('|', '\\|')} |`)
+  }
+  const sentBack = runs.flatMap((r) => r.sentBack)
+  const fellBack = runs.flatMap((r) =>
+    Object.entries(r.m.flags).flatMap(([d, cs]) =>
+      (cs ?? []).map((c) => ({ draft: d, why: c.why ?? c.rule })),
+    ),
+  )
+  const show = (t: string | { subject: string; body: string }) =>
+    typeof t === 'string' ? t : `Subject: ${t.subject}\n\n${t.body}`
+  const fence = (t: string) => ['```', t, '```']
+  // one draft the model got right first time, two it didn't, each with why
+  const passedOne = runs
+    .flatMap((r) => DRAFTS.filter((d) => r.m.firstTry.includes(d)).map((d) => ({ r, d })))
+    .sort((x, y) => (x.d === 'email' ? -1 : 0) - (y.d === 'email' ? -1 : 0))[0]
+  const fellBackTwo: { r: MessageRun; d: WrittenDraft }[] = []
+  for (const r of runs)
+    for (const d of DRAFTS)
+      if (r.m.writer[d] === 'template' && !fellBackTwo.some((x) => x.d === d))
+        fellBackTwo.push({ r, d })
+  const examples = [
+    ...(passedOne
+      ? [
+          `### Passed on the first try: ${passedOne.d}, ${passedOne.r.film}`,
+          '',
+          ...fence(show(passedOne.r.m.drafts[passedOne.d])),
+          '',
+        ]
+      : ['No draft passed on the first try.', '']),
+    ...fellBackTwo
+      .slice(0, 2)
+      .flatMap(({ r, d }) => [
+        `### Fell back to the template: ${d}, ${r.film}`,
+        '',
+        "The model's last draft:",
+        '',
+        ...fence(r.modelDrafts ? show(r.modelDrafts[d]) : '(no reply)'),
+        '',
+        'Why:',
+        ...(r.m.flags[d] ?? []).map((c) => `- ${c.rule}: ${c.why ?? ''}`),
+        '',
+      ]),
+    ...(fellBackTwo.length ? [] : ['No draft fell back to its template.', '']),
+  ]
+  return [
+    `# Messages eval: ${writer}`,
+    '',
+    `${runs.length} films (3 fixture sites, the candidate and sales profiles, with and without their latest post), ${DRAFTS.length} drafts each. The films' scripts come from the built-in writer, so only the messages use the model. Ran in ${Math.round((Date.now() - started) / 1000)}s.${unmeasured.length ? ` ${unmeasured.length} films couldn't be measured: ${unmeasured.map((u) => u.film).join(', ')}.` : ''}`,
+    '',
+    '| Draft | Passed on the first try | Fell back to the template | Average rounds |',
+    '|---|---:|---:|---:|',
+    ...table,
+    '',
+    `Films that needed a second round: ${runs.filter((r) => r.m.rounds > 1).length}/${runs.length}.`,
+    '',
+    '## Why drafts were sent back after the first try',
+    '',
+    ...(sentBack.length ? ['| Count | Draft: why |', '|---:|---|', ...top(sentBack)] : ['None.']),
+    '',
+    '## Why drafts fell back to the template (after the rewrite)',
+    '',
+    ...(fellBack.length ? ['| Count | Draft: why |', '|---:|---|', ...top(fellBack)] : ['None.']),
+    '',
+    '## Example drafts',
+    '',
+    ...examples,
+  ]
+}
+
+if (messagesOnly) {
+  const lines = messagesReport()
+  writeFileSync(OUT, `${lines.join('\n')}\n`)
+  console.log(`\n${runs.length} films measured. Report: ${OUT}`)
+  // a real model's misses are the measurement, not a failure; nothing measured is
+  process.exit(runs.length ? 0 : 1)
+}
+
 const evals = [...new Set(results.map((r) => r.eval))]
 const passed = results.filter((r) => r.pass).length
 const lines = [
@@ -387,6 +566,6 @@ const lines = [
       ]
     : []),
 ]
-writeFileSync(values.out!, `${lines.join('\n')}\n`)
-console.log(`\n${passed}/${results.length} passed. Report: ${values.out}`)
+writeFileSync(OUT, `${lines.join('\n')}\n`)
+console.log(`\n${passed}/${results.length} passed. Report: ${OUT}`)
 process.exit(passed === results.length ? 0 : 1)

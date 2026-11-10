@@ -50,8 +50,13 @@ export interface Messages {
   whyNow: boolean
   /** who wrote each draft: the model, or these templates (all templates until the model writes them) */
   writer: Partial<Record<DraftName, 'model' | 'template'>>
-  /** the checks a draft failed, by draft, and why it fell back to the template */
+  /** the checks a draft failed, by draft: only real failures, the reason it fell back to the template */
   flags: Record<string, Check[]>
+  /**
+   * what code changed in a draft, in plain sentences ("Left out the funding line to stay under
+   * 125 words"). A note isn't a failure: a kept model draft can have notes and no flags.
+   */
+  notes?: Partial<Record<DraftName, string[]>>
 }
 
 /** A draft, named by the kind of message it is (the connection note is the `linkedin` field). */
@@ -542,8 +547,10 @@ function recruiterMessages(
   }
   const at = best?.where ? ` at ${clean(best.where)}` : ''
   // InMail (or the message once they accept): short ones get more replies (under 400: +22%)
-  const full = `Hi [First name], I made you a 30-second film about ${what}. It starts from your own work${at}: ${link} ${ask} – ${first}`
-  const plain = `Hi [First name], I made you a 30-second film about ${what}: ${link} ${ask} – ${first}`
+  // this message goes on its own (after they accept, or as an InMail), so it names the company
+  const whatAt = role ? `our ${role} role at ${company}` : what
+  const full = `Hi [First name], I made you a 30-second film about ${whatAt}. It starts from your own work${at}: ${link} ${ask} – ${first}`
+  const plain = `Hi [First name], I made you a 30-second film about ${whatAt}: ${link} ${ask} – ${first}`
   const message = firstFit([full, plain], (t) => t.length <= MESSAGE_LIMITS.inmailBody)
   const inmail = {
     subject: firstFit(
@@ -582,7 +589,7 @@ function recruiterMessages(
     '',
     `Last note from me on ${what}: ${link}`,
     '',
-    `If the timing isn't right, no problem at all. If you know someone it would suit, I'd be grateful for a pointer.`,
+    `If the timing isn't right, no problem at all. Thanks for taking a look.`,
     '',
     first,
   ].join('\n')
@@ -594,7 +601,7 @@ function recruiterMessages(
     '',
     'Would you be open to introducing us?',
     '',
-    'Thank you!',
+    'Thank you.',
     first,
   ].join('\n')
   // the recruiter already knows who it's for: the candidate's first name goes in everywhere
@@ -657,7 +664,7 @@ function hiringMessages(
       '',
       `Who's the best person you know for it? The post is here: ${apply}`,
       '',
-      'Thank you!',
+      'Thank you.',
       me,
     ].join('\n'),
   }
@@ -747,7 +754,7 @@ export function messagesFor(
     research: item ? { line: postText(item), source: postText(item), title: item.title } : null,
   })
   const m = out.messages
-  if (!m || !seeker) return t
+  if (!m || !seeker) return { ...t, notes: {} }
 
   const company = out.company
   const detail = more.detail ? clean(more.detail) : ''
@@ -756,9 +763,10 @@ export function messagesFor(
   const fill = (s: string) => s.replaceAll(FILM_SLOT, link)
   const writer = { ...t.writer }
   const flags: Record<string, Check[]> = {}
+  const notes: NonNullable<Messages['notes']> = {}
   // drafts that fell back in the film keep the reasons they did
   for (const [d, why] of Object.entries(m.flags ?? {})) if (why?.length) flags[d] = why
-  const result: Messages = { ...t, writer, flags }
+  const result: Messages = { ...t, writer, flags, notes }
 
   for (const d of MODEL_DRAFTS) {
     if (m.writer[d] !== 'model') continue
@@ -789,22 +797,22 @@ export function messagesFor(
       writer.email = 'model'
       result.email = email.email
       result.whyNow = email.whyNow
-      if (email.notes.length) flags.email = email.notes
+      const changed = [...email.notes]
       // the proof opener puts the best number in the subject, so /v1/me/openers compares like with like
       const best = out.highlights?.proof[0]?.value
       if (t.opener === 'proof' && best && !result.email.subject.includes(best)) {
         result.email = { ...result.email, subject: t.email.subject }
-        flags.email = [
-          ...(flags.email ?? []),
-          {
-            rule: 'length',
-            ok: false,
-            why: `Used the subject with your best number (${best}), as every film that leads with it does`,
-          },
-        ]
+        changed.push(
+          `Used the subject with your best number (${best}), as every film that leads with it does`,
+        )
       }
+      if (changed.length) notes.email = changed
       result.checks = checkEmail(result.email, company, detail || null)
-    } else flags.email = email.notes
+    } else {
+      // the template stands in: flags say what the model's email failed, notes what code did about it
+      flags.email = email.flags
+      if (email.notes.length) notes.email = email.notes
+    }
   }
   return result
 }
@@ -813,7 +821,8 @@ export function messagesFor(
  * The model's email with the lines code adds after the opening: the funding line before it and
  * the saved detail after it, as the templates have them. When that breaks a check, the funding
  * line goes first. The detail never goes (the sender saved it on purpose): when the model's
- * email can't carry it, the template email, which always has it, is used instead.
+ * email can't carry it, the template email, which always has it, is used instead. `flags` are
+ * the checks the model's email failed; `notes` say, in plain sentences, what code changed.
  */
 function modelEmail(
   draft: { subject: string; body: string },
@@ -826,8 +835,8 @@ function modelEmail(
     ctx: { company: string; known: string; link: string }
   },
 ):
-  | { ok: true; email: { subject: string; body: string }; whyNow: boolean; notes: Check[] }
-  | { ok: false; notes: Check[] } {
+  | { ok: true; email: { subject: string; body: string }; whyNow: boolean; notes: string[] }
+  | { ok: false; flags: Check[]; notes: string[] } {
   const body = o.fill(draft.body)
   const build = (withNow: boolean, withDetail: boolean) => {
     const lines = body.split('\n')
@@ -866,30 +875,25 @@ function modelEmail(
         ok: true,
         email: { subject: draft.subject, body: build(false, !!o.detail) },
         whyNow: false,
-        notes: [
-          { rule: full[0]!.rule, ok: false, why: `Left out the funding line ${said(full[0])}` },
-        ],
+        notes: [`Left out the funding line ${said(full[0])}`],
       }
   }
   // the model's own email, with nothing added: did it fail on its own, or only with the detail?
   const plain = failed(build(false, false))
   if (o.detail && !plain.length) {
-    const f = failed(build(false, true))[0]
+    const withDetail = failed(build(false, true))
+    const f = withDetail[0]
     return {
       ok: false,
+      flags: withDetail,
       notes: [
-        {
-          rule: f?.rule ?? 'length',
-          ok: false,
-          why:
-            f?.rule === 'length'
-              ? `With your saved detail the model's email ran to ${f.why?.replace(/ of .*/, '')} of 125 words, so this is the template version, which keeps the detail`
-              : `With your saved detail the model's email ${f?.why ? lowerFirst(f.why) : 'broke a check'}, so this is the template version, which keeps the detail`,
-        },
+        f?.rule === 'length'
+          ? `With your saved detail the model's email ran to ${f.why?.replace(/ of .*/, '')} of 125 words, so this is the template version, which keeps the detail`
+          : `With your saved detail the model's email ${f?.why ? lowerFirst(f.why) : 'broke a check'}, so this is the template version, which keeps the detail`,
       ],
     }
   }
-  return { ok: false, notes: plain }
+  return { ok: false, flags: plain, notes: [] }
 }
 
 const lowerFirst = (s: string) => s[0]!.toLowerCase() + s.slice(1)

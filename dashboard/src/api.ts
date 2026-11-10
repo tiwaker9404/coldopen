@@ -186,6 +186,8 @@ export interface Messages {
   writer?: Partial<Record<string, 'model' | 'template'>>
   /** the checks a draft failed, by draft, each with why in plain words */
   flags?: Record<string, { rule: string; ok: boolean; why?: string }[]>
+  /** what code changed in a draft, by draft, in plain sentences (not failures) */
+  notes?: Partial<Record<string, string[]>>
 }
 
 /** how each opener is doing: films you marked sent, watched and replied */

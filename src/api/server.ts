@@ -2053,7 +2053,7 @@ export async function buildApi({
         tags: ['films'],
         summary: 'Draft the LinkedIn sequence, the email and the follow-ups that go with a film',
         description:
-          'The connection note (200 characters, no link), the message once they accept, InMail, the warm email and the follow-ups, with a [First name] placeholder. `writer` says which drafts the model wrote and which are templates; `flags` says why a draft fell back or what code left out. Nothing is sent.',
+          'The connection note (200 characters, no link), the message once they accept, InMail, the warm email and the follow-ups, with a [First name] placeholder. `writer` says which drafts the model wrote and which are templates; `flags` lists the checks a draft failed (why it fell back to its template), and `notes` says in plain sentences what code changed in a draft, such as a funding line left out. Nothing is sent.',
         params: z.object({ id: RunId }),
       },
     },

@@ -12,3 +12,5 @@ analytics/target/
 analytics/logs/
 analytics/*.duckdb
 site/hiring-index/data.json
+evals/messages-results.md
+messages-eval.md

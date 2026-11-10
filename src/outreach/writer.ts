@@ -275,9 +275,6 @@ export const promptTokens = (messages: ChatMessage[]) =>
 
 /* ------------------------------------------------------------ write, check, fall back */
 
-/** The email's ask is always for 15 minutes, so that number is ours to say */
-const ASK_LENGTH = '15 minutes, a 15-minute call'
-
 /**
  * One model call writes all four drafts. Code assembles and checks each; drafts that fail go
  * back once with the reasons, and any draft that still fails is replaced by its template.
@@ -308,8 +305,8 @@ export async function writeMessages(opts: {
   const opener = briefFor(film, profile, item, opts.opener).opener
   const ctx = {
     company: film.company,
-    // the 15-minute ask is part of the email's structure (the prompt asks for it), not a claim
-    known: `${knownFor(film, profile, opts.homework)}\n${ASK_LENGTH}`,
+    // knownFor already counts the email's 15-minute ask as ours to say
+    known: knownFor(film, profile, opts.homework),
     link: LINK_ROOM,
   }
   const check = (d: WrittenDraft, drafts: Drafts, reply: ModelMessages): Check[] =>

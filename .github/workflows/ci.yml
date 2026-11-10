@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # batch branches too, so a batch is checked by CI before it's fast-forwarded into main
+    branches: [main, "batch/**"]
   pull_request:
 
 # read the code, nothing more: no writes to the repo, issues or packages

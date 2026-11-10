@@ -166,6 +166,7 @@ describe('the messages API', () => {
     expect(m.inmail.body).toContain(link)
     expect(JSON.stringify(m)).not.toContain('[film]')
     expect(m.flags).toEqual({})
+    expect(m.notes).toEqual({})
     // the fields older clients read keep their names and shapes
     expect(typeof m.linkedin).toBe('string')
     expect(m.checks).toMatchObject({ short: true, oneAsk: true })
@@ -193,6 +194,7 @@ describe('the messages API', () => {
     const m = res.json()
     expect(Object.values(m.writer).every((w) => w === 'template')).toBe(true)
     expect(m.flags).toEqual({})
+    expect(m.notes).toEqual({})
     expect(m.email.body).toContain('I read that route planning now reroutes trucks')
     expect(m.email.body.toLowerCase().split('route planning')).toHaveLength(2)
     expect(m.email.body).not.toContain('…')
@@ -215,6 +217,9 @@ describe('the messages API', () => {
       'I saw the Operations Analyst role at Parcelpine.\nI read your post on live traffic for every lane.',
     )
     expect(m.checks.detail).toBe(true)
+    // a detail that fits changes nothing worth a note
+    expect(m.flags.email).toBeUndefined()
+    expect(m.notes.email).toBeUndefined()
 
     // pad the model's email close to the limit, then save a long detail
     const long = modelMessages()
@@ -229,9 +234,15 @@ describe('the messages API', () => {
     const back = await messagesOf(id)
     expect(back.writer.email).toBe('template')
     expect(back.email.body).toContain('the export to CSV dropped every custom field')
-    expect(back.flags.email[0].why).toMatch(
-      /^With your saved detail the model's email ran to \d+ of 125 words/,
-    )
+    // flags: what the model's email failed; notes: that the template came back to keep the detail
+    expect(back.flags.email).toEqual([
+      { rule: 'length', ok: false, why: expect.stringMatching(/^\d+ of 125 words$/) },
+    ])
+    expect(back.notes.email).toEqual([
+      expect.stringMatching(
+        /^With your saved detail the model's email ran to \d+ of 125 words, so this is the template version, which keeps the detail$/,
+      ),
+    ])
   })
 
   it('the follow-ups list carries the same drafts', async () => {

@@ -172,7 +172,7 @@ export function buildMcp(call: Call): McpServer {
     {
       title: 'Draft the messages',
       description:
-        'The drafts that go with a finished film, in the order they are sent: the LinkedIn connection note (`linkedin`, at most 200 characters, no link and no question), the message once they accept (`afterAccept`, with the film), InMail (`inmail`, subject and body; free only if they have an Open Profile or share a LinkedIn group with the person, otherwise use the connection note), the warm email (subject and body, under 125 words), the follow-ups and an intro request. `writer` says which drafts the model wrote and which are templates, and `flags` says in plain words why a draft fell back to its template or what code left out. Nothing is sent: these are drafts for the person to send.',
+        'The drafts that go with a finished film, in the order they are sent: the LinkedIn connection note (`linkedin`, at most 200 characters, no link and no question), the message once they accept (`afterAccept`, with the film), InMail (`inmail`, subject and body; free only if they have an Open Profile or share a LinkedIn group with the person, otherwise use the connection note), the warm email (subject and body, under 125 words), the follow-ups and an intro request. `writer` says which drafts the model wrote and which are templates, `flags` says in plain words why a draft fell back to its template, and `notes` what code changed in a kept draft. Nothing is sent: these are drafts for the person to send.',
       inputSchema: { id: z.string().describe('the film’s id') },
       annotations: { readOnlyHint: true },
     },
