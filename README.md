@@ -2,7 +2,9 @@
 
 **Paste a company's website. Get a 30-second film made for them.**
 
-[Try it free →](https://coldopen-nk8o.onrender.com/?ref=readme) · [See the films →](https://tiwaker9404.github.io/coldopen/)
+[Try it free →](https://coldopen-nk8o.onrender.com/?ref=readme) · [Take the 90-second tour →](https://tiwaker9404.github.io/coldopen/demo/?ref=readme) · [See the films →](https://tiwaker9404.github.io/coldopen/)
+
+> **For hiring managers.** [Take the 90-second tour](https://tiwaker9404.github.io/coldopen/demo/?ref=readme-box): the real app on a recorded account, with three films sent and real job listings, no sign-in and no waiting. Then see [how it's built](#how-its-built), [how it's measured](#quality-measured) and [who it's for and how it's positioned](docs/GTM.md).
 
 coldopen is an open-source agent for personalized video outreach. Give it a prospect's URL and it reads their homepage, matches their brand (fonts, colors, logo), writes a short script grounded in what's actually on their site, and renders an on-brand MP4. It also produces the GIF an outreach email embeds and a share page to link to. It runs free on your own machine.
 
@@ -78,6 +80,30 @@ flowchart LR
 **A film is a web page on a timeline.** Every scene is HTML and CSS with paused animations. `__seek(t)` sets every animation to exactly time _t_, Chromium screenshots the frame, and ffmpeg encodes. Any frame can be rendered at any moment, in any order, by any worker, which is what makes the next part possible.
 
 **Rendering is crash-proof.** Films run on [unkillable](https://github.com/tiwaker9404/unkillable), a durable-execution runtime on Postgres. Each step (research, every script draft, compose, every scene, encode) is checkpointed. If a renderer dies 46% of the way through, the next worker replays research, script and finished scenes from the journal and renders only the rest. [A chaos test](test/chaos/film-crash.test.ts) does exactly that to a real worker process on every CI run, then checks that no finished scene was rendered a second time. Only the scene that was in progress at the kill is redone.
+
+## How it's built
+
+```mermaid
+flowchart LR
+  subgraph In[Where films are asked for]
+    W[Web app]
+    X[Chrome extension]
+    M[MCP: Claude, Cursor]
+    CLI[CLI and Slack]
+  end
+  In --> API[API<br/>Fastify, Zod, OpenAPI]
+  API --> Q[(Postgres<br/>durable job queue and journal)]
+  Q --> WK[Workers<br/>research, homework, script, messages, render, encode]
+  WK -->|model calls| LLM[Groq, then Gemini<br/>or the built-in writer]
+  GA[GitHub Actions<br/>render lanes] -.->|claim films| Q
+  WK --> SH[Cloudflare Workers, KV, D1<br/>share pages and views]
+  SH -->|plays, clicks| API
+```
+
+- **One queue, any number of workers.** Workers claim films with `FOR UPDATE SKIP LOCKED` and hold heartbeated leases, so a hosted app on a free web plan can hand rendering to GitHub Actions runners, and `docker compose up --scale worker=4` scales a self-hosted one.
+- **Every step is journaled.** A crash replays finished steps from Postgres instead of redoing them (see [How it works](#how-it-works)).
+- **Free to run everywhere.** Render, Supabase, Cloudflare, GitHub Actions and the Groq and Gemini free tiers; [docs/HOSTING.md](docs/HOSTING.md) sets it up.
+- **The demo is the same app.** The [tour](https://tiwaker9404.github.io/coldopen/demo/) is the web app built with its API swapped for answers recorded from a real coldopen ([scripts/demo-fixtures.ts](scripts/demo-fixtures.ts)), so it can't drift from the product.
 
 ## Try it, or host your own demo
 
@@ -196,7 +222,7 @@ A draft that fails is sent back once with the reasons. If it still fails, it fal
 ```bash
 pnpm test         # 500 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
-pnpm evals        # 168 quality checks across 14 evals on 3 fixture companies x 2 presets
+pnpm evals        # 180 quality checks across 16 evals on 3 fixture companies x 2 presets
 ```
 
 [Evals](evals/results.md) grade the output, not the code:
@@ -204,7 +230,8 @@ pnpm evals        # 168 quality checks across 14 evals on 3 fixture companies x 
 - **Brand fidelity:** the extracted color matches within an OKLab distance of 0.03, and the right typeface and logo are found.
 - **Grounding:** the quote shown on screen appears verbatim on the homepage.
 - **Taste:** every rule in [docs/TASTE.md](docs/TASTE.md) holds.
-- **Design:** WCAG contrast, no text overflow in any of three formats, and pixel-identical re-renders.
+- **Variety:** no two companies get the same greeting or the same pivot line, so films don't read as a template.
+- **Design:** WCAG contrast, no text overflow in any of three formats, the headline fully in frame when the homepage zoom settles, and pixel-identical re-renders.
 
 Run `pnpm evals --model <name>` to grade a real model's scripts the same way.
 

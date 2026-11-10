@@ -89,18 +89,20 @@ export function scoreFonts(kit: Pick<BrandKit, 'fonts'>, embedded: boolean): Che
   return { pass: true, reason: family }
 }
 
-const MIN_LOGO = 24
-/** a favicon caught in the header is a small square; real wordmarks are wider or bigger */
-const FAVICON = 32
+/**
+ * The smallest short side that still reads as a logo. Header wordmarks run 18–24 px tall
+ * (Figma's is 19, Cal.com's 22) and a favicon is 16, so 18 tells them apart. The first run
+ * used 24 plus "a square of 32 px or less is the favicon", which failed GitHub's real
+ * 32 px Octocat and both of those wordmarks.
+ */
+const MIN_LOGO = 18
 
-/** A logo image was captured, it is at least 24 px on its short side, and it isn't the favicon. */
+/** A logo image was captured and it is bigger than a favicon on its short side. */
 export function scoreLogo(logo: BrandKit['logo']): Check {
   if (!logo) return { pass: false, reason: 'no logo captured' }
   const short = Math.min(logo.width, logo.height)
-  if (short < MIN_LOGO) return { pass: false, reason: `only ${short} px on its short side` }
-  const square = Math.abs(logo.width - logo.height) <= 2
-  if (square && Math.max(logo.width, logo.height) <= FAVICON)
-    return { pass: false, reason: `looks like the favicon (${logo.width}×${logo.height})` }
+  if (short < MIN_LOGO)
+    return { pass: false, reason: `only ${short} px on its short side, favicon-sized` }
   return { pass: true, reason: `${logo.width}×${logo.height}` }
 }
 

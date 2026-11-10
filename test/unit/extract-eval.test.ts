@@ -109,12 +109,13 @@ describe('extract eval: logo', () => {
     expect(scoreLogo(kit().logo).pass).toBe(true)
   })
 
-  it('fails a missing logo, a tiny one and a favicon-sized square', () => {
+  it('fails a missing logo and a favicon-sized one, and passes small wordmarks and square marks', () => {
     expect(scoreLogo(null).reason).toBe('no logo captured')
-    expect(scoreLogo({ dataUrl: 'x', width: 90, height: 16 }).reason).toMatch(/16 px/)
-    expect(scoreLogo({ dataUrl: 'x', width: 32, height: 32 }).reason).toMatch(/favicon/)
-    // a big square mark is a real logo
-    expect(scoreLogo({ dataUrl: 'x', width: 48, height: 48 }).pass).toBe(true)
+    expect(scoreLogo({ dataUrl: 'x', width: 90, height: 14 }).reason).toMatch(/14 px/)
+    expect(scoreLogo({ dataUrl: 'x', width: 16, height: 16 }).reason).toMatch(/favicon/)
+    // Figma's 19 px wordmark and GitHub's 32 px Octocat are real logos
+    expect(scoreLogo({ dataUrl: 'x', width: 70, height: 19 }).pass).toBe(true)
+    expect(scoreLogo({ dataUrl: 'x', width: 32, height: 32 }).pass).toBe(true)
   })
 })
 

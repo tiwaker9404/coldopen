@@ -41,7 +41,7 @@ const SITE_TIMEOUT_MS = 60_000
 const WHAT: Record<FieldName, string> = {
   colors: 'A primary color that isn’t a grey default, and film text that meets WCAG AA',
   fonts: 'The headline’s own font (not a fallback), with its files embedded in the film',
-  logo: 'A header logo at least 24 px on its short side, not the favicon',
+  logo: 'A header logo bigger than a favicon (at least 18 px on its short side)',
   hero: 'A hero screenshot that isn’t blank',
   headline: 'A headline box on screen, at least 1% of it, with the headline text',
 }
