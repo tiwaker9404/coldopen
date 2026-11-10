@@ -194,10 +194,10 @@ export async function claimRuns(
     await sql`
       insert into run_log (run_id, kind, message, worker_id)
       select * from unnest(
-        ${sql.array(rows.map((r) => r.id))}::text[],
-        ${sql.array(rows.map(() => 'claimed'))}::text[],
-        ${sql.array(rows.map((r) => (r.attempts > 1 ? `execution #${r.attempts} started (resuming)` : 'execution #1 started')))}::text[],
-        ${sql.array(rows.map(() => workerId))}::text[]
+        ${rows.map((r) => r.id)}::text[],
+        ${rows.map(() => 'claimed')}::text[],
+        ${rows.map((r) => (r.attempts > 1 ? `execution #${r.attempts} started (resuming)` : 'execution #1 started'))}::text[],
+        ${rows.map(() => workerId)}::text[]
       )`
   }
   return rows
@@ -422,10 +422,10 @@ export async function reapExpiredLeases(sql: Sql, maxAttempts: number): Promise<
     await tx`
       insert into run_log (run_id, kind, message, worker_id)
       select * from unnest(
-        ${tx.array(rows.map((r) => r.id))}::text[],
-        ${tx.array(rows.map(() => 'worker_lost'))}::text[],
-        ${tx.array(rows.map((r) => (r.dead ? 'worker lost; out of attempts' : 'worker stopped heartbeating (crashed?); lease expired, run re-queued')))}::text[],
-        ${tx.array(rows.map((r) => r.workerId ?? ''))}::text[]
+        ${rows.map((r) => r.id)}::text[],
+        ${rows.map(() => 'worker_lost')}::text[],
+        ${rows.map((r) => (r.dead ? 'worker lost; out of attempts' : 'worker stopped heartbeating (crashed?); lease expired, run re-queued'))}::text[],
+        ${rows.map((r) => r.workerId ?? '')}::text[]
       )`
     await tx`select pg_notify(${RUN_CHANNEL}, '')`
     return rows.length
@@ -442,7 +442,7 @@ export async function wakeDueRuns(sql: Sql): Promise<number> {
     if (rows.length === 0) return 0
     await tx`
       insert into run_log (run_id, kind, message)
-      select id, 'resumed', 'timer fired' from unnest(${tx.array(rows.map((r) => r.id))}::text[]) as id`
+      select id, 'resumed', 'timer fired' from unnest(${rows.map((r) => r.id)}::text[]) as id`
     await tx`select pg_notify(${RUN_CHANNEL}, '')`
     return rows.length
   })

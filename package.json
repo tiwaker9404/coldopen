@@ -64,7 +64,7 @@
     "fastify-type-provider-zod": "^7.0.0",
     "mammoth": "1.13.0",
     "pino": "^10.4.0",
-    "postgres": "^3.4.9",
+    "postgres": "^4.1.0",
     "puppeteer": "^25.16.0",
     "unpdf": "2.1.0",
     "zod": "^4.6.7"
