@@ -9,8 +9,20 @@
 import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { createRequire } from 'node:module'
-import { extname, join } from 'node:path'
+import { extname, resolve, sep } from 'node:path'
 import puppeteer, { type Page } from 'puppeteer'
+
+// a file inside dir, never outside it: a ../ in a request path would otherwise reach the rest of the disk
+const inside = (dir: string, rest: string) => {
+  const root = resolve(dir)
+  const file = resolve(root, `.${sep}${rest}`)
+  if (!file.startsWith(root + sep)) throw new Error('outside the served folder')
+  return file
+}
+
+// a resource that failed to load, or a request the network refused, rather than a page bug
+const isNetworkNoise = (text: string) =>
+  /^Failed to load resource/.test(text) || /ERR_(TUNNEL|NAME|INTERNET|CONNECTION|PROXY)/.test(text)
 
 const base = process.argv[2] ?? 'http://localhost:8080'
 const siteDir = process.argv[3]
@@ -38,22 +50,22 @@ if (siteDir) {
     '.mp4': 'video/mp4',
   }
   const srv = createServer((req, res) => {
-    let p = decodeURIComponent((req.url ?? '/').split('?')[0]!)
-    if (p.endsWith('/')) p += 'index.html'
     try {
-      const body = readFileSync(join(siteDir, p))
+      let p = decodeURIComponent((req.url ?? '/').split('?')[0]!)
+      if (p.endsWith('/')) p += 'index.html'
+      const body = readFileSync(inside(siteDir, p))
       res.writeHead(200, { 'content-type': types[extname(p)] ?? 'application/octet-stream' })
       res.end(body)
     } catch {
       res.writeHead(404).end()
     }
   })
-  await new Promise<void>((r) => srv.listen(8099, r))
+  await new Promise<void>((r) => srv.listen(8099, '127.0.0.1', r))
   close = () => srv.close()
   pages.push(
-    { name: 'Landing', url: 'http://localhost:8099/' },
-    { name: 'Hiring Index', url: 'http://localhost:8099/hiring-index/' },
-    { name: 'Developers', url: 'http://localhost:8099/developers/' },
+    { name: 'Landing', url: 'http://127.0.0.1:8099/' },
+    { name: 'Hiring Index', url: 'http://127.0.0.1:8099/hiring-index/' },
+    { name: 'Developers', url: 'http://127.0.0.1:8099/developers/' },
   )
 }
 
@@ -70,14 +82,14 @@ if (process.env.DEMO_DIR) {
     '.mp4': 'video/mp4',
   }
   const srv = createServer((req, res) => {
-    let p = decodeURIComponent((req.url ?? '/').split('?')[0]!)
-    if (p.endsWith('/')) p += 'index.html'
-    const file = p.startsWith('/coldopen/demo/')
-      ? join(demoDir, p.slice('/coldopen/demo/'.length))
-      : p.startsWith('/coldopen/') && siteDir
-        ? join(siteDir, p.slice('/coldopen/'.length))
-        : null
     try {
+      let p = decodeURIComponent((req.url ?? '/').split('?')[0]!)
+      if (p.endsWith('/')) p += 'index.html'
+      const file = p.startsWith('/coldopen/demo/')
+        ? inside(demoDir, p.slice('/coldopen/demo/'.length))
+        : p.startsWith('/coldopen/') && siteDir
+          ? inside(siteDir, p.slice('/coldopen/'.length))
+          : null
       if (!file) throw new Error('not found')
       const body = readFileSync(file)
       res.writeHead(200, { 'content-type': types[extname(file)] ?? 'application/octet-stream' })
@@ -86,16 +98,16 @@ if (process.env.DEMO_DIR) {
       res.writeHead(404).end()
     }
   })
-  await new Promise<void>((r) => srv.listen(8098, r))
+  await new Promise<void>((r) => srv.listen(8098, '127.0.0.1', r))
   const before = close
   close = () => {
     before()
     srv.close()
   }
   pages.push(
-    { name: 'Demo: Today', url: 'http://localhost:8098/coldopen/demo/#today' },
-    { name: 'Demo: Jobs', url: 'http://localhost:8098/coldopen/demo/#jobs' },
-    { name: 'Demo: Films', url: 'http://localhost:8098/coldopen/demo/#films' },
+    { name: 'Demo: Today', url: 'http://127.0.0.1:8098/coldopen/demo/#today' },
+    { name: 'Demo: Jobs', url: 'http://127.0.0.1:8098/coldopen/demo/#jobs' },
+    { name: 'Demo: Films', url: 'http://127.0.0.1:8098/coldopen/demo/#films' },
   )
 }
 
@@ -174,11 +186,7 @@ for (const [width, dark] of [
     page.on('console', (m) => {
       // a resource that failed to load (offline CI, a test film with no files) is a network
       // matter, not a page bug; a script error is
-      if (
-        m.type() === 'error' &&
-        !/^Failed to load resource|ERR_(TUNNEL|NAME|INTERNET|CONNECTION|PROXY)/.test(m.text())
-      )
-        errors.push(m.text())
+      if (m.type() === 'error' && !isNetworkNoise(m.text())) errors.push(m.text())
     })
     page.on('pageerror', (e) => errors.push(e.message))
     const res = await page.goto(p.url, { waitUntil: 'networkidle0' }).catch(() => null)
@@ -490,11 +498,7 @@ for (const [width, dark] of [
     if (s.stubs) await stub(page, s.stubs)
     const errors: string[] = []
     page.on('console', (m) => {
-      if (
-        m.type() === 'error' &&
-        !/^Failed to load resource|ERR_(TUNNEL|NAME|INTERNET|CONNECTION|PROXY)/.test(m.text())
-      )
-        errors.push(m.text())
+      if (m.type() === 'error' && !isNetworkNoise(m.text())) errors.push(m.text())
     })
     page.on('pageerror', (e) => errors.push(e.message))
     await page.goto(s.url, { waitUntil: 'networkidle0' }).catch(() => null)
