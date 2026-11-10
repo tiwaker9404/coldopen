@@ -1,0 +1,30 @@
+{
+  "role": "FDE",
+  "title": "From a company's website to a finished film",
+  "items": [
+    {
+      "film": "Parcelpine",
+      "from": 4.4,
+      "caption": "It reads their site in a real browser: colors, fonts, logo, headline."
+    },
+    {
+      "film": "Northwind Freight",
+      "from": 9.4,
+      "caption": "Every fact on screen is quoted from their page, never invented."
+    },
+    {
+      "still": "developers",
+      "caption": "A REST API, an MCP server for Claude and Cursor, and a CLI."
+    },
+    {
+      "still": "messages",
+      "caption": "Messages written from the film's facts, then checked in code."
+    },
+    {
+      "still": "views",
+      "caption": "Share pages on Cloudflare count real viewers, not link scanners."
+    },
+    { "still": "evals", "caption": "Measured: 180 checks on every change." }
+  ],
+  "end": "Self-hosts free, in one command."
+}

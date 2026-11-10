@@ -39,7 +39,7 @@ export const STOPS: readonly Stop[] = [
     place: 'films',
     film: true,
     title: 'Who watched, and what worked',
-    body: 'Views come from the share page: who pressed play and how far they got. The board tracks each film from sent to interview.',
+    body: 'Open the Views tab: who pressed play and how far they got, from the share page. The board tracks each film from sent to interview.',
   },
 ]
 

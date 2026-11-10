@@ -1,0 +1,28 @@
+{
+  "role": "SWE",
+  "title": "A film is a web page on a timeline",
+  "items": [
+    {
+      "film": "Northwind Freight",
+      "from": 0.6,
+      "caption": "HTML and CSS with paused animations, seeked frame by frame."
+    },
+    {
+      "film": "Parcelpine",
+      "from": 4.4,
+      "caption": "The homepage framed so the headline stays in view, in every format."
+    },
+    {
+      "film": "Lumen Health",
+      "from": 9.4,
+      "caption": "WCAG AA solved per color, checked on 500 random palettes."
+    },
+    { "still": "evals", "caption": "180 quality checks across 16 evals, on every change." },
+    {
+      "still": "developers",
+      "caption": "Durable steps on Postgres: a killed worker resumes where it stopped."
+    },
+    { "still": "board", "caption": "React 19, Fastify 5, Zod 4, Puppeteer and ffmpeg." }
+  ],
+  "end": "Open source and free to run."
+}

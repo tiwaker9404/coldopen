@@ -27,6 +27,8 @@
     "dashboard:build": "vite build --config dashboard/vite.config.ts",
     "dashboard:build:demo": "VITE_DEMO=1 vite build --config dashboard/vite.config.ts",
     "demo:fixtures": "node scripts/demo-fixtures.ts",
+    "reels:stills": "node launch/stills.ts",
+    "reel": "node launch/role-reel.ts",
     "fixtures": "node fixtures/serve.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p dashboard/tsconfig.json",
     "lint": "biome check .",

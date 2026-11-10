@@ -1,0 +1,38 @@
+name: Role reels
+
+# Renders the four 30-second role reels (GTM, FDE, SE, SWE) in square and wide with coldopen's
+# own engine: stills from the demo build, clips from the demo's films. Started by hand, needs no
+# secrets, uploads the MP4s as an artifact and never commits.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reels:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+        env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
+      - run: pnpm exec puppeteer browsers install chrome
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: pnpm dashboard:build:demo
+      - name: Stills from the demo
+        run: node launch/stills.ts .scratch/stills
+      - name: The reels
+        run: |
+          for r in gtm fde se swe; do
+            for f in square wide; do
+              node launch/role-reel.ts "launch/reels/$r.json" --format "$f" --stills .scratch/stills --out .scratch/reels
+            done
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: role-reels
+          path: .scratch/reels/

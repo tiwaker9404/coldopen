@@ -1,0 +1,24 @@
+{
+  "role": "GTM",
+  "title": "A GTM system for one person's outreach",
+  "items": [
+    { "still": "jobs", "caption": "The list: open roles from 450+ job boards, ranked by fit." },
+    {
+      "film": "Northwind Freight",
+      "from": 4.4,
+      "caption": "The creative: their homepage, with the promise they lead with."
+    },
+    {
+      "film": "Lumen Health",
+      "from": 9.4,
+      "caption": "A number from their own site, in their font and colors."
+    },
+    {
+      "still": "messages",
+      "caption": "The sequence: a 200-character note, InMail and a warm email."
+    },
+    { "still": "views", "caption": "The signal: who opened it, who pressed play, who finished." },
+    { "still": "board", "caption": "The pipeline: every film from sent to interview." }
+  ],
+  "end": "Built and run as a GTM system."
+}

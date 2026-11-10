@@ -1,0 +1,13 @@
+{
+  "role": "SE",
+  "title": "The 90-second tour",
+  "items": [
+    { "still": "tour", "caption": "Today: what's due, films in production, the best new fits." },
+    { "still": "jobs", "caption": "Jobs, ranked by how well you fit, and why." },
+    { "still": "film-tour", "caption": "A 30-second film made for one company." },
+    { "still": "messages", "caption": "The messages that go with it, in the order you send them." },
+    { "still": "views", "caption": "Who watched, and how far they got." },
+    { "film": "Lumen Health", "from": 25.0, "caption": "One clear ask, signed by the sender." }
+  ],
+  "end": "Take the tour: no sign-in, no waiting."
+}
