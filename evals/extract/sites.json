@@ -1,0 +1,22 @@
+[
+  { "url": "https://linear.app", "tags": ["startup"] },
+  { "url": "https://resend.com", "tags": ["startup", "dark"] },
+  { "url": "https://cal.com", "tags": ["startup", "open-source"] },
+  { "url": "https://posthog.com", "tags": ["startup"] },
+  { "url": "https://www.retellai.com", "tags": ["startup"] },
+  { "url": "https://www.browserbase.com", "tags": ["startup", "dark"] },
+  { "url": "https://supabase.com", "tags": ["startup", "dark"] },
+  { "url": "https://www.notion.com", "tags": ["saas"] },
+  { "url": "https://www.figma.com", "tags": ["saas", "variable-font"] },
+  { "url": "https://vercel.com", "tags": ["saas", "dark"] },
+  { "url": "https://www.intercom.com", "tags": ["saas"] },
+  { "url": "https://www.deel.com", "tags": ["saas"] },
+  { "url": "https://attio.com", "tags": ["saas"] },
+  { "url": "https://stripe.com", "tags": ["big"] },
+  { "url": "https://www.apple.com", "tags": ["big", "variable-font"] },
+  { "url": "https://www.airbnb.com", "tags": ["big", "spa"] },
+  { "url": "https://www.nike.com", "tags": ["big", "cookie-wall"] },
+  { "url": "https://github.com", "tags": ["svg-logo", "dark"] },
+  { "url": "https://www.bbc.co.uk", "tags": ["cookie-wall"] },
+  { "url": "https://www.framer.com", "tags": ["site-builder", "dark", "spa"] }
+]

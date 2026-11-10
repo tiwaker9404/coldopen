@@ -1,0 +1,52 @@
+name: Extract eval
+
+# Reads 20 real company homepages and reports, field by field, how often brand extraction got
+# it right (colors, fonts, logo, hero, headline box). Build sandboxes can't reach most sites,
+# so it runs here. Started by hand only, needs no secrets, writes its report to the job
+# summary and an artifact (with each site's screenshot and logo to eyeball), and never commits.
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Only these hosts, comma-separated (for example linear.app,stripe.com). Empty runs all 20."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extract-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+        env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
+      # the homepages are read in headless Chromium, as a film's research step reads them
+      - run: pnpm exec puppeteer browsers install chrome
+      # ffmpeg reads each hero screenshot to check it isn't blank
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Run the extract eval
+        env:
+          ONLY: ${{ inputs.only }}
+        run: node evals/extract/run.ts --out extract-eval.md --only "$ONLY"
+      - name: Job summary
+        if: always()
+        run: test -f extract-eval.md && cat extract-eval.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: extract-eval
+          path: |
+            extract-eval.md
+            evals/extract/results.json
+            extract-eval-out/
+          if-no-files-found: ignore
