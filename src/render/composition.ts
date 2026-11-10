@@ -167,7 +167,7 @@ export function compose(opts: {
   const box = opts.shotBox !== undefined ? opts.shotBox : kit.screenshot.headlineBox
   const timeline = {
     duration: board.duration,
-    shot: { w: kit.screenshot.width, h: kit.screenshot.height, box },
+    shot: { w: kit.screenshot.width, h: kit.screenshot.height, box, bg: kit.colors.background },
   }
 
   return `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -217,7 +217,7 @@ html,body{width:${width}px;height:${height}px;overflow:hidden;background:#000}
 .url{margin-left:calc(var(--u)*1.5);background:#fff;border-radius:calc(var(--u)*.8);padding:calc(var(--u)*.55) calc(var(--u)*2);font-size:calc(var(--u)*1.9);color:#4a4f57;font-family:var(--body)}
 .viewport{position:relative;flex:1;overflow:hidden;background:#fff}
 .zoom{position:absolute;left:0;top:0;transform-origin:0 0;animation:zoom 4200ms cubic-bezier(.65,0,.35,1) 1100ms both}
-@keyframes zoom{from{transform:translate(0,0) scale(var(--s0))}to{transform:translate(var(--tx),var(--ty)) scale(var(--s1))}}
+@keyframes zoom{from{transform:translate(var(--tx0),var(--ty0)) scale(var(--s0))}to{transform:translate(var(--tx),var(--ty)) scale(var(--s1))}}
 .shot{display:block}
 .shot.missing{background:#e9ebee}
 .mark{position:absolute;border:calc(var(--u)*.55) solid var(--accent);border-radius:calc(var(--u)*1.2);background:color-mix(in srgb,var(--accent) 14%,transparent);animation:mark 700ms cubic-bezier(.16,1,.3,1) 2300ms both}
@@ -265,6 +265,7 @@ const scenes = [...document.querySelectorAll('.scene')].map((el) => ({ el, start
 const chrome = document.getElementById('chrome');
 const reel = [...document.querySelectorAll('#reel b')];
 const issues = [];
+let frame = null;
 
 // pause every animation; time is driven only by __seek
 for (const a of document.getAnimations()) a.pause();
@@ -276,23 +277,33 @@ function layoutShot() {
   const mark = document.querySelector('.site .mark');
   if (!vp || !zoom) return;
   const W = vp.clientWidth, H = vp.clientHeight;
-  const s0 = W / TL.shot.w;
-  if (img) { img.style.width = TL.shot.w + 'px'; img.style.height = TL.shot.h + 'px'; }
-  zoom.style.width = TL.shot.w + 'px'; zoom.style.height = TL.shot.h + 'px';
+  const sw = TL.shot.w, sh = TL.shot.h;
+  // a page shorter than the frame (tall format) sits on its own background, never a white band
+  if (TL.shot.bg) vp.style.background = TL.shot.bg;
+  const s0 = W / sw;
+  const place = (s, t, size, room) => (size * s < room ? (room - size * s) / 2 : Math.min(0, Math.max(room - size * s, t)));
+  const ty0 = place(s0, 0, sh, H);
+  if (img) { img.style.width = sw + 'px'; img.style.height = sh + 'px'; }
+  zoom.style.width = sw + 'px'; zoom.style.height = sh + 'px';
+  zoom.style.setProperty('--s0', s0); zoom.style.setProperty('--tx0', '0px'); zoom.style.setProperty('--ty0', ty0 + 'px');
   const b = TL.shot.box;
-  if (!b) { zoom.style.setProperty('--s0', s0); zoom.style.setProperty('--s1', s0 * 1.08); zoom.style.setProperty('--tx', '0px'); zoom.style.setProperty('--ty', '0px'); mark.style.display = 'none'; return; }
-  const pad = 18;
+  if (!b) { zoom.style.setProperty('--s1', s0 * 1.08); zoom.style.setProperty('--tx', '0px'); zoom.style.setProperty('--ty', ty0 + 'px'); mark.style.display = 'none'; return; }
+  const pad = 18, m = 0.04;
   mark.style.left = (b.x - pad) + 'px'; mark.style.top = (b.y - pad) + 'px';
   mark.style.width = (b.w + pad * 2) + 'px'; mark.style.height = (b.h + pad * 2) + 'px';
   mark.style.borderWidth = (6 / s0) + 'px'; mark.style.borderRadius = (14 / s0) + 'px';
-  // zoom so the headline fills ~78% of the frame width, centered, never showing past the image edge
-  const s1 = Math.max(s0 * 1.15, Math.min(s0 * 2.2, (W * 0.78) / (b.w + pad * 2)));
+  // zoom so the headline fills ~78% of the frame width, but never so far that the box (with
+  // its highlight) loses a 4% margin on any side, in any format
+  const fitW = (W * (1 - 2 * m)) / (b.w + pad * 2), fitH = (H * (1 - 2 * m)) / (b.h + pad * 2);
+  const s1 = Math.min(s0 * 2.2, Math.max(s0 * 1.05, (W * 0.78) / (b.w + pad * 2)), fitW, fitH);
   const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
-  let tx = W / 2 - cx * s1, ty = H / 2 - cy * s1;
-  tx = Math.min(0, Math.max(W - TL.shot.w * s1, tx));
-  ty = Math.min(0, Math.max(H - TL.shot.h * s1, ty));
-  zoom.style.setProperty('--s0', s0); zoom.style.setProperty('--s1', s1);
+  const tx = place(s1, W / 2 - cx * s1, sw, W);
+  // keep the top of their page (the logo row) in view whenever the headline still fits under it
+  const ty = place(s1, (b.y + b.h + pad) * s1 <= H * (1 - m) ? 0 : H / 2 - cy * s1, sh, H);
+  zoom.style.setProperty('--s1', s1);
   zoom.style.setProperty('--tx', tx + 'px'); zoom.style.setProperty('--ty', ty + 'px');
+  const l = b.x * s1 + tx, t = b.y * s1 + ty, r = (b.x + b.w) * s1 + tx, bt = (b.y + b.h) * s1 + ty;
+  frame = { margin: Math.min(l / W, t / H, (W - r) / W, (H - bt) / H), top: ty };
 }
 
 // shrink text until it fits its box and line budget; report anything that still can't
@@ -375,7 +386,7 @@ window.__ready = (async () => {
   fit();
   for (const s of scenes) s.el.style.visibility = '';
   window.__seek(0);
-  return { duration: TL.duration, issues, fonts: [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family) };
+  return { duration: TL.duration, issues, frame, fonts: [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family) };
 })();
 </script></body></html>`
 }

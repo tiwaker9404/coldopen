@@ -87,6 +87,9 @@ const DESCRIPTIONS: Record<string, string> = {
   'messages.no-fallback': "Each message draft kept the writer's own words; no template swapped in",
   'design.text-contrast': 'Every text color meets WCAG AA (4.5:1) on its background',
   'design.brand-fonts-loaded': "The site's own font files were embedded, not a fallback",
+  'copy.varied': 'No two companies get the same greeting or the same pivot line',
+  'design.headline-framed':
+    'Their headline sits fully in frame, with a 4% margin, when the homepage zoom settles, in square, wide and tall',
   'design.no-text-overflow':
     'No line overflows or breaks its line budget, in square, wide and tall',
   'motion.frame-exact-seek': 'Any frame can be re-rendered pixel-identical (crash-safe rendering)',
@@ -114,6 +117,8 @@ interface Result {
   detail: string
 }
 const results: Result[] = []
+/** each film's greeting and pivot, to check that two companies don't read as one template */
+const lines_: { site: string; preset: string; hook: string; why: string }[] = []
 const record = (r: Result) => {
   results.push(r)
   process.stdout.write(
@@ -320,6 +325,7 @@ try {
       if (!messagesOnly) {
         const v = checkScript(s.script, kit, profile)
         record({ ...base, eval: 'copy.taste-rules', pass: v.length === 0, detail: v.join('; ') })
+        lines_.push({ site, preset, hook: s.script.hook, why: s.script.insight.why })
         record({
           ...base,
           eval: 'copy.no-fallback',
@@ -404,6 +410,7 @@ try {
       const shot = `data:image/jpeg;base64,${readFileSync(join(dir, kit.screenshot.file)).toString('base64')}`
       const formats: Format[] = ['square', 'landscape', 'portrait']
       const overflow: string[] = []
+      const framed: string[] = []
       let deterministic = true
       for (const format of formats) {
         const c = await openComposition(
@@ -411,6 +418,8 @@ try {
           format,
         )
         overflow.push(...c.report.issues.map((i) => `${format}: ${i.kind} ${i.text ?? ''}`))
+        const margin = c.report.frame?.margin ?? -1
+        if (margin < 0.04 - 1e-6) framed.push(`${format}: margin ${(margin * 100).toFixed(1)}%`)
         if (format === 'square') {
           // seeking is exact: the same timestamp always produces the same pixels
           const frame = async (t: number) => {
@@ -430,6 +439,12 @@ try {
         eval: 'design.no-text-overflow',
         pass: overflow.length === 0,
         detail: overflow.join('; '),
+      })
+      record({
+        ...base,
+        eval: 'design.headline-framed',
+        pass: framed.length === 0,
+        detail: framed.join('; '),
       })
       record({
         ...base,
@@ -556,6 +571,22 @@ if (messagesOnly) {
   console.log(`\n${runs.length} films measured. Report: ${OUT}`)
   // a real model's misses are the measurement, not a failure; nothing measured is
   process.exit(runs.length ? 0 : 1)
+}
+
+// across companies, per preset: the same greeting or pivot twice means the film reads as a template
+for (const l of lines_) {
+  const others = lines_.filter((o) => o.preset === l.preset && o.site !== l.site)
+  const same = [
+    ...(others.some((o) => o.hook === l.hook) ? [`greeting "${l.hook}"`] : []),
+    ...(others.some((o) => o.why === l.why) ? [`pivot "${l.why}"`] : []),
+  ]
+  record({
+    site: l.site,
+    preset: l.preset,
+    eval: 'copy.varied',
+    pass: same.length === 0,
+    detail: `shares its ${same.join(' and ')} with another company`,
+  })
 }
 
 const evals = [...new Set(results.map((r) => r.eval))]

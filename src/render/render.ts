@@ -11,6 +11,8 @@ const FFMPEG = process.env.FFMPEG_PATH ?? 'ffmpeg'
 export interface QaReport {
   duration: number
   issues: { kind: string; text?: string; scene?: string }[]
+  /** where the headline box ends up when the homepage zoom settles: its smallest margin, as a share of the frame */
+  frame?: { margin: number; top: number } | null
   fonts: string[]
 }
 
@@ -197,7 +199,9 @@ export async function renderExtras(
 
   // a 4.5 s loop of their own homepage being highlighted: the GIF an outreach email embeds
   const gif = join(opts.outDir, 'preview.gif')
-  const w = opts.format === 'landscape' ? 600 : 480
+  const w = opts.format === 'landscape' ? 600 : opts.format === 'portrait' ? 400 : 480
+  // tall frames carry the most pixels; fewer colors keep the email GIF under 1.4 MB
+  const colors = opts.format === 'portrait' ? 72 : 96
   await ffmpeg([
     '-ss',
     String(opts.gifFrom),
@@ -206,7 +210,7 @@ export async function renderExtras(
     '-i',
     opts.film,
     '-filter_complex',
-    `fps=12,scale=${w}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4`,
+    `fps=12,scale=${w}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=${colors}:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4`,
     '-loop',
     '0',
     gif,

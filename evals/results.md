@@ -1,6 +1,6 @@
 # coldopen evals
 
-168/168 checks passed across 14 evals, 3 sites and 2 presets, using the deterministic writer. Ran in 22s.
+180/180 checks passed across 16 evals, 3 sites and 2 presets, using the deterministic writer. Ran in 23s.
 
 | Eval | Passed | What it checks |
 |---|---:|---|
@@ -17,7 +17,9 @@
 | `design.text-contrast` | 6/6 | Every text color meets WCAG AA (4.5:1) on its background |
 | `design.brand-fonts-loaded` | 6/6 | The site's own font files were embedded, not a fallback |
 | `design.no-text-overflow` | 6/6 | No line overflows or breaks its line budget, in square, wide and tall |
+| `design.headline-framed` | 6/6 | Their headline sits fully in frame, with a 4% margin, when the homepage zoom settles, in square, wide and tall |
 | `motion.frame-exact-seek` | 6/6 | Any frame can be re-rendered pixel-identical (crash-safe rendering) |
+| `copy.varied` | 6/6 | No two companies get the same greeting or the same pivot line |
 
 ## Messages by draft
 

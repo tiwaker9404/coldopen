@@ -244,17 +244,75 @@ function noticedLine(kit: BrandKit, first: string): string {
   return clip(`The first thing ${first} promises on its homepage`, LIMITS.noticed)
 }
 
+/**
+ * A stable pick from a few phrasings, keyed on the company, so the same company always gets
+ * the same film (journaled steps replay identically) and two companies rarely get the same
+ * words. FNV-1a over the name plus a slot salt, so each line varies on its own.
+ */
+export function variant<T>(key: string, slot: string, options: readonly T[]): T {
+  let h = 0x811c9dc5
+  for (const ch of `${slot}:${key.trim().toLowerCase()}`) {
+    h ^= ch.codePointAt(0)!
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return options[h % options.length]!
+}
+
+/** Greetings that name the company; the longest one that fits the word limit is used. */
+export const HOOKS = [
+  (n: string) => `Hi ${n} team`,
+  (n: string) => `A short film for ${n}`,
+  (n: string) => `Made for the ${n} team`,
+  (n: string) => `For the people building ${n}`,
+] as const
+
+function hookFor(name: string, first: string): string {
+  const pick = variant(name, 'hook', HOOKS)
+  for (const line of [pick(name), pick(first), `Hi ${name} team`, `Hi ${first} team`])
+    if (words(line) <= LIMITS.hook) return line
+  return `Hi ${first} team`
+}
+
+export const HEADLINES = [
+  (n: string) => `What I would bring to ${n}`,
+  (n: string) => `What I would do for ${n}`,
+  (n: string) => `What I would build at ${n}`,
+  (n: string) => `What I would work on at ${n}`,
+] as const
+
+export const WHY = {
+  candidateStat: [
+    'I want to help move a number like this one',
+    'This is the number I would work on first',
+    'Numbers like this are what I like to build toward',
+    'I would want to help this number keep climbing',
+  ],
+  candidateClaim: [
+    'That is the kind of outcome I want to help build',
+    'This is the promise I would want to help keep',
+    'I would like to help make this true for more customers',
+    'I want to help build more outcomes like this one',
+  ],
+  salesStat: [
+    (who: string) => `${who} teams measure what moves a number like this`,
+    (who: string) => `${who} teams find the next number like this`,
+    (who: string) => `${who} teams show what drives a number like this`,
+    (who: string) => `${who} teams turn numbers like this into plans`,
+  ],
+  salesClaim: [
+    (who: string) => `${who} teams turn a claim like this into proof`,
+    (who: string) => `${who} teams back a promise like this with data`,
+    (who: string) => `${who} teams show customers this claim holds up`,
+    (who: string) => `${who} teams measure whether a promise like this lands`,
+  ],
+} as const
+
 /** One honest sentence tying the featured fact to the sender, without claiming anything new. */
-function whyLine(fact: Fact, candidate: boolean, company: string | undefined): string {
+function whyLine(fact: Fact, candidate: boolean, company: string | undefined, key: string): string {
   const numeric = fact.kind === 'stat'
-  if (candidate)
-    return numeric
-      ? 'I want to help move a number like this one'
-      : 'That is the kind of outcome I want to help build'
+  if (candidate) return variant(key, 'why', numeric ? WHY.candidateStat : WHY.candidateClaim)
   const who = company ? `${company} helps` : 'We help'
-  return numeric
-    ? `${who} teams measure what moves a number like this`
-    : `${who} teams turn a claim like this into proof`
+  return variant(key, 'why', numeric ? WHY.salesStat : WHY.salesClaim)(who)
 }
 
 /**
@@ -271,20 +329,18 @@ export function deterministicScript(kit: BrandKit, profile: Profile): Script {
   const hook =
     profile.preset === 'recruiter'
       ? recruiterHook(profile.recipient?.name.split(/\s+/)[0], name, first)
-      : words(`Hi ${name} team`) <= LIMITS.hook
-        ? `Hi ${name} team`
-        : `Hi ${first} team`
+      : hookFor(name, first)
   return {
     hook,
     noticed: noticedLine(kit, first),
     insight: {
       factId: fact.id,
-      why: clip(whyLine(fact, candidate, profile.sender.company), LIMITS.why),
+      why: clip(whyLine(fact, candidate, profile.sender.company, name), LIMITS.why),
     },
     pitch: {
       headline: clip(
         candidate
-          ? `What I would bring to ${name}`
+          ? variant(name, 'headline', HEADLINES)(name)
           : words(profile.offer) >= 4
             ? profile.offer
             : `${profile.offer.replace(/[.]$/, '')}, made for ${first}`,
@@ -431,11 +487,7 @@ function jobScript(kit: BrandKit, profile: Profile, title: string): Script {
     .map((x) => x.i)
     .filter((i) => i !== answer)
   const them = profile.recipient?.name.split(/\s+/)[0]
-  const hook = recruiter
-    ? recruiterHook(them, name, first)
-    : words(`Hi ${name} team`) <= LIMITS.hook
-      ? `Hi ${name} team`
-      : `Hi ${first} team`
+  const hook = recruiter ? recruiterHook(them, name, first) : hookFor(name, first)
   const headline = recruiter
     ? words(`Why you fit our ${title} role`) <= LIMITS.headline
       ? `Why you fit our ${title} role`
