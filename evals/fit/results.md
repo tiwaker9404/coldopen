@@ -3,7 +3,7 @@
 Does "this line of your record answers that requirement" agree with a person's judgment?
 128 hand-labeled pairs (63 that answer, the rest that don't, many of
 them sharing words without answering). Each model's cut-off is picked on half the pairs and
-scored on the other 64, so these numbers are out of sample. Ran in 1s.
+scored on the other 64, so these numbers are out of sample. Ran in 2s.
 
 | Matcher                           | Precision | Recall |   F1 | Accuracy | Notes                       |
 | --------------------------------- | --------: | -----: | ---: | -------: | --------------------------- |
