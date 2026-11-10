@@ -1,11 +1,12 @@
-# Publishes site/ (the landing page) to GitHub Pages on every push to main that touches it.
+# Publishes site/ (the landing page) and the demo (the web app on recorded data, at /demo/) to
+# GitHub Pages on every push to main that touches either.
 # One-time setup in the repo: Settings > Pages > Source: GitHub Actions.
 name: pages
 
 on:
   push:
     branches: [main]
-    paths: [site/**, .github/workflows/pages.yml]
+    paths: [site/**, dashboard/**, .github/workflows/pages.yml]
   workflow_dispatch:
 
 permissions:
@@ -30,6 +31,21 @@ jobs:
         run: |
           git fetch --depth=1 origin data || exit 0
           git show origin/data:hiring-index/data.json > site/hiring-index/data.json || rm -f site/hiring-index/data.json
+      # the demo: the real web app answered from dashboard/src/demo/fixtures.json, no server
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+        env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
+      - name: The demo build
+        run: |
+          pnpm dashboard:build:demo
+          rm -rf site/demo && cp -r dashboard/dist-demo site/demo
+      # the live app's build must never carry the demo's code or data
+      - name: The live build has no demo in it
+        run: |
+          pnpm dashboard:build
+          ! grep -l "demo_read_only" dashboard/dist/assets/*.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

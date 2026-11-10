@@ -79,6 +79,11 @@ export function Onboarding({
         Hiring instead? <a href="#pitch">Pitch your role to a candidate</a>, or post a hiring film.
         No résumé needed.
       </p>
+      <p className="hiring-path">
+        Just looking?{' '}
+        <a href="https://tiwaker9404.github.io/coldopen/demo/?ref=app">Take the 90-second tour</a>{' '}
+        of an account with three films sent.
+      </p>
     </section>
   )
 }

@@ -3966,3 +3966,74 @@ a.tag {
   color: var(--ink);
   overflow-wrap: anywhere;
 }
+
+/* demo build only (src/demo/): the banner and the 90-second tour */
+.demo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--stock);
+  border-radius: var(--r);
+  background: var(--soft);
+  color: var(--ink);
+  font-size: 14px;
+}
+.demo-banner-links {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.demo-banner a {
+  color: var(--ink);
+  font-weight: 600;
+}
+.tour {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 60;
+  width: min(380px, calc(100vw - 32px));
+  padding: 18px 18px 14px;
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+}
+.tour:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.tour h2 {
+  font-size: 18px;
+  margin: 2px 0 6px;
+}
+.tour p {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.tour-step {
+  color: var(--muted);
+  font-size: 12px;
+}
+.tour-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+}
+@media (max-width: 640px) {
+  .tour {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
+  }
+}

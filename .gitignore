@@ -17,3 +17,5 @@ messages-eval.md
 extract-eval.md
 extract-eval-out
 evals/extract/results.json
+dist-demo
+site/demo

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AccountMenu, FramedNotice, StatsPanel } from './Account.tsx'
 import {
   ApiError,
@@ -43,6 +43,10 @@ const FORMATS: { id: Format; label: string }[] = [
 
 type Editing = { profile: Profile | null; draft?: ProfileData; notice?: string }
 
+declare const __DEMO__: boolean
+// the demo build's banner and tour; compiled away everywhere else
+const DemoChrome = __DEMO__ ? lazy(() => import('./demo/DemoChrome.tsx')) : null
+
 export function App() {
   const qc = useQueryClient()
   const [open, setOpen] = useState<string | null>(null)
@@ -72,6 +76,12 @@ export function App() {
     (e) => e instanceof ApiError && e.status === 401,
   )
   const list = films.data?.data ?? []
+  // the tour opens the demo's furthest-along film (it got the interview) for its film stops
+  const showcase = list.find((f) => f.outreach?.status === 'interview') ?? list[0]
+  const tourFilm = useCallback(
+    (show: boolean) => setOpen(show && showcase ? showcase.id : null),
+    [showcase],
+  )
   const noProfile = profiles.data?.data.length === 0
   const loading = profiles.isLoading || films.isLoading
 
@@ -149,6 +159,11 @@ export function App() {
 
       <div className="main">
         <main className="page">
+          {DemoChrome && (
+            <Suspense fallback={null}>
+              <DemoChrome onOpenFilm={tourFilm} />
+            </Suspense>
+          )}
           {hosted && <FramedNotice />}
           <ErrorNote error={signinError} lead="Sign-in didn't work: " />
           {unauthorized && !hosted && <KeyForm />}

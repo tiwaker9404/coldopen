@@ -354,12 +354,18 @@ export function media(
 ): string {
   const filmFile = film.files?.film.split('/').pop() ?? ''
   const file = name === 'film' ? filmFile : name
+  // the demo's films are published with the landing page
+  if (__DEMO__) return `../media/demo/${film.id}/${file}`
   if (film.files && /^https?:/.test(film.files.film))
     return `${film.files.film.slice(0, film.files.film.lastIndexOf('/'))}/${file}`
   return `/f/${film.id}/${file}`
 }
 
+/** set by the demo build (vite.config.ts); false everywhere else, so the demo code is dropped */
+declare const __DEMO__: boolean
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (__DEMO__) return (await import('./demo/api.ts')).demoApi<T>(path, init)
   const k = apiKey()
   let res: Response
   try {

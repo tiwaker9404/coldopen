@@ -1,0 +1,2392 @@
+{
+  "recordedAt": "2026-11-10T16:12:05.018Z",
+  "answers": {
+    "/v1/me": {
+      "hosted": false,
+      "signIn": false,
+      "providers": [],
+      "user": null,
+      "films": null,
+      "keepsDays": null,
+      "stats": false
+    },
+    "/v1/profiles": {
+      "data": [
+        {
+          "id": "me",
+          "name": "Alex Rivera",
+          "data": {
+            "cta": {
+              "line": "Could we talk this week?",
+              "contact": "alex@example.com"
+            },
+            "offer": "An engineer who ships AI agents customers actually use",
+            "proof": [
+              {
+                "label": "open-source AI projects shipped",
+                "value": "6"
+              },
+              {
+                "label": "double refunds in a 200-run chaos test",
+                "value": "0"
+              },
+              {
+                "label": "Solutions Architect certified",
+                "value": "AWS"
+              }
+            ],
+            "points": [
+              "Ships production agents with evals, not demos",
+              "Turns messy customer data into working pipelines",
+              "Explains technical trade-offs to non-engineers",
+              "Learns a new codebase and ships in week one"
+            ],
+            "preset": "candidate",
+            "sender": {
+              "name": "Alex Rivera",
+              "role": "Forward deployed engineer"
+            }
+          },
+          "updatedAt": "2026-11-10T16:09:28.415Z"
+        }
+      ]
+    },
+    "/v1/films?limit=120": {
+      "data": [
+        {
+          "id": "run_01M733HE5DF8YEQ5PWJBEGMPY1",
+          "status": "succeeded",
+          "url": "https://parcelpine.example/",
+          "format": "square",
+          "batch": null,
+          "ref": null,
+          "sender": "Alex Rivera",
+          "pitch": null,
+          "progress": null,
+          "attempts": 1,
+          "error": null,
+          "errorCode": null,
+          "createdAt": "2026-11-10T16:09:28.493Z",
+          "completedAt": "2026-11-10T16:12:00.131Z",
+          "company": "Parcelpine",
+          "host": "parcelpine.example",
+          "durationSec": 29.2,
+          "files": {
+            "film": "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/files/film-square.mp4",
+            "poster": "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/files/poster.jpg",
+            "gif": "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/files/preview.gif",
+            "sheet": "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/files/contact-sheet.jpg"
+          },
+          "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE5DF8YEQ5PWJBEGMPY1/film-square.mp4",
+          "job": null,
+          "views": {
+            "opens": 1,
+            "viewers": 1,
+            "plays": 1,
+            "finishes": 0,
+            "clicks": 0,
+            "bestSeconds": 14,
+            "firstPlayAt": "2026-11-10T16:12:04.011Z",
+            "lastSeen": "2026-11-10T16:12:04.016Z"
+          },
+          "outreach": {
+            "at": "2026-11-10T16:12:03.950Z",
+            "sentAt": "2026-11-10T16:12:03.950Z",
+            "status": "sent",
+            "next": {
+              "kind": "follow_up",
+              "step": 1,
+              "dueAt": "2026-11-12T16:12:04.016Z",
+              "due": false,
+              "watched": {
+                "at": "2026-11-10T16:12:04.016Z",
+                "finished": false
+              }
+            }
+          },
+          "recipient": {
+            "name": "Dana Okafor"
+          },
+          "detail": null,
+          "crm": null,
+          "editOf": null
+        },
+        {
+          "id": "run_01M733HE4SPM89HXW09GNEHAJ6",
+          "status": "succeeded",
+          "url": "https://lumenhealth.example/",
+          "format": "square",
+          "batch": null,
+          "ref": null,
+          "sender": "Alex Rivera",
+          "pitch": null,
+          "progress": null,
+          "attempts": 1,
+          "error": null,
+          "errorCode": null,
+          "createdAt": "2026-11-10T16:09:28.473Z",
+          "completedAt": "2026-11-10T16:11:01.472Z",
+          "company": "Lumen Health",
+          "host": "lumenhealth.example",
+          "durationSec": 29.2,
+          "files": {
+            "film": "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/files/film-square.mp4",
+            "poster": "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/files/poster.jpg",
+            "gif": "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/files/preview.gif",
+            "sheet": "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/files/contact-sheet.jpg"
+          },
+          "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE4SPM89HXW09GNEHAJ6/film-square.mp4",
+          "job": null,
+          "views": {
+            "opens": 1,
+            "viewers": 1,
+            "plays": 1,
+            "finishes": 1,
+            "clicks": 1,
+            "bestSeconds": 29.2,
+            "firstPlayAt": "2026-11-10T16:12:03.994Z",
+            "lastSeen": "2026-11-10T16:12:04.009Z"
+          },
+          "outreach": {
+            "at": "2026-11-10T16:12:03.941Z",
+            "sentAt": "2026-11-10T16:12:03.937Z",
+            "status": "replied",
+            "next": null
+          },
+          "recipient": {
+            "name": "Marcus Lee"
+          },
+          "detail": null,
+          "crm": null,
+          "editOf": null
+        },
+        {
+          "id": "run_01M733HE499SGVAD995SDGWARP",
+          "status": "succeeded",
+          "url": "https://northwindfreight.example/",
+          "format": "square",
+          "batch": null,
+          "ref": null,
+          "sender": "Alex Rivera",
+          "pitch": null,
+          "progress": null,
+          "attempts": 1,
+          "error": null,
+          "errorCode": null,
+          "createdAt": "2026-11-10T16:09:28.456Z",
+          "completedAt": "2026-11-10T16:11:00.214Z",
+          "company": "Northwind Freight",
+          "host": "northwindfreight.example",
+          "durationSec": 29.2,
+          "files": {
+            "film": "/v1/films/run_01M733HE499SGVAD995SDGWARP/files/film-square.mp4",
+            "poster": "/v1/films/run_01M733HE499SGVAD995SDGWARP/files/poster.jpg",
+            "gif": "/v1/films/run_01M733HE499SGVAD995SDGWARP/files/preview.gif",
+            "sheet": "/v1/films/run_01M733HE499SGVAD995SDGWARP/files/contact-sheet.jpg"
+          },
+          "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE499SGVAD995SDGWARP/film-square.mp4",
+          "job": null,
+          "views": {
+            "opens": 2,
+            "viewers": 2,
+            "plays": 2,
+            "finishes": 2,
+            "clicks": 1,
+            "bestSeconds": 29.2,
+            "firstPlayAt": "2026-11-10T16:12:03.955Z",
+            "lastSeen": "2026-11-10T16:12:03.990Z"
+          },
+          "outreach": {
+            "at": "2026-11-10T16:12:03.929Z",
+            "sentAt": "2026-11-10T16:12:03.923Z",
+            "status": "interview",
+            "next": null
+          },
+          "recipient": {
+            "name": "Priya Shah"
+          },
+          "detail": null,
+          "crm": null,
+          "editOf": null
+        }
+      ],
+      "nextCursor": null
+    },
+    "/v1/followups": {
+      "data": [],
+      "waiting": 1,
+      "nextDueAt": "2026-11-12T16:12:04.016Z"
+    },
+    "/v1/outreach": {
+      "sent": 3,
+      "replied": 2,
+      "interviews": 1,
+      "noReply": 0,
+      "waiting": 1,
+      "replyRate": 0.6666666666666666
+    },
+    "/v1/me/openers": {
+      "film": {
+        "sent": 2,
+        "watched": 2,
+        "replied": 2
+      },
+      "proof": {
+        "sent": 1,
+        "watched": 1,
+        "replied": 0
+      },
+      "leader": null
+    },
+    "/v1/me/keys": {},
+    "/v1/me/tokens": {
+      "data": []
+    },
+    "/v1/connections": {
+      "count": 0,
+      "addedAt": null
+    },
+    "/v1/jobs/suggested?limit=24": {
+      "data": [
+        {
+          "id": "ashby:david-ai:04943bcf-5496-4eb5-a515-d8c2e13cc539",
+          "pay": {
+            "max": 225000,
+            "min": 165000,
+            "currency": "USD"
+          },
+          "url": "https://jobs.ashbyhq.com/david-ai/04943bcf-5496-4eb5-a515-d8c2e13cc539",
+          "team": "Engineering",
+          "type": "full_time",
+          "title": "Forward Deployed Engineer, Production",
+          "posted": "2026-11-10T00:23:56.476Z",
+          "remote": false,
+          "company": "David AI",
+          "location": "San Francisco",
+          "workplace": "onsite",
+          "site": "https://www.withdavid.ai/",
+          "why": ["Forward Deployed Engineer", "New this week"],
+          "yc": "S24",
+          "ycPage": "https://www.ycombinator.com/companies/david-ai",
+          "hiring": {
+            "open": 15,
+            "recent": 6
+          }
+        },
+        {
+          "id": "greenhouse:elastic:8348532",
+          "url": "https://job-boards.greenhouse.io/elastic/jobs/8348532",
+          "title": "Partner Solutions Architect",
+          "posted": "2026-11-09T23:17:53.000Z",
+          "remote": false,
+          "company": "Elastic",
+          "location": "Austin, TX",
+          "site": "https://www.elastic.co/",
+          "why": ["Solutions Architect", "New this week"],
+          "hiring": {
+            "open": 422,
+            "recent": 147
+          }
+        },
+        {
+          "id": "greenhouse:stripe:8368260",
+          "url": "https://job-boards.greenhouse.io/stripe/jobs/8368260",
+          "title": "Solutions Architect, Metronome (AI Native)",
+          "posted": "2026-11-09T22:53:24.000Z",
+          "remote": true,
+          "company": "Stripe",
+          "location": "San Francisco, Seattle, US-Remote",
+          "workplace": "remote",
+          "site": "https://stripe.com/",
+          "why": ["Solutions Architect", "Remote", "New this week"],
+          "yc": "S09",
+          "ycPage": "https://www.ycombinator.com/companies/stripe",
+          "hiring": {
+            "open": 766,
+            "recent": 234
+          },
+          "visa": {
+            "approvals": 64,
+            "year": 2023
+          }
+        },
+        {
+          "id": "ashby:pointone:834a8648-5581-4d69-80cb-41382928d220",
+          "pay": {
+            "max": 225000,
+            "min": 140000,
+            "currency": "USD"
+          },
+          "url": "https://jobs.ashbyhq.com/pointone/834a8648-5581-4d69-80cb-41382928d220",
+          "team": "Engineering",
+          "type": "full_time",
+          "title": "Forward Deployed Engineer",
+          "posted": "2026-11-09T22:50:15.974Z",
+          "remote": false,
+          "company": "PointOne",
+          "location": "New York City",
+          "workplace": "onsite",
+          "site": "https://pointone.com/",
+          "why": ["Forward Deployed Engineer", "New this week"],
+          "yc": "W24",
+          "ycPage": "https://www.ycombinator.com/companies/pointone",
+          "hiring": {
+            "open": 14,
+            "recent": 6
+          }
+        },
+        {
+          "id": "greenhouse:databricks:8920618002",
+          "url": "https://job-boards.greenhouse.io/databricks/jobs/8920618002",
+          "title": "Delivery Partner Manager, FDE",
+          "posted": "2026-11-09T22:48:23.000Z",
+          "remote": false,
+          "company": "Databricks",
+          "location": "Northeast - United States; San Francisco, California; Seattle, Washington; Southeast - United States",
+          "site": "https://www.databricks.com/",
+          "why": ["Forward Deployed Engineer", "New this week"],
+          "hiring": {
+            "open": 903,
+            "recent": 198
+          },
+          "visa": {
+            "approvals": 78,
+            "year": 2023
+          },
+          "raised": {
+            "date": "2026-08-27",
+            "filer": "Databricks, Inc.",
+            "amount": 241204249
+          }
+        },
+        {
+          "id": "ashby:cursor:236b6232-a98b-43c0-a0ed-d2b475b8e579",
+          "url": "https://jobs.ashbyhq.com/cursor/236b6232-a98b-43c0-a0ed-d2b475b8e579",
+          "team": "Customer Success",
+          "type": "full_time",
+          "title": "Solutions Architect",
+          "posted": "2026-11-09T22:06:43.451Z",
+          "remote": true,
+          "company": "Cursor",
+          "location": "Remote",
+          "workplace": "remote",
+          "site": "https://cursor.com/",
+          "why": ["Solutions Architect", "Remote", "New this week"],
+          "hiring": {
+            "open": 115,
+            "recent": 104
+          }
+        },
+        {
+          "id": "ashby:captivateiq:7d2229e5-220f-46ed-b857-2cfe24bfa262",
+          "url": "https://jobs.ashbyhq.com/captivateiq/7d2229e5-220f-46ed-b857-2cfe24bfa262",
+          "team": "Alliances and Growth",
+          "type": "full_time",
+          "title": "Partner Success Manager - Solutions Architect",
+          "posted": "2026-11-09T21:48:18.600Z",
+          "remote": true,
+          "company": "CaptivateIQ",
+          "location": "Remote",
+          "site": "https://www.captivateiq.com/",
+          "why": ["Solutions Architect", "Remote", "New this week"],
+          "yc": "W18",
+          "ycPage": "https://www.ycombinator.com/companies/captivateiq",
+          "hiring": {
+            "open": 21,
+            "recent": 13
+          }
+        },
+        {
+          "id": "ashby:cursor:0473120a-7dd7-4604-b5f6-0b834cc6e782",
+          "url": "https://jobs.ashbyhq.com/cursor/0473120a-7dd7-4604-b5f6-0b834cc6e782",
+          "team": "Solutions",
+          "type": "full_time",
+          "title": "Regional Director, Forward Deployed Engineering - Public Sector",
+          "posted": "2026-11-09T21:17:17.526Z",
+          "remote": false,
+          "company": "Cursor",
+          "location": "Washington, D.C.",
+          "workplace": "onsite",
+          "site": "https://cursor.com/",
+          "why": ["Forward Deployed Engineer", "New this week"],
+          "hiring": {
+            "open": 115,
+            "recent": 104
+          }
+        },
+        {
+          "id": "ashby:openai:eb3b695e-6c60-4875-b8bc-8f4d5d8a9bbb",
+          "pay": {
+            "max": 260000,
+            "min": 234000,
+            "currency": "USD"
+          },
+          "url": "https://jobs.ashbyhq.com/openai/eb3b695e-6c60-4875-b8bc-8f4d5d8a9bbb",
+          "team": "Go To Market",
+          "type": "full_time",
+          "title": "Solutions Engineer, Ads Solutions - NYC",
+          "posted": "2026-11-09T14:14:33.198Z",
+          "remote": false,
+          "company": "OpenAI",
+          "location": "San Francisco",
+          "site": "https://openai.com/",
+          "why": ["Solutions Engineer", "New this week"],
+          "hiring": {
+            "open": 826,
+            "recent": 240
+          }
+        },
+        {
+          "id": "ashby:formance:7da53ad4-f5f4-43fd-8524-f59019115f13",
+          "url": "https://jobs.ashbyhq.com/formance/7da53ad4-f5f4-43fd-8524-f59019115f13",
+          "team": "Sales",
+          "type": "full_time",
+          "title": "Pre-Sales Solutions Engineer",
+          "posted": "2026-11-07T00:00:54.175Z",
+          "remote": false,
+          "company": "Formance",
+          "location": "New York",
+          "site": "https://formance.com/",
+          "why": ["Solutions Engineer", "New this week"],
+          "yc": "S21",
+          "ycPage": "https://www.ycombinator.com/companies/formance",
+          "hiring": {
+            "open": 6,
+            "recent": 3
+          }
+        },
+        {
+          "id": "ashby:vitalize:b378a4fb-7a22-452f-9acf-0e44ac813b58",
+          "pay": {
+            "max": 200000,
+            "min": 160000,
+            "currency": "USD"
+          },
+          "url": "https://jobs.ashbyhq.com/vitalize/b378a4fb-7a22-452f-9acf-0e44ac813b58",
+          "team": "Customer Experience",
+          "type": "full_time",
+          "title": "Enterprise Solutions Engineer, Clinical & EHR Systems",
+          "posted": "2026-11-06T21:37:56.133Z",
+          "remote": true,
+          "company": "Vitalize",
+          "location": "Remote | San Francisco HQ",
+          "workplace": "remote",
+          "site": "https://vitalize.care/",
+          "why": ["Solutions Engineer", "Remote", "New this week"],
+          "yc": "W23",
+          "ycPage": "https://www.ycombinator.com/companies/vitalize",
+          "hiring": {
+            "open": 17,
+            "recent": 5
+          }
+        },
+        {
+          "id": "ashby:vitalize:c6e06933-706f-472b-9d93-a34fdca30f9f",
+          "pay": {
+            "max": 200000,
+            "min": 160000,
+            "currency": "USD"
+          },
+          "url": "https://jobs.ashbyhq.com/vitalize/c6e06933-706f-472b-9d93-a34fdca30f9f",
+          "team": "Customer Experience",
+          "type": "full_time",
+          "title": "Enterprise Solutions Engineer, Workforce Management & Payroll (UKG)",
+          "posted": "2026-11-06T21:37:22.405Z",
+          "remote": true,
+          "company": "Vitalize",
+          "location": "Remote | San Francisco HQ",
+          "workplace": "remote",
+          "site": "https://vitalize.care/",
+          "why": ["Solutions Engineer", "Remote", "New this week"],
+          "yc": "W23",
+          "ycPage": "https://www.ycombinator.com/companies/vitalize",
+          "hiring": {
+            "open": 17,
+            "recent": 5
+          }
+        },
+        {
+          "id": "greenhouse:mongodb:8359903",
+          "url": "https://job-boards.greenhouse.io/mongodb/jobs/8359903",
+          "type": "part_time",
+          "title": "Advisory Solutions Architect (Pre-Sales)",
+          "posted": "2026-11-06T20:59:31.000Z",
+          "remote": false,
+          "company": "MongoDB",
+          "location": "San Francisco",
+          "site": "https://www.mongodb.com/",
+          "why": ["Solutions Architect", "New this week"],
+          "hiring": {
+            "open": 355,
+            "recent": 106
+          },
+          "visa": {
+            "approvals": 30,
+            "year": 2023
+          }
+        },
+        {
+          "id": "ashby:trm-labs:801699e2-d9da-4407-ae31-2b88af6eb649",
+          "url": "https://jobs.ashbyhq.com/trm-labs/801699e2-d9da-4407-ae31-2b88af6eb649",
+          "team": "Go-To-Market",
+          "type": "full_time",
+          "title": "Solutions Architect, Onchain Compliance",
+          "posted": "2026-11-06T20:49:07.340Z",
+          "remote": true,
+          "company": "TRM Labs",
+          "location": "United States",
+          "workplace": "remote",
+          "site": "https://trmlabs.com/",
+          "why": ["Solutions Architect", "Remote", "New this week"],
+          "yc": "S19",
+          "ycPage": "https://www.ycombinator.com/companies/trm-labs",
+          "hiring": {
+            "open": 114,
+            "recent": 37
+          }
+        },
+        {
+          "id": "ashby:temporal:0b03268c-92ba-4092-9eec-05eb16e41b95",
+          "pay": {
+            "max": 220500,
+            "min": 168000,
+            "currency": "USD"
+          },
+          "url": "https://jobs.ashbyhq.com/temporal/0b03268c-92ba-4092-9eec-05eb16e41b95",
+          "team": "Sales",
+          "type": "full_time",
+          "title": "Staff Solutions Architect, Majors (US)",
+          "posted": "2026-11-06T19:34:27.083Z",
+          "remote": true,
+          "company": "Temporal",
+          "location": "San Francisco, California | Dallas, Texas | New York, New York",
+          "workplace": "remote",
+          "site": "https://temporal.io/",
+          "why": ["Solutions Architect", "Remote", "New this week"],
+          "hiring": {
+            "open": 83,
+            "recent": 40
+          },
+          "visa": {
+            "approvals": 3,
+            "year": 2023
+          }
+        },
+        {
+          "id": "ashby:openai:218c0b55-53bd-4df6-805d-321a8c2e7db7",
+          "pay": {
+            "max": 300000,
+            "min": 185000,
+            "currency": "USD"
+          },
+          "url": "https://jobs.ashbyhq.com/openai/218c0b55-53bd-4df6-805d-321a8c2e7db7",
+          "team": "Forward Deployed Engineering",
+          "type": "full_time",
+          "title": "Forward Deployed Engineer (FDE), Life Sciences - SF",
+          "posted": "2026-11-06T19:30:26.079Z",
+          "remote": false,
+          "company": "OpenAI",
+          "location": "San Francisco",
+          "site": "https://openai.com/",
+          "why": ["Forward Deployed Engineer", "New this week"],
+          "hiring": {
+            "open": 826,
+            "recent": 240
+          }
+        },
+        {
+          "id": "ashby:openai:a12c3c93-51df-437d-862f-4892367fea32",
+          "pay": {
+            "max": 300000,
+            "min": 185000,
+            "currency": "USD"
+          },
+          "url": "https://jobs.ashbyhq.com/openai/a12c3c93-51df-437d-862f-4892367fea32",
+          "team": "Forward Deployed Engineering",
+          "type": "full_time",
+          "title": "Forward Deployed Engineer (FDE), Life Sciences - NYC",
+          "posted": "2026-11-06T19:30:22.727Z",
+          "remote": true,
+          "company": "OpenAI",
+          "location": "New York City",
+          "workplace": "hybrid",
+          "site": "https://openai.com/",
+          "why": ["Forward Deployed Engineer", "Remote", "New this week"],
+          "hiring": {
+            "open": 826,
+            "recent": 240
+          }
+        },
+        {
+          "id": "greenhouse:fivetran:8196171003",
+          "url": "https://job-boards.greenhouse.io/fivetran/jobs/8196171003",
+          "title": "Resident Solution Architect",
+          "posted": "2026-11-05T22:54:22.000Z",
+          "remote": false,
+          "company": "Fivetran",
+          "location": "USA - Philadelphia (dbt)",
+          "site": "https://www.fivetran.com/",
+          "why": ["Solutions Architect", "New this week"],
+          "hiring": {
+            "open": 166,
+            "recent": 70
+          },
+          "visa": {
+            "approvals": 4,
+            "year": 2023
+          }
+        },
+        {
+          "id": "greenhouse:mongodb:8340799",
+          "url": "https://job-boards.greenhouse.io/mongodb/jobs/8340799",
+          "type": "part_time",
+          "title": "Senior Solutions Architect (Pre-Sales)",
+          "posted": "2026-11-05T20:45:42.000Z",
+          "remote": false,
+          "company": "MongoDB",
+          "location": "Chicago",
+          "site": "https://www.mongodb.com/",
+          "why": ["Solutions Architect", "New this week"],
+          "hiring": {
+            "open": 355,
+            "recent": 106
+          },
+          "visa": {
+            "approvals": 30,
+            "year": 2023
+          }
+        },
+        {
+          "id": "greenhouse:databricks:8823788002",
+          "url": "https://job-boards.greenhouse.io/databricks/jobs/8823788002",
+          "title": "Sr. Forward Deployed Engineer - Public Sector",
+          "posted": "2026-11-05T20:41:38.000Z",
+          "remote": true,
+          "company": "Databricks",
+          "location": "Alabama; Berkeley, California; Connecticut; Kansas City, Missouri; Maryland; New Hampshire; New Jersey; North Carolina; Remote - California; Remote - Colorado; Remote - Illinois; Remote - Massachusetts; Remote - Missouri; Remote - New York; Remote - Pennsylvania; Remote - Virginia; Remote - Washington; Remote - Washington D.C.; Rhode Island; San Diego, California; South Carolina",
+          "workplace": "remote",
+          "site": "https://www.databricks.com/",
+          "why": ["Forward Deployed Engineer", "Remote", "New this week"],
+          "hiring": {
+            "open": 903,
+            "recent": 198
+          },
+          "visa": {
+            "approvals": 78,
+            "year": 2023
+          },
+          "raised": {
+            "date": "2026-08-27",
+            "filer": "Databricks, Inc.",
+            "amount": 241204249
+          }
+        },
+        {
+          "id": "greenhouse:databricks:8904745002",
+          "url": "https://job-boards.greenhouse.io/databricks/jobs/8904745002",
+          "title": "Solutions Architect - Digital Native Business (Geo)",
+          "posted": "2026-11-05T18:20:08.000Z",
+          "remote": true,
+          "company": "Databricks",
+          "location": "Connecticut; Remote - Massachusetts; Remote - New York; Remote - Pennsylvania",
+          "workplace": "remote",
+          "site": "https://www.databricks.com/",
+          "why": ["Solutions Architect", "Remote", "New this week"],
+          "hiring": {
+            "open": 903,
+            "recent": 198
+          },
+          "visa": {
+            "approvals": 78,
+            "year": 2023
+          },
+          "raised": {
+            "date": "2026-08-27",
+            "filer": "Databricks, Inc.",
+            "amount": 241204249
+          }
+        },
+        {
+          "id": "ashby:pinecone:a50c376a-0216-40b2-9525-da89d47ef190",
+          "pay": {
+            "max": 240000,
+            "min": 207000,
+            "currency": "USD"
+          },
+          "url": "https://jobs.ashbyhq.com/pinecone/a50c376a-0216-40b2-9525-da89d47ef190",
+          "team": "GTM",
+          "type": "full_time",
+          "title": "Solutions Engineer",
+          "posted": "2026-11-05T18:13:05.165Z",
+          "remote": true,
+          "company": "Pinecone",
+          "location": "San Francisco | New York City",
+          "workplace": "remote",
+          "site": "https://www.pinecone.io/",
+          "why": ["Solutions Engineer", "Remote", "New this week"],
+          "hiring": {
+            "open": 6,
+            "recent": 3
+          }
+        },
+        {
+          "id": "greenhouse:gusto:8346975",
+          "url": "https://job-boards.greenhouse.io/gusto/jobs/8346975",
+          "title": "Senior Solution Architect",
+          "posted": "2026-11-05T17:44:22.000Z",
+          "remote": false,
+          "company": "Gusto",
+          "location": "Atlanta, GA - Hybrid; Denver, CO - Hybrid",
+          "workplace": "hybrid",
+          "site": "https://gusto.com/",
+          "why": ["Solutions Architect", "New this week"],
+          "yc": "W12",
+          "ycPage": "https://www.ycombinator.com/companies/gusto",
+          "hiring": {
+            "open": 80,
+            "recent": 27
+          },
+          "visa": {
+            "approvals": 7,
+            "year": 2023
+          }
+        },
+        {
+          "id": "greenhouse:gusto:8346979",
+          "url": "https://job-boards.greenhouse.io/gusto/jobs/8346979",
+          "title": "Solution Architect",
+          "posted": "2026-11-05T17:00:12.000Z",
+          "remote": false,
+          "company": "Gusto",
+          "location": "Atlanta, GA - Hybrid; Denver, CO - Hybrid",
+          "workplace": "hybrid",
+          "site": "https://gusto.com/",
+          "why": ["Solutions Architect", "New this week"],
+          "yc": "W12",
+          "ycPage": "https://www.ycombinator.com/companies/gusto",
+          "hiring": {
+            "open": 80,
+            "recent": 27
+          },
+          "visa": {
+            "approvals": 7,
+            "year": 2023
+          }
+        }
+      ],
+      "alerts": {
+        "since": null,
+        "newMatches": 0,
+        "filmed": []
+      },
+      "gaps": [],
+      "companies": 468,
+      "ycCompanies": 410,
+      "raisedCompanies": 10,
+      "failed": [],
+      "updatedAt": "2026-11-10T16:09:28.365Z",
+      "search": {
+        "roles": ["Forward Deployed Engineer", "Solutions Engineer", "Solutions Architect"],
+        "country": "us",
+        "levels": [],
+        "roleType": "any",
+        "excludeTitles": [],
+        "skills": [],
+        "excludeSkills": [],
+        "noClearance": false,
+        "noCitizenOnly": false,
+        "types": [],
+        "workplaces": [],
+        "maxYears": null,
+        "locations": [],
+        "remote": true,
+        "skipSenior": false,
+        "ycOnly": false,
+        "visaOnly": false,
+        "raisedOnly": false,
+        "raisedSize": "any",
+        "sort": "best",
+        "within": "any",
+        "exclude": [],
+        "minPay": null,
+        "boards": [],
+        "suggested": false
+      }
+    },
+    "/v1/startups?since=2023&maxTeam=50&hiring=any&limit=30&offset=0": {
+      "data": [
+        {
+          "name": "Memorable",
+          "slug": "memorable",
+          "website": "https://www.memorable.sh/",
+          "batch": "S27",
+          "oneLiner": "reducing agent reasoning into a graph search problem",
+          "team": 2,
+          "industry": "B2B",
+          "sub": "Infrastructure",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/memorable",
+          "ycJobs": null
+        },
+        {
+          "name": "Colony",
+          "slug": "colony",
+          "website": "https://colony.tech/",
+          "batch": "W27",
+          "oneLiner": "Long-range drone network for world data collection",
+          "team": 3,
+          "industry": "Industrials",
+          "sub": "Drones",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/colony",
+          "ycJobs": null
+        },
+        {
+          "name": "Godpack",
+          "slug": "godpack",
+          "website": "https://godpack.gg/",
+          "batch": "W27",
+          "oneLiner": "The marketplace for internet culture.",
+          "team": 5,
+          "industry": "Consumer",
+          "sub": null,
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/godpack",
+          "ycJobs": null
+        },
+        {
+          "name": "LinkLane",
+          "slug": "linklane",
+          "website": "https://linklane.ai/",
+          "batch": "W27",
+          "oneLiner": "AI-powered freight brokerage. Quote, book, and track loads in seconds.",
+          "team": 2,
+          "industry": "B2B",
+          "sub": "Supply Chain and Logistics",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/linklane",
+          "ycJobs": null
+        },
+        {
+          "name": "Xulux",
+          "slug": "xulux",
+          "website": "https://xulux.ai/",
+          "batch": "W27",
+          "oneLiner": "Prepare your devtool for agents",
+          "team": 2,
+          "industry": "B2B",
+          "sub": "Engineering, Product and Design",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/xulux",
+          "ycJobs": null
+        },
+        {
+          "name": "0.security",
+          "slug": "0security",
+          "website": "https://0.security/",
+          "batch": "F26",
+          "oneLiner": "The autonomous cybersecurity team",
+          "team": 2,
+          "industry": "B2B",
+          "sub": "Security",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/0security",
+          "ycJobs": null
+        },
+        {
+          "name": "Adside.ai",
+          "slug": "adsideai",
+          "website": "https://adside.ai/",
+          "batch": "F26",
+          "oneLiner": "AI agency that manages paid ads on Meta, Google, LinkedIn, etc.",
+          "team": 2,
+          "industry": "B2B",
+          "sub": "Marketing",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/adsideai",
+          "ycJobs": null
+        },
+        {
+          "name": "Agent Relay",
+          "slug": "agent-relay",
+          "website": "https://agentrelay.com/",
+          "batch": "F26",
+          "oneLiner": "Let your teams' coding agents message each other",
+          "team": 2,
+          "industry": "B2B",
+          "sub": "Engineering, Product and Design",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/agent-relay",
+          "ycJobs": null
+        },
+        {
+          "name": "Ageospatial",
+          "slug": "ageospatial",
+          "website": "https://ageospatial.com/",
+          "batch": "F26",
+          "oneLiner": "Physical intelligence for every decision with Geospatial AI.",
+          "team": 1,
+          "industry": "Fintech",
+          "sub": "Insurance",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/ageospatial",
+          "ycJobs": null
+        },
+        {
+          "name": "Aikido Technologies",
+          "slug": "aikido-technologies",
+          "website": "https://www.aikidotechnologies.com/",
+          "batch": "F26",
+          "oneLiner": "Clean marine AI datacenters",
+          "team": 5,
+          "industry": "Industrials",
+          "sub": "Energy",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/aikido-technologies",
+          "ycJobs": null
+        },
+        {
+          "name": "Ailit",
+          "slug": "ailit",
+          "website": "https://ailitrail.com/",
+          "batch": "F26",
+          "oneLiner": "Electrifying North American freight rail with swappable batteries.",
+          "team": 6,
+          "industry": "Industrials",
+          "sub": "Energy",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/ailit",
+          "ycJobs": null
+        },
+        {
+          "name": "Alkera AI",
+          "slug": "alkera-ai",
+          "website": "https://alkera.ai/",
+          "batch": "F26",
+          "oneLiner": "Reliable and safe data engineering and data science agents",
+          "team": 3,
+          "industry": "B2B",
+          "sub": "Engineering, Product and Design",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/alkera-ai",
+          "ycJobs": null
+        },
+        {
+          "name": "Altair Health",
+          "slug": "altair-health",
+          "website": "https://www.altair-health.com/",
+          "batch": "F26",
+          "oneLiner": "Stripe for medical billing",
+          "team": 4,
+          "industry": "Healthcare",
+          "sub": "Healthcare Services",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/altair-health",
+          "ycJobs": null
+        },
+        {
+          "name": "antimattr",
+          "slug": "antimattr",
+          "website": "https://www.antimattr.one/project-mnemosyne?utm_source=bookface&utm_medium=social&utm_campaign=bookface_antimattr_profile",
+          "batch": "F26",
+          "oneLiner": "voice-first hardware interface for human-agent interaction",
+          "team": 2,
+          "industry": "Consumer",
+          "sub": "Consumer Electronics",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/antimattr",
+          "ycJobs": null
+        },
+        {
+          "name": "AnyAlpha",
+          "slug": "anyalpha",
+          "website": "https://anyalpha.ai/",
+          "batch": "F26",
+          "oneLiner": "The agentic trading platform",
+          "team": 2,
+          "industry": "Fintech",
+          "sub": null,
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/anyalpha",
+          "ycJobs": null
+        },
+        {
+          "name": "Anywhere",
+          "slug": "anywhere",
+          "website": "https://anywhere.fenn.chat/",
+          "batch": "F26",
+          "oneLiner": "Your places, plans, friends and memories, all on one living map",
+          "team": 2,
+          "industry": "Consumer",
+          "sub": null,
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/anywhere",
+          "ycJobs": null
+        },
+        {
+          "name": "Applied Kinetics",
+          "slug": "applied-kinetics",
+          "website": "https://appliedkinetics.ai/",
+          "batch": "F26",
+          "oneLiner": "AI-native manufacturing for data center and energy projects",
+          "team": 2,
+          "industry": "Industrials",
+          "sub": "Manufacturing and Robotics",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/applied-kinetics",
+          "ycJobs": null
+        },
+        {
+          "name": "Archangel Health",
+          "slug": "archangel-health",
+          "website": "https://www.archangelhealth.ai/",
+          "batch": "F26",
+          "oneLiner": "Infra to make AI safe enough to practice medicine",
+          "team": 2,
+          "industry": "Healthcare",
+          "sub": null,
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/archangel-health",
+          "ycJobs": null
+        },
+        {
+          "name": "Archgen Labs",
+          "slug": "archgen-labs",
+          "website": "https://www.archgen.tech/",
+          "batch": "F26",
+          "oneLiner": "AI-powered EDA tools for faster, cooler 3D chips",
+          "team": 2,
+          "industry": "Industrials",
+          "sub": "Manufacturing and Robotics",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/archgen-labs",
+          "ycJobs": null
+        },
+        {
+          "name": "Armorer Labs",
+          "slug": "armorer-labs",
+          "website": "https://armorerlabs.com/",
+          "batch": "F26",
+          "oneLiner": "Continuous security verification for AI systems in regulated…",
+          "team": 2,
+          "industry": "B2B",
+          "sub": "Security",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/armorer-labs",
+          "ycJobs": null
+        },
+        {
+          "name": "Asakana",
+          "slug": "asakana",
+          "website": "https://www.asakana.co/",
+          "batch": "F26",
+          "oneLiner": "Automating away manual admin for food distributors: texts to ERP",
+          "team": 4,
+          "industry": "B2B",
+          "sub": "Supply Chain and Logistics",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/asakana",
+          "ycJobs": null
+        },
+        {
+          "name": "Ascenix",
+          "slug": "ascenix",
+          "website": "https://www.ascenix.co/",
+          "batch": "F26",
+          "oneLiner": "Custom software for senior care facilities.",
+          "team": 7,
+          "industry": "Healthcare",
+          "sub": "Healthcare IT",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/ascenix",
+          "ycJobs": null
+        },
+        {
+          "name": "Asim",
+          "slug": "asim-group",
+          "website": "https://www.asim-group.com/",
+          "batch": "F26",
+          "oneLiner": "Enable robots to operate safely in the real world.",
+          "team": 4,
+          "industry": "Industrials",
+          "sub": "Manufacturing and Robotics",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/asim-group",
+          "ycJobs": null
+        },
+        {
+          "name": "Aucert",
+          "slug": "aucert",
+          "website": "https://www.aucert.ai/",
+          "batch": "F26",
+          "oneLiner": "A team of expert AI agents that test mobile apps on their own.",
+          "team": 2,
+          "industry": "B2B",
+          "sub": "Engineering, Product and Design",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/aucert",
+          "ycJobs": null
+        },
+        {
+          "name": "Audora",
+          "slug": "audora",
+          "website": "https://audora.art/",
+          "batch": "F26",
+          "oneLiner": "Audiobooks where every character has their own voice.",
+          "team": 1,
+          "industry": "Consumer",
+          "sub": null,
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/audora",
+          "ycJobs": null
+        },
+        {
+          "name": "Aviern",
+          "slug": "aviern",
+          "website": "https://aviern.com/",
+          "batch": "F26",
+          "oneLiner": "Unmanned cargo airplanes",
+          "team": 4,
+          "industry": "Industrials",
+          "sub": "Drones",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/aviern",
+          "ycJobs": null
+        },
+        {
+          "name": "Axiomat",
+          "slug": "axiomat",
+          "website": "https://www.axiomat.com/",
+          "batch": "F26",
+          "oneLiner": "We make AI that never hallucinates.",
+          "team": 3,
+          "industry": "B2B",
+          "sub": null,
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/axiomat",
+          "ycJobs": null
+        },
+        {
+          "name": "Axonnic",
+          "slug": "axonnic",
+          "website": "https://www.axonnic.com/",
+          "batch": "F26",
+          "oneLiner": "Bringing human dexterity to every robot",
+          "team": 2,
+          "industry": "Industrials",
+          "sub": "Manufacturing and Robotics",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/axonnic",
+          "ycJobs": null
+        },
+        {
+          "name": "Bayworks",
+          "slug": "bayworks",
+          "website": "https://bayworks.app/",
+          "batch": "F26",
+          "oneLiner": "Intelligence that keeps America’s vehicles running",
+          "team": 2,
+          "industry": "Industrials",
+          "sub": "Automotive",
+          "hiring": true,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/bayworks",
+          "ycJobs": "https://www.ycombinator.com/companies/bayworks/jobs"
+        },
+        {
+          "name": "BioDelivera",
+          "slug": "biodelivera",
+          "website": "https://biodelivera.com/",
+          "batch": "F26",
+          "oneLiner": "Programmable drug delivery precisely targets only diseased cells",
+          "team": 2,
+          "industry": "Healthcare",
+          "sub": "Drug Discovery and Delivery",
+          "hiring": false,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/biodelivera",
+          "ycJobs": null
+        }
+      ],
+      "total": 1872,
+      "industries": [
+        {
+          "name": "B2B",
+          "count": 1778
+        },
+        {
+          "name": "Healthcare",
+          "count": 454
+        },
+        {
+          "name": "Industrials",
+          "count": 359
+        },
+        {
+          "name": "Consumer",
+          "count": 316
+        },
+        {
+          "name": "Fintech",
+          "count": 285
+        },
+        {
+          "name": "Real Estate and Construction",
+          "count": 76
+        },
+        {
+          "name": "Education",
+          "count": 48
+        },
+        {
+          "name": "Government",
+          "count": 32
+        }
+      ]
+    },
+    "/v1/startups?hiring=yc-only&limit=1": {
+      "data": [
+        {
+          "name": "Bayworks",
+          "slug": "bayworks",
+          "website": "https://bayworks.app/",
+          "batch": "F26",
+          "oneLiner": "Intelligence that keeps America’s vehicles running",
+          "team": 2,
+          "industry": "Industrials",
+          "sub": "Automotive",
+          "hiring": true,
+          "inJobs": false,
+          "yc": "https://www.ycombinator.com/companies/bayworks",
+          "ycJobs": "https://www.ycombinator.com/companies/bayworks/jobs"
+        }
+      ],
+      "total": 883,
+      "industries": [
+        {
+          "name": "B2B",
+          "count": 1778
+        },
+        {
+          "name": "Healthcare",
+          "count": 454
+        },
+        {
+          "name": "Industrials",
+          "count": 359
+        },
+        {
+          "name": "Consumer",
+          "count": 316
+        },
+        {
+          "name": "Fintech",
+          "count": 285
+        },
+        {
+          "name": "Real Estate and Construction",
+          "count": 76
+        },
+        {
+          "name": "Education",
+          "count": 48
+        },
+        {
+          "name": "Government",
+          "count": 32
+        }
+      ]
+    },
+    "/v1/films/run_01M733HE499SGVAD995SDGWARP": {
+      "id": "run_01M733HE499SGVAD995SDGWARP",
+      "status": "succeeded",
+      "url": "https://northwindfreight.example/",
+      "format": "square",
+      "batch": null,
+      "ref": null,
+      "sender": "Alex Rivera",
+      "pitch": null,
+      "progress": null,
+      "attempts": 1,
+      "error": null,
+      "errorCode": null,
+      "createdAt": "2026-11-10T16:09:28.456Z",
+      "completedAt": "2026-11-10T16:11:00.214Z",
+      "company": "Northwind Freight",
+      "host": "northwindfreight.example",
+      "durationSec": 29.2,
+      "files": {
+        "film": "/v1/films/run_01M733HE499SGVAD995SDGWARP/files/film-square.mp4",
+        "poster": "/v1/films/run_01M733HE499SGVAD995SDGWARP/files/poster.jpg",
+        "gif": "/v1/films/run_01M733HE499SGVAD995SDGWARP/files/preview.gif",
+        "sheet": "/v1/films/run_01M733HE499SGVAD995SDGWARP/files/contact-sheet.jpg"
+      },
+      "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE499SGVAD995SDGWARP/film-square.mp4",
+      "job": null,
+      "views": {
+        "opens": 2,
+        "viewers": 2,
+        "plays": 2,
+        "finishes": 2,
+        "clicks": 1,
+        "bestSeconds": 29.2,
+        "firstPlayAt": "2026-11-10T16:12:03.955Z",
+        "lastSeen": "2026-11-10T16:12:03.990Z"
+      },
+      "outreach": {
+        "at": "2026-11-10T16:12:03.929Z",
+        "sentAt": "2026-11-10T16:12:03.923Z",
+        "status": "interview",
+        "next": null
+      },
+      "recipient": {
+        "name": "Priya Shah"
+      },
+      "detail": null,
+      "crm": null,
+      "editOf": null,
+      "script": {
+        "cta": "Could we talk this week?",
+        "hook": "Made for the Northwind Freight team",
+        "pitch": {
+          "points": [
+            "Ships production agents with evals, not demos",
+            "Turns messy customer data into working pipelines",
+            "Explains technical trade-offs to non-engineers"
+          ],
+          "headline": "What I would do for Northwind Freight"
+        },
+        "proof": [0, 1, 2],
+        "insight": {
+          "why": "This is the number I would work on first",
+          "factId": "f3"
+        },
+        "noticed": "Northwind leads with “Every pallet, visible before it's late”"
+      },
+      "scriptMeta": {
+        "model": "deterministic",
+        "rounds": 1,
+        "replaced": [],
+        "violations": [[]],
+        "usedFallback": false
+      },
+      "highlights": {
+        "proof": [
+          {
+            "label": "open-source AI projects shipped",
+            "value": "6"
+          },
+          {
+            "label": "double refunds in a 200-run chaos test",
+            "value": "0"
+          },
+          {
+            "label": "Solutions Architect certified",
+            "value": "AWS"
+          }
+        ],
+        "quote": {
+          "text": "1,400+ shippers track freight on Northwind",
+          "source": "northwindfreight.example"
+        }
+      },
+      "homework": null,
+      "qa": {
+        "fonts": ["Brand Display", "Brand Body", "Fraunces Fallback", "Instrument Sans Fallback"],
+        "frame": {
+          "top": 0,
+          "margin": 0.0684723344845323
+        },
+        "issues": [],
+        "duration": 29.2
+      },
+      "render": {
+        "ms": 83489,
+        "frames": 876
+      },
+      "steps": [
+        {
+          "key": "research",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 5776,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "homework",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 34,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "script",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 9,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "compose",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 25,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:0",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 9246,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:1",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 28521,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:2",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 42736,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:3",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 58557,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:4",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 71096,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:5",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 83758,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "encode",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 2062,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        }
+      ],
+      "timeline": [
+        {
+          "id": "1",
+          "runId": "run_01M733HE499SGVAD995SDGWARP",
+          "at": "2026-11-10T16:09:28.456Z",
+          "kind": "queued",
+          "message": "run created",
+          "workerId": null
+        },
+        {
+          "id": "3",
+          "runId": "run_01M733HE499SGVAD995SDGWARP",
+          "at": "2026-11-10T16:09:28.480Z",
+          "kind": "claimed",
+          "message": "execution #1 started",
+          "workerId": "vm:9192:xky2"
+        },
+        {
+          "id": "6",
+          "runId": "run_01M733HE499SGVAD995SDGWARP",
+          "at": "2026-11-10T16:11:00.214Z",
+          "kind": "succeeded",
+          "message": "succeeded on execution #1",
+          "workerId": "vm:9192:xky2"
+        }
+      ],
+      "embed": null
+    },
+    "/v1/films/run_01M733HE499SGVAD995SDGWARP/messages": {
+      "email": {
+        "subject": "A 30-second film for Northwind Freight",
+        "body": "Hi Priya,\n\nI saw that Northwind Freight leads with \"Every pallet, visible before it's late\".\n\nI made a 30-second film for Northwind Freight:\nhttps://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE499SGVAD995SDGWARP/film-square.mp4\nIt starts from your own site: \"1,400+ shippers track freight on Northwind\".\n\nWhat I'd bring: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test. What I would do for Northwind Freight.\n\nCould we talk this week?\n\nAlex Rivera\nalex@example.com"
+      },
+      "linkedin": "Hi Priya, I'd like to work with the Northwind Freight team and made something for you. Would like to connect. – Alex",
+      "afterAccept": "Hi Priya, thanks for connecting.\n\nI made a 30-second film for Northwind Freight: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE499SGVAD995SDGWARP/film-square.mp4\n\nWhat I'd bring: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test.\n\nCould we talk this week?\n\nAlex",
+      "inmail": {
+        "subject": "A 30-second film for Northwind Freight",
+        "body": "Hi Priya,\n\nI saw that Northwind Freight leads with \"Every pallet, visible before it's late\".\n\nI made a 30-second film for Northwind Freight: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE499SGVAD995SDGWARP/film-square.mp4\n\nWhat I'd bring: 6 open-source AI projects shipped.\n\nCould we talk this week?\n\nAlex"
+      },
+      "followUp": "Hi Priya,\n\nOne more thing since I wrote: your site says \"38% fewer late deliveries in the first quarter\", and it's exactly the kind of work I'd want to help with. The film I made for Northwind Freight is here: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE499SGVAD995SDGWARP/film-square.mp4\n\nCould we talk this week?\n\nAlex",
+      "lastNote": "Hi Priya,\n\nOne last note on the film I made for Northwind Freight: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE499SGVAD995SDGWARP/film-square.mp4\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nAlex",
+      "linkedinFollowUp": "Hi Priya, following up on the film I made for Northwind Freight: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE499SGVAD995SDGWARP/film-square.mp4 Could we talk this week? – Alex",
+      "intro": "Hi [First name],\n\nHope you're doing well! I'd love to work with the team at Northwind Freight, and I made a 30-second film for them: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE499SGVAD995SDGWARP/film-square.mp4\n\nWould you be open to passing it to the hiring manager, or pointing me to the right person? Here's a short note you can forward as is:\n\nAlex Rivera would love to work with us and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE499SGVAD995SDGWARP/film-square.mp4\nHighlights: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test.\nReach Alex at alex@example.com.\n\nThank you!\nAlex",
+      "forward": "Alex Rivera would love to work with us and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE499SGVAD995SDGWARP/film-square.mp4\nHighlights: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test.\nReach Alex at alex@example.com.",
+      "checks": {
+        "words": 67,
+        "short": true,
+        "aboutThem": true,
+        "detail": false,
+        "oneAsk": true
+      },
+      "opener": "film",
+      "whyNow": false,
+      "writer": {
+        "note": "template",
+        "afterAccept": "template",
+        "inmail": "template",
+        "email": "template",
+        "followUp": "template",
+        "lastNote": "template",
+        "linkedinFollowUp": "template"
+      },
+      "flags": {},
+      "notes": {}
+    },
+    "/v1/films/run_01M733HE499SGVAD995SDGWARP/views": {
+      "summary": {
+        "opens": 2,
+        "viewers": 2,
+        "plays": 2,
+        "finishes": 2,
+        "clicks": 1,
+        "bestSeconds": 29.2,
+        "firstPlayAt": "2026-11-10T16:12:03.955Z",
+        "lastSeen": "2026-11-10T16:12:03.990Z"
+      },
+      "sessions": [
+        {
+          "filmId": "run_01M733HE499SGVAD995SDGWARP",
+          "session": "demo-5SDGWARP-1",
+          "viewer": "28954d78210a94ff",
+          "firstSeen": "2026-11-10T16:12:03.980Z",
+          "lastSeen": "2026-11-10T16:12:03.990Z",
+          "played": true,
+          "seconds": 29.2,
+          "finished": true,
+          "device": "desktop",
+          "referrer": null,
+          "country": null,
+          "clicked": false
+        },
+        {
+          "filmId": "run_01M733HE499SGVAD995SDGWARP",
+          "session": "demo-5SDGWARP-0",
+          "viewer": "70c1159488d7f749",
+          "firstSeen": "2026-11-10T16:12:03.955Z",
+          "lastSeen": "2026-11-10T16:12:03.977Z",
+          "played": true,
+          "seconds": 29.2,
+          "finished": true,
+          "device": "desktop",
+          "referrer": null,
+          "country": null,
+          "clicked": true
+        }
+      ]
+    },
+    "/v1/films/run_01M733HE499SGVAD995SDGWARP/people": {
+      "company": "Northwind Freight",
+      "searches": [
+        {
+          "label": "Recruiters",
+          "hint": "They read every message about open roles",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=recruiter%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Talent acquisition",
+          "hint": "Sourcers and talent partners",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20acquisition%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+        }
+      ],
+      "known": [],
+      "connections": 0
+    },
+    "/v1/films/run_01M733HE499SGVAD995SDGWARP/brief": {
+      "company": "Northwind Freight",
+      "what": "Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.",
+      "facts": [
+        "1,400+ shippers track freight on Northwind",
+        "38% fewer late deliveries in the first quarter",
+        "9 min average time to resolve a flagged exception",
+        "Northwind gives mid-size shippers live visibility into every pallet, carrier and dock appointment, and flags exceptions before your customers notice."
+      ],
+      "role": null,
+      "pitch": "An engineer who ships AI agents customers actually use. For example: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test.",
+      "questions": [
+        "Your site says “1,400+ shippers track freight on Northwind.” What does the team need to reach the next milestone on that?",
+        "What is the team's biggest priority for the next 90 days?",
+        "What separates someone who is good in this role from someone who is great?"
+      ],
+      "expect": [
+        {
+          "q": "Walk me through your background.",
+          "a": "An engineer who ships AI agents customers actually use. For example: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test."
+        },
+        {
+          "q": "Why Northwind Freight?",
+          "a": "Start from what they said: “1,400+ shippers track freight on Northwind.” Then say which part of it you want to help with."
+        }
+      ]
+    },
+    "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6": {
+      "id": "run_01M733HE4SPM89HXW09GNEHAJ6",
+      "status": "succeeded",
+      "url": "https://lumenhealth.example/",
+      "format": "square",
+      "batch": null,
+      "ref": null,
+      "sender": "Alex Rivera",
+      "pitch": null,
+      "progress": null,
+      "attempts": 1,
+      "error": null,
+      "errorCode": null,
+      "createdAt": "2026-11-10T16:09:28.473Z",
+      "completedAt": "2026-11-10T16:11:01.472Z",
+      "company": "Lumen Health",
+      "host": "lumenhealth.example",
+      "durationSec": 29.2,
+      "files": {
+        "film": "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/files/film-square.mp4",
+        "poster": "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/files/poster.jpg",
+        "gif": "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/files/preview.gif",
+        "sheet": "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/files/contact-sheet.jpg"
+      },
+      "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE4SPM89HXW09GNEHAJ6/film-square.mp4",
+      "job": null,
+      "views": {
+        "opens": 1,
+        "viewers": 1,
+        "plays": 1,
+        "finishes": 1,
+        "clicks": 1,
+        "bestSeconds": 29.2,
+        "firstPlayAt": "2026-11-10T16:12:03.994Z",
+        "lastSeen": "2026-11-10T16:12:04.009Z"
+      },
+      "outreach": {
+        "at": "2026-11-10T16:12:03.941Z",
+        "sentAt": "2026-11-10T16:12:03.937Z",
+        "status": "replied",
+        "next": null
+      },
+      "recipient": {
+        "name": "Marcus Lee"
+      },
+      "detail": null,
+      "crm": null,
+      "editOf": null,
+      "script": {
+        "cta": "Could we talk this week?",
+        "hook": "A short film for Lumen Health",
+        "pitch": {
+          "points": [
+            "Ships production agents with evals, not demos",
+            "Turns messy customer data into working pipelines",
+            "Explains technical trade-offs to non-engineers"
+          ],
+          "headline": "What I would bring to Lumen Health"
+        },
+        "proof": [0, 1, 2],
+        "insight": {
+          "why": "I want to help move a number like this one",
+          "factId": "f3"
+        },
+        "noticed": "Lumen leads with “Patient intake that writes itself”"
+      },
+      "scriptMeta": {
+        "model": "deterministic",
+        "rounds": 1,
+        "replaced": [],
+        "violations": [[]],
+        "usedFallback": false
+      },
+      "highlights": {
+        "proof": [
+          {
+            "label": "open-source AI projects shipped",
+            "value": "6"
+          },
+          {
+            "label": "double refunds in a 200-run chaos test",
+            "value": "0"
+          },
+          {
+            "label": "Solutions Architect certified",
+            "value": "AWS"
+          }
+        ],
+        "quote": {
+          "text": "11 minutes saved per visit on documentation",
+          "source": "lumenhealth.example"
+        }
+      },
+      "homework": null,
+      "qa": {
+        "fonts": ["Brand Display", "Instrument Sans Fallback", "Instrument Sans Fallback"],
+        "frame": {
+          "top": 0,
+          "margin": 0.1335712599354686
+        },
+        "issues": [],
+        "duration": 29.2
+      },
+      "render": {
+        "ms": 84564,
+        "frames": 876
+      },
+      "steps": [
+        {
+          "key": "research",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 6453,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "homework",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 23,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "script",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 0,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "compose",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 14,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:0",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 9475,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:1",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 28564,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:2",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 43571,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:3",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 59537,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:4",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 72209,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:5",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 84800,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "encode",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 1650,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        }
+      ],
+      "timeline": [
+        {
+          "id": "2",
+          "runId": "run_01M733HE4SPM89HXW09GNEHAJ6",
+          "at": "2026-11-10T16:09:28.473Z",
+          "kind": "queued",
+          "message": "run created",
+          "workerId": null
+        },
+        {
+          "id": "4",
+          "runId": "run_01M733HE4SPM89HXW09GNEHAJ6",
+          "at": "2026-11-10T16:09:28.491Z",
+          "kind": "claimed",
+          "message": "execution #1 started",
+          "workerId": "vm:9192:xky2"
+        },
+        {
+          "id": "8",
+          "runId": "run_01M733HE4SPM89HXW09GNEHAJ6",
+          "at": "2026-11-10T16:11:01.472Z",
+          "kind": "succeeded",
+          "message": "succeeded on execution #1",
+          "workerId": "vm:9192:xky2"
+        }
+      ],
+      "embed": null
+    },
+    "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/messages": {
+      "email": {
+        "subject": "A 30-second film for Lumen Health",
+        "body": "Hi Marcus,\n\nI saw that Lumen Health leads with \"Patient intake that writes itself\".\n\nI made a 30-second film for Lumen Health:\nhttps://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE4SPM89HXW09GNEHAJ6/film-square.mp4\nIt starts from your own site: \"11 minutes saved per visit on documentation\".\n\nWhat I'd bring: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test.\n\nCould we talk this week?\n\nAlex Rivera\nalex@example.com"
+      },
+      "linkedin": "Hi Marcus, I'd like to work with the Lumen Health team and made something for you. Would like to connect. – Alex",
+      "afterAccept": "Hi Marcus, thanks for connecting.\n\nI made a 30-second film for Lumen Health: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE4SPM89HXW09GNEHAJ6/film-square.mp4\n\nWhat I'd bring: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test.\n\nCould we talk this week?\n\nAlex",
+      "inmail": {
+        "subject": "A 30-second film for Lumen Health",
+        "body": "Hi Marcus,\n\nI saw that Lumen Health leads with \"Patient intake that writes itself\".\n\nI made a 30-second film for Lumen Health: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE4SPM89HXW09GNEHAJ6/film-square.mp4\n\nWhat I'd bring: 6 open-source AI projects shipped.\n\nCould we talk this week?\n\nAlex"
+      },
+      "followUp": "Hi Marcus,\n\nOne more thing since I wrote: your site says \"212 clinics run intake on Lumen\", and it's exactly the kind of work I'd want to help with. The film I made for Lumen Health is here: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE4SPM89HXW09GNEHAJ6/film-square.mp4\n\nCould we talk this week?\n\nAlex",
+      "lastNote": "Hi Marcus,\n\nOne last note on the film I made for Lumen Health: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE4SPM89HXW09GNEHAJ6/film-square.mp4\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nAlex",
+      "linkedinFollowUp": "Hi Marcus, following up on the film I made for Lumen Health: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE4SPM89HXW09GNEHAJ6/film-square.mp4 Could we talk this week? – Alex",
+      "intro": "Hi [First name],\n\nHope you're doing well! I'd love to work with the team at Lumen Health, and I made a 30-second film for them: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE4SPM89HXW09GNEHAJ6/film-square.mp4\n\nWould you be open to passing it to the hiring manager, or pointing me to the right person? Here's a short note you can forward as is:\n\nAlex Rivera would love to work with us and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE4SPM89HXW09GNEHAJ6/film-square.mp4\nHighlights: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test.\nReach Alex at alex@example.com.\n\nThank you!\nAlex",
+      "forward": "Alex Rivera would love to work with us and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE4SPM89HXW09GNEHAJ6/film-square.mp4\nHighlights: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test.\nReach Alex at alex@example.com.",
+      "checks": {
+        "words": 60,
+        "short": true,
+        "aboutThem": true,
+        "detail": false,
+        "oneAsk": true
+      },
+      "opener": "film",
+      "whyNow": false,
+      "writer": {
+        "note": "template",
+        "afterAccept": "template",
+        "inmail": "template",
+        "email": "template",
+        "followUp": "template",
+        "lastNote": "template",
+        "linkedinFollowUp": "template"
+      },
+      "flags": {},
+      "notes": {}
+    },
+    "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/views": {
+      "summary": {
+        "opens": 1,
+        "viewers": 1,
+        "plays": 1,
+        "finishes": 1,
+        "clicks": 1,
+        "bestSeconds": 29.2,
+        "firstPlayAt": "2026-11-10T16:12:03.994Z",
+        "lastSeen": "2026-11-10T16:12:04.009Z"
+      },
+      "sessions": [
+        {
+          "filmId": "run_01M733HE4SPM89HXW09GNEHAJ6",
+          "session": "demo-9GNEHAJ6-0",
+          "viewer": "70c1159488d7f749",
+          "firstSeen": "2026-11-10T16:12:03.994Z",
+          "lastSeen": "2026-11-10T16:12:04.009Z",
+          "played": true,
+          "seconds": 29.2,
+          "finished": true,
+          "device": "desktop",
+          "referrer": null,
+          "country": null,
+          "clicked": true
+        }
+      ]
+    },
+    "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/people": {
+      "company": "Lumen Health",
+      "searches": [
+        {
+          "label": "Recruiters",
+          "hint": "They read every message about open roles",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=recruiter%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Talent acquisition",
+          "hint": "Sourcers and talent partners",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20acquisition%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+        }
+      ],
+      "known": [],
+      "connections": 0
+    },
+    "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/brief": {
+      "company": "Lumen Health",
+      "what": "Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.",
+      "facts": [
+        "11 minutes saved per visit on documentation",
+        "212 clinics run intake on Lumen",
+        "94% of patients finish intake before arrival",
+        "Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start every visit already informed."
+      ],
+      "role": null,
+      "pitch": "An engineer who ships AI agents customers actually use. For example: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test.",
+      "questions": [
+        "Your site says “11 minutes saved per visit on documentation.” What does the team need to reach the next milestone on that?",
+        "What is the team's biggest priority for the next 90 days?",
+        "What separates someone who is good in this role from someone who is great?"
+      ],
+      "expect": [
+        {
+          "q": "Walk me through your background.",
+          "a": "An engineer who ships AI agents customers actually use. For example: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test."
+        },
+        {
+          "q": "Why Lumen Health?",
+          "a": "Start from what they said: “11 minutes saved per visit on documentation.” Then say which part of it you want to help with."
+        }
+      ]
+    },
+    "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1": {
+      "id": "run_01M733HE5DF8YEQ5PWJBEGMPY1",
+      "status": "succeeded",
+      "url": "https://parcelpine.example/",
+      "format": "square",
+      "batch": null,
+      "ref": null,
+      "sender": "Alex Rivera",
+      "pitch": null,
+      "progress": null,
+      "attempts": 1,
+      "error": null,
+      "errorCode": null,
+      "createdAt": "2026-11-10T16:09:28.493Z",
+      "completedAt": "2026-11-10T16:12:00.131Z",
+      "company": "Parcelpine",
+      "host": "parcelpine.example",
+      "durationSec": 29.2,
+      "files": {
+        "film": "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/files/film-square.mp4",
+        "poster": "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/files/poster.jpg",
+        "gif": "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/files/preview.gif",
+        "sheet": "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/files/contact-sheet.jpg"
+      },
+      "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE5DF8YEQ5PWJBEGMPY1/film-square.mp4",
+      "job": null,
+      "views": {
+        "opens": 1,
+        "viewers": 1,
+        "plays": 1,
+        "finishes": 0,
+        "clicks": 0,
+        "bestSeconds": 14,
+        "firstPlayAt": "2026-11-10T16:12:04.011Z",
+        "lastSeen": "2026-11-10T16:12:04.016Z"
+      },
+      "outreach": {
+        "at": "2026-11-10T16:12:03.950Z",
+        "sentAt": "2026-11-10T16:12:03.950Z",
+        "status": "sent",
+        "next": {
+          "kind": "follow_up",
+          "step": 1,
+          "dueAt": "2026-11-12T16:12:04.016Z",
+          "due": false,
+          "watched": {
+            "at": "2026-11-10T16:12:04.016Z",
+            "finished": false
+          }
+        }
+      },
+      "recipient": {
+        "name": "Dana Okafor"
+      },
+      "detail": null,
+      "crm": null,
+      "editOf": null,
+      "script": {
+        "cta": "Could we talk this week?",
+        "hook": "For the people building Parcelpine",
+        "pitch": {
+          "points": [
+            "Ships production agents with evals, not demos",
+            "Turns messy customer data into working pipelines",
+            "Explains technical trade-offs to non-engineers"
+          ],
+          "headline": "What I would build at Parcelpine"
+        },
+        "proof": [0, 1, 2],
+        "insight": {
+          "why": "Numbers like this are what I like to build toward",
+          "factId": "f3"
+        },
+        "noticed": "Parcelpine leads with “Returns that keep the customer”"
+      },
+      "scriptMeta": {
+        "model": "deterministic",
+        "rounds": 1,
+        "replaced": [],
+        "violations": [[]],
+        "usedFallback": false
+      },
+      "highlights": {
+        "proof": [
+          {
+            "label": "open-source AI projects shipped",
+            "value": "6"
+          },
+          {
+            "label": "double refunds in a 200-run chaos test",
+            "value": "0"
+          },
+          {
+            "label": "Solutions Architect certified",
+            "value": "AWS"
+          }
+        ],
+        "quote": {
+          "text": "61% of returns become exchanges or store credit",
+          "source": "parcelpine.example"
+        }
+      },
+      "homework": null,
+      "qa": {
+        "fonts": [
+          "Brand Display",
+          "Brand Body",
+          "Instrument Sans Fallback",
+          "Instrument Sans Fallback"
+        ],
+        "frame": {
+          "top": 0,
+          "margin": 0.08209626137484925
+        },
+        "issues": [],
+        "duration": 29.2
+      },
+      "render": {
+        "ms": 52327,
+        "frames": 876
+      },
+      "steps": [
+        {
+          "key": "research",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 5815,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "homework",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 44,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "script",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 3,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "compose",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 13,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:0",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 5883,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:1",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 17477,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:2",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 26887,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:3",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 36793,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:4",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 44789,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "render:5",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 52542,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        },
+        {
+          "key": "encode",
+          "kind": "step",
+          "status": "completed",
+          "durationMs": 1432,
+          "replays": 0,
+          "attempts": 1,
+          "error": null
+        }
+      ],
+      "timeline": [
+        {
+          "id": "5",
+          "runId": "run_01M733HE5DF8YEQ5PWJBEGMPY1",
+          "at": "2026-11-10T16:09:28.493Z",
+          "kind": "queued",
+          "message": "run created",
+          "workerId": null
+        },
+        {
+          "id": "7",
+          "runId": "run_01M733HE5DF8YEQ5PWJBEGMPY1",
+          "at": "2026-11-10T16:11:00.219Z",
+          "kind": "claimed",
+          "message": "execution #1 started",
+          "workerId": "vm:9192:xky2"
+        },
+        {
+          "id": "9",
+          "runId": "run_01M733HE5DF8YEQ5PWJBEGMPY1",
+          "at": "2026-11-10T16:12:00.131Z",
+          "kind": "succeeded",
+          "message": "succeeded on execution #1",
+          "workerId": "vm:9192:xky2"
+        }
+      ],
+      "embed": null
+    },
+    "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/messages": {
+      "email": {
+        "subject": "Parcelpine: 6 open-source AI projects shipped",
+        "body": "Hi Dana,\n\nI saw that Parcelpine leads with \"Returns that keep the customer\". 6 open-source AI projects shipped.\n\nI made a 30-second film for Parcelpine on what I'd bring:\nhttps://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE5DF8YEQ5PWJBEGMPY1/film-square.mp4\nIt starts from your own site: \"61% of returns become exchanges or store credit\".\n\nMore of what I've done: 0 double refunds in a 200-run chaos test. What I would build at Parcelpine.\n\nCould we talk this week?\n\nAlex Rivera\nalex@example.com"
+      },
+      "linkedin": "Hi Dana, 6 open-source AI projects shipped. I'd like to work with the Parcelpine team and made something for you. Would like to connect. – Alex",
+      "afterAccept": "Hi Dana, thanks for connecting.\n\n6 open-source AI projects shipped. I made a 30-second film for Parcelpine on what I'd bring: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE5DF8YEQ5PWJBEGMPY1/film-square.mp4\n\nMore of what I've done: 0 double refunds in a 200-run chaos test.\n\nCould we talk this week?\n\nAlex",
+      "inmail": {
+        "subject": "Parcelpine: 6 open-source AI projects shipped",
+        "body": "Hi Dana,\n\nI saw that Parcelpine leads with \"Returns that keep the customer\". 6 open-source AI projects shipped.\n\nI made a 30-second film for Parcelpine: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE5DF8YEQ5PWJBEGMPY1/film-square.mp4\n\nMore of what I've done: 0 double refunds in a 200-run chaos test.\n\nCould we talk this week?\n\nAlex"
+      },
+      "followUp": "Hi Dana,\n\nOne more thing since I wrote: your site says \"3,100 Shopify brands use Parcelpine\", and it's exactly the kind of work I'd want to help with. The film I made for Parcelpine is here: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE5DF8YEQ5PWJBEGMPY1/film-square.mp4\n\nCould we talk this week?\n\nAlex",
+      "lastNote": "Hi Dana,\n\nOne last note on the film I made for Parcelpine: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE5DF8YEQ5PWJBEGMPY1/film-square.mp4\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nAlex",
+      "linkedinFollowUp": "Hi Dana, following up on the film I made for Parcelpine: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE5DF8YEQ5PWJBEGMPY1/film-square.mp4 Could we talk this week? – Alex",
+      "intro": "Hi [First name],\n\nHope you're doing well! I'd love to work with the team at Parcelpine, and I made a 30-second film for them: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE5DF8YEQ5PWJBEGMPY1/film-square.mp4\n\nWould you be open to passing it to the hiring manager, or pointing me to the right person? Here's a short note you can forward as is:\n\nAlex Rivera would love to work with us and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE5DF8YEQ5PWJBEGMPY1/film-square.mp4\nHighlights: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test.\nReach Alex at alex@example.com.\n\nThank you!\nAlex",
+      "forward": "Alex Rivera would love to work with us and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M733HE5DF8YEQ5PWJBEGMPY1/film-square.mp4\nHighlights: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test.\nReach Alex at alex@example.com.",
+      "checks": {
+        "words": 71,
+        "short": true,
+        "aboutThem": true,
+        "detail": false,
+        "oneAsk": true
+      },
+      "opener": "proof",
+      "whyNow": false,
+      "writer": {
+        "note": "template",
+        "afterAccept": "template",
+        "inmail": "template",
+        "email": "template",
+        "followUp": "template",
+        "lastNote": "template",
+        "linkedinFollowUp": "template"
+      },
+      "flags": {},
+      "notes": {}
+    },
+    "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/views": {
+      "summary": {
+        "opens": 1,
+        "viewers": 1,
+        "plays": 1,
+        "finishes": 0,
+        "clicks": 0,
+        "bestSeconds": 14,
+        "firstPlayAt": "2026-11-10T16:12:04.011Z",
+        "lastSeen": "2026-11-10T16:12:04.016Z"
+      },
+      "sessions": [
+        {
+          "filmId": "run_01M733HE5DF8YEQ5PWJBEGMPY1",
+          "session": "demo-JBEGMPY1-0",
+          "viewer": "70c1159488d7f749",
+          "firstSeen": "2026-11-10T16:12:04.011Z",
+          "lastSeen": "2026-11-10T16:12:04.016Z",
+          "played": true,
+          "seconds": 14,
+          "finished": false,
+          "device": "desktop",
+          "referrer": null,
+          "country": null,
+          "clicked": false
+        }
+      ]
+    },
+    "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/people": {
+      "company": "Parcelpine",
+      "searches": [
+        {
+          "label": "Recruiters",
+          "hint": "They read every message about open roles",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=recruiter%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Talent acquisition",
+          "hint": "Sourcers and talent partners",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20acquisition%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+        }
+      ],
+      "known": [],
+      "connections": 0
+    },
+    "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/brief": {
+      "company": "Parcelpine",
+      "what": "Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.",
+      "facts": [
+        "61% of returns become exchanges or store credit",
+        "3,100 Shopify brands use Parcelpine",
+        "2 days faster refunds with QR drop-off",
+        "Offer the exchange before the refund"
+      ],
+      "role": null,
+      "pitch": "An engineer who ships AI agents customers actually use. For example: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test.",
+      "questions": [
+        "Your site says “61% of returns become exchanges or store credit.” What does the team need to reach the next milestone on that?",
+        "What is the team's biggest priority for the next 90 days?",
+        "What separates someone who is good in this role from someone who is great?"
+      ],
+      "expect": [
+        {
+          "q": "Walk me through your background.",
+          "a": "An engineer who ships AI agents customers actually use. For example: 6 open-source AI projects shipped; 0 double refunds in a 200-run chaos test."
+        },
+        {
+          "q": "Why Parcelpine?",
+          "a": "Start from what they said: “61% of returns become exchanges or store credit.” Then say which part of it you want to help with."
+        }
+      ]
+    }
+  }
+}

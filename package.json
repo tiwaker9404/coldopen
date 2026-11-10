@@ -25,6 +25,8 @@
     "migrate": "node src/main.ts migrate",
     "dashboard:dev": "vite --config dashboard/vite.config.ts",
     "dashboard:build": "vite build --config dashboard/vite.config.ts",
+    "dashboard:build:demo": "VITE_DEMO=1 vite build --config dashboard/vite.config.ts",
+    "demo:fixtures": "node scripts/demo-fixtures.ts",
     "fixtures": "node fixtures/serve.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p dashboard/tsconfig.json",
     "lint": "biome check .",

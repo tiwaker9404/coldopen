@@ -4,6 +4,7 @@
  * phone, and missing security headers. Exits non-zero on anything serious.
  *
  *   node scripts/audit-ui.ts http://localhost:8080 [site-dir]     (CHROME_PATH to use another Chrome)
+ *   DEMO_DIR=dashboard/dist-demo node scripts/audit-ui.ts ... site  also checks the demo build, tour open
  */
 import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
@@ -53,6 +54,48 @@ if (siteDir) {
     { name: 'Landing', url: 'http://localhost:8099/' },
     { name: 'Hiring Index', url: 'http://localhost:8099/hiring-index/' },
     { name: 'Developers', url: 'http://localhost:8099/developers/' },
+  )
+}
+
+// the demo build, served as GitHub Pages serves it: /coldopen/demo/ beside the landing site
+if (process.env.DEMO_DIR) {
+  const demoDir = process.env.DEMO_DIR
+  const types: Record<string, string> = {
+    '.html': 'text/html',
+    '.js': 'text/javascript',
+    '.css': 'text/css',
+    '.woff2': 'font/woff2',
+    '.jpg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.mp4': 'video/mp4',
+  }
+  const srv = createServer((req, res) => {
+    let p = decodeURIComponent((req.url ?? '/').split('?')[0]!)
+    if (p.endsWith('/')) p += 'index.html'
+    const file = p.startsWith('/coldopen/demo/')
+      ? join(demoDir, p.slice('/coldopen/demo/'.length))
+      : p.startsWith('/coldopen/') && siteDir
+        ? join(siteDir, p.slice('/coldopen/'.length))
+        : null
+    try {
+      if (!file) throw new Error('not found')
+      const body = readFileSync(file)
+      res.writeHead(200, { 'content-type': types[extname(file)] ?? 'application/octet-stream' })
+      res.end(body)
+    } catch {
+      res.writeHead(404).end()
+    }
+  })
+  await new Promise<void>((r) => srv.listen(8098, r))
+  const before = close
+  close = () => {
+    before()
+    srv.close()
+  }
+  pages.push(
+    { name: 'Demo: Today', url: 'http://localhost:8098/coldopen/demo/#today' },
+    { name: 'Demo: Jobs', url: 'http://localhost:8098/coldopen/demo/#jobs' },
+    { name: 'Demo: Films', url: 'http://localhost:8098/coldopen/demo/#films' },
   )
 }
 
