@@ -8,7 +8,7 @@
  */
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
-import { extname, join, resolve } from 'node:path'
+import { extname, join, resolve, sep } from 'node:path'
 import type { Page } from 'puppeteer'
 import { closeBrowser, getBrowser } from '../src/browser.ts'
 import { STILLS } from './reels.ts'
@@ -30,13 +30,18 @@ const TYPES: Record<string, string> = {
   '.mp4': 'video/mp4',
   '.json': 'application/json',
 }
+const DEMO_DIR = join(ROOT, 'dashboard/dist-demo')
+const SITE_DIR = join(ROOT, 'site')
 const server = createServer((req, res) => {
-  let p = decodeURIComponent((req.url ?? '/').split('?')[0]!)
-  if (p.endsWith('/')) p += 'index.html'
-  const file = p.startsWith('/coldopen/demo/')
-    ? join(ROOT, 'dashboard/dist-demo', p.slice('/coldopen/demo/'.length))
-    : join(ROOT, 'site', p.replace(/^\/coldopen\//, ''))
   try {
+    let p = decodeURIComponent((req.url ?? '/').split('?')[0]!)
+    if (p.endsWith('/')) p += 'index.html'
+    const [dir, rest] = p.startsWith('/coldopen/demo/')
+      ? [DEMO_DIR, p.slice('/coldopen/demo/'.length)]
+      : [SITE_DIR, p.replace(/^\/coldopen\//, '')]
+    // serve only files inside the folder: a ../ in the path would reach the rest of the disk
+    const file = resolve(dir, `.${sep}${rest}`)
+    if (!file.startsWith(dir + sep)) throw new Error('outside the served folder')
     const body = readFileSync(file)
     res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' })
     res.end(body)
@@ -44,8 +49,8 @@ const server = createServer((req, res) => {
     res.writeHead(404).end()
   }
 })
-await new Promise<void>((r) => server.listen(8096, r))
-const BASE = 'http://localhost:8096/coldopen'
+await new Promise<void>((r) => server.listen(8096, '127.0.0.1', r))
+const BASE = 'http://127.0.0.1:8096/coldopen'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const browser = await getBrowser()
