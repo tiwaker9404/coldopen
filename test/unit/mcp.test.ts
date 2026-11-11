@@ -88,4 +88,39 @@ describe('coldopen as an MCP server', () => {
     await client.callTool({ name: 'draft_messages', arguments: { id } })
     expect(calls.slice(before)).toEqual([{ method: 'GET', url: `/v1/films/${id}/messages` }])
   })
+
+  it('find_founders says who to reach in groups, with the founders’ emails when there is a Hunter key', async () => {
+    const id = 'run_01JABCDEFGHJKMNPQRSTVWXYZ0'
+    const groups = [
+      { id: 'founders', label: 'Founders', why: 'w', ask: 'a', searches: [{ url: 'u' }] },
+    ]
+    const people = { company: 'Acme', team: 4, groups, searches: [{ url: 'u' }], known: [] }
+    const withKey = await connect({
+      [`GET /v1/films/${id}/people`]: { status: 200, json: people },
+      [`POST /v1/films/${id}/founders`]: {
+        status: 200,
+        json: { domain: 'acme.com', people: [{ name: 'Dana', email: 'dana@acme.com' }] },
+      },
+    })
+    const got = await withKey.client.callTool({ name: 'find_founders', arguments: { id } })
+    const body = JSON.parse((got.content as { text: string }[])[0]!.text)
+    expect(body.groups).toEqual(groups)
+    // the deprecated flat list stays out of the agent's answer
+    expect(body.searches).toBeUndefined()
+    expect(body.emails.people[0].email).toBe('dana@acme.com')
+
+    const noKey = await connect({
+      [`GET /v1/films/${id}/people`]: { status: 200, json: people },
+      [`POST /v1/films/${id}/founders`]: {
+        status: 409,
+        json: { error: { message: 'Add your free Hunter key on your Profile page' } },
+      },
+    })
+    const plain = await noKey.client.callTool({ name: 'find_founders', arguments: { id } })
+    expect(plain.isError).toBeFalsy()
+    const b2 = JSON.parse((plain.content as { text: string }[])[0]!.text)
+    expect(b2.groups).toEqual(groups)
+    expect(b2.emails).toBeNull()
+    expect(b2.emailsNote).toMatch(/Hunter key/)
+  })
 })

@@ -11,6 +11,7 @@ import { createServer } from 'node:http'
 import { createRequire } from 'node:module'
 import { extname, resolve, sep } from 'node:path'
 import puppeteer, { type Page } from 'puppeteer'
+import { flatSearches, parseConnections, peopleSearches } from '../src/outreach/people.ts'
 
 // a file inside dir, never outside it: a ../ in a request path would otherwise reach the rest of the disk
 const inside = (dir: string, rest: string) => {
@@ -523,6 +524,61 @@ const states: State[] = [
       )
         out.push(`the creator hint reads “${s.hint}”`)
       if (s.values[0] !== 'coldopen') out.push('the saved creator did not fill the section')
+      return out
+    },
+  },
+  {
+    name: 'Film panel people tabs',
+    url: `${base}/#films`,
+    stubs: (() => {
+      // a 6-person YC startup, with someone you know there: founders first, then warm paths
+      const known = parseConnections(
+        readFileSync(new URL('../fixtures/connections.csv', import.meta.url), 'utf8'),
+      )
+        .slice(0, 1)
+        .map((c) => ({ ...c, company: 'Parcelpine' }))
+      const groups = peopleSearches('Parcelpine', {
+        jobTitle: 'Forward Deployed Engineer',
+        profile: { ...candidate, schools: ['Duke University'] },
+        yc: { batch: 'W25', slug: 'parcelpine' },
+        team: 6,
+        known,
+      })
+      return {
+        ...withFilm,
+        [`/v1/films/${FILM}/people`]: {
+          company: 'Parcelpine',
+          team: 6,
+          groups,
+          searches: flatSearches(groups),
+          known,
+          connections: 1,
+        },
+      }
+    })(),
+    async run(page) {
+      await page.click('button.card')
+      await page.waitForSelector('.drawer [aria-label="Who to reach"]', { timeout: 5000 })
+      const out: string[] = []
+      const tabs = await texts(page, '[aria-label="Who to reach"] button')
+      const want = ['Founders', 'Warm paths', 'People doing the job', 'Recruiting']
+      if (tabs.join('|') !== want.join('|')) out.push(`people tabs read “${tabs.join(', ')}”`)
+      const open = await texts(page, '[aria-label="Who to reach"] button[aria-checked="true"]')
+      if (open[0] !== 'Founders') out.push(`the people tabs open on “${open[0]}”, not Founders`)
+      const shows = async (tab: string, want: RegExp) => {
+        await click(page, '[aria-label="Who to reach"] button', tab)
+        const body = (await texts(page, '.people-group')).join(' ')
+        if (!want.test(body)) out.push(`the ${tab} tab doesn’t show ${want}`)
+      }
+      await shows('Founders', /Ask: What they’re building next.*Open YC page/)
+      await shows(
+        'Warm paths',
+        /Ask: How they found it there.*Ask for an intro.*Duke University alumni/,
+      )
+      await shows('People doing the job', /Ask: What their first 90 days.*New grads/)
+      await shows('Recruiting', /Ask: A short note.*Talent acquisition.*Head of people/)
+      if ((await texts(page, '.people-group .who-list b')).includes('Recruiters') === false)
+        out.push('the Recruiting tab has no Recruiters search')
       return out
     },
   },

@@ -114,16 +114,41 @@ export const OUTREACH_LABEL: Record<OutreachStatus, string> = {
 }
 
 /** who to send a film to */
+export interface Connection {
+  name: string
+  url: string | null
+  company: string
+  position: string | null
+  connectedOn: string | null
+}
+
+export interface PeopleSearch {
+  label: string
+  hint: string
+  url: string
+}
+
+export type PeopleGroupId = 'founders' | 'warm' | 'doing' | 'manager' | 'recruiting'
+
+/** a group of people to reach, with when to write to them and what to ask */
+export interface PeopleGroup {
+  id: PeopleGroupId
+  label: string
+  why: string
+  ask: string
+  searches: PeopleSearch[]
+  known?: Connection[]
+}
+
 export interface People {
   company: string
-  searches: { label: string; hint: string; url: string }[]
-  known: {
-    name: string
-    url: string | null
-    company: string
-    position: string | null
-    connectedOn: string | null
-  }[]
+  /** team size from YC's list, when known */
+  team?: number | null
+  /** in the order most likely to get a reply at this size; the first is where to start */
+  groups?: PeopleGroup[]
+  /** @deprecated the same searches as one flat list, for older clients */
+  searches: PeopleSearch[]
+  known: Connection[]
   /** how many connections you uploaded; 0 means none yet */
   connections: number
 }
@@ -642,6 +667,8 @@ export interface Brief {
   questions: string[]
   /** what they'll likely ask you, with your answer from your record (null: prepare one) */
   expect?: { q: string; a: string | null }[]
+  /** who else to reach there, in order, and what to ask each */
+  reach?: { who: string; ask: string }[]
 }
 
 export type HomeworkKind = 'blog' | 'changelog' | 'news' | 'engineering' | 'podcast' | 'docs'

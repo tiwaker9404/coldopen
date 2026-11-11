@@ -4054,3 +4054,13 @@ a.tag {
     width: auto;
   }
 }
+
+/* who to reach: a tab per group, then its why, ask and searches */
+.people-group {
+  display: grid;
+  gap: 8px;
+}
+
+.people-group > p {
+  margin: 0;
+}

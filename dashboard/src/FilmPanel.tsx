@@ -15,6 +15,7 @@ import {
   media,
   OUTREACH_LABEL,
   type People,
+  type PeopleGroupId,
   type ScriptEdit,
   send,
   type ViewSession,
@@ -32,6 +33,7 @@ import {
   OPENER_NOTE,
   openingTab,
 } from './messageTabs.ts'
+import { openGroup, peopleGroups } from './peopleTabs.ts'
 import { safeUrl } from './safe.ts'
 import { canNotify, ErrorNote, Out, useToast } from './ui.tsx'
 
@@ -606,6 +608,8 @@ function briefText(b: Brief): string {
       '',
     )
   out.push('I will ask', ...b.questions.map((x, i) => `${i + 1}. ${x}`))
+  if (b.reach?.length)
+    out.push('', 'Who else to reach', ...b.reach.map((r) => `- ${r.who}: ${r.ask}`))
   return out.join('\n')
 }
 
@@ -683,6 +687,20 @@ function CallBrief({ id }: { id: string }) {
           <li key={x}>{x}</li>
         ))}
       </ol>
+      {b.reach && b.reach.length > 0 && (
+        <>
+          <h4>Who else to reach, and what to ask</h4>
+          <ul>
+            {b.reach.map((r) => (
+              <li key={r.who}>
+                {r.who}
+                <br />
+                <span className="quiet">{r.ask}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <Copy text={briefText(b)} label="Copy as prep notes" done="Prep notes copied" />
     </section>
   )
@@ -698,10 +716,14 @@ function isYc(url: string): boolean {
   }
 }
 
-/** Who to send it to: people they know there first, then LinkedIn searches they run themselves. */
+/**
+ * Who to send it to: a tab per group, founders at a startup and warm paths at scale first, each
+ * saying when to write and what to ask. Searches open LinkedIn for the person to run themselves.
+ */
 function WhoToSend({ film }: { film: FilmDetail }) {
   const id = film.id
   const [intro, setIntro] = useState<string | null>(null)
+  const [picked, setPicked] = useState<PeopleGroupId | null>(null)
   const messages = useQuery({
     queryKey: ['messages', id],
     queryFn: () => api<Messages>(`/v1/films/${id}/messages`),
@@ -716,119 +738,139 @@ function WhoToSend({ film }: { film: FilmDetail }) {
     return (
       <section className="block">
         <h3>Pick one or two people</h3>
+        <ErrorNote error={q.error} />
       </section>
     )
-  // one clear first move: someone you know, else the founders, else the hiring manager
-  const yc = p.searches.find((x) => isYc(x.url))
-  const manager = p.searches.find((x) => x.label === 'Hiring manager')
+  const groups = peopleGroups(p)
+  const open = openGroup(groups, picked)
+  const g = groups.find((x) => x.id === open)
   const first = p.known[0]
   return (
     <section className="block">
       <h3>Pick one or two people</h3>
-      <div className="start-here">
-        <small>Start here</small>
-        {first ? (
-          <p>
-            <b>Ask {first.name} for an intro.</b> You’re connected, and an intro beats any cold
-            message. The intro message below has a note they can forward as it is.
-          </p>
-        ) : yc ? (
-          <>
+      {groups[0] && (
+        <div className="start-here">
+          <small>Start here</small>
+          {first ? (
             <p>
-              <b>Write to the founders.</b> At a startup this size they read their own inbox, and
-              they’re the ones hiring.
+              <b>Ask {first.name} for an intro.</b> You’re connected, and an intro beats any cold
+              message. The intro message under Warm paths has a note they can forward as it is.
             </p>
-            <Founders film={film} />
-          </>
-        ) : manager ? (
-          <p>
-            <b>Write to the hiring manager.</b> {manager.hint}: they decide, and they get far fewer
-            messages than recruiters.{' '}
-            <a href={safeUrl(manager.url)} target="_blank" rel="noreferrer">
-              Find them on LinkedIn <Out />
-            </a>
-          </p>
-        ) : (
-          <p>
-            <b>Write to a recruiter or the team lead.</b> Pick one person, not a whole team: one
-            message to the right person beats five to the wrong ones.
-          </p>
-        )}
-      </div>
-      {p.known.length > 0 && (
-        <>
-          <p>
-            You know {p.known.length === 1 ? 'someone' : `${p.known.length} people`} at {p.company}.
-            Ask {p.known.length === 1 ? 'them' : 'one of them'} for an intro first; it beats a cold
-            message.
-          </p>
-          <ul className="people">
-            {p.known.map((c) => {
-              const key = `${c.name}-${c.url}`
-              const text = messages.data?.intro.replaceAll(
-                '[First name]',
-                c.name.split(/\s+/)[0] ?? c.name,
-              )
-              return (
-                <li key={key} className={intro === key ? 'open' : ''}>
-                  <span>
-                    <b>{c.name}</b>
-                    <small>{c.position ?? c.company}</small>
-                  </span>
-                  <button
-                    type="button"
-                    className="link"
-                    aria-expanded={intro === key}
-                    onClick={() => setIntro(intro === key ? null : key)}
-                  >
-                    Ask for an intro
-                  </button>
-                  {intro === key && text && (
-                    <div className="intro">
-                      <pre>{text}</pre>
-                      <div className="actions">
-                        <Copy className="primary" text={text} label="Copy message" done="Copied" />
-                        {c.url && (
-                          <a
-                            className="button"
-                            href={safeUrl(c.url)}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Open {c.name.split(/\s+/)[0]}’s LinkedIn <Out />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        </>
+          ) : (
+            <p>
+              <b>Start with {groups[0].label.toLowerCase()}.</b> At a company this size they’re the
+              most likely to reply. Their tab is open below, with what to ask them.
+            </p>
+          )}
+        </div>
       )}
       <p>
-        {p.known.length ? 'Or write to someone new. ' : ''}Each search opens LinkedIn in a new tab,
-        filtered to {p.company}. You stay in control: coldopen never messages anyone for you.
+        {p.team ? `${p.company} has about ${p.team} people, so the order goes ` : 'In the order '}
+        most likely to get a reply. Each search opens LinkedIn in a new tab, filtered to {p.company}
+        . You stay in control: coldopen never messages anyone for you.
       </p>
-      <ul className="who-list">
-        {p.searches.map((s) => (
-          <li key={s.url}>
-            <span>
-              <b>{s.label}</b>
-              <small>{s.hint}</small>
-            </span>
-            <a className="button" href={safeUrl(s.url)} target="_blank" rel="noreferrer">
-              {isYc(s.url) ? 'Open YC page' : 'Search LinkedIn'} <Out />
-            </a>
-          </li>
-        ))}
-      </ul>
-      {yc && first && <Founders film={film} />}
-      {p.connections === 0 && (
-        <p className="small muted">
-          Upload your LinkedIn connections on your Profile page to see who you already know here.
-        </p>
+      {groups.length > 0 && (
+        <div className="switch people-groups" role="radiogroup" aria-label="Who to reach">
+          {groups.map((x) => (
+            // biome-ignore lint/a11y/useSemanticElements: radio-styled buttons are the WAI-ARIA pattern for this control
+            <button
+              key={x.id}
+              type="button"
+              role="radio"
+              aria-checked={open === x.id}
+              onClick={() => setPicked(x.id)}
+            >
+              {x.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {g && (
+        <div className="people-group">
+          <p className="small">{g.why}</p>
+          <p className="small">
+            <b>Ask:</b> {g.ask}
+          </p>
+          {g.id === 'founders' && <Founders film={film} />}
+          {(g.known?.length ?? 0) > 0 && (
+            <>
+              <p className="small muted">
+                You know {g.known!.length === 1 ? 'someone' : `${g.known!.length} people`} at{' '}
+                {p.company}. Ask {g.known!.length === 1 ? 'them' : 'one of them'} for an intro
+                first; it beats a cold message.
+              </p>
+              <ul className="people">
+                {g.known!.map((c) => {
+                  const key = `${c.name}-${c.url}`
+                  const text = messages.data?.intro.replaceAll(
+                    '[First name]',
+                    c.name.split(/\s+/)[0] ?? c.name,
+                  )
+                  return (
+                    <li key={key} className={intro === key ? 'open' : ''}>
+                      <span>
+                        <b>{c.name}</b>
+                        <small>{c.position ?? c.company}</small>
+                      </span>
+                      <button
+                        type="button"
+                        className="link"
+                        aria-expanded={intro === key}
+                        onClick={() => setIntro(intro === key ? null : key)}
+                      >
+                        Ask for an intro
+                      </button>
+                      {intro === key && text && (
+                        <div className="intro">
+                          <pre>{text}</pre>
+                          <div className="actions">
+                            <Copy
+                              className="primary"
+                              text={text}
+                              label="Copy message"
+                              done="Copied"
+                            />
+                            {c.url && (
+                              <a
+                                className="button"
+                                href={safeUrl(c.url)}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Open {c.name.split(/\s+/)[0]}’s LinkedIn <Out />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+          {g.searches.length > 0 && (
+            <ul className="who-list">
+              {g.searches.map((s) => (
+                <li key={s.url}>
+                  <span>
+                    <b>{s.label}</b>
+                    <small>{s.hint}</small>
+                  </span>
+                  <a className="button" href={safeUrl(s.url)} target="_blank" rel="noreferrer">
+                    {isYc(s.url) ? 'Open YC page' : 'Search LinkedIn'} <Out />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          {g.id === 'warm' && p.connections === 0 && (
+            <p className="small muted">
+              Upload your LinkedIn connections on your Profile page to see who you already know
+              here.
+            </p>
+          )}
+        </div>
       )}
       <Recipient key={film.recipient?.email ?? film.recipient?.name ?? 'none'} film={film} />
     </section>

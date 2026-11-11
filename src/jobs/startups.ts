@@ -98,3 +98,27 @@ export function searchStartups(query: StartupQuery): {
       .map(([name, count]) => ({ name, count })),
   }
 }
+
+const hostOf = (url: string | null | undefined) => {
+  try {
+    return new URL(/^https?:\/\//.test(url ?? '') ? url! : `https://${url}`).hostname
+      .toLowerCase()
+      .replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+const BY_HOST = new Map(ALL.filter((s) => s.w).map((s) => [hostOf(s.w), s]))
+const BY_SLUG = new Map(ALL.map((s) => [s.s, s]))
+
+/**
+ * The YC company behind a website (or a YC slug), hiring or not, with its team size: who to
+ * reach first depends on how many people work there.
+ */
+export function startupOf(by: {
+  site?: string | null | undefined
+  slug?: string | null | undefined
+}): { slug: string; batch: string; team: number | null } | null {
+  const s = (by.slug && BY_SLUG.get(by.slug)) || (by.site && BY_HOST.get(hostOf(by.site))) || null
+  return s ? { slug: s.s, batch: s.b, team: s.t ?? null } : null
+}

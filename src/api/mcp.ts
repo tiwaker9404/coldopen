@@ -229,12 +229,24 @@ export function buildMcp(call: Call): McpServer {
   mcp.registerTool(
     'find_founders',
     {
-      title: 'Find founders’ emails',
+      title: 'Who to reach, and founders’ emails',
       description:
-        'For a film’s company: its founders and executives with their work emails, from one Hunter search with the person’s own Hunter key.',
+        'For a film’s company: who to reach, in `groups` ordered by who is most likely to reply at a company this size (Founders, Warm paths, People doing the job, Hiring manager, Recruiting), each with when to write to them (`why`), what to ask (`ask`) and LinkedIn searches the person runs themselves. Plus the founders and executives with their work emails (`emails`), from one Hunter search with the person’s own Hunter key; without a key, `emails` is null and `emailsNote` says how to add one. Nothing is sent.',
       inputSchema: { id: z.string().describe('the film’s id') },
     },
-    async ({ id }) => answer(call, 'POST', `/v1/films/${encodeURIComponent(id)}/founders`, {}),
+    async ({ id }) => {
+      const film = encodeURIComponent(id)
+      const people = await call('GET', `/v1/films/${film}/people`)
+      if (people.status >= 400) return result(people)
+      const { searches: _flat, ...reach } = people.json as { searches?: unknown }
+      const found = await call('POST', `/v1/films/${film}/founders`, {})
+      const err = (found.json as { error?: { message?: string } } | null)?.error?.message
+      return text({
+        ...reach,
+        emails: found.status < 400 ? found.json : null,
+        ...(found.status >= 400 ? { emailsNote: err ?? `HTTP ${found.status}` } : {}),
+      })
+    },
   )
 
   mcp.registerTool(

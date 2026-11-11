@@ -30,7 +30,7 @@ import {
   suggestions,
   warmBoards,
 } from '../jobs/service.ts'
-import { searchStartups } from '../jobs/startups.ts'
+import { searchStartups, startupOf } from '../jobs/startups.ts'
 import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
@@ -64,6 +64,7 @@ import {
 import {
   type Connection,
   companyKey,
+  flatSearches,
   knownAt,
   parseConnections,
   peopleSearches,
@@ -2298,12 +2299,43 @@ export async function buildApi({
     },
   )
 
+  /** who to reach at a film's company: grouped, in the order that gets replies at its size */
+  const reachFor = async (run: FilmRow, owner: Owner) => {
+    const out = run.output!
+    const title = out.job?.title
+    const keys = [...new Set([companyKey(out.company), companyKey(out.host)].filter(Boolean))]
+    // a rough cut in SQL (same key, or one key starting the other), then the exact match
+    const rows = await sql<Connection[]>`
+      select name, url, company, position, connected_on from connections
+      where owner = ${owner} and (
+        company_key = any(${keys})
+        or split_part(company_key, ' ', 1) = any(${keys.map((k) => k.split(' ')[0]!)})
+      )
+      limit 500`
+    const [{ n } = { n: 0 }] = await sql<{ n: number }[]>`
+      select count(*)::int as n from connections where owner = ${owner}`
+    const site = /^https?:\/\//.test(out.host) ? out.host : `https://${out.host}`
+    const hiring = ycOf({ site })
+    const startup = startupOf({ site, slug: hiring?.slug })
+    const yc = hiring ?? (startup ? { batch: startup.batch, slug: startup.slug } : null)
+    const known = knownAt(rows, out.company, out.host, title).slice(0, 25)
+    const groups = peopleSearches(out.company, {
+      jobTitle: title,
+      profile: run.input.profile,
+      yc,
+      team: startup?.team ?? null,
+      known,
+    })
+    return { company: out.company, team: startup?.team ?? null, groups, known, connections: n }
+  }
+
   app.get(
     '/v1/films/:id/brief',
     {
       schema: {
         tags: ['films'],
-        summary: 'A brief for the call once they reply: the company, the role and questions to ask',
+        summary:
+          'A brief for the call once they reply: the company, the role, who to reach and questions to ask',
         description:
           "Built from the film's own research (the company's site and the job post) and your profile; nothing new is fetched.",
         params: z.object({ id: RunId }),
@@ -2317,7 +2349,8 @@ export async function buildApi({
         where run_id = any(${[run.id, run.input.editOf].filter(Boolean) as string[]})
           and key in ('research', 'job') and status = 'completed'`
       const out = (k: string) => (steps.find((s) => s.key === k)?.output ?? null) as never
-      return briefOf(run.output.company, out('research'), out('job'), run.input.profile)
+      const { groups } = await reachFor(run, req.owner)
+      return briefOf(run.output.company, out('research'), out('job'), run.input.profile, groups)
     },
   )
 
@@ -2326,38 +2359,18 @@ export async function buildApi({
     {
       schema: {
         tags: ['films'],
-        summary: 'Who to send a film to: LinkedIn searches, and people you already know there',
+        summary:
+          'Who to send a film to: groups of LinkedIn searches, and people you already know there',
         description:
-          'Searches open on LinkedIn for you to run yourself; nothing is scraped or sent. Known people come from the connections export you uploaded.',
+          "Searches open on LinkedIn for you to run yourself; nothing is scraped or sent. `groups` are in the order most likely to get a reply at a company this size (team size from YC's list when known): Founders, Warm paths, People doing the job, Hiring manager and Recruiting, each with `why` (when to write to them) and `ask` (what to ask them); the first is the one to start with. Known people come from the connections export you uploaded. **Deprecated:** `searches`, the same searches as one flat list, stays for one release for older clients (the Chrome extension); use `groups`.",
         params: z.object({ id: RunId }),
       },
     },
     async (req, reply) => {
       const run = await ownFilm(req.params.id, req.owner)
       if (!run?.output) return notFound(reply)
-      const out = run.output
-      const title = out.job?.title
-      const keys = [...new Set([companyKey(out.company), companyKey(out.host)].filter(Boolean))]
-      // a rough cut in SQL (same key, or one key starting the other), then the exact match
-      const rows = await sql<Connection[]>`
-        select name, url, company, position, connected_on from connections
-        where owner = ${req.owner} and (
-          company_key = any(${keys})
-          or split_part(company_key, ' ', 1) = any(${keys.map((k) => k.split(' ')[0]!)})
-        )
-        limit 500`
-      const [{ n } = { n: 0 }] = await sql<{ n: number }[]>`
-        select count(*)::int as n from connections where owner = ${req.owner}`
-      return {
-        company: out.company,
-        searches: peopleSearches(out.company, {
-          jobTitle: title,
-          profile: run.input.profile,
-          yc: ycOf({ site: /^https?:\/\//.test(out.host) ? out.host : `https://${out.host}` }),
-        }),
-        known: knownAt(rows, out.company, out.host, title).slice(0, 25),
-        connections: n,
-      }
+      const r = await reachFor(run, req.owner)
+      return { ...r, searches: flatSearches(r.groups) }
     },
   )
 

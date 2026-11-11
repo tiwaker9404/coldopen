@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Job } from '../../src/jobs/boards.ts'
 import { SearchSchema } from '../../src/jobs/rank.ts'
 import { momentum } from '../../src/jobs/service.ts'
+import { searchStartups, startupOf } from '../../src/jobs/startups.ts'
 import { mentions, shortBatch, tokensFor, trusted } from '../../src/jobs/yc-build.ts'
 import { peopleSearches } from '../../src/outreach/people.ts'
 
@@ -79,17 +80,28 @@ describe('hiring momentum', () => {
 })
 
 describe('founder searches', () => {
-  it('puts the YC page and founders first for a YC company', () => {
-    const s = peopleSearches('Acme', { yc: { batch: 'W24', slug: 'acme' } })
-    expect(s[0]).toMatchObject({
-      label: 'Founders',
+  it('puts the YC page first, then the founders on LinkedIn, for a YC company', () => {
+    const f = peopleSearches('Acme', { yc: { batch: 'W24', slug: 'acme' } }).find(
+      (g) => g.id === 'founders',
+    )!
+    expect(f.searches[0]).toMatchObject({
+      label: 'YC page',
       url: 'https://www.ycombinator.com/companies/acme',
     })
-    expect(s[1]!.label).toBe('Founders on LinkedIn')
-    expect(s[1]!.url).toContain(encodeURIComponent('founder Acme'))
+    expect(f.searches[1]!.label).toBe('Founders')
+    expect(f.searches[1]!.url).toContain(encodeURIComponent('founder Acme'))
   })
 
-  it('leaves the YC founder links out for other companies', () => {
-    expect(peopleSearches('Acme').some((p) => p.label === 'Founders')).toBe(false)
+  it('leaves the YC page out for other companies', () => {
+    const f = peopleSearches('Acme').find((g) => g.id === 'founders')!
+    expect(f.searches.some((p) => p.url.includes('ycombinator.com'))).toBe(false)
+  })
+
+  it('knows a YC company’s team size from its website, hiring or not', () => {
+    const one = searchStartups({ limit: 50 }).data.find((x) => x.website)!
+    const s = startupOf({ site: one.website })
+    expect(s).toMatchObject({ slug: one.slug, batch: one.batch, team: one.team })
+    expect(startupOf({ slug: one.slug })?.slug).toBe(one.slug)
+    expect(startupOf({ site: 'https://not-a-yc-company.example/' })).toBeNull()
   })
 })

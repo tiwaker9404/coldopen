@@ -1642,20 +1642,147 @@
     },
     "/v1/films/run_01M733HE499SGVAD995SDGWARP/people": {
       "company": "Northwind Freight",
+      "team": null,
+      "groups": [
+        {
+          "id": "doing",
+          "label": "People doing the job",
+          "why": "They, and new grads who just landed it, reply most and can refer you.",
+          "ask": "What their first 90 days looked like.",
+          "searches": [
+            {
+              "label": "Forward deployed engineers",
+              "hint": "Doing the work at Northwind Freight now",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=forward%20deployed%20engineer%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Solutions engineers",
+              "hint": "Doing the work at Northwind Freight now",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=solutions%20engineer%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Customer engineers",
+              "hint": "Doing the work at Northwind Freight now",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=customer%20engineer%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "New grads",
+              "hint": "Just landed it, and remember how",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=new%20grad%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+            }
+          ]
+        },
+        {
+          "id": "recruiting",
+          "label": "Recruiting",
+          "why": "They read every note, so keep it short; best once you know which team you want.",
+          "ask": "A short note, the film, and the one area you’re interested in.",
+          "searches": [
+            {
+              "label": "Recruiters",
+              "hint": "Read every message about open roles",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=recruiter%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Talent acquisition",
+              "hint": "Run hiring across teams",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20acquisition%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Talent partners",
+              "hint": "Work with one team’s managers",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20partner%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Sourcers",
+              "hint": "Find people before roles are posted",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=sourcer%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+            }
+          ]
+        },
+        {
+          "id": "founders",
+          "label": "Founders",
+          "why": "Hard to reach at this size: write once you know someone on the team.",
+          "ask": "What they’re building next and what’s hard about it.",
+          "searches": [
+            {
+              "label": "Founders",
+              "hint": "Message the founder directly",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=founder%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "CEO",
+              "hint": "Sets what the company works on",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=CEO%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "CTO",
+              "hint": "Runs the team that builds it",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=CTO%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+            }
+          ]
+        }
+      ],
+      "known": [],
+      "connections": 0,
       "searches": [
         {
+          "label": "Forward deployed engineers",
+          "hint": "Doing the work at Northwind Freight now",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=forward%20deployed%20engineer%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Solutions engineers",
+          "hint": "Doing the work at Northwind Freight now",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=solutions%20engineer%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Customer engineers",
+          "hint": "Doing the work at Northwind Freight now",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=customer%20engineer%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "New grads",
+          "hint": "Just landed it, and remember how",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=new%20grad%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
           "label": "Recruiters",
-          "hint": "They read every message about open roles",
+          "hint": "Read every message about open roles",
           "url": "https://www.linkedin.com/search/results/people/?keywords=recruiter%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
         },
         {
           "label": "Talent acquisition",
-          "hint": "Sourcers and talent partners",
+          "hint": "Run hiring across teams",
           "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20acquisition%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Talent partners",
+          "hint": "Work with one team’s managers",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20partner%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Sourcers",
+          "hint": "Find people before roles are posted",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=sourcer%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Founders",
+          "hint": "Message the founder directly",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=founder%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "CEO",
+          "hint": "Sets what the company works on",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=CEO%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "CTO",
+          "hint": "Runs the team that builds it",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=CTO%20Northwind%20Freight&origin=GLOBAL_SEARCH_HEADER"
         }
-      ],
-      "known": [],
-      "connections": 0
+      ]
     },
     "/v1/films/run_01M733HE499SGVAD995SDGWARP/brief": {
       "company": "Northwind Freight",
@@ -1987,20 +2114,147 @@
     },
     "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/people": {
       "company": "Lumen Health",
+      "team": null,
+      "groups": [
+        {
+          "id": "doing",
+          "label": "People doing the job",
+          "why": "They, and new grads who just landed it, reply most and can refer you.",
+          "ask": "What their first 90 days looked like.",
+          "searches": [
+            {
+              "label": "Forward deployed engineers",
+              "hint": "Doing the work at Lumen Health now",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=forward%20deployed%20engineer%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Solutions engineers",
+              "hint": "Doing the work at Lumen Health now",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=solutions%20engineer%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Customer engineers",
+              "hint": "Doing the work at Lumen Health now",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=customer%20engineer%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "New grads",
+              "hint": "Just landed it, and remember how",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=new%20grad%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+            }
+          ]
+        },
+        {
+          "id": "recruiting",
+          "label": "Recruiting",
+          "why": "They read every note, so keep it short; best once you know which team you want.",
+          "ask": "A short note, the film, and the one area you’re interested in.",
+          "searches": [
+            {
+              "label": "Recruiters",
+              "hint": "Read every message about open roles",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=recruiter%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Talent acquisition",
+              "hint": "Run hiring across teams",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20acquisition%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Talent partners",
+              "hint": "Work with one team’s managers",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20partner%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Sourcers",
+              "hint": "Find people before roles are posted",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=sourcer%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+            }
+          ]
+        },
+        {
+          "id": "founders",
+          "label": "Founders",
+          "why": "Hard to reach at this size: write once you know someone on the team.",
+          "ask": "What they’re building next and what’s hard about it.",
+          "searches": [
+            {
+              "label": "Founders",
+              "hint": "Message the founder directly",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=founder%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "CEO",
+              "hint": "Sets what the company works on",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=CEO%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "CTO",
+              "hint": "Runs the team that builds it",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=CTO%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+            }
+          ]
+        }
+      ],
+      "known": [],
+      "connections": 0,
       "searches": [
         {
+          "label": "Forward deployed engineers",
+          "hint": "Doing the work at Lumen Health now",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=forward%20deployed%20engineer%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Solutions engineers",
+          "hint": "Doing the work at Lumen Health now",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=solutions%20engineer%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Customer engineers",
+          "hint": "Doing the work at Lumen Health now",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=customer%20engineer%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "New grads",
+          "hint": "Just landed it, and remember how",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=new%20grad%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
           "label": "Recruiters",
-          "hint": "They read every message about open roles",
+          "hint": "Read every message about open roles",
           "url": "https://www.linkedin.com/search/results/people/?keywords=recruiter%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
         },
         {
           "label": "Talent acquisition",
-          "hint": "Sourcers and talent partners",
+          "hint": "Run hiring across teams",
           "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20acquisition%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Talent partners",
+          "hint": "Work with one team’s managers",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20partner%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Sourcers",
+          "hint": "Find people before roles are posted",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=sourcer%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Founders",
+          "hint": "Message the founder directly",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=founder%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "CEO",
+          "hint": "Sets what the company works on",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=CEO%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "CTO",
+          "hint": "Runs the team that builds it",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=CTO%20Lumen%20Health&origin=GLOBAL_SEARCH_HEADER"
         }
-      ],
-      "known": [],
-      "connections": 0
+      ]
     },
     "/v1/films/run_01M733HE4SPM89HXW09GNEHAJ6/brief": {
       "company": "Lumen Health",
@@ -2346,20 +2600,147 @@
     },
     "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/people": {
       "company": "Parcelpine",
+      "team": null,
+      "groups": [
+        {
+          "id": "doing",
+          "label": "People doing the job",
+          "why": "They, and new grads who just landed it, reply most and can refer you.",
+          "ask": "What their first 90 days looked like.",
+          "searches": [
+            {
+              "label": "Forward deployed engineers",
+              "hint": "Doing the work at Parcelpine now",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=forward%20deployed%20engineer%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Solutions engineers",
+              "hint": "Doing the work at Parcelpine now",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=solutions%20engineer%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Customer engineers",
+              "hint": "Doing the work at Parcelpine now",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=customer%20engineer%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "New grads",
+              "hint": "Just landed it, and remember how",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=new%20grad%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+            }
+          ]
+        },
+        {
+          "id": "recruiting",
+          "label": "Recruiting",
+          "why": "They read every note, so keep it short; best once you know which team you want.",
+          "ask": "A short note, the film, and the one area you’re interested in.",
+          "searches": [
+            {
+              "label": "Recruiters",
+              "hint": "Read every message about open roles",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=recruiter%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Talent acquisition",
+              "hint": "Run hiring across teams",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20acquisition%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Talent partners",
+              "hint": "Work with one team’s managers",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20partner%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "Sourcers",
+              "hint": "Find people before roles are posted",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=sourcer%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+            }
+          ]
+        },
+        {
+          "id": "founders",
+          "label": "Founders",
+          "why": "Hard to reach at this size: write once you know someone on the team.",
+          "ask": "What they’re building next and what’s hard about it.",
+          "searches": [
+            {
+              "label": "Founders",
+              "hint": "Message the founder directly",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=founder%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "CEO",
+              "hint": "Sets what the company works on",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=CEO%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+            },
+            {
+              "label": "CTO",
+              "hint": "Runs the team that builds it",
+              "url": "https://www.linkedin.com/search/results/people/?keywords=CTO%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+            }
+          ]
+        }
+      ],
+      "known": [],
+      "connections": 0,
       "searches": [
         {
+          "label": "Forward deployed engineers",
+          "hint": "Doing the work at Parcelpine now",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=forward%20deployed%20engineer%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Solutions engineers",
+          "hint": "Doing the work at Parcelpine now",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=solutions%20engineer%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Customer engineers",
+          "hint": "Doing the work at Parcelpine now",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=customer%20engineer%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "New grads",
+          "hint": "Just landed it, and remember how",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=new%20grad%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
           "label": "Recruiters",
-          "hint": "They read every message about open roles",
+          "hint": "Read every message about open roles",
           "url": "https://www.linkedin.com/search/results/people/?keywords=recruiter%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
         },
         {
           "label": "Talent acquisition",
-          "hint": "Sourcers and talent partners",
+          "hint": "Run hiring across teams",
           "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20acquisition%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Talent partners",
+          "hint": "Work with one team’s managers",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=talent%20partner%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Sourcers",
+          "hint": "Find people before roles are posted",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=sourcer%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "Founders",
+          "hint": "Message the founder directly",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=founder%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "CEO",
+          "hint": "Sets what the company works on",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=CEO%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
+        },
+        {
+          "label": "CTO",
+          "hint": "Runs the team that builds it",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=CTO%20Parcelpine&origin=GLOBAL_SEARCH_HEADER"
         }
-      ],
-      "known": [],
-      "connections": 0
+      ]
     },
     "/v1/films/run_01M733HE5DF8YEQ5PWJBEGMPY1/brief": {
       "company": "Parcelpine",

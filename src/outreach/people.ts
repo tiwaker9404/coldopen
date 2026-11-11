@@ -15,6 +15,22 @@ export interface PeopleSearch {
   url: string
 }
 
+/** a group of people to reach, with when to write to them and what to ask */
+export type GroupId = 'founders' | 'warm' | 'doing' | 'manager' | 'recruiting'
+
+export interface PeopleGroup {
+  id: GroupId
+  /** "People doing the job" */
+  label: string
+  /** when to write to them, in one line */
+  why: string
+  /** what to ask them, in one line */
+  ask: string
+  searches: PeopleSearch[]
+  /** warm paths only: people you're connected to there, from your Connections.csv */
+  known?: Connection[]
+}
+
 export interface Connection {
   name: string
   url: string | null
@@ -67,6 +83,77 @@ export function backgrounds(
   return out.filter((x) => x.name.toLowerCase() !== now).slice(0, 5)
 }
 
+/** "Senior Forward Deployed Engineer, Platform (Remote)" → "forward deployed engineer" */
+function bareTitle(title: string): string {
+  return title
+    .split(/\s[-–—|]\s|,|\(|\//)[0]!
+    .toLowerCase()
+    .replace(
+      /\b(senior|sr\.?|junior|jr\.?|staff|principal|lead|founding|associate|intern|ii|iii|iv|i)\b/g,
+      ' ',
+    )
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * The titles people doing this kind of work go by. A Forward Deployed Engineer's peers are
+ * often called solutions or customer engineers, so one search per title finds more of them.
+ */
+const FAMILIES: [RegExp, [keywords: string, label: string][]][] = [
+  [
+    /forward deployed|deployment|solutions? (engineer|architect|consultant)|sales engineer|customer engineer|implementation/,
+    [
+      ['forward deployed engineer', 'Forward deployed engineers'],
+      ['solutions engineer', 'Solutions engineers'],
+      ['customer engineer', 'Customer engineers'],
+    ],
+  ],
+  [
+    /\bgtm\b|go.to.market|account executive|\bae\b|growth|\bsdr\b|\bbdr\b|business development/,
+    [
+      ['GTM engineer', 'GTM engineers'],
+      ['account executive', 'Account executives'],
+      ['growth', 'Growth team'],
+    ],
+  ],
+  [
+    /software|backend|back.end|frontend|front.end|full.?stack|\bswe\b|\bsde\b|developer|engineer/,
+    [['software engineer', 'Software engineers']],
+  ],
+]
+
+/** The searches for people doing the job: its family's usual titles, or the title itself */
+export function doingTheJob(title: string | undefined): [keywords: string, label: string][] {
+  const t = title ? bareTitle(title) : ''
+  if (!t) return []
+  const family = FAMILIES.find(([re]) => re.test(t))?.[1]
+  if (family) return family
+  return [[t, `${t.charAt(0).toUpperCase()}${t.slice(1)}s`.replace(/ss$/, 's')]]
+}
+
+/** Who replies most at a company this size goes first: founders at a startup, warm paths at scale */
+const ORDER: Record<'small' | 'mid' | 'large', GroupId[]> = {
+  small: ['founders', 'warm', 'doing', 'recruiting'],
+  mid: ['warm', 'manager', 'founders', 'doing', 'recruiting'],
+  large: ['warm', 'manager', 'doing', 'recruiting', 'founders'],
+}
+
+/** under 20 people, 20 to 200, and over 200 or not known */
+export function sizeOf(team: number | null | undefined): 'small' | 'mid' | 'large' {
+  if (team == null || !Number.isFinite(team) || team <= 0) return 'large'
+  return team < 20 ? 'small' : team <= 200 ? 'mid' : 'large'
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * Who to reach at a company, grouped the way networking works and ordered by who's most likely
+ * to reply at its size: founders, warm paths (alumni, old colleagues, people you know there),
+ * people doing the job, the hiring manager, and recruiting. Each group says when to write and
+ * what to ask. Groups with nothing in them are left out, and the current employer is never
+ * searched.
+ */
 export function peopleSearches(
   company: string,
   opts: {
@@ -74,64 +161,174 @@ export function peopleSearches(
     profile?: Profile | undefined
     /** the YC company it is, when it's one: its YC page lists the founders by name */
     yc?: { batch: string; slug: string } | null | undefined
+    /** how many people work there, when known (YC's team size) */
+    team?: number | null | undefined
+    /** people you're connected to there, from your Connections.csv */
+    known?: Connection[] | undefined
   } = {},
-): PeopleSearch[] {
-  // a YC startup's founders are named on its YC page, and at that size they read their own inbox
-  const founders: PeopleSearch[] = opts.yc
-    ? [
+): PeopleGroup[] {
+  const size = sizeOf(opts.team)
+  const people = opts.team && opts.team > 0 ? `${opts.team} people` : null
+  const groups: Record<GroupId, PeopleGroup> = {
+    founders: {
+      id: 'founders',
+      label: 'Founders',
+      why:
+        size === 'small'
+          ? `${people ? `At ${people}` : 'At a startup this size'} the founders read their own email and make every call.`
+          : size === 'mid'
+            ? 'They still read notes about their product, but write to the team first.'
+            : 'Hard to reach at this size: write once you know someone on the team.',
+      ask: 'What they’re building next and what’s hard about it.',
+      searches: [
+        // a YC startup's founders are named on its YC page
+        ...(opts.yc
+          ? [
+              {
+                label: 'YC page',
+                hint: `Names the founders${opts.yc.batch ? ` (${opts.yc.batch})` : ''}`,
+                url: `https://www.ycombinator.com/companies/${encodeURIComponent(opts.yc.slug)}`,
+              },
+            ]
+          : []),
         {
           label: 'Founders',
-          hint: `Named on its YC page${opts.yc.batch ? ` (${opts.yc.batch})` : ''}; at a startup they read their own inbox`,
-          url: `https://www.ycombinator.com/companies/${encodeURIComponent(opts.yc.slug)}`,
-        },
-        {
-          label: 'Founders on LinkedIn',
           hint: 'Message the founder directly',
           url: linkedin(`founder ${company}`),
         },
-      ]
-    : []
-  const out: PeopleSearch[] = [
-    ...founders,
-    {
-      label: 'Recruiters',
-      hint: 'They read every message about open roles',
-      url: linkedin(`recruiter ${company}`),
+        { label: 'CEO', hint: 'Sets what the company works on', url: linkedin(`CEO ${company}`) },
+        { label: 'CTO', hint: 'Runs the team that builds it', url: linkedin(`CTO ${company}`) },
+      ],
     },
-    {
-      label: 'Talent acquisition',
-      hint: 'Sourcers and talent partners',
-      url: linkedin(`talent acquisition ${company}`),
+    warm: {
+      id: 'warm',
+      label: 'Warm paths',
+      why: 'People from your school or old team answer people like them, and can tell you how it really is.',
+      ask: 'How they found it there; they answer people like them.',
+      searches: backgrounds(opts.profile).map((b) =>
+        b.kind === 'school'
+          ? {
+              label: `${b.name} alumni`,
+              hint: `Went to ${b.name} like you`,
+              url: linkedin(`"${b.name}" ${company}`),
+            }
+          : {
+              label: `${b.name} people`,
+              hint: `Worked at ${b.name} like you`,
+              url: linkedin(`"${b.name}" ${company}`),
+            },
+      ),
+      ...(opts.known?.length ? { known: opts.known } : {}),
     },
-  ]
-  const manager = managerFor(opts.jobTitle)
-  if (manager)
-    out.push({
+    doing: {
+      id: 'doing',
+      label: 'People doing the job',
+      why: 'They, and new grads who just landed it, reply most and can refer you.',
+      ask: 'What their first 90 days looked like.',
+      searches: [],
+    },
+    manager: {
+      id: 'manager',
       label: 'Hiring manager',
-      hint: `The ${manager} this role likely reports to`,
-      url: linkedin(`${manager} ${company}`),
-    })
-  else if (opts.profile?.preset !== 'candidate')
-    out.push({
+      why: '',
+      ask: 'What the team is working on this quarter.',
+      searches: [],
+    },
+    recruiting: {
+      id: 'recruiting',
+      label: 'Recruiting',
+      why: 'They read every note, so keep it short; best once you know which team you want.',
+      ask: 'A short note, the film, and the one area you’re interested in.',
+      searches: [
+        {
+          label: 'Recruiters',
+          hint: 'Read every message about open roles',
+          url: linkedin(`recruiter ${company}`),
+        },
+        {
+          label: 'Talent acquisition',
+          hint: 'Run hiring across teams',
+          url: linkedin(`talent acquisition ${company}`),
+        },
+        {
+          label: 'Talent partners',
+          hint: 'Work with one team’s managers',
+          url: linkedin(`talent partner ${company}`),
+        },
+        {
+          label: 'Sourcers',
+          hint: 'Find people before roles are posted',
+          url: linkedin(`sourcer ${company}`),
+        },
+        // at a small company the head of people often does the hiring too
+        ...(opts.team && opts.team > 0 && opts.team < 50
+          ? [
+              {
+                label: 'Head of people',
+                hint: 'Often does the hiring at this size',
+                url: linkedin(`head of people ${company}`),
+              },
+            ]
+          : []),
+      ],
+    },
+  }
+
+  const title =
+    opts.jobTitle ?? (opts.profile?.preset === 'candidate' ? opts.profile.sender.role : undefined)
+  const doing = doingTheJob(title)
+  if (doing.length)
+    groups.doing.searches = [
+      ...doing.map(([k, label]) => ({
+        label,
+        hint: `Doing the work at ${company} now`,
+        url: linkedin(`${k} ${company}`),
+      })),
+      {
+        label: 'New grads',
+        hint: 'Just landed it, and remember how',
+        url: linkedin(`new grad ${company}`),
+      },
+    ]
+
+  const manager = managerFor(opts.jobTitle)
+  if (manager) {
+    groups.manager.why = `The ${manager} this role likely reports to; they get far fewer messages than recruiters.`
+    groups.manager.searches = [
+      {
+        label: `${manager.charAt(0).toUpperCase()}${manager.slice(1)}`,
+        hint: 'Decides who joins the team',
+        url: linkedin(`${manager} ${company}`),
+      },
+    ]
+  } else if (opts.profile && opts.profile.preset !== 'candidate')
+    // sellers pitch the heads of the team they sell to
+    groups.founders.searches.push({
       label: 'Decision makers',
-      hint: 'Founders and heads of the team you sell to',
+      hint: 'Heads of the team you sell to',
       url: linkedin(`founder OR head ${company}`),
     })
-  for (const b of backgrounds(opts.profile))
-    out.push(
-      b.kind === 'school'
-        ? {
-            label: `${b.name} alumni`,
-            hint: `Went to ${b.name} like you; alumni answer each other`,
-            url: linkedin(`"${b.name}" ${company}`),
-          }
-        : {
-            label: `${b.name} people`,
-            hint: `Worked at ${b.name} like you`,
-            url: linkedin(`"${b.name}" ${company}`),
-          },
-    )
-  return out
+
+  // the current employer stays out of every search, even when it's the company itself
+  const employer = opts.profile?.sender.company?.trim()
+  const mentions = employer
+    ? new RegExp(`(^|[^a-z0-9])${escapeRe(employer.toLowerCase())}([^a-z0-9]|$)`)
+    : null
+  const seen = new Set<string>()
+  const keep = (s: PeopleSearch) => {
+    const text = decodeURIComponent(s.url).toLowerCase()
+    if (mentions?.test(text) || seen.has(s.url)) return false
+    seen.add(s.url)
+    return true
+  }
+  return ORDER[size]
+    .map((id) => ({ ...groups[id], searches: groups[id].searches.filter(keep) }))
+    .filter((g) => g.searches.length > 0 || (g.known?.length ?? 0) > 0)
+}
+
+/** Every search the groups hold, in order: the old flat list, kept for one release */
+export function flatSearches(groups: PeopleGroup[]): PeopleSearch[] {
+  return groups.flatMap((g) => g.searches)
 }
 
 /* --------------------------------------------------------------- connections */

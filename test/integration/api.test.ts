@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApi } from '../../src/api/server.ts'
 import type { Sql } from '../../src/db/index.ts'
+import { searchStartups } from '../../src/jobs/startups.ts'
 import { SlackClient } from '../../src/slack.ts'
 import { freshDb, log, profile, testConfig, tmp } from '../helpers/index.ts'
 
@@ -664,7 +665,18 @@ describe('films', () => {
     await finish(id, 'Stripe')
 
     let people = (await app.inject({ url: `/v1/films/${id}/people`, headers: auth })).json()
-    expect(people.searches[0].label).toBe('Recruiters')
+    type Group = { id: string; why: string; ask: string; searches: { url: string }[] }
+    const groups = people.groups as Group[]
+    // Stripe isn't on YC's list, so its size isn't known: warm paths and the manager first
+    expect(people.team).toBeNull()
+    expect(groups.map((g) => g.id)).not.toContain('warm')
+    expect(groups.at(-1)!.id).toBe('founders')
+    expect(groups.filter((g) => g.id === 'recruiting')).toHaveLength(1)
+    for (const g of groups) expect(g.why && g.ask && g.searches.length).toBeTruthy()
+    // the deprecated flat list still holds every search the groups hold, in the same order
+    expect(people.searches.map((s: { url: string }) => s.url)).toEqual(
+      groups.flatMap((g) => g.searches.map((s) => s.url)),
+    )
     expect(people.known).toEqual([])
     expect(people.connections).toBe(0)
 
@@ -690,12 +702,52 @@ describe('films', () => {
       'Ana Lima',
     ])
     expect(people.connections).toBe(5)
+    // the people you know there are the warm path, and it goes first at a company this size
+    expect(people.groups[0].id).toBe('warm')
+    expect(people.groups[0].known.map((c: { name: string }) => c.name)).toEqual([
+      'Priya Shah',
+      'Ben Ortiz',
+      'Ana Lima',
+    ])
     expect((await app.inject({ url: '/v1/connections', headers: auth })).json().count).toBe(5)
 
     const gone = await app.inject({ method: 'DELETE', url: '/v1/connections', headers: auth })
     expect(gone.json()).toEqual({ deleted: 5 })
     people = (await app.inject({ url: `/v1/films/${id}/people`, headers: auth })).json()
     expect(people.known).toEqual([])
+  })
+
+  it('opens who to reach on the founders at a small YC startup, and puts the groups in the brief', async () => {
+    // a real tiny YC company from the weekly list, so the test follows the data
+    const yc = searchStartups({ maxTeam: 10, limit: 50 }).data.find((x) => x.website && x.team)!
+    const id = (
+      await app.inject({
+        method: 'POST',
+        url: '/v1/films',
+        headers: auth,
+        payload: { url: 'tiny.example', profileId: 'maya' },
+      })
+    ).json().id
+    await finish(id, yc.name)
+    await sql`update runs set output = jsonb_set(output, '{host}', ${sql.json(new URL(yc.website!).hostname as never)}) where id = ${id}`
+
+    const people = (await app.inject({ url: `/v1/films/${id}/people`, headers: auth })).json()
+    expect(people.team).toBe(yc.team)
+    expect(people.groups[0].id).toBe('founders')
+    expect(people.groups[0].searches[0].url).toBe(
+      `https://www.ycombinator.com/companies/${yc.slug}`,
+    )
+    expect(people.groups.map((g: { id: string }) => g.id)).not.toContain('manager')
+    expect(people.searches.length).toBe(
+      people.groups.reduce((n: number, g: { searches: unknown[] }) => n + g.searches.length, 0),
+    )
+
+    // the call brief carries the same groups, in the same order, with what to ask each
+    const brief = (await app.inject({ url: `/v1/films/${id}/brief`, headers: auth })).json()
+    expect(brief.reach.map((r: { who: string }) => r.who)).toEqual(
+      people.groups.map((g: { label: string }) => g.label),
+    )
+    expect(brief.reach[0].ask).toBe('What they’re building next and what’s hard about it.')
   })
 })
 

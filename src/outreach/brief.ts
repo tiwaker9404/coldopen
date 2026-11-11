@@ -1,5 +1,6 @@
 import { ANSWERED, bestAnswer } from '../job/fit.ts'
 import type { Profile } from '../script/types.ts'
+import type { PeopleGroup } from './people.ts'
 
 /**
  * When they reply: a one-page brief for the call, from what the film already read. What the
@@ -26,6 +27,8 @@ export interface Brief {
   questions: string[]
   /** interview prep: what they'll likely ask you, with your answer from your own record */
   expect: { q: string; a: string | null }[]
+  /** who else to reach there, in the order that gets replies at its size, and what to ask each */
+  reach: { who: string; ask: string }[]
 }
 
 interface KitLike {
@@ -50,6 +53,7 @@ export function briefOf(
   kit: KitLike | null,
   post: PostLike | null,
   profile: Profile | undefined,
+  groups: Pick<PeopleGroup, 'label' | 'ask'>[] = [],
 ): Brief {
   const what = clean(kit?.description) || clean(kit?.headline) || null
   const seen = new Set<string>()
@@ -122,5 +126,6 @@ export function briefOf(
     pitch,
     questions,
     expect: expect.slice(0, 6),
+    reach: groups.map((g) => ({ who: g.label, ask: g.ask })),
   }
 }
