@@ -395,6 +395,7 @@ function SendSteps({ film }: { film: FilmDetail }) {
       void qc.invalidateQueries({ queryKey: ['films'] })
       void qc.invalidateQueries({ queryKey: ['film', film.id] })
       void qc.invalidateQueries({ queryKey: ['outreach'] })
+      void qc.invalidateQueries({ queryKey: ['targets'] })
       if (s)
         toast({
           text: `Marked ${film.company ?? 'it'} as sent. Come back and mark it when they reply.`,

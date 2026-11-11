@@ -17,8 +17,10 @@ coldopen is an open-source agent for personalized video outreach. Give it a pros
 - **Find the role.** Open roles from 450+ companies' public job boards, including about 400 hiring YC startups, ranked against the roles you want. Each shows its pay, a YC badge linking the founders, whether the company sponsors H-1B visas, how fast it's hiring, and who you already know there. Another ~900 YC startups post roles only on YC's Work at a Startup, which has no feed; Startups lists them, founders first.
 - **Fit it.** Fit check scores how well your profile answers each post, by meaning as well as shared words ([eval](evals/fit/results.md)). Fit gaps shows the skills your best matches keep asking for, one click to add.
 - **Make the film.** One click per job, or tick ten and make them all. Each film quotes a requirement from the post and answers it with your own numbers.
-- **Reach the right person.** For YC startups, the founders come first. Warm paths add alumni of your schools and people from your past teams at each company. Find their email with your own free Hunter key, and the message opens as a ready draft.
-- **Learn what gets replies.** Half your drafts open with the film, half with your best number; Today shows which one is winning. Raised in the last 3 months (from SEC Form D filings) is a filter and a badge; when the round is from the last month, the email opens by congratulating them.
+- **Know who to write to this week.** Network this week, on Today, lists the 10 companies most worth a film and a warm message right now, whether or not they have an opening, each with its reasons ("6 people, so the founders read their own email", "raised a round in October"). The counter shows how many companies you've reached this week against the 10-a-week target.
+- **Reach the right person.** Who to reach is grouped the way networking works (founders, warm paths, people doing the job, the hiring manager, recruiting) and ordered by company size, with what to ask each group. Find their email with your own free Hunter key, and the message opens as a ready draft.
+- **Write like a curious person, not a job pitch.** Save your homework on each film (a detail from using their product, something you built with it, your question for them) and the drafts open with it, ask your question, and end with thanks. No job words and no numbers the film already shows.
+- **Learn what gets replies.** Half your emails open with your homework, half with your question; Today shows which one is winning. Raised in the last 3 months (from SEC Form D filings) is a filter and a badge; when the round is from the last month, the email opens by congratulating them.
 - **Into your CRM.** Connect HubSpot's free CRM and each film you send becomes a company, a contact and a timeline note: sent, watched, replied, interview.
 - **From your AI assistant.** coldopen is an MCP server: Claude, Cursor or ChatGPT can search jobs and YC startups, make films, draft the messages and list follow-ups for you ([setup](#use-it-from-claude-or-cursor-mcp)).
 - **From any job post.** The [Chrome extension](extension/README.md) adds a Make film button to Greenhouse, Lever, Ashby, LinkedIn and YC job posts.
@@ -186,7 +188,15 @@ Applying to different kinds of roles? Keep one profile per résumé in a folder 
 
 - **The messages, in the order you send them:** a LinkedIn connection note (200 characters, no link), the message once they accept, InMail when they have an Open Profile, a warm email and the follow-up. Each is written from what the film shows, so it can't claim more than it does, and each copies in one click. A draft that fell back to its template says why, and one that code adjusted says what changed.
 - **A GIF that pastes as a picture.** Copy GIF for email puts a playing preview on the clipboard, linked to the share page, so it lands in Gmail or Outlook as the film itself, not a line of HTML. Download GIF saves it for a LinkedIn message.
-- **Who to reach:** LinkedIn searches you run yourself, in five groups: Founders, Warm paths, People doing the job, Hiring manager and Recruiting, each with when to write to them and what to ask. They're ordered by company size (team size from YC's list when known): under 20 people the founders come first; from 20 to 200, warm paths and the hiring manager; bigger or unknown, warm paths, the manager, people doing the job and recruiting, with founders last. Upload the Connections.csv LinkedIn lets you download, and Warm paths also lists the people you already know there. Your current employer is never searched. coldopen never scrapes LinkedIn or messages anyone. (`GET /v1/films/:id/people` returns `groups`; its flat `searches` list is deprecated and stays for one release.)
+- **Who to reach:** LinkedIn searches you run yourself, in five groups: Founders, Warm paths, People doing the job, Hiring manager and Recruiting, each with when to write to them and what to ask. They're ordered by company size (team size from YC's list when known), and the first group opens by default:
+
+  | Company size        | Order                                                                     |
+  | ------------------- | ------------------------------------------------------------------------- |
+  | Under 20            | Founders, Warm paths, People doing the job, Recruiting (no manager layer) |
+  | 20 to 200           | Warm paths, Hiring manager, Founders, People doing the job, Recruiting    |
+  | Over 200 or unknown | Warm paths, Hiring manager, People doing the job, Recruiting, Founders    |
+
+  Founders show for every company, not only YC ones (for YC, their YC page first). Recruiters, talent acquisition and sourcers are one Recruiting group with no repeats. Upload the Connections.csv LinkedIn lets you download, and Warm paths also lists the people you already know there. Your current employer is never searched. coldopen never scrapes LinkedIn or messages anyone. (`GET /v1/films/:id/people` returns `groups`; its flat `searches` list is deprecated and stays for one release.)
 - **Did they reply?** Mark each film sent, replied, interview or no reply, and the dashboard shows your reply rate.
 
 Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show** chips in the web app. Otherwise the writer picks the three that fit each company.
@@ -196,9 +206,13 @@ Choose which proof each film shows with `--proof 2,4,6`, or the **Proof to show*
 A film only helps if someone opens the message it's in. Each candidate and sales film comes with the messages for the whole sequence:
 
 - **A LinkedIn connection note** of 200 characters at most, the limit on a free account. It has no link and no ask: it only asks to connect.
-- **A message for once they accept,** with the film's link and one question.
+- **A message for once they accept,** with the film's link and one question. On a free account this one carries the weight: only 3 invites a month can have a note.
 - **An InMail** (subject and body), labeled honestly: it's free only when they have an Open Profile or you share a group. Otherwise, send the connection note.
-- **A warm email in five parts:** the opening, the film, one research line from their own blog or changelog, why you fit, and a 15-minute ask. Under 125 words.
+- **A warm email,** under 125 words. A seller's has five parts: the opening, the film, one research line from their own blog or changelog, why you fit, and a 15-minute ask. A job seeker's is written in the voice below.
+
+**The warm voice, for job seekers.** The people you write to (founders, recruiting, people doing the job) already know from your profile that you're looking, so the drafts ask for insight, not a job ([the rules and why](docs/TASTE.md#networking-messages)). The email opens with your homework, says what's in the film in terms of their work ("I put what I'd try next with their rate API into a 30-second film"), adds that you built the tool that made it when your profile says so, asks one real question about their work, offers 15 minutes as a statement, and ends "Thanks for reading". No "role", "hiring", "apply" or "job", and no proof numbers: the film shows those.
+
+**Your homework.** In the film panel, "Your homework" saves three things per film: one detail from using their product, something you built with it, and your question for them (`PUT /v1/films/:id/homework`). They're the part no tool can fake, so every claim of experience in a draft must come from them: a draft that says "I tried…" or "I built…" without it fails the `homework_grounded` check. With no homework, the email opens on what their homepage leads with, and makes no claims.
 
 **The model writes them and code checks them.** One small model call in the film's durable `messages` step writes the note, the after-accept message, the InMail and the email from the film's own facts. Code then checks each draft ([src/outreach/checks.ts](src/outreach/checks.ts)):
 
@@ -215,14 +229,25 @@ A job seeker's drafts are written in the voice ([docs/TASTE.md](docs/TASTE.md#ne
 
 **Some lines are added in code, not by the model:** the detail you saved about the company, then the funding line when they raised in the last month. If the email runs long, the funding line goes first. If the saved detail still breaks a check, the template email comes back with the detail in it.
 
-**Write it again.** A job seeker's drafts written before today's checks, or before homework you saved later, aren't rewritten on their own: the templates stand in, and "Write it again" (`POST /v1/films/:id/messages/rewrite`) has the model write them from your homework.
+**Write it again.** A job seeker's drafts written before today's checks, or before homework you saved later, aren't rewritten on their own: the templates stand in, and "Write it again" in the film panel (`POST /v1/films/:id/messages/rewrite`) has the model write them from your homework. It's one model call, checked like any other draft.
+
+## Network this week
+
+Networking happens all year, so Today ranks companies, not openings: the 10 most worth a film and a warm message now, for the roles you want (your saved job search, then your profile's role). Each card has its reasons in plain words and a "Make the film" button that fills in the site. "Not for me" hides a company, here and in the "Worth a warm message" sort on Jobs and Startups.
+
+- **Fit:** what they do and the roles they post, against your skills and points (by meaning when semantic fit is on).
+- **Reachable:** small teams first, plus people you know there (alumni, past teams, your LinkedIn connections).
+- **Timing:** a round in the last 90 days, a matching role in the last 14, or hiring fast.
+- **Left out:** companies you filmed or messaged in the last 60 days, ones you hid, and your current employer.
+
+The counter, "x of 10 this week", is the recruiter's playbook target (10 people a week, 40 a month). It counts companies you reached since Monday 00:00 Pacific time, by a film made or a message marked sent, each company once however many films or edits it got. `GET /v1/targets` and the MCP `find_targets` tool return the same list and count.
 
 **Flags and notes.** A flag means a draft failed a check and fell back to its template; the film panel says why under "Why this is the template version". A note means code changed a kept draft, for example leaving out the funding line to stay under 125 words; it shows under "What was changed". Neither appears when there's nothing to say. `GET /v1/films/:id/messages`, `GET /v1/followups` and the MCP `draft_messages` tool return the same drafts with `afterAccept`, `inmail`, `writer`, `flags` and `notes`.
 
 ## Quality, measured
 
 ```bash
-pnpm test         # 590 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path
+pnpm test         # 609 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 180 quality checks across 16 evals on 3 fixture companies x 2 presets
 ```

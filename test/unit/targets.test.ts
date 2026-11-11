@@ -3,6 +3,7 @@ import { SearchSchema } from '../../src/jobs/rank.ts'
 import type { Startup } from '../../src/jobs/startups-build.ts'
 import {
   hostOf,
+  reachedThisWeek,
   type TargetInput,
   targetRoles,
   targets,
@@ -281,11 +282,63 @@ describe('companies worth a warm message this week', () => {
     ])
   })
 
-  it('cuts to the top N, and the week starts on Monday', () => {
+  it('cuts to the top N, and the week starts on Monday in Pacific time', () => {
     expect(targets(base(), NOW, 1).map((t) => t.company)).toEqual(['Anchor'])
-    // Tue 10 Nov 2026 → Mon 9 Nov
-    expect(weekStart(NOW).toISOString()).toBe('2026-11-09T00:00:00.000Z')
+    // Tue 10 Nov 2026, 4am in Los Angeles → Mon 9 Nov, midnight PST
+    expect(weekStart(NOW).toISOString()).toBe('2026-11-09T08:00:00.000Z')
     expect(hostOf('https://WWW.Anchor.example/x')).toBe('anchor.example')
     expect(hostOf('anchor.example')).toBe('anchor.example')
+  })
+})
+
+describe('Network this week: x of 10', () => {
+  const film = (host: string | null, at: string, sentAt: string | null = null, company = '') => ({
+    host,
+    company: company || null,
+    at,
+    sentAt,
+  })
+
+  it('starts the week Monday midnight in Los Angeles, not UTC, across daylight saving', () => {
+    // Sun 8 Nov, 11pm Pacific is still last week, though it's already Monday in UTC
+    expect(weekStart(Date.parse('2026-11-09T07:00:00Z')).toISOString()).toBe(
+      '2026-11-02T08:00:00.000Z',
+    )
+    // a minute after midnight Monday Pacific is the new week
+    expect(weekStart(Date.parse('2026-11-09T08:01:00Z')).toISOString()).toBe(
+      '2026-11-09T08:00:00.000Z',
+    )
+    // summer: Monday midnight PDT is 07:00 UTC
+    expect(weekStart(Date.parse('2026-07-15T12:00:00Z')).toISOString()).toBe(
+      '2026-07-13T07:00:00.000Z',
+    )
+    // the week DST ends (Sun 1 Nov 2026) still starts at Monday 26 Oct, midnight PDT
+    expect(weekStart(Date.parse('2026-11-01T20:00:00Z')).toISOString()).toBe(
+      '2026-10-26T07:00:00.000Z',
+    )
+  })
+
+  it('counts each company once, by a film made or a message marked sent this week', () => {
+    // Wed 11 Nov 2026, 9am Pacific
+    const now = Date.parse('2026-11-11T17:00:00Z')
+    const n = reachedThisWeek(
+      [
+        // made this week, twice for the same company (an edit), with and without www
+        film('https://www.anchor.example/about', '2026-11-09T18:00:00Z'),
+        film('anchor.example', '2026-11-10T18:00:00Z'),
+        // made last month, marked sent this week
+        film('beacon.example', '2026-10-12T18:00:00Z', '2026-11-10T20:00:00Z'),
+        // made and sent this week: still one company
+        film('cobalt.example', '2026-11-09T09:00:00Z', '2026-11-09T10:00:00Z'),
+        // Sunday 11pm Pacific: last week, though Monday in UTC
+        film('dune.example', '2026-11-09T07:00:00Z'),
+        // made and sent last week
+        film('ember.example', '2026-11-03T18:00:00Z', '2026-11-04T18:00:00Z'),
+        // no website yet, known by name
+        film(null, '2026-11-10T18:00:00Z', null, 'Fjord Labs'),
+      ],
+      now,
+    )
+    expect(n).toBe(4) // anchor, beacon, cobalt, Fjord Labs
   })
 })

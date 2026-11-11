@@ -338,11 +338,61 @@ export function targets(input: TargetInput, now = Date.now(), limit?: number): T
   return limit === undefined ? out : out.slice(0, limit)
 }
 
-/** Monday 00:00 UTC of the week `now` is in: the week the 10-a-week target counts */
-export function weekStart(now: number): Date {
-  const d = new Date(now)
-  const day = (d.getUTCDay() + 6) % 7
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day))
+/** the 10-a-week target runs on Pacific time, so Sunday evening still counts for that week */
+export const WEEK_ZONE = 'America/Los_Angeles'
+
+/** Minutes `zone` is ahead of UTC at instant `t` (negative west of Greenwich) */
+function zoneOffset(t: number, zone: string): number {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: zone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+      .formatToParts(t)
+      .map((x) => [x.type, x.value]),
+  )
+  const wall = Date.UTC(+p.year!, +p.month! - 1, +p.day!, +p.hour!, +p.minute!, +p.second!)
+  return Math.round((wall - Math.floor(t / 1000) * 1000) / 60_000)
+}
+
+/**
+ * Monday 00:00 in `zone` (Pacific by default) of the week `now` is in: the week the
+ * 10-a-week target counts. Works across daylight saving changes.
+ */
+export function weekStart(now: number, zone = WEEK_ZONE): Date {
+  const local = new Date(now + zoneOffset(now, zone) * 60_000)
+  const day = (local.getUTCDay() + 6) % 7
+  const midnight = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate() - day)
+  // midnight is wall-clock time; shift by the zone's offset at that moment (twice, for DST edges)
+  let t = midnight - zoneOffset(midnight, zone) * 60_000
+  t = midnight - zoneOffset(t, zone) * 60_000
+  return new Date(t)
+}
+
+/**
+ * Network this week's "x of 10": the companies reached since Monday, by a film made or a
+ * message marked sent, each company once however many films or edits it got.
+ */
+export function reachedThisWeek(
+  films: { host: string | null; company: string | null; at: string; sentAt: string | null }[],
+  now: number,
+): number {
+  const from = weekStart(now).getTime()
+  const seen = new Set<string>()
+  for (const f of films) {
+    const made = Date.parse(f.at)
+    const sent = Date.parse(f.sentAt ?? '')
+    if (!(made >= from && made <= now) && !(sent >= from && sent <= now)) continue
+    const key = hostOf(f.host) || (f.company ?? '').trim().toLowerCase()
+    if (key) seen.add(key)
+  }
+  return seen.size
 }
 
 /** the recruiter's playbook: 10 people a week, 40 a month */

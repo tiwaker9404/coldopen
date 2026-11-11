@@ -35,6 +35,7 @@ import {
 } from '../jobs/service.ts'
 import { allStartups, searchStartups, startupOf } from '../jobs/startups.ts'
 import {
+  reachedThisWeek,
   type Target,
   hostOf as targetHost,
   targetRoles,
@@ -1130,16 +1131,26 @@ export async function buildApi({
         tags: ['jobs'],
         summary: 'Network this week: the companies most worth a film and a warm message now',
         description:
-          'Companies, not jobs, for the roles you want (your saved job search, then your profile role), whether or not they have an opening today. Scored on fit (what they do and the roles they post, against your skills and points), how reachable they are (small teams, people you know there) and timing (a round in the last 90 days, a matching role in the last 14, hiring fast). Each comes with its reasons, in plain words. Companies you filmed or messaged in the last 60 days, ones you hid and your current employer are left out. `week` counts the films you made this week against the 10-a-week target.',
+          'Companies, not jobs, for the roles you want (your saved job search, then your profile role), whether or not they have an opening today. Scored on fit (what they do and the roles they post, against your skills and points), how reachable they are (small teams, people you know there) and timing (a round in the last 90 days, a matching role in the last 14, hiring fast). Each comes with its reasons, in plain words. Companies you filmed or messaged in the last 60 days, ones you hid and your current employer are left out. `week.made` counts the companies you reached this week, by a film made or a message marked sent, each company once, against the 10-a-week target. The week starts Monday 00:00 Pacific time.',
         querystring: z.object({ limit: z.coerce.number().int().min(1).max(50).default(10) }),
       },
     },
     async (req) => {
       const { list, roles } = await targetsFor(req.owner)
-      const [{ n } = { n: 0 }] = await sql<{ n: number }[]>`
-        select count(*)::int as n from runs
-        where agent = 'film' and owner = ${req.owner} and status not in ('failed', 'cancelled')
-          and created_at >= ${weekStart(Date.now())}`
+      const now = Date.now()
+      const from = weekStart(now)
+      const week = await sql<
+        { host: string | null; company: string | null; at: Date; sentAt: string | null }[]
+      >`
+        select coalesce(output->>'host', input->>'url') as host, output->>'company' as company,
+          created_at as at, outreach->>'sentAt' as sent_at
+        from runs where agent = 'film' and owner = ${req.owner}
+          and status not in ('failed', 'cancelled')
+          and (created_at >= ${from} or (outreach->>'sentAt')::timestamptz >= ${from})`
+      const n = reachedThisWeek(
+        week.map((f) => ({ ...f, at: f.at.toISOString() })),
+        now,
+      )
       return {
         data: list.slice(0, req.query.limit),
         week: { made: n, target: WEEKLY_TARGET },

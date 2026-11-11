@@ -108,6 +108,8 @@ export function Outreach({ film }: { film: Film }) {
       void qc.invalidateQueries({ queryKey: ['film', film.id] })
       void qc.invalidateQueries({ queryKey: ['outreach'] })
       void qc.invalidateQueries({ queryKey: ['followups'] })
+      // a film marked sent counts toward Network this week's "x of 10"
+      void qc.invalidateQueries({ queryKey: ['targets'] })
     },
   })
   const value = mark.isPending ? (mark.variables ?? '') : (film.outreach?.status ?? '')
