@@ -247,7 +247,7 @@ The counter, "x of 10 this week", is the recruiter's playbook target (10 people 
 ## Quality, measured
 
 ```bash
-pnpm test         # 677 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish
+pnpm test         # 689 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 180 quality checks across 16 evals on 3 fixture companies x 2 presets
 ```

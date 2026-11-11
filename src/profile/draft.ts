@@ -61,6 +61,8 @@ export interface DraftMeta {
   dropped: string[]
   /** proof the model kept writing so a stranger couldn't follow it, rebuilt from its bullet */
   rebuilt: string[]
+  /** before → afters and big numbers the model passed over, added from their bullets */
+  added?: string[]
   /** the model failed outright (unreachable, or invalid JSON after repairs) */
   error?: string
 }
@@ -69,12 +71,12 @@ const isHard = (problem: string) => /isn't in the bullet|must stay out|placehold
 
 const RULES = `Rules (checked in code; a violation means a rewrite):
 - Proof is read by a stranger who has never seen the résumé, so each one says what was done, where, and what changed. Pick the 5 to 8 bullets that would impress that stranger most for this role: a before and an after first, then big scale (millions of records, thousands a day, gigabytes), then the rest.
-- "did" says what they did and what they built, starting with a plain verb, 12 to 90 characters: "Built containerized ETL with Docker and PostgreSQL", "Migrated a Tier-1 bank's database to hybrid cloud". Use the bullet's own nouns and tools. Drop résumé padding ("leveraged", "orchestrated", "spearheaded", "custom", "relative to the legacy baseline").
+- "did" says what they did and what they built, starting with a plain verb, 12 to 90 characters. It's the act, never the result: not "Accelerated daily sync cycles" (that's the label's job) but "Built containerized ETL with Docker and PostgreSQL", "Migrated a Tier-1 bank's database to hybrid cloud". Use the bullet's own nouns and tools. Drop résumé padding ("leveraged", "orchestrated", "spearheaded", "custom", "relative to the legacy baseline").
 - "label" is the result, max 60 characters: what the number counts, or what changed. "label" never repeats "did".
 - When the bullet gives a before and an after ("from 6 hours to 45 minutes", "by 2 days against the 5-day baseline"), "value" is the change ("6h → 45m", "5 → 3 days") and "label" says both ("daily client data sync, from 6 hours to 45 minutes"). Fill "before" and "after". Never use the starting figure alone as the value.
 - Otherwise "value" is the number exactly as the bullet writes it ("2.5M+", "99%", "150+").
 - Every number in value, label and did comes from that same bullet.
-- "where" is the employer, school or project that bullet sits under (shown in [brackets]), shortened to its common name ("Deloitte", not "Deloitte Touche Tohmatsu India"). Where it says "Current <role> role", use exactly that: that employer is never named.
+- "where" is the employer, school or project that bullet sits under (shown in [brackets]), shortened to its common name ("Deloitte", not "Deloitte Touche Tohmatsu India"). A project keeps the words that name it ("B2B Integration Gateway", not "Enterprise"). Where it says "Current <role> role", use exactly that: that employer is never named.
 - Points: 3 to 5 strengths a hiring manager for this role cares about, max 10 words each, each based on something the résumé shows. No numbers that aren't in the résumé.
 - Offer: one line, max 16 words, in plain words. What this person brings to the role.
 - Only use what the résumé says. Never invent tools, employers, results or numbers.
@@ -285,6 +287,7 @@ export async function draftProfile(opts: {
   const d = draft!
   const dropped: string[] = []
   const rebuilt: string[] = []
+  const added: string[] = []
   const proof: Profile['proof'] = []
   d.proof.forEach((p, i) => {
     const { hard, soft } = proofProblems(p, i, resume, exclude)
@@ -318,6 +321,27 @@ export async function draftProfile(opts: {
     checkDraft({ ...d, proof: [], points: [], offer: d.offer }, resume, exclude).length === 0
   if (!offerOk) dropped.push('offer')
 
+  // a before → after or a big number the model passed over is still the most impressive
+  // proof the résumé has: add it from the bullet's own words, up to 8 cards (Groq, 11 Nov,
+  // drafted 5 cards and skipped 3d → 4h and 5 → 3 days)
+  const usedEntries = new Set(
+    d.proof
+      .filter((_, i) => !dropped.includes(`proof[${i}] ${d.proof[i]!.value}`))
+      .map((p) => p.entry.replace(/\D/g, '')),
+  )
+  const strong = resume.entries
+    .map((e, i) => ({ n: String(i + 1), card: proofFromBullet(e) }))
+    .filter(
+      (x): x is { n: string; card: Profile['proof'][number] } =>
+        x.card !== null && impressive(x.card) >= 2_000 && !usedEntries.has(x.n),
+    )
+    .sort((a, b) => impressive(b.card) - impressive(a.card))
+  for (const x of strong) {
+    if (proof.length >= 8) break
+    if (proof.some((p) => p.value === x.card.value)) continue
+    proof.push(x.card)
+    added.push(x.card.value)
+  }
   for (const p of fallback.proof) {
     if (proof.length >= 3) break
     if (!proof.some((x) => x.value === p.value)) proof.push(p)
@@ -344,6 +368,7 @@ export async function draftProfile(opts: {
       violations: history,
       dropped,
       rebuilt,
+      added,
     },
   }
 }

@@ -559,3 +559,31 @@ describe('the draft works with strict structured outputs', () => {
     expect(profile.proof[0]!.value).toBe('6h → 45m')
   })
 })
+
+describe('the most impressive proof is never left out', () => {
+  it('adds the before → afters and big numbers the model passed over, up to 8 cards', async () => {
+    // what Groq did on 11 Nov: 5 cards, without the gateway's 3d → 4h or ITC's 5 → 3 days
+    const rail = cite(ashwin, 'from 6 hours to 45 minutes')
+    const { llm } = scripted(
+      ashwinDraft([
+        {
+          entry: rail.id,
+          value: '6h → 45m',
+          label: 'daily client data sync, from 6 hours to 45 minutes',
+          did: 'Built containerized ETL with Docker and PostgreSQL',
+          where: 'Rail Inc.',
+          before: '6 hours',
+          after: '45 minutes',
+        },
+      ]),
+    )
+    const { profile, meta } = await draftProfile({ resume: ashwin, role: FDE, llm })
+    const values = profile.proof.map((p) => p.value)
+    expect(values.slice(0, 3)).toEqual(['6h → 45m', '5 → 3 days', '3d → 4h'])
+    expect(values).toHaveLength(8)
+    for (const v of ['2.5M+', '1,500+', '1.5M']) expect(values).toContain(v)
+    expect(meta.added).toContain('3d → 4h')
+    // a card the model already made from a bullet isn't added twice
+    expect(values.filter((v) => v === '2.5M+')).toHaveLength(1)
+  })
+})
