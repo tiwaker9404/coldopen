@@ -534,8 +534,8 @@ SENDER: ${b.sender}
 ${VOICE_RULES}
 
 THE MESSAGES (limits are checked in code; going over means a rewrite):
-- note: a LinkedIn connection note, at most ${b.budgets.note} characters. One line about their work (the homework, or what NOTICED says) and one curious line. No link, no ${FILM}, no ask for their time, at most one question.
-- afterAccept: sent once they accept, at most ${b.budgets.afterAccept} characters. Thanks for connecting, one sentence from the homework (or NOTICED), the tease with ${FILM} (required, exactly once, where the link goes), then the question. No ask for their time. Code adds "Thank you for your time," and the name, so don't thank them at the end.
+- note: a LinkedIn connection note, at most ${b.budgets.note} characters. One line about their work (the homework, or what NOTICED says) that says "${c}" in full, and one curious line. No link, no ${FILM}, no ask for their time, at most one question.
+- afterAccept: sent once they accept, at most ${b.budgets.afterAccept} characters. Thanks for connecting, one sentence from the homework (or NOTICED) that says "${c}" in full, the tease with ${FILM} (required, exactly once, where the link goes), then the question. No ask for their time. Code adds "Thank you for your time," and the name, so don't thank them at the end.
 - inmail: subject at most ${b.budgets.inmailSubject} characters, about their work, names ${c}; body at most ${b.budgets.inmailBody} characters: the homework (or NOTICED), the tease with ${FILM} (required, exactly once), the question. No ask for their time. Code adds the thanks and the name.
 - email, in parts, all together at most ${b.budgets.emailWords} words. Code adds the greeting, "Thanks for reading," and the signature.${b.opener === 'question' ? ' Code puts the question first, then the opening.' : ''}
   - subject: their work (the post's title, or what the homework is about), names ${c}. Never "inquiry", "application" or a job word.
@@ -544,7 +544,7 @@ THE MESSAGES (limits are checked in code; going over means a rewrite):
   - ${creator}
   - ${question}
   - offer: the soft 15-minute offer, as a statement, not a question: "${OFFER}" or close to it.
-- Every message names ${c}. No numbers at all, except "15 minutes" and "${FILM_LENGTH}". No exclamation marks.
+- Every message says "${c}" in full (not "you", "your team" or a short name): the check looks for it. No numbers at all, except "15 minutes" and "${FILM_LENGTH}". No exclamation marks.
 - Never beg or ask a favor: no ${BEGGING.slice(0, 8)
     .map((x) => `"${x}"`)
     .join(', ')}.`
@@ -566,7 +566,10 @@ export const promptTokens = (messages: ChatMessage[]) =>
  * job seeker's drafts, the voice rules say what to do: drop the job word, end with thanks, ask
  * about their work, leave the numbers to the film, keep to the homework.
  */
-export function resend(c: Check, o: { warm?: boolean; saved?: string | null } = {}): string {
+export function resend(
+  c: Check,
+  o: { warm?: boolean; saved?: string | null; company?: string } = {},
+): string {
   if (c.rule === 'has_link')
     return /\d+ times/.test(c.why ?? '')
       ? `Put ${FILM} where the link goes, once only`
@@ -586,6 +589,8 @@ export function resend(c: Check, o: { warm?: boolean; saved?: string | null } = 
       return `Take out ${quoted ? `"${quoted}"` : 'the number'}: the film shows the numbers, so the message has none`
     case 'homework_grounded':
       return `Take out "${quoted ?? 'the claim'}": only say you used, tried or built something when HOMEWORK or CREATOR says so, in the sender's words; otherwise write about their product without "I tried" or "I used"`
+    case 'names_company':
+      return `Say "${o.company ?? 'the company'}" in full, exactly as written in COMPANY`
     case 'film_once':
       return `Mention the film only in the tease, as "a ${FILM_LENGTH} film" right before ${FILM}`
     default:
@@ -649,7 +654,7 @@ export async function writeMessages(opts: {
           : null,
     })
   const shape: Shape = { opener, research: !!item, saved: sender?.question ?? null }
-  const hints = { warm, saved: sender?.question ?? null }
+  const hints = { warm, saved: sender?.question ?? null, company: film.company }
 
   const messages = buildMessagePrompt(film, profile, item, opts.opener, sender)
   const first = await opts.complete('messages-1', messages)

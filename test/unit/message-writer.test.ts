@@ -281,6 +281,19 @@ describe("a job seeker's drafts, in the voice", () => {
     expect(allText(r.drafts)).not.toMatch(/\b6 open-source/)
   })
 
+  it('says the company in full, and a draft that leaves it out is told exactly what to write', async () => {
+    const prompt = buildMessagePrompt(film, candidate, item, 'homework', hw())[1]!.content
+    expect(prompt).toContain('that says "Parcelpine" in full')
+    const vague = good()
+    vague.note = 'I read your latest post on route planning. Curious how your team uses it.'
+    const m = model(vague, good())
+    const r = await write(m.complete)
+    expect(m.sent[1]!.at(-1)!.content).toContain(
+      '- note: Say "Parcelpine" in full, exactly as written in COMPANY',
+    )
+    expect(r.writer.note).toBe('model')
+  })
+
   it('asks about their work, not the sender, and says how to fix it', async () => {
     const vague = good()
     vague.email.question = 'Would you like to see more of my projects?'
