@@ -21,6 +21,17 @@ import {
  * with a [First name] placeholder for the person they go to. Every one passes checkMessage
  * (checks.ts), because these templates are the fallback when a model's draft doesn't.
  */
+/**
+ * The sender's own homework for one film, saved after it was made (PUT /v1/films/:id/homework):
+ * a detail from using the product, their question for these people, and something small they
+ * built with it. Each is null until saved.
+ */
+export interface SenderHomework {
+  detail: string | null
+  question: string | null
+  built: { url: string; line: string } | null
+}
+
 export interface Messages {
   email: { subject: string; body: string }
   /** the connection note (the key is kept for older clients): no link, no question */
@@ -724,8 +735,13 @@ export function messagesFor(
     Partial<Pick<FilmResult, 'homework' | 'messages'>>,
   profile: Profile,
   link: string,
-  more: {
+  {
+    homework,
+    ...more
+  }: {
     detail?: string | null
+    /** what the sender saved for this film; its detail wins over `detail` */
+    homework?: SenderHomework
     fresh?: string | null
     opener?: Opener
     raised?: { date: string } | null
@@ -733,6 +749,9 @@ export function messagesFor(
     now?: number
   } = {},
 ): Messages {
+  // the question and the small build are carried for the drafts that will use them; only the
+  // detail is written into messages so far
+  if (homework) more.detail = homework.detail
   const seeker = profile.preset === 'candidate' || profile.preset === 'sales'
   // the post the email reads: the model's, when it wrote one, so template and model agree
   const stored = out.messages?.research

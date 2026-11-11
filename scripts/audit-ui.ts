@@ -257,6 +257,8 @@ const film = {
   editOf: null,
   recipient: null,
   detail: null,
+  question: null,
+  built: null,
 }
 const filmDetail = {
   ...film,
@@ -437,6 +439,90 @@ const states: State[] = [
       await page.evaluate(() => {
         for (const d of document.querySelectorAll('.draft-note')) d.setAttribute('open', '')
       })
+      return out
+    },
+  },
+  {
+    name: 'Film panel homework',
+    url: `${base}/#films`,
+    stubs: {
+      ...withFilm,
+      [`/v1/films/${FILM}`]: {
+        ...filmDetail,
+        detail: 'the rate table took a minute to load on every page',
+        built: { url: 'https://github.com/me/rates-sync', line: 'Syncs their rates into checkout' },
+      },
+    },
+    async run(page) {
+      await page.click('button.card')
+      await page.waitForSelector('.drawer [aria-label="Which message"]', { timeout: 5000 })
+      await click(page, '[aria-label="Which message"] button', 'Email')
+      const box = await page.evaluate(() => {
+        const el = document.querySelector('.your-homework')
+        return {
+          labels: [...(el?.querySelectorAll('label') ?? [])].map((l) => l.textContent?.trim()),
+          inputs: el?.querySelectorAll('input').length ?? 0,
+          buttons: [...(el?.querySelectorAll('button') ?? [])].map((b) => b.textContent?.trim()),
+          text: el?.textContent ?? '',
+          question: el?.querySelector<HTMLInputElement>('input[id^=question]')?.placeholder,
+        }
+      })
+      const out: string[] = []
+      if (box.labels.join('|') !== 'Something you noticed using it|Your question for them')
+        out.push(`the homework box labels read “${box.labels.join(', ')}”`)
+      if (!box.text.includes('Something you built with it'))
+        out.push('the homework box has no “Something you built with it”')
+      if (box.inputs !== 4) out.push(`the homework box has ${box.inputs} inputs, not 4`)
+      if (box.buttons.join('|') !== 'Save your homework')
+        out.push(`the homework box buttons read “${box.buttons.join(', ')}”`)
+      if (!box.text.includes('The email opens with this.'))
+        out.push('the homework box has no hint that the email opens with it')
+      if (box.question !== 'Are most customers calling the API directly, or using the Shopify app?')
+        out.push('the question has the wrong placeholder')
+      return out
+    },
+  },
+  {
+    name: 'Profile editor, something you built',
+    url: `${base}/#profile`,
+    stubs: {
+      '/v1/profiles': {
+        data: [
+          {
+            ...profiles.data[0],
+            data: {
+              ...candidate,
+              creator: {
+                name: 'coldopen',
+                url: 'https://github.com/me/coldopen',
+                line: 'I built the tool that made this film',
+              },
+            },
+          },
+        ],
+      },
+    },
+    async run(page) {
+      await click(page, 'button', 'Edit profile')
+      await wait(400)
+      const s = await page.evaluate(() => {
+        const set = [...document.querySelectorAll('fieldset')].find(
+          (f) => f.querySelector('legend')?.textContent === 'Something you built',
+        )
+        return {
+          found: !!set,
+          hint: set?.querySelector('.hint')?.textContent?.replace(/\s+/g, ' ').trim(),
+          values: [...(set?.querySelectorAll('input') ?? [])].map((i) => i.value),
+        }
+      })
+      const out: string[] = []
+      if (!s.found) return ['the profile editor has no “Something you built” section']
+      if (
+        s.hint !==
+        'If you built the tool that made this film, say so. Messages and the end card can mention it.'
+      )
+        out.push(`the creator hint reads “${s.hint}”`)
+      if (s.values[0] !== 'coldopen') out.push('the saved creator did not fill the section')
       return out
     },
   },

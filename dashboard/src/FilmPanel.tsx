@@ -1025,53 +1025,99 @@ function Recipient({ film }: { film: FilmDetail }) {
 
 /** The message, and where to send it from: Gmail, Outlook or the mail app, as a ready draft. */
 /**
- * The one detail only someone who used their product would know, in your words. The email opens
- * with it; it's what tells a founder a person wrote this.
+ * Your homework for this film, in your words: something only a real user would notice, something
+ * small you built with their product, and your own question for them. The email opens with the
+ * detail; it's what tells a founder a person wrote this. One Save keeps all three.
  */
-function Detail({ id }: { id: string }) {
+function YourHomework({ id }: { id: string }) {
   const qc = useQueryClient()
   const film = useQuery({
     queryKey: ['film', id],
     queryFn: () => api<FilmDetail>(`/v1/films/${id}`),
   })
-  const saved = film.data?.detail ?? ''
-  const [text, setText] = useState<string | null>(null)
-  const value = text ?? saved
+  const saved = {
+    detail: film.data?.detail ?? '',
+    question: film.data?.question ?? '',
+    url: film.data?.built?.url ?? '',
+    line: film.data?.built?.line ?? '',
+  }
+  const [edits, setEdits] = useState<Partial<typeof saved>>({})
+  const v = { ...saved, ...edits }
+  const t = {
+    detail: v.detail.trim(),
+    question: v.question.trim(),
+    url: v.url.trim(),
+    line: v.line.trim(),
+  }
+  const changed = (Object.keys(t) as (keyof typeof t)[]).some((k) => t[k] !== saved[k].trim())
+  // too short to be worth saving yet; the server says the same if it gets that far
+  const short = (s: string) => s.length > 0 && s.length < 10
   const save = useMutation({
     mutationFn: () =>
-      send('PUT', `/v1/films/${id}/detail`, { detail: value.trim() ? value.trim() : null }),
+      send('PUT', `/v1/films/${id}/homework`, {
+        detail: t.detail || null,
+        question: t.question || null,
+        // half a build (a link with no line) goes to the server, which says what's missing
+        built: t.url || t.line ? { url: t.url, line: t.line } : null,
+      }),
     onSuccess: () => {
-      setText(null)
+      setEdits({})
       void qc.invalidateQueries({ queryKey: ['film', id] })
       void qc.invalidateQueries({ queryKey: ['messages', id] })
     },
   })
+  const field = (k: keyof typeof saved) => ({
+    value: v[k],
+    onChange: (e: { target: { value: string } }) =>
+      setEdits((x) => ({ ...x, [k]: e.target.value })),
+  })
   return (
-    <div className="detail">
-      <label htmlFor={`detail-${id}`}>
-        <b>Your one detail</b>{' '}
+    <div className="detail your-homework">
+      <p>
+        <b>Your homework</b>{' '}
         <span className="small muted">
-          Something only a real user would notice: where you got stuck, or what you loved.
+          The email opens with this. It's what tells them a person wrote it.
         </span>
-      </label>
-      <div className="detail-row">
+      </p>
+      <label htmlFor={`detail-${id}`}>Something you noticed using it</label>
+      <input
+        id={`detail-${id}`}
+        maxLength={240}
+        placeholder="the export to CSV dropped every custom field, so I rebuilt my report by hand"
+        {...field('detail')}
+      />
+      <span aria-hidden="true">
+        Something you built with it <span className="small muted">(optional)</span>
+      </span>
+      <div className="detail-row built-row">
         <input
-          id={`detail-${id}`}
-          value={value}
-          maxLength={240}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="the export to CSV dropped every custom field, so I rebuilt my report by hand"
+          aria-label="Something you built with it: the link"
+          inputMode="url"
+          maxLength={300}
+          placeholder="https://github.com/you/thing"
+          {...field('url')}
         />
+        <input
+          aria-label="Something you built with it: one line on what it does"
+          maxLength={120}
+          placeholder="A Shopify app that syncs their rates into checkout"
+          {...field('line')}
+        />
+      </div>
+      <label htmlFor={`question-${id}`}>Your question for them</label>
+      <input
+        id={`question-${id}`}
+        maxLength={200}
+        placeholder="Are most customers calling the API directly, or using the Shopify app?"
+        {...field('question')}
+      />
+      <div>
         <button
           type="button"
-          disabled={
-            save.isPending ||
-            value.trim() === saved.trim() ||
-            (value.trim().length > 0 && value.trim().length < 10)
-          }
+          disabled={save.isPending || !changed || short(t.detail) || short(t.question)}
           onClick={() => save.mutate()}
         >
-          {save.isPending ? 'Saving…' : 'Add to email'}
+          {save.isPending ? 'Saving…' : 'Save your homework'}
         </button>
       </div>
       <ErrorNote error={save.error} />
@@ -1163,7 +1209,7 @@ function Message({
           ))}
         </div>
       </div>
-      {kind === 'email' && <Detail id={id} />}
+      {kind === 'email' && <YourHomework id={id} />}
       {kind === 'email' && <Checks c={m.checks} />}
       {kind !== 'followUp' && m.opener && (
         <p className="small muted opener-note">

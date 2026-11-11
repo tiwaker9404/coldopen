@@ -125,6 +125,9 @@ export function ProfileEditor({
       { projects: projects.map((x, j) => (j === i ? { ...x, [key]: value } : x)) },
       `projects.${i}.${key}`,
     )
+  const creator = d.creator ?? { name: '', url: '', line: '' }
+  const setCreator = (key: keyof typeof creator, value: string) =>
+    set({ creator: { ...creator, [key]: value } }, `creator.${key}`)
   const setProof = (i: number, key: keyof ProfileData['proof'][number], value: string) =>
     set(
       { proof: d.proof.map((x, j) => (j === i ? { ...x, [key]: value } : x)) },
@@ -463,6 +466,44 @@ export function ProfileEditor({
                 Add one by hand
               </button>
             )}
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Something you built</legend>
+          <p className="hint">
+            If you built the tool that made this film, say so. Messages and the end card can mention
+            it.
+          </p>
+          <div className="project">
+            <Text
+              path="creator.name"
+              max={MAX.creatorName}
+              error={err('creator.name')}
+              aria-label="What you built: name"
+              placeholder="coldopen"
+              value={creator.name}
+              onValue={(v) => setCreator('name', v)}
+            />
+            <Text
+              path="creator.url"
+              error={err('creator.url')}
+              aria-label="What you built: link"
+              placeholder="https://github.com/you/tool"
+              inputMode="url"
+              value={creator.url}
+              onValue={(v) => setCreator('url', v)}
+            />
+            <Text
+              wrap="wide"
+              path="creator.line"
+              max={MAX.creatorLine}
+              error={err('creator.line')}
+              aria-label="What you built: one line on what it is"
+              placeholder="I built the tool that made this film"
+              value={creator.line}
+              onValue={(v) => setCreator('line', v)}
+            />
           </div>
         </fieldset>
 

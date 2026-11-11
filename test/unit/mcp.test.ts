@@ -52,4 +52,40 @@ describe('coldopen as an MCP server', () => {
     expect(made.isError).toBe(true)
     expect(JSON.stringify(made.content)).toContain('No films left today')
   })
+
+  it('saves the homework make_film and draft_messages bring, through the homework route', async () => {
+    const id = 'run_01JABCDEFGHJKMNPQRSTVWXYZ0'
+    const { client, calls } = await connect({
+      'POST /v1/films': { status: 202, json: { id, status: 'queued' } },
+    })
+    const built = { url: 'https://github.com/me/sync', line: 'Syncs their rates into checkout' }
+    await client.callTool({
+      name: 'make_film',
+      arguments: { url: 'acme.com', question: 'Who owns onboarding today?', built },
+    })
+    expect(calls.slice(-2)).toEqual([
+      { method: 'POST', url: '/v1/films', body: { url: 'acme.com' } },
+      {
+        method: 'PUT',
+        url: `/v1/films/${id}/homework`,
+        body: { question: 'Who owns onboarding today?', built },
+      },
+    ])
+    await client.callTool({
+      name: 'draft_messages',
+      arguments: { id, detail: 'the CSV export dropped every custom field' },
+    })
+    expect(calls.slice(-2)).toEqual([
+      {
+        method: 'PUT',
+        url: `/v1/films/${id}/homework`,
+        body: { detail: 'the CSV export dropped every custom field' },
+      },
+      { method: 'GET', url: `/v1/films/${id}/messages` },
+    ])
+    // without homework, draft_messages only reads
+    const before = calls.length
+    await client.callTool({ name: 'draft_messages', arguments: { id } })
+    expect(calls.slice(before)).toEqual([{ method: 'GET', url: `/v1/films/${id}/messages` }])
+  })
 })

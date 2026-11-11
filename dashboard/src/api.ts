@@ -38,6 +38,10 @@ export interface Film {
   recipient: Recipient | null
   /** your one detail from using their product */
   detail?: string | null
+  /** your own question for them */
+  question?: string | null
+  /** something small you built with their product */
+  built?: { url: string; line: string } | null
   /** synced to your HubSpot */
   crm?: { syncedAt: string; error: string | null; noted: string[] } | null
 }
@@ -259,6 +263,8 @@ export interface ProfileData {
   skills?: string[]
   /** things you built: each film shows the one closest to the company */
   projects?: { name: string; url: string; line: string }[]
+  /** the tool you built that made this film, so messages and the end card can say so */
+  creator?: { name: string; url: string; line: string }
   /** schools, for alumni at the companies you film */
   schools?: string[]
   color?: string

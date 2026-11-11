@@ -139,6 +139,25 @@ describe('auth and profiles', () => {
     expect(error.message).not.toMatch(/body\/|expected|>=/)
   })
 
+  it('keeps the creator line on a profile through save and load', async () => {
+    const creator = {
+      name: 'coldopen',
+      url: 'https://github.com/maya/coldopen',
+      line: 'I built the tool that made this film',
+    }
+    const data = { ...profile('sales'), creator }
+    const put = await app.inject({
+      method: 'PUT',
+      url: '/v1/profiles/maya-made',
+      headers: auth,
+      payload: { name: 'Maya, maker', data },
+    })
+    expect(put.statusCode).toBe(200)
+    const list = (await app.inject({ url: '/v1/profiles', headers: auth })).json()
+    const back = list.data.find((p: { id: string }) => p.id === 'maya-made')
+    expect(back.data).toEqual(data)
+  })
+
   it("says a garbled request isn't valid JSON instead of echoing the parser", async () => {
     const res = await app.inject({
       method: 'PUT',
@@ -423,6 +442,103 @@ describe('films', () => {
 
     expect((await mark(b, null)).json().outreach).toBeNull()
     expect((await app.inject({ url: '/v1/outreach', headers: auth })).json().sent).toBe(1)
+  })
+
+  /** a finished film to save homework on */
+  const homeworkFilm = async (host: string) => {
+    const id = (
+      await app.inject({ method: 'POST', url: '/v1/films', headers: auth, payload: { url: host } })
+    ).json().id as string
+    await finish(id, 'Homework Co')
+    return id
+  }
+  const putHomework = (id: string, payload: Record<string, unknown>) =>
+    app.inject({ method: 'PUT', url: `/v1/films/${id}/homework`, headers: auth, payload })
+  const filmOf = async (id: string) =>
+    (await app.inject({ url: `/v1/films/${id}`, headers: auth })).json()
+
+  it("saves a film's homework and returns it", async () => {
+    const id = await homeworkFilm('homework-one.example')
+    const built = {
+      url: 'https://github.com/maya/rates-sync',
+      line: 'Syncs their rates into checkout',
+    }
+    const all = await putHomework(id, {
+      detail: 'the rate table took a minute to load on every page',
+      question: 'Are most customers calling the API directly, or using the Shopify app?',
+      built,
+    })
+    expect(all.statusCode).toBe(200)
+    expect(all.json()).toEqual({
+      detail: 'the rate table took a minute to load on every page',
+      question: 'Are most customers calling the API directly, or using the Shopify app?',
+      built,
+    })
+    expect(await filmOf(id)).toMatchObject({
+      detail: 'the rate table took a minute to load on every page',
+      question: 'Are most customers calling the API directly, or using the Shopify app?',
+      built,
+    })
+    // only a question: the detail and the build stay as they were
+    const q = await putHomework(id, { question: 'Who owns onboarding for new merchants today?' })
+    expect(q.json()).toMatchObject({
+      detail: 'the rate table took a minute to load on every page',
+      question: 'Who owns onboarding for new merchants today?',
+      built,
+    })
+    // null clears one field and leaves the rest
+    const cleared = await putHomework(id, { built: null })
+    expect(cleared.json()).toEqual({
+      detail: 'the rate table took a minute to load on every page',
+      question: 'Who owns onboarding for new merchants today?',
+      built: null,
+    })
+    // the email still opens with the detail
+    const m = (await app.inject({ url: `/v1/films/${id}/messages`, headers: auth })).json()
+    expect(m.email.body).toContain('the rate table took a minute to load on every page')
+  })
+
+  it('keeps the detail route working', async () => {
+    const id = await homeworkFilm('homework-two.example')
+    await putHomework(id, { question: 'Who owns onboarding for new merchants today?' })
+    const r = await app.inject({
+      method: 'PUT',
+      url: `/v1/films/${id}/detail`,
+      headers: auth,
+      payload: { detail: 'the CSV export dropped every custom field' },
+    })
+    expect(r.statusCode).toBe(200)
+    expect(r.json()).toEqual({ detail: 'the CSV export dropped every custom field' })
+    // it writes the detail only
+    expect(await filmOf(id)).toMatchObject({
+      detail: 'the CSV export dropped every custom field',
+      question: 'Who owns onboarding for new merchants today?',
+      built: null,
+    })
+  })
+
+  it("rejects a built link that isn't https", async () => {
+    const id = await homeworkFilm('homework-three.example')
+    const r = await putHomework(id, {
+      built: { url: 'http://github.com/maya/rates-sync', line: 'Syncs their rates into checkout' },
+    })
+    expect(r.statusCode).toBe(400)
+    expect(r.json().error.fields).toEqual([
+      { path: 'built.url', message: 'The link to what you built with it starts with https://' },
+    ])
+    expect(r.json().error.message).toBe('The link to what you built with it starts with https://.')
+    expect((await filmOf(id)).built).toBeNull()
+  })
+
+  it("won't save homework on another owner's film", async () => {
+    const id = await homeworkFilm('homework-four.example')
+    await sql`update runs set owner = 'u:someone-else' where id = ${id}`
+    const r = await putHomework(id, { question: 'Who owns onboarding for new merchants today?' })
+    expect(r.statusCode).toBe(404)
+    const [row] = await sql<
+      { question: string | null }[]
+    >`select question from runs where id = ${id}`
+    expect(row!.question).toBeNull()
   })
 
   it('lists films due a follow-up with the message ready, and records each one sent', async () => {

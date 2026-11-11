@@ -61,6 +61,7 @@ export function pasteInto(
 const S = ProfileSchema.shape
 const P = S.proof.element.shape
 const J = S.projects.unwrap().element.shape
+const C = S.creator.unwrap().shape
 
 /** each field's longest allowed text, read from ProfileSchema so the counters can't drift */
 export const MAX = {
@@ -71,6 +72,8 @@ export const MAX = {
   proofWhere: P.where.unwrap().maxLength ?? 40,
   projectName: J.name.maxLength ?? 60,
   projectLine: J.line.maxLength ?? 120,
+  creatorName: C.name.maxLength ?? 40,
+  creatorLine: C.line.maxLength ?? 120,
   ctaLine: S.cta.shape.line.maxLength ?? 60,
   ctaContact: S.cta.shape.contact.maxLength ?? 80,
   school: S.schools.unwrap().element.maxLength ?? 60,
@@ -131,6 +134,11 @@ export function prepare(d: ProfileData, name: string): { body: ProfileBody; rows
     projects.push(p)
     rows.projects.push(i)
   })
+  // what you built that made the film: left out when blank, kept when half filled so it's checked
+  const made = d.creator
+    ? { name: clean(d.creator.name), url: clean(d.creator.url), line: clean(d.creator.line) }
+    : null
+  const creator = made && (made.name || made.url || made.line) ? made : undefined
   const company = clean(d.sender.company ?? '')
   const role = clean(d.sender.role ?? '')
   const book = clean(d.cta.book ?? '')
@@ -153,6 +161,7 @@ export function prepare(d: ProfileData, name: string): { body: ProfileBody; rows
       ...(book ? { book } : {}),
     },
     projects: projects.length ? projects : undefined,
+    creator,
   }
   if (d.skills) data.skills = [...new Set(d.skills.map(clean).filter(Boolean))]
   if (d.schools) data.schools = [...new Set(d.schools.map(clean).filter(Boolean))]
@@ -177,6 +186,9 @@ const EMPTY: Record<string, string> = {
   'projects.#.name': 'Give this project a name',
   'projects.#.url': 'Add the link, starting with https://',
   'projects.#.line': 'Add one line on what it does',
+  'creator.name': 'Give what you built a name',
+  'creator.url': 'Add the link, starting with https://',
+  'creator.line': 'Add one line on what it is',
 }
 
 export type Checked =

@@ -59,6 +59,20 @@ export const ProfileSchema = z.object({
     )
     .max(8)
     .optional(),
+  /**
+   * something you built that made this film, so messages and the end card can say so (for
+   * example coldopen). Unlike projects, it's about the film itself, not the company's work.
+   */
+  creator: z
+    .object({
+      name: z.string().trim().min(2).max(40),
+      url: z
+        .string()
+        .regex(/^https:\/\/\S{4,300}$/, 'a link to what you built starts with https://'),
+      /** one line on what it is, in plain words */
+      line: z.string().trim().min(3).max(120),
+    })
+    .optional(),
   /** schools they went to ("Duke University"): who to reach includes alumni at the company */
   schools: z.array(z.string().trim().min(2).max(60)).max(4).optional(),
   /** skills and tools they have, in their words ("Kubernetes", "Salesforce"): counted by Fit check */

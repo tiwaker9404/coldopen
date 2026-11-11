@@ -156,3 +156,39 @@ describe('saved profiles come back from the editor unchanged', () => {
     }
   })
 })
+
+describe('the creator line: something you built that made the film', () => {
+  // a profile as GET /v1/profiles returned it before the creator line existed
+  const saved = JSON.parse(
+    readFileSync(join(import.meta.dirname, '../../fixtures/profiles/saved-candidate.json'), 'utf8'),
+  ) as { name: string; data: ProfileData }
+  const creator = {
+    name: 'coldopen',
+    url: 'https://github.com/alex-rivera/coldopen',
+    line: 'I built the tool that made this film',
+  }
+
+  it('a profile with a creator round-trips', () => {
+    const data = { ...saved.data, creator }
+    const r = validate(data, saved.name)
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(JSON.parse(JSON.stringify(r.body.data))).toEqual(data)
+    expect(ProfileSchema.parse(data)).toEqual(data)
+    // half filled is pointed at, not dropped
+    const half = fieldsOf({ ...saved.data, creator: { ...creator, url: 'github.com/x' } })
+    expect(half['creator.url']).toBe('A link to what you built starts with https://')
+  })
+
+  it('a profile without one still validates', () => {
+    expect(ProfileSchema.safeParse(saved.data).success).toBe(true)
+    const r = validate(saved.data, saved.name)
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(JSON.parse(JSON.stringify(r.body.data))).toEqual(saved.data)
+      expect('creator' in JSON.parse(JSON.stringify(r.body.data))).toBe(false)
+    }
+    // a blank creator section in the editor saves as no creator at all
+    const blank = validate({ ...saved.data, creator: { name: '', url: '', line: ' ' } }, saved.name)
+    expect(blank.ok && 'creator' in JSON.parse(JSON.stringify(blank.body.data))).toBe(false)
+  })
+})

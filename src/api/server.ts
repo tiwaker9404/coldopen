@@ -53,7 +53,7 @@ import {
   watchedFrom,
 } from '../outreach/followup.ts'
 import { type CrmState, checkHubSpot, HubSpotError, syncFilm } from '../outreach/hubspot.ts'
-import { addressed, messagesFor, openerFor } from '../outreach/messages.ts'
+import { addressed, messagesFor, openerFor, type SenderHomework } from '../outreach/messages.ts'
 import {
   type Connection,
   companyKey,
@@ -125,11 +125,32 @@ const RecipientSchema = z.object({
 })
 type Recipient = z.infer<typeof RecipientSchema>
 
+/** something small the sender built with the company's product: a link and one line on it */
+const BuiltSchema = z.object({
+  url: z
+    .string()
+    .trim()
+    .regex(/^https:\/\/\S{4,300}$/, 'the link to what you built with it starts with https://'),
+  line: z.string().trim().min(3).max(120),
+})
+type Built = z.infer<typeof BuiltSchema>
+
+/** a film's homework, as the sender saved it: what the messages are drafted from */
+const homeworkOf = (r: FilmRow): SenderHomework => ({
+  detail: r.detail ?? null,
+  question: r.question ?? null,
+  built: r.built ?? null,
+})
+
 interface FilmRow extends Run {
   /** what's been synced to the sender's HubSpot */
   crm?: CrmState | null
   /** the sender's one detail from using the company's product, in their words */
   detail?: string | null
+  /** the sender's own question for the company's people */
+  question?: string | null
+  /** something small the sender built with their product */
+  built?: Built | null
   input: z.infer<typeof FilmInputSchema>
   output: FilmResult | null
   outreach?: Outreach | null
@@ -187,6 +208,10 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
     recipient: r.recipient ?? null,
     /** the sender's one detail from using their product */
     detail: r.detail ?? null,
+    /** the sender's own question for them */
+    question: r.question ?? null,
+    /** something small the sender built with their product */
+    built: r.built ?? null,
     /** synced to the sender's HubSpot: when, and the error if the last try failed */
     crm: r.crm
       ? { syncedAt: r.crm.syncedAt, error: r.crm.error ?? null, noted: r.crm.noted }
@@ -1800,7 +1825,7 @@ export async function buildApi({
               r.output && film.share
                 ? addressed(
                     messagesFor(r.output, r.output.profile ?? r.input.profile, film.share, {
-                      detail: r.detail ?? null,
+                      homework: homeworkOf(r),
                       fresh: await freshFact(r),
                       opener: openerFor(r.id),
                       raised: raisedBySite(r.output.host),
@@ -2064,7 +2089,7 @@ export async function buildApi({
       const row = run as FilmRow
       return addressed(
         messagesFor(run.output, run.output.profile ?? run.input.profile, link, {
-          detail: row.detail ?? null,
+          homework: homeworkOf(row),
           fresh: await freshFact(row),
           opener: openerFor(run.id),
           raised: raisedBySite(run.output.host),
@@ -2110,6 +2135,40 @@ export async function buildApi({
       const [r] = await sql<FilmRow[]>`
         update runs set detail = ${req.body.detail} where id = ${req.params.id} returning *`
       return { detail: r!.detail ?? null }
+    },
+  )
+
+  app.put(
+    '/v1/films/:id/homework',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Save your homework: what you noticed, what you built and your question',
+        description:
+          'Three things only someone who did the work would have: a detail from using their product (the email opens with it), something small you built with it (a link and one line) and your own question for them. Leave a field out to keep it as it is; send null to clear it.',
+        params: z.object({ id: RunId }),
+        body: z.object({
+          detail: z.string().trim().min(10).max(240).nullable().optional(),
+          question: z.string().trim().min(10).max(200).nullable().optional(),
+          built: BuiltSchema.nullable().optional(),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run) return notFound(reply)
+      // a field left out keeps what was saved; null clears it
+      const b = req.body
+      const next = {
+        detail: b.detail === undefined ? (run.detail ?? null) : b.detail,
+        question: b.question === undefined ? (run.question ?? null) : b.question,
+        built: b.built === undefined ? (run.built ?? null) : b.built,
+      }
+      const [r] = await sql<FilmRow[]>`
+        update runs set detail = ${next.detail}, question = ${next.question},
+          built = ${next.built ? sql.json(next.built as never) : null}
+        where id = ${req.params.id} returning *`
+      return homeworkOf(r!)
     },
   )
 

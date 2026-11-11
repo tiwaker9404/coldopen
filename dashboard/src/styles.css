@@ -3513,6 +3513,23 @@ kbd {
   min-width: 0;
 }
 
+.your-homework label,
+.your-homework > span {
+  font-size: 0.9em;
+  margin-top: 2px;
+}
+
+.your-homework p {
+  margin: 0;
+}
+
+/* the link and its line sit side by side, and stack on a phone */
+@media (max-width: 560px) {
+  .built-row {
+    flex-direction: column;
+  }
+}
+
 .checks {
   display: flex;
   flex-wrap: wrap;

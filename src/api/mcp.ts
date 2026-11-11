@@ -25,14 +25,46 @@ const text = (v: unknown) => ({
 })
 const fail = (message: string) => ({ ...text(message), isError: true })
 
-/** The REST answer, or an MCP error carrying the API's own message */
-async function answer(call: Call, method: 'GET' | 'POST' | 'PUT', url: string, body?: unknown) {
-  const r = await call(method, url, body)
+/** A REST response as the tool's result, or an MCP error carrying the API's own message */
+function result(r: { status: number; json: unknown }) {
   if (r.status >= 400) {
     const e = (r.json as { error?: { message?: string } } | null)?.error?.message
     return fail(e ?? `coldopen answered HTTP ${r.status}`)
   }
   return text(r.json)
+}
+
+/** The REST answer, or an MCP error carrying the API's own message */
+async function answer(call: Call, method: 'GET' | 'POST' | 'PUT', url: string, body?: unknown) {
+  return result(await call(method, url, body))
+}
+
+/** a film's homework, as make_film and draft_messages take it; PUT /v1/films/:id/homework checks it */
+const homework = {
+  detail: z
+    .string()
+    .optional()
+    .describe(
+      'something only someone who used their product would notice, in the person’s words (10-240 characters); the email opens with it',
+    ),
+  question: z
+    .string()
+    .optional()
+    .describe('the person’s own question for these people (10-200 characters)'),
+  built: z
+    .object({
+      url: z.string().describe('starts with https://'),
+      line: z.string().describe('one line on what it is (3-120 characters)'),
+    })
+    .optional()
+    .describe('something small the person built with their product'),
+}
+type Homework = { detail?: string; question?: string; built?: { url: string; line: string } }
+
+/** the homework fields that were given, or null when none were */
+const given = (h: Homework) => {
+  const body = Object.fromEntries(Object.entries(h).filter(([, v]) => v !== undefined))
+  return Object.keys(body).length ? body : null
 }
 
 export function buildMcp(call: Call): McpServer {
@@ -132,15 +164,24 @@ export function buildMcp(call: Call): McpServer {
           .describe(
             'the job post’s description, pasted; needed for LinkedIn, Indeed and Glassdoor posts, which need a login (then url is the company’s website)',
           ),
+        ...homework,
       },
     },
-    async ({ url, jobUrl, jobText }) =>
-      answer(call, 'POST', '/v1/films', {
+    async ({ url, jobUrl, jobText, detail, question, built }) => {
+      const hw = given({ detail, question, built })
+      const r = await call('POST', '/v1/films', {
         url,
         ...(jobUrl || jobText
           ? { job: { ...(jobUrl ? { url: jobUrl } : {}), ...(jobText ? { text: jobText } : {}) } }
           : {}),
-      }),
+      })
+      if (r.status >= 400 || !hw) return result(r)
+      // the homework is saved on the film the same way the app saves it
+      const id = (r.json as { id: string }).id
+      const saved = await call('PUT', `/v1/films/${encodeURIComponent(id)}/homework`, hw)
+      if (saved.status >= 400) return result(saved)
+      return text({ ...(r.json as object), homework: saved.json })
+    },
   )
 
   mcp.registerTool(
@@ -173,10 +214,16 @@ export function buildMcp(call: Call): McpServer {
       title: 'Draft the messages',
       description:
         'The drafts that go with a finished film, in the order they are sent: the LinkedIn connection note (`linkedin`, at most 200 characters, no link and no question), the message once they accept (`afterAccept`, with the film), InMail (`inmail`, subject and body; free only if they have an Open Profile or share a LinkedIn group with the person, otherwise use the connection note), the warm email (subject and body, under 125 words), the follow-ups and an intro request. `writer` says which drafts the model wrote and which are templates, `flags` says in plain words why a draft fell back to its template, and `notes` what code changed in a kept draft. Nothing is sent: these are drafts for the person to send.',
-      inputSchema: { id: z.string().describe('the film’s id') },
-      annotations: { readOnlyHint: true },
+      inputSchema: { id: z.string().describe('the film’s id'), ...homework },
     },
-    async ({ id }) => answer(call, 'GET', `/v1/films/${encodeURIComponent(id)}/messages`),
+    async ({ id, detail, question, built }) => {
+      const hw = given({ detail, question, built })
+      if (hw) {
+        const saved = await call('PUT', `/v1/films/${encodeURIComponent(id)}/homework`, hw)
+        if (saved.status >= 400) return result(saved)
+      }
+      return answer(call, 'GET', `/v1/films/${encodeURIComponent(id)}/messages`)
+    },
   )
 
   mcp.registerTool(

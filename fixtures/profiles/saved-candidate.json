@@ -1,0 +1,37 @@
+{
+  "id": "alex-rivera-forward-deployed-engineer",
+  "name": "Alex Rivera, Forward deployed engineer",
+  "updatedAt": "2026-11-02T18:04:11.512Z",
+  "data": {
+    "preset": "candidate",
+    "sender": { "name": "Alex Rivera", "role": "Forward deployed engineer" },
+    "offer": "An engineer who ships AI agents customers actually use",
+    "points": [
+      "Ships production agents with evals, not demos",
+      "Turns messy customer data into working pipelines",
+      "Explains technical trade-offs to non-engineers"
+    ],
+    "proof": [
+      { "value": "6", "label": "open-source AI projects shipped" },
+      {
+        "value": "0",
+        "label": "double refunds in a 200-run chaos test",
+        "where": "a payments agent"
+      }
+    ],
+    "cta": {
+      "line": "Could we talk this week?",
+      "contact": "alex@example.com",
+      "book": "https://cal.com/alex-rivera/15min"
+    },
+    "projects": [
+      {
+        "name": "integration-triage",
+        "url": "https://github.com/alex-rivera/integration-triage",
+        "line": "Diagnoses failing API calls from logs and drafts the reply"
+      }
+    ],
+    "schools": ["Duke University"],
+    "skills": ["TypeScript", "Python", "SQL", "Postgres"]
+  }
+}
