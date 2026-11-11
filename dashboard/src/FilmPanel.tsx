@@ -1249,6 +1249,7 @@ function Message({
       </p>
       <Disclosure title="Why this is the template version" lines={told.why} />
       <Disclosure title="What was changed" lines={told.changed} />
+      {m.rewrite && kind !== 'followUp' && kind !== 'post' && <WriteAgain id={id} />}
       {kind === 'note' || kind === 'afterAccept' || kind === 'post' ? (
         <div className="actions">
           <Copy
@@ -1298,6 +1299,32 @@ function Message({
         </div>
       )}
     </section>
+  )
+}
+
+/**
+ * The model's drafts were written before today's checks or before the homework you saved, so
+ * the templates stand in. Nothing is rewritten until you ask.
+ */
+function WriteAgain({ id }: { id: string }) {
+  const qc = useQueryClient()
+  const again = useMutation({
+    mutationFn: () => send<Messages>('POST', `/v1/films/${id}/messages/rewrite`),
+    onSuccess: (m) => qc.setQueryData(['messages', id], m),
+  })
+  return (
+    <div>
+      <p className="small">
+        The model wrote these drafts before your homework or today’s checks, so you’re seeing the
+        template version. Have the model write them again from your homework.
+      </p>
+      <ErrorNote error={again.error} />
+      <div className="actions">
+        <button type="button" onClick={() => again.mutate()} disabled={again.isPending}>
+          {again.isPending ? 'Writing…' : 'Write it again'}
+        </button>
+      </div>
+    </div>
   )
 }
 

@@ -195,6 +195,11 @@ export interface Messages {
   flags?: Record<string, { rule: string; ok: boolean; why?: string }[]>
   /** what code changed in a draft, by draft, in plain sentences (not failures) */
   notes?: Partial<Record<string, string[]>>
+  /**
+   * a job seeker's model drafts were written before today's checks or before the homework they
+   * saved, so the templates stand in: "Write it again" has the model write them again
+   */
+  rewrite?: boolean
 }
 
 /** homework or question (job seekers), film or proof (sellers, and job seekers' older films) */

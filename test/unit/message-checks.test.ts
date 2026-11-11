@@ -13,6 +13,7 @@ import {
   RESEARCH_OVERLAP,
 } from '../../src/outreach/checks.ts'
 import { checkEmail } from '../../src/outreach/messages.ts'
+import { builtLine } from '../../src/outreach/voice.ts'
 import { overlap } from '../../src/script/checks.ts'
 import { BEGGING } from '../../src/script/taste.ts'
 import { profile } from '../helpers/index.ts'
@@ -657,6 +658,20 @@ describe("a job seeker's messages, checked in the voice", () => {
           'homework_grounded',
         ),
       ).toBe(true)
+    })
+
+    it('reads a claim that ends in a link as its own sentence, so the next one stays out of it', () => {
+      // step 3: a model writes the after-accept as one paragraph, and the link's ")." used to be
+      // swallowed with the link, so the built line and the tease were read as one claim
+      const built = {
+        url: 'https://github.com/a/rates',
+        line: 'A carrier rate comparer on your API',
+      }
+      const own = { claims: [builtLine('Parcelpine', built), built.line], names: [built.url] }
+      const one = `Hi [First name],\n\nThanks for connecting. ${builtLine('Parcelpine', built)} I put what I'd try next with Parcelpine into a 30-second film: ${link} What have customers said about the new route planning?\n\nThank you for your time,\nAshwin`
+      expect(
+        rule(checkMessage('afterAccept', one, { ...voice, own }), 'homework_grounded'),
+      ).toEqual({ rule: 'homework_grounded', ok: true })
     })
   })
 })

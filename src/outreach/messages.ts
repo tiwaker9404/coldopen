@@ -74,6 +74,13 @@ export interface Messages {
    * 125 words"). A note isn't a failure: a kept model draft can have notes and no flags.
    */
   notes?: Partial<Record<DraftName, string[]>>
+  /**
+   * a job seeker's film whose stored model drafts no longer pass today's checks, or were written
+   * before the homework they saved: the templates stand in, and POST
+   * /v1/films/:id/messages/rewrite has the model write them again. Stored drafts are never
+   * rewritten without being asked.
+   */
+  rewrite?: boolean
 }
 
 /** A draft, named by the kind of message it is (the connection note is the `linkedin` field). */
@@ -736,7 +743,7 @@ function candidateMessages(
 }
 
 /** A question after a colon ("One thing I wondered: are most…"), its words otherwise its own */
-const midSentence = (q: string) =>
+export const midSentence = (q: string) =>
   /^(Are|Is|Do|Does|Did|How|What|What's|Why|When|Where|Which|Who|Would|Could|Can|Have|Has)\b/.test(
     q,
   )
@@ -1090,6 +1097,10 @@ export function messagesFor(
   })
   const m = out.messages
   if (!m || !seeker) return { ...t, notes: {} }
+  // a job seeker's drafts were written from the homework they had then: new homework means the
+  // templates (which always use it) stand in until the model writes them again
+  const newHomework = candidate && !sameHomework(m.sender, homework)
+  let rewrite = false
 
   const company = out.company
   const detail = homework?.detail ? clean(homework.detail) : ''
@@ -1111,6 +1122,12 @@ export function messagesFor(
     const checks = checkMessage(d, text, ctx)
     if (!passed(checks)) {
       flags[d] = checks.filter((c) => !c.ok)
+      rewrite ||= candidate
+      continue
+    }
+    if (newHomework) {
+      notes[d] = [NEW_HOMEWORK]
+      rewrite = true
       continue
     }
     writer[d] = 'model'
@@ -1129,7 +1146,10 @@ export function messagesFor(
       research: m.research && item ? { line: m.research.line, source: postText(item) } : null,
       ctx,
     })
-    if (email.ok) {
+    if (email.ok && newHomework) {
+      notes.email = [NEW_HOMEWORK]
+      rewrite = true
+    } else if (email.ok) {
       writer.email = 'model'
       result.email = email.email
       result.whyNow = email.whyNow
@@ -1148,9 +1168,31 @@ export function messagesFor(
       // the template stands in: flags say what the model's email failed, notes what code did about it
       flags.email = email.flags
       if (email.notes.length) notes.email = email.notes
+      rewrite ||= candidate
     }
   }
-  return result
+  return candidate ? { ...result, rewrite } : result
+}
+
+/** Why a job seeker's model draft gave way to the template after they saved homework */
+const NEW_HOMEWORK =
+  'You saved homework after the model wrote this, so this is the template version, which uses it. Write it again to have the model use it too'
+
+/**
+ * Whether the drafts were written from the homework saved now. Drafts stored before step 3 don't
+ * say what they were given: they count as written with none.
+ */
+function sameHomework(
+  given: SenderHomework | null | undefined,
+  now: SenderHomework | null | undefined,
+): boolean {
+  const key = (h: SenderHomework | null | undefined) =>
+    JSON.stringify([
+      h?.detail?.trim() || null,
+      h?.question?.trim() || null,
+      h?.built ? [h.built.url, h.built.line.trim()] : null,
+    ])
+  return key(given) === key(now)
 }
 
 /**

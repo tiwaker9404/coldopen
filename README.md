@@ -211,16 +211,18 @@ A film only helps if someone opens the message it's in. Each candidate and sales
 - the research line sticks to what their post says
 - the film is mentioned once
 
-A draft that fails is sent back once with the reasons. If it still fails, it falls back to a template that passes the same checks, and every preset's templates pass on every fixture. Recruiter and hiring films, films made before this, and films made without a model use the templates. Follow-ups are templates too, and they run through the same checks.
+A job seeker's drafts are written in the voice ([docs/TASTE.md](docs/TASTE.md#networking-messages)): from your saved homework, with no proof numbers and no role title in the prompt, and checked for job words, thanks, one real question and claims your homework doesn't make. A draft that fails is sent back once with the reasons. If it still fails, it falls back to a template that passes the same checks, and every preset's templates pass on every fixture. Recruiter and hiring films, films made before this, and films made without a model use the templates. Follow-ups are templates too, and they run through the same checks.
 
 **Some lines are added in code, not by the model:** the detail you saved about the company, then the funding line when they raised in the last month. If the email runs long, the funding line goes first. If the saved detail still breaks a check, the template email comes back with the detail in it.
+
+**Write it again.** A job seeker's drafts written before today's checks, or before homework you saved later, aren't rewritten on their own: the templates stand in, and "Write it again" (`POST /v1/films/:id/messages/rewrite`) has the model write them from your homework.
 
 **Flags and notes.** A flag means a draft failed a check and fell back to its template; the film panel says why under "Why this is the template version". A note means code changed a kept draft, for example leaving out the funding line to stay under 125 words; it shows under "What was changed". Neither appears when there's nothing to say. `GET /v1/films/:id/messages`, `GET /v1/followups` and the MCP `draft_messages` tool return the same drafts with `afterAccept`, `inmail`, `writer`, `flags` and `notes`.
 
 ## Quality, measured
 
 ```bash
-pnpm test         # 526 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path
+pnpm test         # 577 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 180 quality checks across 16 evals on 3 fixture companies x 2 presets
 ```

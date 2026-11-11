@@ -1,0 +1,236 @@
+{
+  "film-research": {
+    "prompt": [
+      {
+        "role": "system",
+        "content": "You write the short messages that carry a 30-second personalized film, made by the sender for one company, to one person there.\nWrite text only. Never write a greeting, a signature or a URL: code adds them. Where the film's link goes, write [film].\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n(The word limits above are for the film's lines; these messages have their own limits below.)\n\nReply with only a JSON object of this exact shape:\n{\"note\": string, \"afterAccept\": string, \"inmail\": {\"subject\": string, \"body\": string}, \"email\": {\"subject\": string, \"opening\": string, \"research\": string | null, \"fit\": string, \"ask\": string}}"
+      },
+      {
+        "role": "user",
+        "content": "The sender sells to this company. Talk about their customers and outcomes.\n\nCOMPANY: Parcelpine\nTHE FILM: opens \"For the people building Parcelpine\", pitch \"Product analytics that shows which features keep customers\"\nPROOF (the only results you may mention):\n1. 31% lift in week-4 retention at Brightline\n2. 1 day average setup time\n3. 140 B2B teams use it weekly\nTHEIR LATEST POST: \"Route planning, now with live traffic\": Route planning now reroutes trucks around live traffic before a delivery runs late, for every lane.\nSENDER: Maya Chen. The ask: Worth a 15-minute look?\n\nTHE MESSAGES (limits are checked in code; going over means a rewrite):\n- note: a LinkedIn connection note, at most 176 characters. Who you are to them and that you made something for Parcelpine. No link, no [film], no question, no ask.\n- afterAccept: sent once they accept, at most 403 characters. Thanks for connecting, then [film] (required, exactly once, where the link goes), then exactly one question: the ask.\n- inmail: subject at most 60 characters and names Parcelpine; body at most 303 characters, with [film] (required, exactly once, where the link goes) and exactly one question.\n- email: no [film] in any part; code adds \"I made a 30-second film…\" and the link right after the opening, so no part mentions the film or a video. subject names Parcelpine, not \"inquiry\" or \"application\". opening: one sentence. research: one short sentence restating what the post says in your own words, keeping its key words (the check counts how many of your words come from the post). You may add at most a few words of reaction, such as \"which caught my eye\". No new claims about what it means for them or for the role. fit: one or two sentences on why the sender fits, from the proof. ask: one question asking for 15 minutes. All four parts together at most 110 words. The email has exactly one question, in the ask.\n- Open the email with the role (I saw the role) or what they've shipped.\n- Every message names Parcelpine. No exclamation marks. Numbers only from the proof or the role.\n- Never beg or ask a favor: no \"refer me\", \"referral\", \"any openings\", \"pass my resume\", \"pick your brain\", \"just checking in\", \"I'd be grateful\"."
+      }
+    ],
+    "reply": {
+      "note": "I made a short film for the Parcelpine team. Would like to connect.",
+      "afterAccept": "Thanks for connecting. I made a 30-second film for Parcelpine: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?",
+      "inmail": {
+        "subject": "A 30-second film for Parcelpine",
+        "body": "I've been following Parcelpine, and I made a 30-second film for the team: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?"
+      },
+      "email": {
+        "subject": "A 30-second film for Parcelpine",
+        "opening": "I've been following what Parcelpine is building",
+        "research": "Your post says route planning now reroutes trucks around live traffic before a delivery runs late, for every lane, which is where we fit",
+        "fit": "What we have done for teams like yours: 31% lift in week-4 retention at Brightline; 1 day average setup time; 140 B2B teams use it weekly",
+        "ask": "Could we find 15 minutes this week?"
+      }
+    },
+    "written": {
+      "drafts": {
+        "note": "Hi [First name], I made a short film for the Parcelpine team. Would like to connect. – Maya",
+        "afterAccept": "Hi [First name],\n\nThanks for connecting. I made a 30-second film for Parcelpine: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?\n\nMaya",
+        "inmail": {
+          "subject": "A 30-second film for Parcelpine",
+          "body": "Hi [First name],\n\nI've been following Parcelpine, and I made a 30-second film for the team: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?\n\nMaya"
+        },
+        "email": {
+          "subject": "A 30-second film for Parcelpine",
+          "body": "Hi [First name],\n\nI saw that Parcelpine leads with \"Returns that keep the customer\".\n\nI made a 30-second film for Parcelpine:\n[film]\nIt starts from your own site: \"of returns become exchanges or store credit\".\n\nI read \"Proof of delivery photos\", and drivers can attach a photo at the door, and customers see it in the tracking link within a minute.\n\nWhat I'd bring: 31% lift in week-4 retention at Brightline; 1 day average setup time. Product analytics that shows which features keep customers.\n\nWorth a 15-minute look?\n\nMaya Chen\nmaya@tessellate.example"
+        }
+      },
+      "writer": {
+        "note": "model",
+        "afterAccept": "model",
+        "inmail": "model",
+        "email": "template"
+      },
+      "flags": {
+        "email": [
+          {
+            "rule": "research_grounded",
+            "ok": false,
+            "why": "The research line says things their post doesn't; keep it to what they wrote"
+          }
+        ]
+      },
+      "research": {
+        "itemUrl": "http://127.0.0.1/parcelpine/changelog/pod-photos",
+        "line": "Drivers can attach a photo at the door, and customers see it in the tracking link within a minute."
+      },
+      "model": "test-model",
+      "rounds": 2,
+      "firstTry": ["note", "afterAccept", "inmail"]
+    },
+    "sent": 2
+  },
+  "film-plain": {
+    "prompt": [
+      {
+        "role": "system",
+        "content": "You write the short messages that carry a 30-second personalized film, made by the sender for one company, to one person there.\nWrite text only. Never write a greeting, a signature or a URL: code adds them. Where the film's link goes, write [film].\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n(The word limits above are for the film's lines; these messages have their own limits below.)\n\nReply with only a JSON object of this exact shape:\n{\"note\": string, \"afterAccept\": string, \"inmail\": {\"subject\": string, \"body\": string}, \"email\": {\"subject\": string, \"opening\": string, \"research\": string | null, \"fit\": string, \"ask\": string}}"
+      },
+      {
+        "role": "user",
+        "content": "The sender sells to this company. Talk about their customers and outcomes.\n\nCOMPANY: Parcelpine\nTHE FILM: opens \"For the people building Parcelpine\", pitch \"Product analytics that shows which features keep customers\"\nPROOF (the only results you may mention):\n1. 31% lift in week-4 retention at Brightline\n2. 1 day average setup time\n3. 140 B2B teams use it weekly\nTHEIR LATEST POST: none, so email.research is null\nSENDER: Maya Chen. The ask: Worth a 15-minute look?\n\nTHE MESSAGES (limits are checked in code; going over means a rewrite):\n- note: a LinkedIn connection note, at most 176 characters. Who you are to them and that you made something for Parcelpine. No link, no [film], no question, no ask.\n- afterAccept: sent once they accept, at most 403 characters. Thanks for connecting, then [film] (required, exactly once, where the link goes), then exactly one question: the ask.\n- inmail: subject at most 60 characters and names Parcelpine; body at most 303 characters, with [film] (required, exactly once, where the link goes) and exactly one question.\n- email: no [film] in any part; code adds \"I made a 30-second film…\" and the link right after the opening, so no part mentions the film or a video. subject names Parcelpine, not \"inquiry\" or \"application\". opening: one sentence. research: null. fit: one or two sentences on why the sender fits, from the proof. ask: one question asking for 15 minutes. All four parts together at most 110 words. The email has exactly one question, in the ask.\n- Open the email with the role (I saw the role) or what they've shipped.\n- Every message names Parcelpine. No exclamation marks. Numbers only from the proof or the role.\n- Never beg or ask a favor: no \"refer me\", \"referral\", \"any openings\", \"pass my resume\", \"pick your brain\", \"just checking in\", \"I'd be grateful\"."
+      }
+    ],
+    "reply": {
+      "note": "I made a short film for the Parcelpine team. Would like to connect.",
+      "afterAccept": "Thanks for connecting. I made a 30-second film for Parcelpine: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?",
+      "inmail": {
+        "subject": "A 30-second film for Parcelpine",
+        "body": "I've been following Parcelpine, and I made a 30-second film for the team: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?"
+      },
+      "email": {
+        "subject": "A 30-second film for Parcelpine",
+        "opening": "I've been following what Parcelpine is building",
+        "research": null,
+        "fit": "What we have done for teams like yours: 31% lift in week-4 retention at Brightline; 1 day average setup time; 140 B2B teams use it weekly",
+        "ask": "Could we find 15 minutes this week?"
+      }
+    },
+    "written": {
+      "drafts": {
+        "note": "Hi [First name], I made a short film for the Parcelpine team. Would like to connect. – Maya",
+        "afterAccept": "Hi [First name],\n\nThanks for connecting. I made a 30-second film for Parcelpine: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?\n\nMaya",
+        "inmail": {
+          "subject": "A 30-second film for Parcelpine",
+          "body": "Hi [First name],\n\nI've been following Parcelpine, and I made a 30-second film for the team: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?\n\nMaya"
+        },
+        "email": {
+          "subject": "A 30-second film for Parcelpine",
+          "body": "Hi [First name],\n\nI've been following what Parcelpine is building.\n\nI made a 30-second film for Parcelpine:\n[film]\n\nWhat we have done for teams like yours: 31% lift in week-4 retention at Brightline; 1 day average setup time; 140 B2B teams use it weekly.\n\nCould we find 15 minutes this week?\n\nMaya Chen\nmaya@tessellate.example"
+        }
+      },
+      "writer": {
+        "note": "model",
+        "afterAccept": "model",
+        "inmail": "model",
+        "email": "model"
+      },
+      "flags": {},
+      "research": null,
+      "model": "test-model",
+      "rounds": 1,
+      "firstTry": ["note", "afterAccept", "inmail", "email"]
+    },
+    "sent": 1
+  },
+  "proof-research": {
+    "prompt": [
+      {
+        "role": "system",
+        "content": "You write the short messages that carry a 30-second personalized film, made by the sender for one company, to one person there.\nWrite text only. Never write a greeting, a signature or a URL: code adds them. Where the film's link goes, write [film].\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n(The word limits above are for the film's lines; these messages have their own limits below.)\n\nReply with only a JSON object of this exact shape:\n{\"note\": string, \"afterAccept\": string, \"inmail\": {\"subject\": string, \"body\": string}, \"email\": {\"subject\": string, \"opening\": string, \"research\": string | null, \"fit\": string, \"ask\": string}}"
+      },
+      {
+        "role": "user",
+        "content": "The sender sells to this company. Talk about their customers and outcomes.\n\nCOMPANY: Parcelpine\nTHE FILM: opens \"For the people building Parcelpine\", pitch \"Product analytics that shows which features keep customers\"\nPROOF (the only results you may mention):\n1. 31% lift in week-4 retention at Brightline\n2. 1 day average setup time\n3. 140 B2B teams use it weekly\nTHEIR LATEST POST: \"Route planning, now with live traffic\": Route planning now reroutes trucks around live traffic before a delivery runs late, for every lane.\nSENDER: Maya Chen. The ask: Worth a 15-minute look?\n\nTHE MESSAGES (limits are checked in code; going over means a rewrite):\n- note: a LinkedIn connection note, at most 176 characters. Who you are to them and that you made something for Parcelpine. No link, no [film], no question, no ask.\n- afterAccept: sent once they accept, at most 403 characters. Thanks for connecting, then [film] (required, exactly once, where the link goes), then exactly one question: the ask.\n- inmail: subject at most 60 characters and names Parcelpine; body at most 303 characters, with [film] (required, exactly once, where the link goes) and exactly one question.\n- email: no [film] in any part; code adds \"I made a 30-second film…\" and the link right after the opening, so no part mentions the film or a video. subject names Parcelpine, not \"inquiry\" or \"application\". opening: one sentence. research: one short sentence restating what the post says in your own words, keeping its key words (the check counts how many of your words come from the post). You may add at most a few words of reaction, such as \"which caught my eye\". No new claims about what it means for them or for the role. fit: one or two sentences on why the sender fits, from the proof. ask: one question asking for 15 minutes. All four parts together at most 110 words. The email has exactly one question, in the ask.\n- Lead the email's opening with the sender's best number: 31% lift in week-4 retention at Brightline.\n- Every message names Parcelpine. No exclamation marks. Numbers only from the proof or the role.\n- Never beg or ask a favor: no \"refer me\", \"referral\", \"any openings\", \"pass my resume\", \"pick your brain\", \"just checking in\", \"I'd be grateful\"."
+      }
+    ],
+    "reply": {
+      "note": "I made a short film for the Parcelpine team. Would like to connect.",
+      "afterAccept": "Thanks for connecting. I made a 30-second film for Parcelpine: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?",
+      "inmail": {
+        "subject": "A 30-second film for Parcelpine",
+        "body": "I've been following Parcelpine, and I made a 30-second film for the team: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?"
+      },
+      "email": {
+        "subject": "A 30-second film for Parcelpine",
+        "opening": "I've been following what Parcelpine is building",
+        "research": "Your post says route planning now reroutes trucks around live traffic before a delivery runs late, for every lane, which is where we fit",
+        "fit": "What we have done for teams like yours: 1 day average setup time; 140 B2B teams use it weekly",
+        "ask": "Could we find 15 minutes this week?"
+      }
+    },
+    "written": {
+      "drafts": {
+        "note": "Hi [First name], I made a short film for the Parcelpine team. Would like to connect. – Maya",
+        "afterAccept": "Hi [First name],\n\nThanks for connecting. I made a 30-second film for Parcelpine: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?\n\nMaya",
+        "inmail": {
+          "subject": "A 30-second film for Parcelpine",
+          "body": "Hi [First name],\n\nI've been following Parcelpine, and I made a 30-second film for the team: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?\n\nMaya"
+        },
+        "email": {
+          "subject": "Parcelpine: 31% lift in week-4 retention at Brightline",
+          "body": "Hi [First name],\n\nI saw that Parcelpine leads with \"Returns that keep the customer\". 31% lift in week-4 retention at Brightline.\n\nI made a 30-second film for Parcelpine on what I'd bring:\n[film]\nIt starts from your own site: \"of returns become exchanges or store credit\".\n\nI read \"Proof of delivery photos\", and drivers can attach a photo at the door, and customers see it in the tracking link within a minute.\n\nMore of what I've done: 1 day average setup time. Product analytics that shows which features keep customers.\n\nWorth a 15-minute look?\n\nMaya Chen\nmaya@tessellate.example"
+        }
+      },
+      "writer": {
+        "note": "model",
+        "afterAccept": "model",
+        "inmail": "model",
+        "email": "template"
+      },
+      "flags": {
+        "email": [
+          {
+            "rule": "research_grounded",
+            "ok": false,
+            "why": "The research line says things their post doesn't; keep it to what they wrote"
+          }
+        ]
+      },
+      "research": {
+        "itemUrl": "http://127.0.0.1/parcelpine/changelog/pod-photos",
+        "line": "Drivers can attach a photo at the door, and customers see it in the tracking link within a minute."
+      },
+      "model": "test-model",
+      "rounds": 2,
+      "firstTry": ["note", "afterAccept", "inmail"]
+    },
+    "sent": 2
+  },
+  "proof-plain": {
+    "prompt": [
+      {
+        "role": "system",
+        "content": "You write the short messages that carry a 30-second personalized film, made by the sender for one company, to one person there.\nWrite text only. Never write a greeting, a signature or a URL: code adds them. Where the film's link goes, write [film].\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n(The word limits above are for the film's lines; these messages have their own limits below.)\n\nReply with only a JSON object of this exact shape:\n{\"note\": string, \"afterAccept\": string, \"inmail\": {\"subject\": string, \"body\": string}, \"email\": {\"subject\": string, \"opening\": string, \"research\": string | null, \"fit\": string, \"ask\": string}}"
+      },
+      {
+        "role": "user",
+        "content": "The sender sells to this company. Talk about their customers and outcomes.\n\nCOMPANY: Parcelpine\nTHE FILM: opens \"For the people building Parcelpine\", pitch \"Product analytics that shows which features keep customers\"\nPROOF (the only results you may mention):\n1. 31% lift in week-4 retention at Brightline\n2. 1 day average setup time\n3. 140 B2B teams use it weekly\nTHEIR LATEST POST: none, so email.research is null\nSENDER: Maya Chen. The ask: Worth a 15-minute look?\n\nTHE MESSAGES (limits are checked in code; going over means a rewrite):\n- note: a LinkedIn connection note, at most 176 characters. Who you are to them and that you made something for Parcelpine. No link, no [film], no question, no ask.\n- afterAccept: sent once they accept, at most 403 characters. Thanks for connecting, then [film] (required, exactly once, where the link goes), then exactly one question: the ask.\n- inmail: subject at most 60 characters and names Parcelpine; body at most 303 characters, with [film] (required, exactly once, where the link goes) and exactly one question.\n- email: no [film] in any part; code adds \"I made a 30-second film…\" and the link right after the opening, so no part mentions the film or a video. subject names Parcelpine, not \"inquiry\" or \"application\". opening: one sentence. research: null. fit: one or two sentences on why the sender fits, from the proof. ask: one question asking for 15 minutes. All four parts together at most 110 words. The email has exactly one question, in the ask.\n- Lead the email's opening with the sender's best number: 31% lift in week-4 retention at Brightline.\n- Every message names Parcelpine. No exclamation marks. Numbers only from the proof or the role.\n- Never beg or ask a favor: no \"refer me\", \"referral\", \"any openings\", \"pass my resume\", \"pick your brain\", \"just checking in\", \"I'd be grateful\"."
+      }
+    ],
+    "reply": {
+      "note": "I made a short film for the Parcelpine team. Would like to connect.",
+      "afterAccept": "Thanks for connecting. I made a 30-second film for Parcelpine: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?",
+      "inmail": {
+        "subject": "A 30-second film for Parcelpine",
+        "body": "I've been following Parcelpine, and I made a 30-second film for the team: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?"
+      },
+      "email": {
+        "subject": "A 30-second film for Parcelpine",
+        "opening": "I've been following what Parcelpine is building",
+        "research": null,
+        "fit": "What we have done for teams like yours: 1 day average setup time; 140 B2B teams use it weekly",
+        "ask": "Could we find 15 minutes this week?"
+      }
+    },
+    "written": {
+      "drafts": {
+        "note": "Hi [First name], I made a short film for the Parcelpine team. Would like to connect. – Maya",
+        "afterAccept": "Hi [First name],\n\nThanks for connecting. I made a 30-second film for Parcelpine: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?\n\nMaya",
+        "inmail": {
+          "subject": "A 30-second film for Parcelpine",
+          "body": "Hi [First name],\n\nI've been following Parcelpine, and I made a 30-second film for the team: [film] It shows 31% lift in week-4 retention at Brightline and 1 day average setup time. Worth a 15-minute look?\n\nMaya"
+        },
+        "email": {
+          "subject": "A 30-second film for Parcelpine",
+          "body": "Hi [First name],\n\nI've been following what Parcelpine is building. 31% lift in week-4 retention at Brightline.\n\nI made a 30-second film for Parcelpine:\n[film]\n\nWhat we have done for teams like yours: 1 day average setup time; 140 B2B teams use it weekly.\n\nCould we find 15 minutes this week?\n\nMaya Chen\nmaya@tessellate.example"
+        }
+      },
+      "writer": {
+        "note": "model",
+        "afterAccept": "model",
+        "inmail": "model",
+        "email": "model"
+      },
+      "flags": {},
+      "research": null,
+      "model": "test-model",
+      "rounds": 1,
+      "firstTry": ["note", "afterAccept", "inmail", "email"]
+    },
+    "sent": 1
+  }
+}

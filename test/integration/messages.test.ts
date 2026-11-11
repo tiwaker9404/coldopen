@@ -3,7 +3,8 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApi } from '../../src/api/server.ts'
 import type { Sql } from '../../src/db/index.ts'
-import type { FilmMessages } from '../../src/outreach/writer.ts'
+import { ScriptedProvider } from '../../src/llm/scripted.ts'
+import { FILM, type FilmMessages } from '../../src/outreach/writer.ts'
 import { freshDb, log, profile, testConfig, tmp } from '../helpers/index.ts'
 
 /**
@@ -16,6 +17,34 @@ let app: Awaited<ReturnType<typeof buildApi>>
 const filmsDir = tmp('messages-films-')
 const auth = { authorization: 'Bearer k1' }
 
+/* a stand-in model for writing a job seeker's messages again */
+const QUESTION =
+  'Are most of your customers calling the API directly, or going through the Shopify app?'
+const DETAIL = 'the per-zone breakdown saved me a spreadsheet'
+let sent = 0
+/** when set, the stand-in model is down */
+let down = false
+/** a stand-in model that answers the way a careful one would, from the prompt's homework */
+const llm = new ScriptedProvider(() => {
+  sent++
+  if (down) throw new Error('HTTP 503 from the model')
+  return JSON.stringify({
+    note: `I've been using Parcelpine, and ${DETAIL}. Curious how most Parcelpine customers use it.`,
+    afterAccept: `Thanks for connecting. I've been using Parcelpine, and ${DETAIL}. I put what I'd try next with Parcelpine into a 30-second film: ${FILM} ${QUESTION}`,
+    inmail: {
+      subject: 'Notes from using Parcelpine',
+      body: `I've been using Parcelpine, and ${DETAIL}. I put what I'd try next with Parcelpine into a 30-second film: ${FILM} ${QUESTION}`,
+    },
+    email: {
+      subject: 'Notes from using Parcelpine',
+      opening: `I've been using Parcelpine, and ${DETAIL}.`,
+      tease: `I put what I'd try next with Parcelpine into a 30-second film: ${FILM}`,
+      creator: null,
+      question: QUESTION,
+      offer: "If you ever have 15 minutes, I'd love to hear how you think about it.",
+    },
+  })
+}, [0, 1])
 beforeAll(async () => {
   sql = await freshDb()
   app = await buildApi({
@@ -27,6 +56,7 @@ beforeAll(async () => {
     }),
     log,
     slack: null,
+    llm,
   })
   await app.inject({
     method: 'PUT',
@@ -345,5 +375,66 @@ describe('the messages API', () => {
     expect(res.statusCode).toBe(200)
     const text = res.json().result.content[0].text
     expect(JSON.parse(text)).toEqual(await messagesOf(id))
+  })
+})
+
+describe('writing a job seeker’s messages again', () => {
+  it('offers "Write it again" for drafts from before the voice, and the model writes them from the homework', async () => {
+    // a job seeker's film with drafts written before step 3: they pitch the role
+    const id = await film(modelMessages(), 'alex')
+    await app.inject({
+      method: 'PUT',
+      url: `/v1/films/${id}/homework`,
+      headers: auth,
+      payload: { detail: DETAIL, question: QUESTION },
+    })
+    const before = await messagesOf(id)
+    expect(before.rewrite).toBe(true)
+    expect(before.writer.email).toBe('template')
+    // nothing is rewritten until asked
+    const [stored] = await sql<
+      { m: FilmMessages }[]
+    >`select output->'messages' as m from runs where id = ${id}`
+    expect(stored!.m.drafts.email.body).toContain('I saw the Operations Analyst role')
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/films/${id}/messages/rewrite`,
+      headers: auth,
+    })
+    expect(res.statusCode).toBe(200)
+    expect(sent).toBe(1)
+    const m = res.json()
+    expect(m.writer).toMatchObject({
+      note: 'model',
+      afterAccept: 'model',
+      inmail: 'model',
+      email: 'model',
+    })
+    expect(m.rewrite).toBe(false)
+    expect(m.email.body).toContain(QUESTION)
+    expect(m.email.body).toContain(`https://films.example.com/f/${id}`)
+    expect(m.email.body).toMatch(/Thanks for reading,\nAlex Rivera\nalex@example\.com$/)
+    // stored with what the model was given, and served the same way afterwards
+    const [after] = await sql<
+      { m: FilmMessages }[]
+    >`select output->'messages' as m from runs where id = ${id}`
+    expect(after!.m.sender).toEqual({ detail: DETAIL, question: QUESTION, built: null })
+    expect(await messagesOf(id)).toEqual(m)
+  })
+
+  it('keeps the drafts as they were when the model is down, and says so', async () => {
+    const id = await film(modelMessages(), 'alex')
+    const before = await messagesOf(id)
+    down = true
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/films/${id}/messages/rewrite`,
+      headers: auth,
+    })
+    down = false
+    expect(res.statusCode).toBe(503)
+    expect(res.json().error.code).toBe('model_busy')
+    expect(await messagesOf(id)).toEqual(before)
   })
 })

@@ -25,15 +25,20 @@ import { closeBrowser } from '../src/browser.ts'
 import { buildLlm } from '../src/llm/chain.ts'
 import { LlmHttpError } from '../src/llm/openai.ts'
 import { ScriptedProvider } from '../src/llm/scripted.ts'
-import { openerFor } from '../src/outreach/messages.ts'
+import type { CheckRule } from '../src/outreach/checks.ts'
+import { checkMessage } from '../src/outreach/checks.ts'
+import { contextFor, openerFor, type SenderHomework } from '../src/outreach/messages.ts'
 import {
   assemble,
   briefFor,
   DRAFTS,
   FILM,
   type FilmMessages,
-  MessagesSchema,
+  isWarm,
+  LINK_ROOM,
   type ModelMessages,
+  messagesSchemaFor,
+  researchSource,
   scriptedMessages,
   type WrittenDraft,
   writeMessages,
@@ -185,6 +190,86 @@ const homeworkFor = (site: string): Homework => {
 }
 const MESSAGES_NOW = Date.parse('2026-11-03T12:00:00Z')
 
+/**
+ * The sender's own homework for each of the 12 message films (site, preset, with or without
+ * their latest post), as if saved after the film: a detail from using the product on 6, something
+ * small built with it on 3, a question of their own on 6, and the creator line on half. Only a job
+ * seeker's drafts use it; a seller's prompt is the same as before. Written in plain words with no
+ * numbers, as a person would save them.
+ */
+const SENDER: Record<string, { hw: SenderHomework; creator: boolean }> = (() => {
+  const d = {
+    parcelpine: 'the per-zone breakdown in the rate view saved me a spreadsheet',
+    northwind: 'I moved a dock appointment from the shipment page without calling anyone',
+    lumen: 'the intake form filled in the insurance details from a photo of the card',
+  }
+  const q = {
+    parcelpine:
+      'Are most of your customers calling the rates API directly, or going through the Shopify app?',
+    northwind: 'Do most shippers connect their ERP first, or start from the dock schedule?',
+    lumen:
+      'Do clinics switch on the translated intake forms themselves, or does your team set them up?',
+  }
+  const b = {
+    parcelpine: {
+      url: 'https://github.com/alex/rate-compare',
+      line: 'A small script that compares two carriers on your rates API',
+    },
+    northwind: {
+      url: 'https://github.com/alex/dock-board',
+      line: 'A dock board that reads your shipment feed',
+    },
+    lumen: {
+      url: 'https://github.com/alex/intake-check',
+      line: 'A checker that reads an intake form back to the patient',
+    },
+  }
+  type Site = keyof typeof d
+  const of = (site: Site, x: { detail?: boolean; question?: boolean; built?: boolean }) => ({
+    detail: x.detail ? d[site] : null,
+    question: x.question ? q[site] : null,
+    built: x.built ? b[site] : null,
+  })
+  return {
+    parcelpine_candidate_plain: {
+      hw: of('parcelpine', { detail: true, question: true }),
+      creator: true,
+    },
+    parcelpine_candidate_research: { hw: of('parcelpine', { built: true }), creator: true },
+    northwind_candidate_plain: { hw: of('northwind', { question: true }), creator: false },
+    northwind_candidate_research: { hw: of('northwind', { detail: true }), creator: true },
+    lumen_candidate_plain: { hw: of('lumen', {}), creator: false },
+    lumen_candidate_research: {
+      hw: of('lumen', { detail: true, question: true, built: true }),
+      creator: false,
+    },
+    parcelpine_sales_plain: {
+      hw: of('parcelpine', { detail: true, question: true }),
+      creator: true,
+    },
+    parcelpine_sales_research: { hw: of('parcelpine', { detail: true }), creator: false },
+    northwind_sales_plain: { hw: of('northwind', { built: true, question: true }), creator: true },
+    northwind_sales_research: { hw: of('northwind', {}), creator: false },
+    lumen_sales_plain: { hw: of('lumen', { detail: true }), creator: true },
+    lumen_sales_research: { hw: of('lumen', { question: true }), creator: false },
+  }
+})()
+/** What the sender built that made the film, on the films the table above gives it to */
+const CREATOR = {
+  name: 'coldopen',
+  url: 'https://tiwaker9404.github.io/coldopen/',
+  line: 'An open-source agent that turns a company site into an on-brand pitch',
+}
+/** The rules a job seeker's drafts are checked on in the voice (step 2), reported one by one */
+const VOICE_RULES_REPORTED: CheckRule[] = [
+  'not_job_pitch',
+  'thanks',
+  'no_proof_numbers',
+  'curious',
+  'one_ask',
+  'homework_grounded',
+]
+
 /** per draft kind: how many passed on the first try, and how many fell back to the template */
 const byDraft = new Map<string, { first: number; fallback: number; total: number }>()
 
@@ -196,6 +281,10 @@ interface MessageRun {
   sentBack: { draft: string; why: string }[]
   /** the model's own drafts from its last reply, assembled as they'd be sent */
   modelDrafts: ReturnType<typeof assemble> | null
+  /** a job seeker's film, checked in the voice */
+  candidate: boolean
+  /** the rules each draft failed on the model's first try (from the rewrite request) */
+  firstFailed: { draft: string; rule: CheckRule }[]
 }
 const runs: MessageRun[] = []
 /** films whose messages couldn't be measured (the model was unavailable after a retry) */
@@ -210,6 +299,7 @@ async function messages(
   s: Script,
   homework: Homework | null,
   id: string,
+  sender: SenderHomework | null,
 ): Promise<Omit<MessageRun, 'film'>> {
   const board = buildStoryboard(kit, profile, s)
   const insight = board.scenes.find((x) => x.kind === 'insight')
@@ -225,23 +315,26 @@ async function messages(
       proof: proof?.kind === 'proof' ? proof.stats : [],
     },
   }
-  const opener = openerFor(id)
+  const opener = openerFor(id, profile.preset)
+  const candidate = profile.preset === 'candidate'
   const item = homework ? pickResearch(homework, { points: profile.points }, MESSAGES_NOW) : null
   // without --model, the built-in stand-in answers through ScriptedProvider, as a model would
   const provider =
     llm ??
     new ScriptedProvider(
-      () => JSON.stringify(scriptedMessages(briefFor(film, profile, item, opener))),
+      () => JSON.stringify(scriptedMessages(briefFor(film, profile, item, opener, sender))),
       [0, 1],
     )
   const attempt = async () => {
     const ctx = new LocalContext({ runId: id, llm: provider })
     const sentBack: MessageRun['sentBack'] = []
     let last: ModelMessages | null = null
+    let firstReply: ModelMessages | null = null
     const m = await writeMessages({
       film,
       profile,
       homework,
+      sender,
       opener,
       model: values.model ?? 'scripted-v1',
       now: MESSAGES_NOW,
@@ -252,14 +345,47 @@ async function messages(
             const hit = line.match(/^- (\w+): (.+)$/)
             if (hit) sentBack.push({ draft: hit[1]!, why: hit[2]! })
           }
-        last = await ctx.llm(key, { schema: MessagesSchema, messages: msgs })
+        last = await ctx.llm(key, { schema: messagesSchemaFor(profile.preset), messages: msgs })
+        if (key === 'messages-1') firstReply = last
         return last
       },
     })
-    // the shape writeMessages assembled with: the opener it settled on, and research when picked
-    const shape = { opener: briefFor(film, profile, item, opener).opener, research: !!item }
+    // the shape writeMessages assembled with: the opener it settled on, research when picked, and
+    // the saved question
+    const shape = {
+      opener: briefFor(film, profile, item, opener, sender).opener,
+      research: !!item,
+      saved: candidate ? (sender?.question ?? null) : null,
+    }
     const reply = last as ModelMessages | null
-    return { m, sentBack, modelDrafts: reply ? assemble(reply, film, profile, FILM, shape) : null }
+    // the rules each draft failed on the first try, read off the first reply's own drafts
+    const firstFailed: MessageRun['firstFailed'] = []
+    const first = firstReply as ModelMessages | null
+    if (first && m.firstTry.length < DRAFTS.length) {
+      const ctxFor = contextFor(
+        { ...film, ...(homework ? { homework } : {}) },
+        profile,
+        LINK_ROOM,
+        candidate ? sender : null,
+      )
+      const drafts = assemble(first, film, profile, LINK_ROOM, shape)
+      for (const d of DRAFTS.filter((x) => !m.firstTry.includes(x)))
+        for (const c of checkMessage(d, drafts[d], {
+          ...ctxFor,
+          research:
+            d === 'email' && item && !isWarm(first) && first.email.research
+              ? { line: first.email.research, source: researchSource(item) }
+              : null,
+        }))
+          if (!c.ok) firstFailed.push({ draft: d, rule: c.rule })
+    }
+    return {
+      m,
+      sentBack,
+      modelDrafts: reply ? assemble(reply, film, profile, FILM, shape) : null,
+      candidate,
+      firstFailed,
+    }
   }
   try {
     return await attempt()
@@ -353,10 +479,13 @@ try {
       // --- the messages that carry the film, with and without the site's own latest posts
       for (const homework of [null, homeworkFor(site)]) {
         const filmId = `eval_${site}_${preset}_${homework ? 'research' : 'plain'}`
+        const given = SENDER[`${site}_${preset}_${homework ? 'research' : 'plain'}`]
+        if (!given) throw new Error(`no sender homework for ${filmId}; add it to SENDER`)
+        const withCreator = given.creator ? { ...profile, creator: CREATOR } : profile
         if (PACE_MS && films++) await sleep(PACE_MS)
         let run: Omit<MessageRun, 'film'>
         try {
-          run = await messages(kit, profile, s.script, homework, filmId)
+          run = await messages(kit, withCreator, s.script, homework, filmId, given.hw)
         } catch (e) {
           // still unavailable after the retry: say so, rather than count it against the model
           if (!llm || !isRateLimit(e)) throw e
@@ -495,7 +624,13 @@ function messagesReport(): string[] {
   // one draft the model got right first time, two it didn't, each with why
   const passedOne = runs
     .flatMap((r) => DRAFTS.filter((d) => r.m.firstTry.includes(d)).map((d) => ({ r, d })))
-    .sort((x, y) => (x.d === 'email' ? -1 : 0) - (y.d === 'email' ? -1 : 0))[0]
+    // a job seeker's email first: it's the one the voice is about
+    .sort(
+      (x, y) =>
+        (x.d === 'email' ? -2 : 0) +
+        (x.r.candidate ? -1 : 0) -
+        ((y.d === 'email' ? -2 : 0) + (y.r.candidate ? -1 : 0)),
+    )[0]
   const fellBackTwo: { r: MessageRun; d: WrittenDraft }[] = []
   for (const r of runs)
     for (const d of DRAFTS)
@@ -525,16 +660,84 @@ function messagesReport(): string[] {
       ]),
     ...(fellBackTwo.length ? [] : ['No draft fell back to its template.', '']),
   ]
+  // the same table for each preset: the voice targets are about a job seeker's drafts
+  const byPreset = (candidate: boolean) => {
+    const rs = runs.filter((r) => r.candidate === candidate)
+    return DRAFTS.map((d) => {
+      const first = rs.filter((r) => r.m.firstTry.includes(d)).length
+      const fell = rs.filter((r) => r.m.writer[d] === 'template').length
+      return `| ${candidate ? 'job seeker' : 'seller'} | ${d} | ${first}/${rs.length} (${pct(first, rs.length)}) | ${fell}/${rs.length} (${pct(fell, rs.length)}) |`
+    })
+  }
+  // each voice rule, on a job seeker's drafts: how many failed it on the first try, and how many
+  // still failed it after the rewrite (so the draft fell back)
+  const seekers = runs.filter((r) => r.candidate)
+  const ruleRows = VOICE_RULES_REPORTED.map((rule) => {
+    const first = seekers.flatMap((r) => r.firstFailed.filter((f) => f.rule === rule))
+    const last = seekers.flatMap((r) =>
+      Object.entries(r.m.flags).filter(([, cs]) => (cs ?? []).some((c) => c.rule === rule)),
+    )
+    const where = (xs: string[]) =>
+      [...new Set(xs)].map((d) => `${d} ${xs.filter((x) => x === d).length}`).join(', ') || ''
+    return `| \`${rule}\` | ${first.length} | ${where(first.map((f) => f.draft))} | ${last.length} | ${where(last.map(([d]) => d))} |`
+  })
+  // the targets for step 3, over all films
+  const rate = (d: WrittenDraft, what: 'first' | 'fallback') => {
+    const n = runs.length
+    const k = runs.filter((r) =>
+      what === 'first' ? r.m.firstTry.includes(d) : r.m.writer[d] === 'template',
+    ).length
+    return n ? k / n : 0
+  }
+  const target = (label: string, value: number, ok: boolean, want: string) =>
+    `| ${label} | ${Math.round(value * 100)}% | ${want} | ${ok ? 'met' : `missed by ${Math.abs(Math.round(value * 100) - Number(want.replace(/\D/g, '')))} points`} |`
+  const targets = [
+    target('Email, first try', rate('email', 'first'), rate('email', 'first') >= 0.75, '≥ 75%'),
+    target(
+      'Email, fell back',
+      rate('email', 'fallback'),
+      rate('email', 'fallback') <= 0.1,
+      '≤ 10%',
+    ),
+    target('Note, first try', rate('note', 'first'), rate('note', 'first') >= 0.9, '≥ 90%'),
+    target(
+      'After accept, first try',
+      rate('afterAccept', 'first'),
+      rate('afterAccept', 'first') >= 0.9,
+      '≥ 90%',
+    ),
+  ]
   return [
     `# Messages eval: ${writer}`,
     '',
-    `${runs.length} films (3 fixture sites, the candidate and sales profiles, with and without their latest post), ${DRAFTS.length} drafts each. The films' scripts come from the built-in writer, so only the messages use the model. Ran in ${Math.round((Date.now() - started) / 1000)}s.${unmeasured.length ? ` ${unmeasured.length} films couldn't be measured: ${unmeasured.map((u) => u.film).join(', ')}.` : ''}`,
+    '## Targets (step 3)',
+    '',
+    '| Measure | Result | Target | |',
+    '|---|---:|---:|---|',
+    ...targets,
+    '',
+    `${runs.length} films (3 fixture sites, the candidate and sales profiles, with and without their latest post, and the sender's saved homework on most), ${DRAFTS.length} drafts each. The films' scripts come from the built-in writer, so only the messages use the model. Ran in ${Math.round((Date.now() - started) / 1000)}s.${unmeasured.length ? ` ${unmeasured.length} films couldn't be measured: ${unmeasured.map((u) => u.film).join(', ')}.` : ''}`,
     '',
     '| Draft | Passed on the first try | Fell back to the template | Average rounds |',
     '|---|---:|---:|---:|',
     ...table,
     '',
     `Films that needed a second round: ${runs.filter((r) => r.m.rounds > 1).length}/${runs.length}.`,
+    '',
+    '## By preset',
+    '',
+    '| Preset | Draft | Passed on the first try | Fell back to the template |',
+    '|---|---|---:|---:|',
+    ...byPreset(true),
+    ...byPreset(false),
+    '',
+    "## The voice rules, on a job seeker's drafts",
+    '',
+    `${seekers.length} job seeker films, ${seekers.length * DRAFTS.length} drafts. Homework saved: detail on ${seekers.filter((r) => SENDER[r.film.replace(/^eval_/, '')]?.hw.detail).length}, built on ${seekers.filter((r) => SENDER[r.film.replace(/^eval_/, '')]?.hw.built).length}, question on ${seekers.filter((r) => SENDER[r.film.replace(/^eval_/, '')]?.hw.question).length}; creator line on ${seekers.filter((r) => SENDER[r.film.replace(/^eval_/, '')]?.creator).length}.`,
+    '',
+    '| Rule | Failed on the first try | Drafts | Still failed after the rewrite | Drafts |',
+    '|---|---:|---|---:|---|',
+    ...ruleRows,
     '',
     '## Why drafts were sent back after the first try',
     '',

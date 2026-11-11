@@ -353,9 +353,19 @@ const TIME_OFFER = /\b\d+[\s-]*min(ute)?s?\b/i
 const CLAIM =
   /\b(I tried|I used|I built|when I|I've been using|I've used|I tested|I played with)\b/i
 
-/** The sentences of a text, each with its end mark */
+/**
+ * The sentences of a text, each with its end mark. A link is dropped but the punctuation after
+ * it stays ("…on your API (https://…)." still ends its sentence), or the next sentence would be
+ * read as part of this one.
+ */
 const sentencesOf = (s: string) =>
-  (s.replace(URL, ' ').match(/[^.?!\n]+[.?!]*/g) ?? []).map((x) => x.trim()).filter(Boolean)
+  (
+    s
+      .replace(URL, (u) => ` ${u.match(/[)\].,;:!?]+$/)?.[0]?.replace(/^[)\]]+/, '') ?? ''}`)
+      .match(/[^.?!\n]+[.?!]*/g) ?? []
+  )
+    .map((x) => x.trim())
+    .filter(Boolean)
 const questionsOf = (s: string) => sentencesOf(s).filter((x) => x.endsWith('?'))
 
 /** Words too common to show a question is about their work */

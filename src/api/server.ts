@@ -68,10 +68,12 @@ import {
   parseConnections,
   peopleSearches,
 } from '../outreach/people.ts'
+import { type ModelMessages, messagesSchemaFor, writeMessages } from '../outreach/writer.ts'
 import { draftProfile } from '../profile/draft.ts'
 import { parseResume } from '../profile/parse.ts'
 import { hiringProfile, PitchError, recruiterProfile } from '../profile/pitch.ts'
 import { resumeText } from '../profile/read.ts'
+import { callModel } from '../runtime/context.ts'
 import {
   cancelRun,
   createRun,
@@ -2109,7 +2111,7 @@ export async function buildApi({
         tags: ['films'],
         summary: 'Draft the LinkedIn sequence, the email and the follow-ups that go with a film',
         description:
-          'The connection note (200 characters, no link), the message once they accept, InMail, the warm email and the follow-ups, with a [First name] placeholder. `writer` says which drafts the model wrote and which are templates; `flags` lists the checks a draft failed (why it fell back to its template), and `notes` says in plain sentences what code changed in a draft, such as a funding line left out. Nothing is sent.',
+          'The connection note (200 characters, no link), the message once they accept, InMail, the warm email and the follow-ups, with a [First name] placeholder. `writer` says which drafts the model wrote and which are templates; `flags` lists the checks a draft failed (why it fell back to its template), and `notes` says in plain sentences what code changed in a draft, such as a funding line left out. For a job seeker, `rewrite: true` means stored model drafts no longer pass the current checks or were written before the homework you saved, so the templates stand in until POST /v1/films/:id/messages/rewrite writes them again. Nothing is sent.',
         params: z.object({ id: RunId }),
       },
     },
@@ -2129,6 +2131,99 @@ export async function buildApi({
         }),
         run.recipient?.name,
       )
+    },
+  )
+
+  app.post(
+    '/v1/films/:id/messages/rewrite',
+    {
+      schema: {
+        tags: ['films'],
+        summary: "Have the model write a film's messages again, from your homework",
+        description:
+          "For a job seeker's film whose drafts were written before today's checks or before the homework you saved (the messages come back with `rewrite: true`). One model call writes the connection note, the message once they accept, InMail and the email again, checked as always; any draft that still fails is its template. Nothing is sent. Returns the messages, as GET /v1/films/:id/messages does.",
+        params: z.object({ id: RunId }),
+      },
+    },
+    async (req, reply) => {
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run?.output || run.status !== 'succeeded') return notFound(reply)
+      const row = run as FilmRow
+      const profile = run.output.profile ?? run.input.profile
+      if (profile.preset !== 'candidate' && profile.preset !== 'sales')
+        return reply.status(409).send({
+          error: {
+            code: 'no_model_drafts',
+            message: 'only job seekers and sellers get model-written messages',
+          },
+        })
+      if (!llm)
+        return reply.status(409).send({
+          error: {
+            code: 'no_model',
+            message: 'writing the messages again needs a model, so the templates are shown instead',
+          },
+        })
+      if (!unlimited(req) && !(await consume(sql, `rewrites:${req.owner}`, cfg.DAILY_DRAFTS)))
+        return limited(
+          reply,
+          `That's ${cfg.DAILY_DRAFTS} rewrites today. The template drafts are still here, or come back tomorrow.`,
+        )
+      const [research] = await sql<
+        { output: { facts?: { text: string; kind: string }[] } | null }[]
+      >`
+        select output from steps where run_id = any(${[run.id, run.input.editOf].filter(Boolean) as string[]})
+          and key = 'research' and status = 'completed' limit 1`
+      const out = run.output
+      const signal = AbortSignal.timeout(120_000)
+      try {
+        const written = await writeMessages({
+          film: {
+            company: out.company,
+            ...(out.job ? { job: out.job } : {}),
+            script: out.script,
+            highlights: out.highlights,
+            ...(out.related ? { related: out.related } : {}),
+            requirements: (research?.output?.facts ?? [])
+              .filter((f) => f.kind === 'requirement')
+              .map((f) => f.text),
+          },
+          profile,
+          homework: out.homework,
+          sender: homeworkOf(row),
+          opener: openerFor(run.id, profile.preset),
+          model: cfg.LLM_MODEL,
+          // the post the drafts read is the one the film had when it was made
+          now: new Date(run.createdAt).getTime(),
+          complete: async (_key, messages) =>
+            (await callModel(llm, { schema: messagesSchemaFor(profile.preset), messages }, signal))
+              .value as ModelMessages,
+        })
+        // ownFilm checked the owner, as the outreach and recipient routes do
+        await sql`
+          update runs set output = jsonb_set(output, '{messages}', ${sql.json(written as never)})
+          where id = ${run.id}`
+        const link = filmDto(run, publicUrl).share!
+        return addressed(
+          messagesFor({ ...out, messages: written }, profile, link, {
+            homework: homeworkOf(row),
+            fresh: await freshFact(row),
+            opener: openerFor(run.id, presetOf(row)),
+            raised: raisedBySite(out.host),
+            now: new Date(run.createdAt).getTime(),
+          }),
+          run.recipient?.name,
+        )
+      } catch (err) {
+        req.log.warn({ err }, 'messages rewrite failed')
+        return reply.status(503).send({
+          error: {
+            code: 'model_busy',
+            message:
+              "the model couldn't write them just now, so the template drafts are still here. Try again in a minute",
+          },
+        })
+      }
     },
   )
 

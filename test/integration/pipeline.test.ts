@@ -122,19 +122,21 @@ describe('film pipeline (no database)', () => {
     const { url } = await fixtureServer()
     const { kit } = await kitFor('parcelpine')
     const p = profile('candidate')
+    // a job seeker's reply, in the voice: no job words, no numbers, a question about their work
     const reply: ModelMessages = {
-      note: "I'd like to work with the Parcelpine team and made a short film for you. Would like to connect.",
-      afterAccept: `Thanks for connecting. I made a 30-second film for Parcelpine: ${FILM} Could we talk this week?`,
+      note: "I've been reading about what Parcelpine is building. Curious how most Parcelpine customers use it.",
+      afterAccept: `Thanks for connecting. I put what I'd try next with Parcelpine into a 30-second film: ${FILM} What's the hardest part of what Parcelpine is building right now?`,
       inmail: {
-        subject: 'A 30-second film for Parcelpine',
-        body: `I made a 30-second film for Parcelpine: ${FILM} Could we talk this week?`,
+        subject: 'A question about Parcelpine',
+        body: `I put what I'd try next with Parcelpine into a 30-second film: ${FILM} What's the hardest part of what Parcelpine is building right now?`,
       },
       email: {
-        subject: 'A 30-second film for Parcelpine',
-        opening: "I've been following what Parcelpine is building.",
-        research: null,
-        fit: "What I'd bring: 6 open-source AI projects shipped.",
-        ask: 'Could we find 15 minutes this week?',
+        subject: 'A question about Parcelpine',
+        opening: "I've been reading about what Parcelpine is building.",
+        tease: `I put what I'd try next with Parcelpine into a 30-second film: ${FILM}`,
+        creator: null,
+        question: "What's the hardest part of what Parcelpine is building right now?",
+        offer: "If you ever have 15 minutes, I'd love to hear how you think about it.",
       },
     }
     let messageCalls = 0

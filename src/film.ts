@@ -11,7 +11,7 @@ import { isJobPage, JobPostSchema, jobFromText } from './job/post.ts'
 import { fetchJob } from './job/read.ts'
 import { LlmHttpError } from './llm/openai.ts'
 import { openerFor } from './outreach/messages.ts'
-import { type FilmMessages, MessagesSchema, writeMessages } from './outreach/writer.ts'
+import { type FilmMessages, messagesSchemaFor, writeMessages } from './outreach/writer.ts'
 import { withRole } from './profile/pitch.ts'
 import { relatedWork } from './profile/related.ts'
 import { compose, FORMATS, type Format, siteShot } from './render/composition.ts'
@@ -342,10 +342,12 @@ export function createFilmAgent(opts: FilmAgentOptions) {
             film,
             profile,
             homework,
-            opener: openerFor(ctx.runId),
+            // a job seeker's film opens with the homework or the question, as the API serves it
+            opener: openerFor(ctx.runId, profile.preset),
             model,
             now,
-            complete: (key, m) => ctx.llm(key, { schema: MessagesSchema, messages: m }),
+            complete: (key, m) =>
+              ctx.llm(key, { schema: messagesSchemaFor(profile.preset), messages: m }),
           })
         } catch (err) {
           // every model is rate limited or down, or can't keep to the shape: the templates write

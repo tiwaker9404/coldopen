@@ -1257,6 +1257,8 @@ describe("messagesFor: a job seeker's drafts are checked in the voice", () => {
     model: 'test',
     rounds: 1,
     firstTry: ['note', 'afterAccept', 'inmail', 'email'],
+    // what the model was given (step 3 stores it)
+    sender: saved,
   })
   const film = (m: FilmMessages) =>
     ({ ...(out as never as object), homework, messages: m }) as never
@@ -1310,6 +1312,42 @@ describe("messagesFor: a job seeker's drafts are checked in the voice", () => {
     const m = messagesFor(film(stored(made)), p, LINK, { homework: saved, now })
     expect(m.writer.email).toBe('template')
     expect(m.flags.email?.map((c) => c.rule)).toEqual(['homework_grounded'])
+    expect(m.rewrite).toBe(true)
+  })
+
+  it('offers "Write it again" only when a stored model draft no longer passes, and never rewrites it', () => {
+    const kept = messagesFor(film(stored(voiceDrafts())), p, LINK, { homework: saved, now })
+    expect(kept.rewrite).toBe(false)
+    const old = voiceDrafts()
+    old.note = 'Hi [First name], I saw the role at Parcelpine and made a film for it. – Alex'
+    const m = messagesFor(film(stored(old)), p, LINK, { homework: saved, now })
+    expect(m.writer.note).toBe('template')
+    expect(m.rewrite).toBe(true)
+    // the stored draft itself is untouched
+    expect(old.note).toBe(
+      'Hi [First name], I saw the role at Parcelpine and made a film for it. – Alex',
+    )
+  })
+
+  it('serves the templates, with a note, when the sender saved new homework after the model wrote', () => {
+    const before = { ...stored(voiceDrafts()), sender: null }
+    const newer: SenderHomework = {
+      ...saved,
+      built: { url: 'https://github.com/alex/rates', line: 'A carrier rate comparer' },
+    }
+    const m = messagesFor(film(before), p, LINK, { homework: newer, now })
+    expect(m.writer).toMatchObject({
+      note: 'template',
+      afterAccept: 'template',
+      inmail: 'template',
+      email: 'template',
+    })
+    expect(m.flags).toEqual({})
+    expect(m.notes?.email?.[0]).toMatch(/^You saved homework after the model wrote this/)
+    expect(m.rewrite).toBe(true)
+    expect(m.email.body).toContain(
+      'I built something small with Parcelpine: a carrier rate comparer',
+    )
   })
 })
 
