@@ -63,10 +63,10 @@ describe('reading a résumé', () => {
     ])
   })
 
-  it('reads the FDE résumé: the left-out employer as "Current FDE role", projects by name', () => {
+  it('reads the FDE résumé: each job and project by name', () => {
     expect(ashwin.entries).toHaveLength(17)
     expect([...new Set(ashwin.entries.map((e) => e.org))]).toEqual([
-      'Current FDE role',
+      'Changing The Present',
       'Rail Inc.',
       'Duke Advanced Degree Consulting Club',
       'Deloitte Touche Tohmatsu',
@@ -449,18 +449,21 @@ describe('proof a stranger understands', () => {
 const strings = (v: unknown): string[] =>
   typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(strings) : []
 
-describe('the employer left out stays out', () => {
+describe('an employer left out stays out', () => {
+  const EMPLOYER = 'Changing The Present'
   const raw = fixture('ashwin-fde.md')
   const placeholder = '[Current employer, left out]'
+  // the same résumé with the employer redacted in place, as people share them
+  const redacted = parseResume(raw.replace(EMPLOYER, placeholder))
 
-  it('never copies the redaction line into a drafted field', async () => {
-    expect(raw).toContain(placeholder)
+  it('never copies a redaction line into a drafted field', async () => {
+    expect(raw).toContain(EMPLOYER)
     const leak = /left out|\[|\]/i
-    const det = deterministicDraft(ashwin, { role: FDE })
+    const det = deterministicDraft(redacted, { role: FDE })
     for (const f of strings(det)) expect(f).not.toMatch(leak)
     expect(det.proof.filter((p) => p.where === 'Current FDE role').length).toBeGreaterThan(0)
     // a model that copies the placeholder is told to say the role instead, then is dropped
-    const hub = cite(ashwin, '1.5M HubSpot records')
+    const hub = cite(redacted, '1.5M HubSpot records')
     const copied: Draft['proof'][number] = {
       entry: hub.id,
       value: '1.5M',
@@ -468,24 +471,23 @@ describe('the employer left out stays out', () => {
       did: 'Built an automated Python migration pipeline',
       where: placeholder,
     }
-    const v = checkDraft(ashwinDraft([copied]), ashwin, []).join('\n')
+    const v = checkDraft(ashwinDraft([copied]), redacted, []).join('\n')
     expect(v).toContain('redaction placeholder')
     const { llm } = scripted(ashwinDraft([copied]))
-    const { profile } = await draftProfile({ resume: ashwin, role: FDE, llm, maxRounds: 2 })
+    const { profile } = await draftProfile({ resume: redacted, role: FDE, llm, maxRounds: 2 })
     for (const f of strings(profile)) expect(f).not.toMatch(leak)
   })
 
-  it('with a real name and --exclude, no field has a word only the employer line had', async () => {
-    // a made-up name in the employer's place, as on the résumé Ashwin keeps locally
-    const name = 'Zephyrine Quantlabs'
-    const real = raw.replace(placeholder, name)
+  it('with --exclude, no field has a word only the employer line had', async () => {
+    const name = EMPLOYER
+    const real = raw
     const line = real.split('\n').find((l) => l.includes(name))!
     const rest = real.replace(line, '').toLowerCase()
     const only = line
       .toLowerCase()
       .split(/[^a-z]+/)
       .filter((w) => w.length > 2 && !rest.includes(w))
-    expect(only).toEqual(expect.arrayContaining(['zephyrine', 'quantlabs']))
+    expect(only).toEqual(expect.arrayContaining(['changing']))
 
     const r = parseResume(real, [name])
     expect(r.entries.filter((e) => e.org === 'Current FDE role')).toHaveLength(3)
@@ -495,13 +497,13 @@ describe('the employer left out stays out', () => {
       value: '1.5M',
       label: 'HubSpot records moved to PostgreSQL, 100% consistent',
       did: 'Built an automated Python migration pipeline',
-      where: 'Zephyrine',
+      where: 'Changing',
     }
     const draft = ashwinDraft([named])
-    draft.points = [...draft.points, 'Ships migrations at Zephyrine Quantlabs']
+    draft.points = [...draft.points, 'Ships migrations at Changing The Present']
     const v = checkDraft(draft, r, [name]).join('\n')
     expect(v).toContain(`mentions "${name}"`)
-    expect(v).toContain('proof[0].where "Zephyrine" isn\'t in the résumé')
+    expect(v).toContain('proof[0].where "Changing" isn\'t in the résumé')
 
     const fixed = ashwinDraft([{ ...named, where: 'Current FDE role' }])
     expect(checkDraft(fixed, r, [name])).toEqual([])

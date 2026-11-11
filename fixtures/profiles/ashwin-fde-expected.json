@@ -1,7 +1,7 @@
 {
   "resume": "fixtures/resumes/ashwin-fde.md",
   "role": "Forward Deployed Engineer",
-  "note": "Hand-checked proof for Ashwin's FDE résumé (redacted: the current employer is left out). Each row names the bullet it comes from by a phrase only that bullet has. best marks the picks a stranger finds most impressive, which the drafter should rank first.",
+  "note": "Hand-checked proof for Ashwin's FDE résumé (redacted: no phone or email). Each row names the bullet it comes from by a phrase only that bullet has. best marks the picks a stranger finds most impressive, which the drafter should rank first.",
   "rows": [
     {
       "bullet": "Current: HubSpot migration",
@@ -9,7 +9,7 @@
       "value": "1.5M",
       "label": "HubSpot records moved to PostgreSQL, 100% consistent",
       "did": "Built an automated Python migration pipeline",
-      "where": "Current FDE role",
+      "where": "Changing The Present",
       "best": true
     },
     {
@@ -18,7 +18,7 @@
       "value": "50,000+",
       "label": "partner payloads a day, reconciled automatically",
       "did": "Built Python middleware syncing partner APIs",
-      "where": "Current FDE role"
+      "where": "Changing The Present"
     },
     {
       "bullet": "Current: Docker on AWS",
@@ -26,7 +26,7 @@
       "value": "60%",
       "label": "less manual configuration, zero-downtime deploys",
       "did": "Containerized client apps with Docker on AWS",
-      "where": "Current FDE role"
+      "where": "Changing The Present"
     },
     {
       "bullet": "Rail: ETL",

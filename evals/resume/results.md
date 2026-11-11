@@ -27,9 +27,9 @@ Matched by meaning: same bullet, value equal or the same change, did and label s
 
 | Bullet | Best | Expected | Drafted | Match |
 |---|---|---|---|---|
-| Current: HubSpot migration | ★ | **1.5M** HubSpot records moved to PostgreSQL, 100% consistent<br>Built an automated Python migration pipeline · Current FDE role | **1.5M** HubSpot records to PostgreSQL with 100% data consistency<br>Built an automated Python pipeline · Current FDE role | ✓ did 1.00, label 0.67 |
-| Current: partner middleware |  | **50,000+** partner payloads a day, reconciled automatically<br>Built Python middleware syncing partner APIs · Current FDE role | **50,000+** daily payloads to synchronize internal backend systems<br>Built Python middleware · Current FDE role | ✗ label overlap 0.25 |
-| Current: Docker on AWS |  | **60%** less manual configuration, zero-downtime deploys<br>Containerized client apps with Docker on AWS · Current FDE role | – | not picked |
+| Current: HubSpot migration | ★ | **1.5M** HubSpot records moved to PostgreSQL, 100% consistent<br>Built an automated Python migration pipeline · Changing The Present | **1.5M** HubSpot records to PostgreSQL with 100% data consistency<br>Built an automated Python pipeline · Changing The Present | ✓ did 1.00, label 0.67 |
+| Current: partner middleware |  | **50,000+** partner payloads a day, reconciled automatically<br>Built Python middleware syncing partner APIs · Changing The Present | **50,000+** daily payloads to synchronize internal backend systems<br>Built Python middleware · Changing The Present | ✗ label overlap 0.25 |
+| Current: Docker on AWS |  | **60%** less manual configuration, zero-downtime deploys<br>Containerized client apps with Docker on AWS · Changing The Present | – | not picked |
 | Rail: ETL | ★ | **6h → 45m** daily client data sync, from 6 hours to 45 minutes<br>Built containerized ETL with Docker and PostgreSQL · Rail Inc. | **6h → 45m** daily client data sync cycles, from 6 hours to 45 minutes<br>Built containerized ETL workflows using Docker and PostgreSQL · Rail Inc. | ✓ did 1.00, label 1.00 |
 | Rail: analytics engine |  | **50GB** supply chain data a day, on the client's own servers<br>Deployed a Python analytics engine at an enterprise client · Rail Inc. | – | not picked |
 | Rail: blockers |  | **12+** live deployment blockers resolved, ahead of SLA<br>Led scoping with enterprise engineering teams · Rail Inc. | – | not picked |

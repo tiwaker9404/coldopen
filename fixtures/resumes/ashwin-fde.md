@@ -10,7 +10,7 @@ Cloud, DevOps & Data: AWS, GCP, Docker, Kubernetes, Terraform, Databricks, Postg
 Certifications: AWS Certified Solutions Architect – Associate, AWS Certified Cloud Practitioner, Databricks Certified Data Engineer
 
 Professional Experience
-[Current employer, left out]  Aug 2026 - Present
+Changing The Present  Aug 2026 - Present
 Forward Deployed Engineer  San Francisco, CA
 • Engineered an automated Python pipeline migrating 1.5M HubSpot records to PostgreSQL with 100% data consistency across all production schemas, verified via end-to-end cutover checksum validation.
 • Developed custom Python middleware processing 50,000+ daily payloads to synchronize internal backend systems with third-party partner APIs, eliminating manual ingestion bottlenecks and achieving 100% automated reconciliation of duplicate and malformed records across all incoming sync payloads.
