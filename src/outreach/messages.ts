@@ -1,5 +1,6 @@
 import { type Homework, type HomeworkItem, pickResearch } from '../brand/homework.ts'
 import type { FilmResult } from '../film.ts'
+import { proofPhrase } from '../profile/proof.ts'
 import { BANNED } from '../script/taste.ts'
 import type { Profile } from '../script/types.ts'
 import {
@@ -206,7 +207,7 @@ export function draftMessages(
   const fromPost = /post$/.test(out.highlights?.quote.source ?? '')
   const proof = (out.highlights?.proof ?? [])
     .slice(0, 2)
-    .map((p) => clean(`${p.value} ${p.label}${p.where ? ` at ${p.where}` : ''}`))
+    .map((p) => clean(`${proofPhrase(p)}${p.where ? ` at ${p.where}` : ''}`))
     .filter(quotable)
   const ask = clean(profile.cta.line).replace(/\?*$/, '?')
   // "for your Operations Analyst role at Parcelpine", or just "for Parcelpine"
@@ -808,9 +809,7 @@ function recruiterMessages(
   const first = me.split(' ')[0]!
   const what = role ? `our ${role} role` : `a role on our team at ${company}`
   const best = out.highlights?.proof[0]
-  const noticed = best
-    ? clean(`${best.value} ${best.label}${best.where ? ` at ${best.where}` : ''}`)
-    : ''
+  const noticed = best ? clean(`${proofPhrase(best)}${best.where ? ` at ${best.where}` : ''}`) : ''
   const ask = clean(profile.cta.line).replace(/\?*$/, '?')
   const email = {
     subject: role

@@ -33,6 +33,11 @@ export interface ShareView {
    * ("From their changelog, Oct 2026"), linked to the page when there's an https link
    */
   fact?: { text: string; caption: string; url?: string }
+  /**
+   * a job seeker built the tool that made this film: "Made with <name>, which I built", the same
+   * line as under the ask in the film, linked to it (https only)
+   */
+  creator?: { name: string; url: string }
 }
 
 export const FORMAT_SIZE = {
@@ -60,7 +65,17 @@ export function viewFromRun(input: FilmInput, out: FilmResult): ShareView {
     ...(p.preset === 'recruiter' && p.recipient ? { recipient: p.recipient.name } : {}),
     ...(out.related ? { related: out.related } : {}),
     ...(factOf(out.highlights?.quote) ? { fact: factOf(out.highlights?.quote)! } : {}),
+    ...(p.preset === 'candidate' && creatorOf(p.creator) ? { creator: creatorOf(p.creator)! } : {}),
   }
+}
+
+/** what the sender built that made the film: a name and an https link, or nothing */
+export function creatorOf(c: unknown): ShareView['creator'] | null {
+  if (!c || typeof c !== 'object') return null
+  const o = c as Record<string, unknown>
+  if (typeof o.name !== 'string' || o.name.trim().length < 2 || o.name.length > 40) return null
+  if (typeof o.url !== 'string' || !/^https:\/\/\S{4,300}$/.test(o.url)) return null
+  return { name: o.name.trim(), url: o.url }
 }
 
 /** the quote and its caption for the page; a link only when it's an https page */
@@ -102,6 +117,7 @@ export function viewFromStoryboard(board: Storyboard, film: string): ShareView {
     film,
     ...(board.recipient ? { recipient: board.recipient, kind: 'recruiter' as const } : {}),
     ...(fact ? { fact } : {}),
+    ...(creatorOf(cta.made) ? { creator: creatorOf(cta.made)! } : {}),
   }
 }
 
@@ -204,6 +220,8 @@ footer a{color:inherit}
 .related span{font-size:13px;color:var(--muted)}
 .related a{color:var(--fg);text-decoration:none}
 .related a:hover b{text-decoration:underline}
+.creator{margin:14px 0 0;font-size:15px;color:var(--fg)}
+.creator a{color:inherit;font-weight:650}
 .quoted{margin:28px 0 0;padding-left:16px;border-left:3px solid var(--stock)}
 .quoted blockquote{margin:0;font-size:17px;line-height:1.45}
 .quoted figcaption{margin-top:6px;font-size:13px;color:var(--muted)}
@@ -219,6 +237,7 @@ footer a{color:inherit}
 <div class="row"><div><h1>${esc(v.ctaLine)}</h1><p>${v.kind === 'hiring' ? `${esc(v.company)} is hiring. Posted by ${esc(v.from)}.` : `${esc(v.firstName)} made this film for ${esc(v.recipient ? `you, about a role at ${v.company}` : v.company)}.`}</p></div>
 <div class="do">${v.book ? `<a class="cta" data-track href="${esc(v.book)}" target="_blank" rel="noopener">${v.kind === 'hiring' ? 'See the role and apply' : 'Book 15 minutes'}</a><a class="cta alt" data-track href="${esc(contactHref(v.contact))}">Reply</a>` : `<a class="cta" data-track href="${esc(contactHref(v.contact))}">Reply to ${esc(v.firstName)}</a>`}</div></div>
 ${v.fact ? `<figure class="quoted"><blockquote>${esc(v.fact.text)}</blockquote><figcaption>${v.fact.url ? `<a href="${esc(v.fact.url)}" target="_blank" rel="noopener">${esc(v.fact.caption)}</a>` : esc(v.fact.caption)}</figcaption></figure>` : ''}
+${v.creator ? `<p class="creator">Made with <a data-track href="${esc(v.creator.url)}" target="_blank" rel="noopener">${esc(v.creator.name)}</a>, which I built</p>` : ''}
 ${v.related ? `<aside class="related"><span>Something I built that’s close to what you do</span><a data-track href="${esc(v.related.url)}" target="_blank" rel="noopener"><b>${esc(v.related.name)}</b> ${esc(v.related.line)}</a></aside>` : ''}
 <footer><a class="made" href="${esc(made.toString())}">Made with coldopen</a>. ${esc(other.line)}${privacy ? `<br>Views are counted without storing your IP address. <a href="${esc(privacy)}">Privacy</a>` : ''}</footer>
 </main>${track ? trackingScript(track) : ''}</body></html>`

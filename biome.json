@@ -17,7 +17,8 @@
       "!src/jobs/yc.json",
       "!src/jobs/visa.json",
       "!src/jobs/raised.json",
-      "!src/jobs/startups.json"
+      "!src/jobs/startups.json",
+      "!test/unit/__snapshots__/sales-recruiter-hiring-films.json"
     ]
   },
   "formatter": {

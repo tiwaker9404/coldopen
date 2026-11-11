@@ -1,4 +1,5 @@
 import { ANSWERED, bestAnswer } from '../job/fit.ts'
+import { proofPhrase } from '../profile/proof.ts'
 import type { Profile } from '../script/types.ts'
 import type { PeopleGroup } from './people.ts'
 
@@ -77,7 +78,7 @@ export function briefOf(
 
   const proof = (profile?.proof ?? [])
     .slice(0, 2)
-    .map((p) => bare(`${p.value} ${p.label}${p.where ? ` at ${p.where}` : ''}`))
+    .map((p) => bare(`${proofPhrase(p)}${p.where ? ` at ${p.where}` : ''}`))
   const pitch = profile
     ? `${bare(profile.offer)}.${proof.length ? ` For example: ${proof.join('; ')}.` : ''}`
     : ''

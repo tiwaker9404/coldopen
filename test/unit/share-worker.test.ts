@@ -199,6 +199,52 @@ describe('share worker', () => {
     })
   })
 
+  it('says who built the tool that made it, linked to it, the same line as the film', async () => {
+    const creator = { name: 'coldopen', url: 'https://tiwaker9404.github.io/coldopen/' }
+    await call(`/api/films/${ID}`, {
+      method: 'PUT',
+      headers: auth,
+      body: JSON.stringify({ ...view, creator }),
+    })
+    const html = await (await call(`/f/${ID}`)).text()
+    expect(html).toContain(
+      `<p class="creator">Made with <a data-track href="${creator.url}" target="_blank" rel="noopener">coldopen</a>, which I built</p>`,
+    )
+    // an unsafe link or no creator: no line at all
+    for (const bad of [
+      { ...creator, url: 'javascript:alert(1)' },
+      { name: '', url: creator.url },
+      null,
+    ]) {
+      await call(`/api/films/${ID}`, {
+        method: 'PUT',
+        headers: auth,
+        body: JSON.stringify({ ...view, ...(bad ? { creator: bad } : {}) }),
+      })
+      const page = await (await call(`/f/${ID}`)).text()
+      expect(page).not.toContain('class="creator"')
+      expect(page).not.toContain('javascript:')
+    }
+    // published from a job seeker's film when their profile has a creator; never for a seller
+    const out = {
+      company: 'Deel',
+      format: 'square',
+      files: { film: 'r1/film-square.mp4' },
+      highlights: { quote: { text: '', source: '' }, proof: [] },
+    } as never
+    const base = {
+      sender: { name: 'Ashwin Tiwari' },
+      cta: { line: 'Talk soon?', contact: 'a@b.co' },
+    }
+    const of = (preset: string, more = {}) =>
+      viewFromRun({ profile: { ...base, preset, ...more } } as never, out).creator
+    expect(of('candidate', { creator: { ...creator, line: 'Films for outreach' } })).toEqual(
+      creator,
+    )
+    expect(of('candidate')).toBeUndefined()
+    expect(of('sales', { creator: { ...creator, line: 'Films for outreach' } })).toBeUndefined()
+  })
+
   it('counts plays from people, not bots, and reports them', async () => {
     await upload()
     const beacon = (body: unknown, ua = CHROME) =>

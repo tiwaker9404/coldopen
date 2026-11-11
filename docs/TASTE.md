@@ -35,7 +35,7 @@ Checked in code, because a model that obeys word limits can still write empty li
 - **Hook:** greets them in at least 3 words, not just their name.
 - **What we noticed:** says something about their homepage. Restating their headline doesn't count, unless it's quoted as a quote.
 - **Why it matters:** connects the fact to you: it names your company or the problem you solve (or, for a job seeker, says what you'd do). Repeating the fact, which is already on screen, or paying a compliment doesn't count.
-- **Pitch headline:** at least 4 words that name what you offer, not a slogan.
+- **Pitch headline:** at least 4 words that name what you offer, not a slogan. A job seeker's names what you'd try or build with their product ("What I'd build next for Parcelpine's returns"), never "why I fit".
 - **Proof:** at least 2 items, so the scene never looks empty.
 
 ## Tone
@@ -135,6 +135,19 @@ Why the after works: it opens with something only a user would know, the film li
 Every claim of experience must come from what you saved. A template only says "I tried…" or "I built…" in your own words (your detail, your built line, your creator line). A saved line that would break a rule (a job word, a number from the film) is left out, never edited, and the draft opens on their homepage instead.
 
 Sources: [Next Play, the guide to getting a job with cold email](https://nextplayso.substack.com/p/the-guide-to-getting-a-job-with-cold); [cold outreach research notes](https://quartz-e47.pages.dev/zasoby/strategie/cold_outreach_research) (Aline Lerner, Eli Kamerow, Nick Singh, a YC founder on HN); [Boomerang on email sign-offs](https://blog.boomerangapp.com/2017/01/how-to-end-an-email-email-sign-offs/); [Expandi on notes vs no notes](https://expandi.io/blog/linkedin-connection-message-templates/); [LinkedIn note limits on free accounts](https://www.hublead.io/linkedin-character-limit); [cold email follow-up data](https://cut-the-saas.com/guides/cold-email-templates).
+
+## A job seeker's film
+
+The people who see a job seeker's film know from the profile that the sender is looking, so the film reads like a curious builder's take on their product, not an application (the same research as the networking messages above: ask for insight, not a job).
+
+- **Pitch headline:** what you'd try or build with their product, or for its customers, in 4 to 10 words grounded in your points and the fact the film quotes. The built-in writer picks one of four lines per company (`HEADLINES`, with `variant()`), each with a slot for their thing: the topic the quoted fact shares with their homepage ("Parcelpine's returns"), else the company. Two companies rarely share a line.
+- **Why it matters:** what you'd do with the fact ("I'd …"). With a job post, the fact is still one of its requirements, quoted word for word, and the line says what you'd do about it.
+- **The ask:** a warm invitation about their work, at most 8 words, a question ("Trade notes on Parcelpine's returns?", "Could we talk about Lumen Health sometime?"; `CTAS`). Never "hire me", "interview", "role" or "job".
+- **`not_job_pitch`:** the hook, noticed, why, headline and ask never use a `JOB_WORDS` word (voice.ts) or "hire me" / "interview". Text in quotation marks (their requirement, their headline) and the company's own name don't count. The hook's small line says "A 30-second film for <Company>", even when the film began from their post.
+- **Proof stays:** the proof scene is the one place numbers belong.
+- **Who built the tool:** when your profile has a creator, the end card says "Made with <name>, which I built" under the ask, small, in the scene's main text color (AA on their colors), and fits square, wide and tall. The share page carries the same line, linked to the creator's URL. Sellers, recruiters and hiring films don't show it, and are otherwise unchanged (`test/unit/film-presets.test.ts` snapshots them).
+
+In messages, a proof whose value is a change ("6h → 45m") is quoted by its label alone ("report prep, from 6 hours to 45 minutes"), so its numbers aren't said twice (`proofPhrase()`, checked by `no_repeated_numbers`).
 
 ## Design rules (also enforced)
 

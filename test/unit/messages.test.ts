@@ -10,6 +10,7 @@ import {
   knownFor,
   type MessageKind,
   passed,
+  repeatedNumbers,
 } from '../../src/outreach/checks.ts'
 import {
   addressed,
@@ -26,6 +27,7 @@ import {
 import { jobWordsIn } from '../../src/outreach/voice.ts'
 import type { FilmMessages } from '../../src/outreach/writer.ts'
 import { hiringProfile, recruiterProfile, withRole } from '../../src/profile/pitch.ts'
+import { proofPhrase } from '../../src/profile/proof.ts'
 import { numbersIn, sameNumber } from '../../src/script/checks.ts'
 import { buildStoryboard } from '../../src/script/storyboard.ts'
 import { BEGGING } from '../../src/script/taste.ts'
@@ -1439,5 +1441,63 @@ describe('sales, recruiter and hiring templates are unchanged', () => {
     await expect(`${JSON.stringify(all, null, 2)}\n`).toMatchFileSnapshot(
       '__snapshots__/recruiter-hiring-templates.json',
     )
+  })
+})
+
+describe('proof in the message text', () => {
+  const change = {
+    value: '6h → 20m',
+    label: 'report prep, from 6 hours to 20 minutes',
+    where: 'Rail Inc.',
+  }
+  it("a change card's numbers aren't repeated", () => {
+    expect(proofPhrase(change)).toBe('report prep, from 6 hours to 20 minutes')
+    expect(proofPhrase({ value: '40%', label: 'faster month-end close' })).toBe(
+      '40% faster month-end close',
+    )
+    // the value's number is already in the label
+    expect(proofPhrase({ value: '450+', label: 'boards refreshed, 450 a day' })).toBe(
+      'boards refreshed, 450 a day',
+    )
+    expect(repeatedNumbers('6h → 20m report prep, from 6 hours to 20 minutes at Rail.')).toEqual([
+      '6',
+      '20',
+    ])
+    expect(repeatedNumbers('Close went from 6 days to 2. Then 6 more teams joined.')).toEqual([])
+    expect(repeatedNumbers('From 2 days to 2 hours, at 2 sites.')).toEqual([])
+
+    const film = {
+      company: 'Parcelpine',
+      highlights: {
+        quote: {
+          text: '61% of returns become exchanges or store credit',
+          source: 'their homepage',
+        },
+        proof: [change, { value: '40%', label: 'faster month-end close', where: 'Initech' }],
+      },
+      script: undefined,
+    }
+    const kit = KITS.find((k) => k.name === 'Parcelpine' && !k.job)!
+    const profiles: Profile[] = [
+      profile('sales'),
+      profile('candidate'),
+      { ...recruiterFor(kit), proof: [change] },
+    ]
+    for (const p of profiles)
+      for (const opener of ['film', 'proof', 'homework', 'question'] as const) {
+        const m = draftMessages(
+          { ...film, script: deterministicScript(kit, p) } as never,
+          p,
+          LINK,
+          {
+            opener,
+          } as never,
+        )
+        for (const [kind, d] of draftsOf(m)) {
+          const text = typeof d === 'string' ? d : `${d.subject}\n${d.body}`
+          expect(repeatedNumbers(text), `${p.preset} ${opener} ${kind}: ${text}`).toEqual([])
+          expect(text).not.toContain('6h → 20m report prep')
+        }
+      }
   })
 })

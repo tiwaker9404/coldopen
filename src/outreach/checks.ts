@@ -48,6 +48,7 @@ export type CheckRule =
   | 'no_proof_numbers'
   | 'curious'
   | 'homework_grounded'
+  | 'no_repeated_numbers'
 
 export interface Check {
   rule: CheckRule
@@ -166,6 +167,34 @@ function lengthChecks(kind: MessageKind, subject: string, body: string): Check[]
 }
 
 /**
+ * The numbers a sentence says twice the way a quoted change card does: a sentence with an arrow
+ * ("6h → 45m") that repeats any of its numbers, or one that says the same pair of numbers twice
+ * ("from 6 to 45 … 6 hours to 45 minutes"). "From 2 days to 2 hours" is one pair, so it's fine.
+ */
+export function repeatedNumbers(text: string): string[] {
+  const twice = new Set<string>()
+  for (const sentence of text.split(/(?<=[.?!])\s+|\n+/)) {
+    const ns = (sentence.match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) => n.replace(/,/g, ''))
+    const arrow = /→|->/.test(sentence)
+    const seen = new Set<string>()
+    const pairs = new Set<string>()
+    ns.forEach((n, i) => {
+      if (arrow && seen.has(n)) twice.add(n)
+      seen.add(n)
+      if (i > 0 && ns[i - 1] !== n) {
+        const pair = `${ns[i - 1]}|${n}`
+        if (pairs.has(pair)) {
+          twice.add(ns[i - 1]!)
+          twice.add(n)
+        }
+        pairs.add(pair)
+      }
+    })
+  }
+  return [...twice]
+}
+
+/**
  * Every rule that applies to this kind of message, each passed or failed. A draft is good to
  * keep when every check passes (see passed).
  */
@@ -197,6 +226,19 @@ export function checkMessage(
           why: `Says ${unknown.map((n) => `"${n}"`).join(' and ')} but neither their site nor your profile does`,
         }
       : { rule: 'grounded', ok: true },
+  )
+
+  // a change card ("6h → 45m") quoted with its label ("report prep, from 6 hours to 45 minutes")
+  // says the same numbers twice in one breath
+  const twice = repeatedNumbers(claims)
+  checks.push(
+    twice.length
+      ? {
+          rule: 'no_repeated_numbers',
+          ok: false,
+          why: `Says ${twice.map((n) => `"${n}"`).join(' and ')} twice in one sentence; quote the proof's label alone`,
+        }
+      : { rule: 'no_repeated_numbers', ok: true },
   )
 
   const begs = BEGGING.filter((b) =>

@@ -53,7 +53,7 @@ import { compose, type Format } from '../src/render/composition.ts'
 import { openComposition, seek } from '../src/render/render.ts'
 import { buildTheme } from '../src/render/theme.ts'
 import { LocalContext } from '../src/runtime/local.ts'
-import { checkScript, notAlone, quotableFacts } from '../src/script/checks.ts'
+import { checkScript, jobPitchIn, notAlone, quotableFacts } from '../src/script/checks.ts'
 import { buildStoryboard, captionFor, monthOf } from '../src/script/storyboard.ts'
 import { type Profile, ProfileSchema, type Script, ScriptSchema } from '../src/script/types.ts'
 import { deterministicScript, writeScript } from '../src/script/writer.ts'
@@ -98,6 +98,10 @@ const DESCRIPTIONS: Record<string, string> = {
   'copy.fact-has-source':
     'Every fact the film may quote says where it is from, with the month only when the source gives a date',
   'copy.uses-a-stat': 'The featured fact is a number, which reads strongest on screen',
+  'copy.no-job-pitch':
+    'A job seeker\'s film never says role, job, hiring, "hire me" or the like outside a quoted requirement or fact',
+  'design.creator-line':
+    'With a creator set, the end card says "Made with <name>, which I built" and it fits square, wide and tall; without one, no line',
   'messages.first-try':
     'Each message draft (note, after accept, InMail, email) passed every check on the first try',
   'messages.no-fallback': "Each message draft kept the writer's own words; no template swapped in",
@@ -493,6 +497,23 @@ try {
         const v = checkScript(s.script, kit, profile)
         record({ ...base, eval: 'copy.taste-rules', pass: v.length === 0, detail: v.join('; ') })
         lines_.push({ site, preset, hook: s.script.hook, why: s.script.insight.why })
+        if (preset === 'candidate') {
+          const hook = buildStoryboard(kit, profile, s.script).scenes[0]
+          const said = [
+            s.script.hook,
+            s.script.noticed,
+            s.script.insight.why,
+            s.script.pitch.headline,
+            s.script.cta,
+            hook?.kind === 'hook' ? (hook.sub ?? '') : '',
+          ].flatMap((line) => jobPitchIn(line, kit.name).map((w) => `"${w}" in "${line}"`))
+          record({
+            ...base,
+            eval: 'copy.no-job-pitch',
+            pass: said.length === 0,
+            detail: said.join('; '),
+          })
+        }
         record({
           ...base,
           eval: 'copy.no-fallback',
@@ -591,8 +612,15 @@ try {
 
       if (messagesOnly) continue
 
-      // --- design quality
-      const board = buildStoryboard(kit, profile, s.script)
+      // --- design quality. A job seeker's film is rendered with a creator line, so the overflow
+      // check covers it; the same film without one must carry no line at all
+      const board = buildStoryboard(
+        kit,
+        preset === 'candidate' ? { ...profile, creator: CREATOR } : profile,
+        s.script,
+      )
+      const plain = buildStoryboard(kit, profile, s.script)
+      const creatorWrong: string[] = []
       const theme = await buildTheme(kit, profile, { allowPrivateNetworks: true })
       const fields = [theme.dark, theme.light, theme.brand]
       const rgb = (h: string) => parseColor(h)!
@@ -616,11 +644,20 @@ try {
       const framed: string[] = []
       let deterministic = true
       for (const format of formats) {
-        const c = await openComposition(
-          compose({ board, kit, theme, format, screenshotDataUrl: shot }),
-          format,
-        )
+        const html = compose({ board, kit, theme, format, screenshotDataUrl: shot })
+        const without = compose({ board: plain, kit, theme, format, screenshotDataUrl: shot })
+        if (preset === 'candidate' && !html.includes(`Made with ${CREATOR.name}, which I built`))
+          creatorWrong.push(`${format}: creator set, no line`)
+        if ((preset !== 'candidate' || !profile.creator) && without.includes('class="made-with'))
+          creatorWrong.push(`${format}: no creator, but a line`)
+        const c = await openComposition(html, format)
         overflow.push(...c.report.issues.map((i) => `${format}: ${i.kind} ${i.text ?? ''}`))
+        if (preset === 'candidate')
+          creatorWrong.push(
+            ...c.report.issues
+              .filter((i) => (i.text ?? '').includes('which I built'))
+              .map((i) => `${format}: ${i.kind}`),
+          )
         const margin = c.report.frame?.margin ?? -1
         if (margin < 0.04 - 1e-6) framed.push(`${format}: margin ${(margin * 100).toFixed(1)}%`)
         if (format === 'square') {
@@ -642,6 +679,12 @@ try {
         eval: 'design.no-text-overflow',
         pass: overflow.length === 0,
         detail: overflow.join('; '),
+      })
+      record({
+        ...base,
+        eval: 'design.creator-line',
+        pass: creatorWrong.length === 0,
+        detail: creatorWrong.join('; '),
       })
       record({
         ...base,

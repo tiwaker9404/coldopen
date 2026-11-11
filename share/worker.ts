@@ -14,7 +14,7 @@
  * the API server uses (src/share), so a film looks and counts the same wherever it's hosted.
  */
 import { attachment } from '../src/share/download.ts'
-import { type ShareView, sharePage } from '../src/share/page.ts'
+import { creatorOf, type ShareView, sharePage } from '../src/share/page.ts'
 import { recordBeacon, type ViewRow, type ViewStore, type ViewSummary } from '../src/share/views.ts'
 
 /* ------------------------------------------------- the slice of Workers types we use */
@@ -154,6 +154,7 @@ function parseView(body: unknown): ShareView | null {
     ...(str('recipient', 80) ? { recipient: v.recipient as string } : {}),
     ...(relatedOf(v.related) ? { related: relatedOf(v.related)! } : {}),
     ...(factFrom(v.fact) ? { fact: factFrom(v.fact)! } : {}),
+    ...(creatorOf(v.creator) ? { creator: creatorOf(v.creator)! } : {}),
     ...(['candidate', 'recruiter', 'sales', 'hiring'].includes(v.kind as string)
       ? { kind: v.kind as ShareView['kind'] }
       : {}),

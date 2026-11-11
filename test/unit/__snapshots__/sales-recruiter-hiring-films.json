@@ -1,0 +1,2132 @@
+{
+  "northwind | - | sales": {
+    "script": {
+      "hook": "Made for the Northwind Freight team",
+      "noticed": "Northwind leads with “Every pallet, visible before it's late”",
+      "insight": {
+        "factId": "f9",
+        "why": "Tessellate helps teams find the next number like this"
+      },
+      "pitch": {
+        "headline": "Product analytics that shows which features keep customers",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Worth a 15-minute look?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Made for the Northwind Freight team",
+        "sub": "A 30-second film for Northwind Freight"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Northwind leads with “Every pallet, visible before it's late”",
+        "host": "northwindfreight.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": null,
+        "text": "Pull ELD pings from 240 carriers into a single timeline, without asking drivers to install anything.",
+        "source": "northwindfreight.example",
+        "caption": "From their homepage",
+        "why": "Tessellate helps teams find the next number like this"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Maya Chen, Tessellate",
+        "headline": "Product analytics that shows which features keep customers",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "31%",
+            "label": "lift in week-4 retention at Brightline"
+          },
+          {
+            "value": "1 day",
+            "label": "average setup time"
+          },
+          {
+            "value": "140",
+            "label": "B2B teams use it weekly"
+          }
+        ]
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Worth a 15-minute look?",
+        "contact": "maya@tessellate.example",
+        "signoff": "Made for Northwind Freight by Maya Chen at Tessellate"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.\n\nCOMPANY\nName: Northwind Freight\nWebsite: northwindfreight.example\nHomepage headline: Every pallet, visible before it's late.\nDescription: Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\n\nFACTS FROM THEIR SITE (cite by id)\nf1 [headline] Every pallet, visible before it's late.\nf2 [description] Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\nf3 [stat] 1,400+ shippers track freight on Northwind\nf4 [stat] 38% fewer late deliveries in the first quarter\nf5 [stat] 9 min average time to resolve a flagged exception\nf6 [claim] Northwind gives mid-size shippers live visibility into every pallet, carrier and dock appointment, and flags exceptions before your customers notice.\nf9 [stat] Pull ELD pings from 240 carriers into a single timeline, without asking drivers to install anything.\nf11 [claim] Warehouses book and move dock appointments in one place, and every change reaches the carrier automatically.\nf14 [quote] \"We stopped finding out about late trucks from our customers.\"\nf17 [stat] We'll show it live in 20 minutes.\nf19 [stat] Built for shippers moving 50 to 5,000 loads a month.\n\nSENDER\nName: Maya Chen, Tessellate (Founder)\nOffer: Product analytics that shows which features keep customers\nPoints you may tailor:\n- See which features drive retention, not just clicks\n- Ask questions in plain English, answered from your warehouse\n- Set up in a day without a tracking plan\n- Alerts when a key account stops using a core feature\nProof (pick by index; shown verbatim):\n0: 31% lift in week-4 retention at Brightline\n1: 1 day average setup time\n2: 140 B2B teams use it weekly\nCall to action: Worth a 15-minute look?"
+    ]
+  },
+  "northwind | - | sales, creator set": {
+    "script": {
+      "hook": "Made for the Northwind Freight team",
+      "noticed": "Northwind leads with “Every pallet, visible before it's late”",
+      "insight": {
+        "factId": "f9",
+        "why": "Tessellate helps teams find the next number like this"
+      },
+      "pitch": {
+        "headline": "Product analytics that shows which features keep customers",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Worth a 15-minute look?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Made for the Northwind Freight team",
+        "sub": "A 30-second film for Northwind Freight"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Northwind leads with “Every pallet, visible before it's late”",
+        "host": "northwindfreight.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": null,
+        "text": "Pull ELD pings from 240 carriers into a single timeline, without asking drivers to install anything.",
+        "source": "northwindfreight.example",
+        "caption": "From their homepage",
+        "why": "Tessellate helps teams find the next number like this"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Maya Chen, Tessellate",
+        "headline": "Product analytics that shows which features keep customers",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "31%",
+            "label": "lift in week-4 retention at Brightline"
+          },
+          {
+            "value": "1 day",
+            "label": "average setup time"
+          },
+          {
+            "value": "140",
+            "label": "B2B teams use it weekly"
+          }
+        ]
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Worth a 15-minute look?",
+        "contact": "maya@tessellate.example",
+        "signoff": "Made for Northwind Freight by Maya Chen at Tessellate"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.\n\nCOMPANY\nName: Northwind Freight\nWebsite: northwindfreight.example\nHomepage headline: Every pallet, visible before it's late.\nDescription: Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\n\nFACTS FROM THEIR SITE (cite by id)\nf1 [headline] Every pallet, visible before it's late.\nf2 [description] Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\nf3 [stat] 1,400+ shippers track freight on Northwind\nf4 [stat] 38% fewer late deliveries in the first quarter\nf5 [stat] 9 min average time to resolve a flagged exception\nf6 [claim] Northwind gives mid-size shippers live visibility into every pallet, carrier and dock appointment, and flags exceptions before your customers notice.\nf9 [stat] Pull ELD pings from 240 carriers into a single timeline, without asking drivers to install anything.\nf11 [claim] Warehouses book and move dock appointments in one place, and every change reaches the carrier automatically.\nf14 [quote] \"We stopped finding out about late trucks from our customers.\"\nf17 [stat] We'll show it live in 20 minutes.\nf19 [stat] Built for shippers moving 50 to 5,000 loads a month.\n\nSENDER\nName: Maya Chen, Tessellate (Founder)\nOffer: Product analytics that shows which features keep customers\nPoints you may tailor:\n- See which features drive retention, not just clicks\n- Ask questions in plain English, answered from your warehouse\n- Set up in a day without a tracking plan\n- Alerts when a key account stops using a core feature\nProof (pick by index; shown verbatim):\n0: 31% lift in week-4 retention at Brightline\n1: 1 day average setup time\n2: 140 B2B teams use it weekly\nCall to action: Worth a 15-minute look?"
+    ]
+  },
+  "northwind | - | recruiter": {
+    "script": {
+      "hook": "Hi Priya, from Northwind Freight",
+      "noticed": "Northwind leads with “Every pallet, visible before it's late”",
+      "insight": {
+        "factId": "f19",
+        "why": "Northwind Freight helps teams find the next number like this"
+      },
+      "pitch": {
+        "headline": "A role on our team",
+        "points": [
+          "Built a demand forecasting model in Python",
+          "Rebuilt the weekly sales dashboard in Tableau",
+          "Partnered with merchandising leads"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Could we talk for 15 minutes?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Hi Priya, from Northwind Freight",
+        "sub": "A 30-second film from Northwind Freight"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Northwind leads with “Every pallet, visible before it's late”",
+        "host": "northwindfreight.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": null,
+        "text": "Built for shippers moving 50 to 5,000 loads a month.",
+        "source": "northwindfreight.example",
+        "caption": "From our homepage",
+        "why": "Northwind Freight helps teams find the next number like this"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Hannah Brooks, Northwind Freight",
+        "headline": "A role on our team",
+        "points": [
+          "Built a demand forecasting model in Python",
+          "Rebuilt the weekly sales dashboard in Tableau",
+          "Partnered with merchandising leads"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "6h → 20m",
+            "label": "report prep time, from 6 hours to 20 minutes",
+            "did": "Rebuilt the weekly sales dashboard in Tableau",
+            "where": "Harbor Grocers"
+          },
+          {
+            "value": "$1.2M",
+            "label": "saved a year",
+            "did": "Analyzed 3M+ shipment records to find late-delivery drivers",
+            "where": "Northwind Logistics"
+          },
+          {
+            "value": "18%",
+            "label": "less fresh-produce waste across 42 stores",
+            "did": "Built a demand forecasting model in Python",
+            "where": "Harbor Grocers"
+          }
+        ],
+        "heading": "What caught our eye"
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Could we talk for 15 minutes?",
+        "contact": "hannah@example.com",
+        "signoff": "Made for Priya Shah by Hannah Brooks at Northwind Freight"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender is a recruiter at this company, and the film is made for one candidate (named below) to pitch them the role. The company facts are your own company; the points and proof are the candidate's own record, taken from their résumé. Speak to the candidate as \"you\" and about your company as \"we\" or \"our\". Show them why their record fits this role. The call to action asks for a short conversation.\n\nCOMPANY\nName: Northwind Freight\nWebsite: northwindfreight.example\nHomepage headline: Every pallet, visible before it's late.\nDescription: Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\n\nFACTS FROM THEIR SITE (cite by id)\nf1 [headline] Every pallet, visible before it's late.\nf2 [description] Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\nf3 [stat] 1,400+ shippers track freight on Northwind\nf4 [stat] 38% fewer late deliveries in the first quarter\nf5 [stat] 9 min average time to resolve a flagged exception\nf6 [claim] Northwind gives mid-size shippers live visibility into every pallet, carrier and dock appointment, and flags exceptions before your customers notice.\nf9 [stat] Pull ELD pings from 240 carriers into a single timeline, without asking drivers to install anything.\nf11 [claim] Warehouses book and move dock appointments in one place, and every change reaches the carrier automatically.\nf14 [quote] \"We stopped finding out about late trucks from our customers.\"\nf17 [stat] We'll show it live in 20 minutes.\nf19 [stat] Built for shippers moving 50 to 5,000 loads a month.\n\nSENDER\nName: Hannah Brooks, Northwind Freight (Recruiter)\nOffer: A role on our team\nCandidate: Priya Shah\nThe candidate's strengths you may tailor:\n- Built a demand forecasting model in Python\n- Rebuilt the weekly sales dashboard in Tableau\n- Partnered with merchandising leads\n- Wrote SQL pipelines in Snowflake\nThe candidate's proof (pick by index; shown verbatim):\n0: 6h → 20m report prep time, from 6 hours to 20 minutes (Harbor Grocers); did: Rebuilt the weekly sales dashboard in Tableau\n1: $1.2M saved a year (Northwind Logistics); did: Analyzed 3M+ shipment records to find late-delivery drivers\n2: 18% less fresh-produce waste across 42 stores (Harbor Grocers); did: Built a demand forecasting model in Python\n3: 12 core KPIs, with merchandising leads to define (Harbor Grocers); did: Partnered with merchandising leads to define 12 core KPIs\nCall to action: Could we talk for 15 minutes?"
+    ]
+  },
+  "northwind | - | hiring": {
+    "script": {
+      "hook": "Northwind Freight is hiring",
+      "noticed": "Northwind leads with “Every pallet, visible before it's late”",
+      "insight": {
+        "factId": "f3",
+        "why": "Numbers like this are what you would work on"
+      },
+      "pitch": {
+        "headline": "What you would do on our team",
+        "points": [
+          "What you would do, from the job post",
+          "Filled in when the post is read"
+        ]
+      },
+      "proof": [
+        1,
+        2
+      ],
+      "cta": "See the role and apply"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Northwind Freight is hiring",
+        "sub": "An open role on our team"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Northwind leads with “Every pallet, visible before it's late”",
+        "host": "northwindfreight.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": "1,400+",
+        "text": "shippers track freight on Northwind",
+        "source": "northwindfreight.example",
+        "caption": "From our homepage",
+        "why": "Numbers like this are what you would work on"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Hannah Brooks, Northwind Freight",
+        "headline": "What you would do on our team",
+        "points": [
+          "What you would do, from the job post",
+          "Filled in when the post is read"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "38%",
+            "label": "fewer late deliveries in the first quarter",
+            "where": "Northwind Freight"
+          },
+          {
+            "value": "9 min",
+            "label": "average time to resolve a flagged exception",
+            "where": "Northwind Freight"
+          }
+        ],
+        "heading": "Northwind Freight, by the numbers"
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "See the role and apply",
+        "contact": "jobs.example/apply",
+        "signoff": "Posted by Hannah Brooks at Northwind Freight"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender is on the team at this company and is announcing an open role to everyone, as a LinkedIn post. The company facts are your own company. Speak to whoever is watching as \"you\" and about your company as \"we\" or \"our\". Make the role feel concrete and worth applying for, without hype. The call to action points to the job post.\n\nCOMPANY\nName: Northwind Freight\nWebsite: northwindfreight.example\nHomepage headline: Every pallet, visible before it's late.\nDescription: Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\n\nFACTS FROM THEIR SITE (cite by id)\nf1 [headline] Every pallet, visible before it's late.\nf2 [description] Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\nf3 [stat] 1,400+ shippers track freight on Northwind\nf4 [stat] 38% fewer late deliveries in the first quarter\nf5 [stat] 9 min average time to resolve a flagged exception\nf6 [claim] Northwind gives mid-size shippers live visibility into every pallet, carrier and dock appointment, and flags exceptions before your customers notice.\nf9 [stat] Pull ELD pings from 240 carriers into a single timeline, without asking drivers to install anything.\nf11 [claim] Warehouses book and move dock appointments in one place, and every change reaches the carrier automatically.\nf14 [quote] \"We stopped finding out about late trucks from our customers.\"\nf17 [stat] We'll show it live in 20 minutes.\nf19 [stat] Built for shippers moving 50 to 5,000 loads a month.\n\nSENDER\nName: Hannah Brooks, Northwind Freight\nOffer: An open role on our team\nPoints you may tailor:\n- What you would do, from the job post\n- Filled in when the post is read\nProof (pick by index; shown verbatim):\n0: 1,400+ shippers track freight on Northwind (Northwind Freight)\n1: 38% fewer late deliveries in the first quarter (Northwind Freight)\n2: 9 min average time to resolve a flagged exception (Northwind Freight)\nCall to action: See the role and apply"
+    ]
+  },
+  "northwind | job | sales": {
+    "script": {
+      "hook": "Made for the Northwind Freight team",
+      "noticed": "Northwind leads with “Every pallet, visible before it's late”",
+      "insight": {
+        "factId": "j1",
+        "why": "My closest match: 31% lift in week-4 retention at Brightline"
+      },
+      "pitch": {
+        "headline": "Why I fit your Forward Deployed Engineer - Platform role",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Worth a 15-minute look?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Made for the Northwind Freight team",
+        "sub": "For your Forward Deployed Engineer - Platform role"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Northwind leads with “Every pallet, visible before it's late”",
+        "host": "northwindfreight.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": null,
+        "text": "Deploy our routing agents inside customer warehouses, from first call to production",
+        "source": "your Forward Deployed Engineer - Platform post",
+        "caption": "From your Forward Deployed Engineer - Platform post",
+        "why": "My closest match: 31% lift in week-4 retention at Brightline"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Maya Chen, Tessellate",
+        "headline": "Why I fit your Forward Deployed Engineer - Platform role",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "31%",
+            "label": "lift in week-4 retention at Brightline"
+          },
+          {
+            "value": "1 day",
+            "label": "average setup time"
+          },
+          {
+            "value": "140",
+            "label": "B2B teams use it weekly"
+          }
+        ]
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Worth a 15-minute look?",
+        "contact": "maya@tessellate.example",
+        "signoff": "Made for Northwind Freight by Maya Chen at Tessellate"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.\n\nCOMPANY\nName: Northwind Freight\nWebsite: northwindfreight.example\nHomepage headline: Every pallet, visible before it's late.\nDescription: Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\n\nFACTS FROM THEIR SITE (cite by id)\nf1 [headline] Every pallet, visible before it's late.\nf2 [description] Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\nf3 [stat] 1,400+ shippers track freight on Northwind\nf4 [stat] 38% fewer late deliveries in the first quarter\nf5 [stat] 9 min average time to resolve a flagged exception\nf6 [claim] Northwind gives mid-size shippers live visibility into every pallet, carrier and dock appointment, and flags exceptions before your customers notice.\nf9 [stat] Pull ELD pings from 240 carriers into a single timeline, without asking drivers to install anything.\nf11 [claim] Warehouses book and move dock appointments in one place, and every change reaches the carrier automatically.\nf14 [quote] \"We stopped finding out about late trucks from our customers.\"\nf17 [stat] We'll show it live in 20 minutes.\nf19 [stat] Built for shippers moving 50 to 5,000 loads a month.\n\nSENDER\nName: Maya Chen, Tessellate (Founder)\nOffer: Product analytics that shows which features keep customers\nPoints you may tailor:\n- See which features drive retention, not just clicks\n- Ask questions in plain English, answered from your warehouse\n- Set up in a day without a tracking plan\n- Alerts when a key account stops using a core feature\nProof (pick by index; shown verbatim):\n0: 31% lift in week-4 retention at Brightline\n1: 1 day average setup time\n2: 140 B2B teams use it weekly\nCall to action: Worth a 15-minute look?\n\nTHE JOB: Forward Deployed Engineer - Platform\nRequirements from the post (cite by id; feature one that is under 160 characters):\nj1 Deploy our routing agents inside customer warehouses, from first call to production\nj2 3+ years shipping production software in Python or TypeScript\n\nThis film answers a job post: Forward Deployed Engineer - Platform. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why answers it in the first person with something you have already done, taken from your points or proof. Pick the proof that answers the requirements best. The pitch headline may name the role. Numbers in your lines must come from your profile; the job post's numbers are what they want, not what you have done."
+    ]
+  },
+  "northwind | job | sales, creator set": {
+    "script": {
+      "hook": "Made for the Northwind Freight team",
+      "noticed": "Northwind leads with “Every pallet, visible before it's late”",
+      "insight": {
+        "factId": "j1",
+        "why": "My closest match: 31% lift in week-4 retention at Brightline"
+      },
+      "pitch": {
+        "headline": "Why I fit your Forward Deployed Engineer - Platform role",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Worth a 15-minute look?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Made for the Northwind Freight team",
+        "sub": "For your Forward Deployed Engineer - Platform role"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Northwind leads with “Every pallet, visible before it's late”",
+        "host": "northwindfreight.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": null,
+        "text": "Deploy our routing agents inside customer warehouses, from first call to production",
+        "source": "your Forward Deployed Engineer - Platform post",
+        "caption": "From your Forward Deployed Engineer - Platform post",
+        "why": "My closest match: 31% lift in week-4 retention at Brightline"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Maya Chen, Tessellate",
+        "headline": "Why I fit your Forward Deployed Engineer - Platform role",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "31%",
+            "label": "lift in week-4 retention at Brightline"
+          },
+          {
+            "value": "1 day",
+            "label": "average setup time"
+          },
+          {
+            "value": "140",
+            "label": "B2B teams use it weekly"
+          }
+        ]
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Worth a 15-minute look?",
+        "contact": "maya@tessellate.example",
+        "signoff": "Made for Northwind Freight by Maya Chen at Tessellate"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.\n\nCOMPANY\nName: Northwind Freight\nWebsite: northwindfreight.example\nHomepage headline: Every pallet, visible before it's late.\nDescription: Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\n\nFACTS FROM THEIR SITE (cite by id)\nf1 [headline] Every pallet, visible before it's late.\nf2 [description] Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\nf3 [stat] 1,400+ shippers track freight on Northwind\nf4 [stat] 38% fewer late deliveries in the first quarter\nf5 [stat] 9 min average time to resolve a flagged exception\nf6 [claim] Northwind gives mid-size shippers live visibility into every pallet, carrier and dock appointment, and flags exceptions before your customers notice.\nf9 [stat] Pull ELD pings from 240 carriers into a single timeline, without asking drivers to install anything.\nf11 [claim] Warehouses book and move dock appointments in one place, and every change reaches the carrier automatically.\nf14 [quote] \"We stopped finding out about late trucks from our customers.\"\nf17 [stat] We'll show it live in 20 minutes.\nf19 [stat] Built for shippers moving 50 to 5,000 loads a month.\n\nSENDER\nName: Maya Chen, Tessellate (Founder)\nOffer: Product analytics that shows which features keep customers\nPoints you may tailor:\n- See which features drive retention, not just clicks\n- Ask questions in plain English, answered from your warehouse\n- Set up in a day without a tracking plan\n- Alerts when a key account stops using a core feature\nProof (pick by index; shown verbatim):\n0: 31% lift in week-4 retention at Brightline\n1: 1 day average setup time\n2: 140 B2B teams use it weekly\nCall to action: Worth a 15-minute look?\n\nTHE JOB: Forward Deployed Engineer - Platform\nRequirements from the post (cite by id; feature one that is under 160 characters):\nj1 Deploy our routing agents inside customer warehouses, from first call to production\nj2 3+ years shipping production software in Python or TypeScript\n\nThis film answers a job post: Forward Deployed Engineer - Platform. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why answers it in the first person with something you have already done, taken from your points or proof. Pick the proof that answers the requirements best. The pitch headline may name the role. Numbers in your lines must come from your profile; the job post's numbers are what they want, not what you have done."
+    ]
+  },
+  "northwind | job | recruiter": {
+    "script": {
+      "hook": "Hi Priya, from Northwind Freight",
+      "noticed": "Northwind leads with “Every pallet, visible before it's late”",
+      "insight": {
+        "factId": "j2",
+        "why": "Your closest match, at Harbor Grocers: 18% less fresh-produce waste across 42 stores"
+      },
+      "pitch": {
+        "headline": "Why you fit our Forward Deployed Engineer - Platform role",
+        "points": [
+          "Built a demand forecasting model in Python",
+          "Rebuilt the weekly sales dashboard in Tableau",
+          "Partnered with merchandising leads"
+        ]
+      },
+      "proof": [
+        2,
+        0,
+        1
+      ],
+      "cta": "Could we talk for 15 minutes?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Hi Priya, from Northwind Freight",
+        "sub": "About our Forward Deployed Engineer - Platform role"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Northwind leads with “Every pallet, visible before it's late”",
+        "host": "northwindfreight.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": null,
+        "text": "3+ years shipping production software in Python or TypeScript",
+        "source": "our Forward Deployed Engineer - Platform post",
+        "caption": "From our Forward Deployed Engineer - Platform post",
+        "why": "Your closest match, at Harbor Grocers: 18% less fresh-produce waste across 42 stores"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Hannah Brooks, Northwind Freight",
+        "headline": "Why you fit our Forward Deployed Engineer - Platform role",
+        "points": [
+          "Built a demand forecasting model in Python",
+          "Rebuilt the weekly sales dashboard in Tableau",
+          "Partnered with merchandising leads"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "18%",
+            "label": "less fresh-produce waste across 42 stores",
+            "did": "Built a demand forecasting model in Python",
+            "where": "Harbor Grocers"
+          },
+          {
+            "value": "6h → 20m",
+            "label": "report prep time, from 6 hours to 20 minutes",
+            "did": "Rebuilt the weekly sales dashboard in Tableau",
+            "where": "Harbor Grocers"
+          },
+          {
+            "value": "$1.2M",
+            "label": "saved a year",
+            "did": "Analyzed 3M+ shipment records to find late-delivery drivers",
+            "where": "Northwind Logistics"
+          }
+        ],
+        "heading": "What caught our eye"
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Could we talk for 15 minutes?",
+        "contact": "hannah@example.com",
+        "signoff": "Made for Priya Shah by Hannah Brooks at Northwind Freight"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender is a recruiter at this company, and the film is made for one candidate (named below) to pitch them the role. The company facts are your own company; the points and proof are the candidate's own record, taken from their résumé. Speak to the candidate as \"you\" and about your company as \"we\" or \"our\". Show them why their record fits this role. The call to action asks for a short conversation.\n\nCOMPANY\nName: Northwind Freight\nWebsite: northwindfreight.example\nHomepage headline: Every pallet, visible before it's late.\nDescription: Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\n\nFACTS FROM THEIR SITE (cite by id)\nf1 [headline] Every pallet, visible before it's late.\nf2 [description] Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\nf3 [stat] 1,400+ shippers track freight on Northwind\nf4 [stat] 38% fewer late deliveries in the first quarter\nf5 [stat] 9 min average time to resolve a flagged exception\nf6 [claim] Northwind gives mid-size shippers live visibility into every pallet, carrier and dock appointment, and flags exceptions before your customers notice.\nf9 [stat] Pull ELD pings from 240 carriers into a single timeline, without asking drivers to install anything.\nf11 [claim] Warehouses book and move dock appointments in one place, and every change reaches the carrier automatically.\nf14 [quote] \"We stopped finding out about late trucks from our customers.\"\nf17 [stat] We'll show it live in 20 minutes.\nf19 [stat] Built for shippers moving 50 to 5,000 loads a month.\n\nSENDER\nName: Hannah Brooks, Northwind Freight (Recruiter)\nOffer: Our Forward Deployed Engineer - Platform role\nCandidate: Priya Shah\nThe candidate's strengths you may tailor:\n- Built a demand forecasting model in Python\n- Rebuilt the weekly sales dashboard in Tableau\n- Partnered with merchandising leads\n- Wrote SQL pipelines in Snowflake\nThe candidate's proof (pick by index; shown verbatim):\n0: 6h → 20m report prep time, from 6 hours to 20 minutes (Harbor Grocers); did: Rebuilt the weekly sales dashboard in Tableau\n1: $1.2M saved a year (Northwind Logistics); did: Analyzed 3M+ shipment records to find late-delivery drivers\n2: 18% less fresh-produce waste across 42 stores (Harbor Grocers); did: Built a demand forecasting model in Python\n3: 12 core KPIs, with merchandising leads to define (Harbor Grocers); did: Partnered with merchandising leads to define 12 core KPIs\nCall to action: Could we talk for 15 minutes?\n\nTHE JOB: Forward Deployed Engineer - Platform\nRequirements from the post (cite by id; feature one that is under 160 characters):\nj1 Deploy our routing agents inside customer warehouses, from first call to production\nj2 3+ years shipping production software in Python or TypeScript\n\nThis film pitches your Forward Deployed Engineer - Platform role. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why tells the candidate, in the second person (\"You...\"), where their record already answers it, taken from their points or proof. Pick the proof that answers the requirements best. The pitch headline names the role. Numbers in your lines must come from the candidate's record; the job post's numbers are what you want, not what they have done."
+    ]
+  },
+  "northwind | job | hiring": {
+    "script": {
+      "hook": "Northwind Freight is hiring",
+      "noticed": "Northwind leads with “Every pallet, visible before it's late”",
+      "insight": {
+        "factId": "f3",
+        "why": "Numbers like this are what you would work on"
+      },
+      "pitch": {
+        "headline": "What we look for in this role",
+        "points": [
+          "Deploy our routing agents inside customer warehouses",
+          "3+ years shipping production software in Python or TypeScript"
+        ]
+      },
+      "proof": [
+        1,
+        2
+      ],
+      "cta": "See the role and apply"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Northwind Freight is hiring",
+        "sub": "Now hiring: Forward Deployed Engineer - Platform"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Northwind leads with “Every pallet, visible before it's late”",
+        "host": "northwindfreight.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": "1,400+",
+        "text": "shippers track freight on Northwind",
+        "source": "northwindfreight.example",
+        "caption": "From our homepage",
+        "why": "Numbers like this are what you would work on"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Hannah Brooks, Northwind Freight",
+        "headline": "What we look for in this role",
+        "points": [
+          "Deploy our routing agents inside customer warehouses",
+          "3+ years shipping production software in Python or TypeScript"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "38%",
+            "label": "fewer late deliveries in the first quarter",
+            "where": "Northwind Freight"
+          },
+          {
+            "value": "9 min",
+            "label": "average time to resolve a flagged exception",
+            "where": "Northwind Freight"
+          }
+        ],
+        "heading": "Northwind Freight, by the numbers"
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "See the role and apply",
+        "contact": "jobs.example/apply",
+        "signoff": "Posted by Hannah Brooks at Northwind Freight"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender is on the team at this company and is announcing an open role to everyone, as a LinkedIn post. The company facts are your own company. Speak to whoever is watching as \"you\" and about your company as \"we\" or \"our\". Make the role feel concrete and worth applying for, without hype. The call to action points to the job post.\n\nCOMPANY\nName: Northwind Freight\nWebsite: northwindfreight.example\nHomepage headline: Every pallet, visible before it's late.\nDescription: Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\n\nFACTS FROM THEIR SITE (cite by id)\nf1 [headline] Every pallet, visible before it's late.\nf2 [description] Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.\nf3 [stat] 1,400+ shippers track freight on Northwind\nf4 [stat] 38% fewer late deliveries in the first quarter\nf5 [stat] 9 min average time to resolve a flagged exception\nf6 [claim] Northwind gives mid-size shippers live visibility into every pallet, carrier and dock appointment, and flags exceptions before your customers notice.\nf9 [stat] Pull ELD pings from 240 carriers into a single timeline, without asking drivers to install anything.\nf11 [claim] Warehouses book and move dock appointments in one place, and every change reaches the carrier automatically.\nf14 [quote] \"We stopped finding out about late trucks from our customers.\"\nf17 [stat] We'll show it live in 20 minutes.\nf19 [stat] Built for shippers moving 50 to 5,000 loads a month.\n\nSENDER\nName: Hannah Brooks, Northwind Freight\nOffer: Our Forward Deployed Engineer - Platform role\nPoints you may tailor:\n- Deploy our routing agents inside customer warehouses\n- 3+ years shipping production software in Python or TypeScript\nProof (pick by index; shown verbatim):\n0: 1,400+ shippers track freight on Northwind (Northwind Freight)\n1: 38% fewer late deliveries in the first quarter (Northwind Freight)\n2: 9 min average time to resolve a flagged exception (Northwind Freight)\nCall to action: See the role and apply\n\nTHE JOB: Forward Deployed Engineer - Platform\nRequirements from the post (cite by id; feature one that is under 160 characters):\nj1 Deploy our routing agents inside customer warehouses, from first call to production\nj2 3+ years shipping production software in Python or TypeScript\n\nThis film announces your open Forward Deployed Engineer - Platform role to everyone who sees the post. Feature one stat from your own site (insight.factId) and say in insight.why what it means for someone joining (\"you would...\" or \"we...\"). The pitch headline names the role; the pitch points are what the person would do, taken from the role lines given as the points. Numbers come only from your site's facts."
+    ]
+  },
+  "lumen | - | sales": {
+    "script": {
+      "hook": "A short film for Lumen Health",
+      "noticed": "Lumen leads with “Patient intake that writes itself”",
+      "insight": {
+        "factId": "f3",
+        "why": "Tessellate helps teams measure what moves a number like this"
+      },
+      "pitch": {
+        "headline": "Product analytics that shows which features keep customers",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Worth a 15-minute look?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "A short film for Lumen Health",
+        "sub": "A 30-second film for Lumen Health"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Lumen leads with “Patient intake that writes itself”",
+        "host": "lumenhealth.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": "11",
+        "text": "minutes saved per visit on documentation",
+        "source": "lumenhealth.example",
+        "caption": "From their homepage",
+        "why": "Tessellate helps teams measure what moves a number like this"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Maya Chen, Tessellate",
+        "headline": "Product analytics that shows which features keep customers",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "31%",
+            "label": "lift in week-4 retention at Brightline"
+          },
+          {
+            "value": "1 day",
+            "label": "average setup time"
+          },
+          {
+            "value": "140",
+            "label": "B2B teams use it weekly"
+          }
+        ]
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Worth a 15-minute look?",
+        "contact": "maya@tessellate.example",
+        "signoff": "Made for Lumen Health by Maya Chen at Tessellate"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.\n\nCOMPANY\nName: Lumen Health\nWebsite: lumenhealth.example\nHomepage headline: Patient intake that writes itself.\nDescription: Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\nf3 [stat] 11 minutes saved per visit on documentation\nf4 [stat] 212 clinics run intake on Lumen\nf5 [stat] 94% of patients finish intake before arrival\nf6 [claim] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start every visit already informed.\nf11 [claim] Symptoms, medications and history land in the right fields of your EHR, with the patient's original words attached.\nf13 [claim] A one-screen summary highlights what changed since the last visit.\n\nSENDER\nName: Maya Chen, Tessellate (Founder)\nOffer: Product analytics that shows which features keep customers\nPoints you may tailor:\n- See which features drive retention, not just clicks\n- Ask questions in plain English, answered from your warehouse\n- Set up in a day without a tracking plan\n- Alerts when a key account stops using a core feature\nProof (pick by index; shown verbatim):\n0: 31% lift in week-4 retention at Brightline\n1: 1 day average setup time\n2: 140 B2B teams use it weekly\nCall to action: Worth a 15-minute look?"
+    ]
+  },
+  "lumen | - | sales, creator set": {
+    "script": {
+      "hook": "A short film for Lumen Health",
+      "noticed": "Lumen leads with “Patient intake that writes itself”",
+      "insight": {
+        "factId": "f3",
+        "why": "Tessellate helps teams measure what moves a number like this"
+      },
+      "pitch": {
+        "headline": "Product analytics that shows which features keep customers",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Worth a 15-minute look?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "A short film for Lumen Health",
+        "sub": "A 30-second film for Lumen Health"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Lumen leads with “Patient intake that writes itself”",
+        "host": "lumenhealth.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": "11",
+        "text": "minutes saved per visit on documentation",
+        "source": "lumenhealth.example",
+        "caption": "From their homepage",
+        "why": "Tessellate helps teams measure what moves a number like this"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Maya Chen, Tessellate",
+        "headline": "Product analytics that shows which features keep customers",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "31%",
+            "label": "lift in week-4 retention at Brightline"
+          },
+          {
+            "value": "1 day",
+            "label": "average setup time"
+          },
+          {
+            "value": "140",
+            "label": "B2B teams use it weekly"
+          }
+        ]
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Worth a 15-minute look?",
+        "contact": "maya@tessellate.example",
+        "signoff": "Made for Lumen Health by Maya Chen at Tessellate"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.\n\nCOMPANY\nName: Lumen Health\nWebsite: lumenhealth.example\nHomepage headline: Patient intake that writes itself.\nDescription: Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\nf3 [stat] 11 minutes saved per visit on documentation\nf4 [stat] 212 clinics run intake on Lumen\nf5 [stat] 94% of patients finish intake before arrival\nf6 [claim] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start every visit already informed.\nf11 [claim] Symptoms, medications and history land in the right fields of your EHR, with the patient's original words attached.\nf13 [claim] A one-screen summary highlights what changed since the last visit.\n\nSENDER\nName: Maya Chen, Tessellate (Founder)\nOffer: Product analytics that shows which features keep customers\nPoints you may tailor:\n- See which features drive retention, not just clicks\n- Ask questions in plain English, answered from your warehouse\n- Set up in a day without a tracking plan\n- Alerts when a key account stops using a core feature\nProof (pick by index; shown verbatim):\n0: 31% lift in week-4 retention at Brightline\n1: 1 day average setup time\n2: 140 B2B teams use it weekly\nCall to action: Worth a 15-minute look?"
+    ]
+  },
+  "lumen | - | recruiter": {
+    "script": {
+      "hook": "Hi Priya, from Lumen Health",
+      "noticed": "Lumen leads with “Patient intake that writes itself”",
+      "insight": {
+        "factId": "f3",
+        "why": "Lumen Health helps teams measure what moves a number like this"
+      },
+      "pitch": {
+        "headline": "A role on our team",
+        "points": [
+          "Built a demand forecasting model in Python",
+          "Rebuilt the weekly sales dashboard in Tableau",
+          "Partnered with merchandising leads"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Could we talk for 15 minutes?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Hi Priya, from Lumen Health",
+        "sub": "A 30-second film from Lumen Health"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Lumen leads with “Patient intake that writes itself”",
+        "host": "lumenhealth.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": "11",
+        "text": "minutes saved per visit on documentation",
+        "source": "lumenhealth.example",
+        "caption": "From our homepage",
+        "why": "Lumen Health helps teams measure what moves a number like this"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Hannah Brooks, Lumen Health",
+        "headline": "A role on our team",
+        "points": [
+          "Built a demand forecasting model in Python",
+          "Rebuilt the weekly sales dashboard in Tableau",
+          "Partnered with merchandising leads"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "6h → 20m",
+            "label": "report prep time, from 6 hours to 20 minutes",
+            "did": "Rebuilt the weekly sales dashboard in Tableau",
+            "where": "Harbor Grocers"
+          },
+          {
+            "value": "$1.2M",
+            "label": "saved a year",
+            "did": "Analyzed 3M+ shipment records to find late-delivery drivers",
+            "where": "Northwind Logistics"
+          },
+          {
+            "value": "18%",
+            "label": "less fresh-produce waste across 42 stores",
+            "did": "Built a demand forecasting model in Python",
+            "where": "Harbor Grocers"
+          }
+        ],
+        "heading": "What caught our eye"
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Could we talk for 15 minutes?",
+        "contact": "hannah@example.com",
+        "signoff": "Made for Priya Shah by Hannah Brooks at Lumen Health"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender is a recruiter at this company, and the film is made for one candidate (named below) to pitch them the role. The company facts are your own company; the points and proof are the candidate's own record, taken from their résumé. Speak to the candidate as \"you\" and about your company as \"we\" or \"our\". Show them why their record fits this role. The call to action asks for a short conversation.\n\nCOMPANY\nName: Lumen Health\nWebsite: lumenhealth.example\nHomepage headline: Patient intake that writes itself.\nDescription: Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\nf3 [stat] 11 minutes saved per visit on documentation\nf4 [stat] 212 clinics run intake on Lumen\nf5 [stat] 94% of patients finish intake before arrival\nf6 [claim] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start every visit already informed.\nf11 [claim] Symptoms, medications and history land in the right fields of your EHR, with the patient's original words attached.\nf13 [claim] A one-screen summary highlights what changed since the last visit.\n\nSENDER\nName: Hannah Brooks, Lumen Health (Recruiter)\nOffer: A role on our team\nCandidate: Priya Shah\nThe candidate's strengths you may tailor:\n- Built a demand forecasting model in Python\n- Rebuilt the weekly sales dashboard in Tableau\n- Partnered with merchandising leads\n- Wrote SQL pipelines in Snowflake\nThe candidate's proof (pick by index; shown verbatim):\n0: 6h → 20m report prep time, from 6 hours to 20 minutes (Harbor Grocers); did: Rebuilt the weekly sales dashboard in Tableau\n1: $1.2M saved a year (Northwind Logistics); did: Analyzed 3M+ shipment records to find late-delivery drivers\n2: 18% less fresh-produce waste across 42 stores (Harbor Grocers); did: Built a demand forecasting model in Python\n3: 12 core KPIs, with merchandising leads to define (Harbor Grocers); did: Partnered with merchandising leads to define 12 core KPIs\nCall to action: Could we talk for 15 minutes?"
+    ]
+  },
+  "lumen | - | hiring": {
+    "script": {
+      "hook": "Lumen Health is hiring",
+      "noticed": "Lumen leads with “Patient intake that writes itself”",
+      "insight": {
+        "factId": "f3",
+        "why": "Numbers like this are what you would work on"
+      },
+      "pitch": {
+        "headline": "What you would do on our team",
+        "points": [
+          "What you would do, from the job post",
+          "Filled in when the post is read"
+        ]
+      },
+      "proof": [
+        1,
+        2
+      ],
+      "cta": "See the role and apply"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Lumen Health is hiring",
+        "sub": "An open role on our team"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Lumen leads with “Patient intake that writes itself”",
+        "host": "lumenhealth.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": "11",
+        "text": "minutes saved per visit on documentation",
+        "source": "lumenhealth.example",
+        "caption": "From our homepage",
+        "why": "Numbers like this are what you would work on"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Hannah Brooks, Lumen Health",
+        "headline": "What you would do on our team",
+        "points": [
+          "What you would do, from the job post",
+          "Filled in when the post is read"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "212",
+            "label": "clinics run intake on Lumen",
+            "where": "Lumen Health"
+          },
+          {
+            "value": "94%",
+            "label": "of patients finish intake before arrival",
+            "where": "Lumen Health"
+          }
+        ],
+        "heading": "Lumen Health, by the numbers"
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "See the role and apply",
+        "contact": "jobs.example/apply",
+        "signoff": "Posted by Hannah Brooks at Lumen Health"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender is on the team at this company and is announcing an open role to everyone, as a LinkedIn post. The company facts are your own company. Speak to whoever is watching as \"you\" and about your company as \"we\" or \"our\". Make the role feel concrete and worth applying for, without hype. The call to action points to the job post.\n\nCOMPANY\nName: Lumen Health\nWebsite: lumenhealth.example\nHomepage headline: Patient intake that writes itself.\nDescription: Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\nf3 [stat] 11 minutes saved per visit on documentation\nf4 [stat] 212 clinics run intake on Lumen\nf5 [stat] 94% of patients finish intake before arrival\nf6 [claim] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start every visit already informed.\nf11 [claim] Symptoms, medications and history land in the right fields of your EHR, with the patient's original words attached.\nf13 [claim] A one-screen summary highlights what changed since the last visit.\n\nSENDER\nName: Hannah Brooks, Lumen Health\nOffer: An open role on our team\nPoints you may tailor:\n- What you would do, from the job post\n- Filled in when the post is read\nProof (pick by index; shown verbatim):\n0: 11 minutes saved per visit on documentation (Lumen Health)\n1: 212 clinics run intake on Lumen (Lumen Health)\n2: 94% of patients finish intake before arrival (Lumen Health)\nCall to action: See the role and apply"
+    ]
+  },
+  "lumen | job | sales": {
+    "script": {
+      "hook": "A short film for Lumen Health",
+      "noticed": "Lumen leads with “Patient intake that writes itself”",
+      "insight": {
+        "factId": "j1",
+        "why": "My closest match: 31% lift in week-4 retention at Brightline"
+      },
+      "pitch": {
+        "headline": "Why I fit your Senior Data Analyst, Growth role",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Worth a 15-minute look?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "A short film for Lumen Health",
+        "sub": "For your Senior Data Analyst, Growth role"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Lumen leads with “Patient intake that writes itself”",
+        "host": "lumenhealth.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": null,
+        "text": "Build dashboards in SQL and Looker that teams use every week",
+        "source": "your Senior Data Analyst, Growth post",
+        "caption": "From your Senior Data Analyst, Growth post",
+        "why": "My closest match: 31% lift in week-4 retention at Brightline"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Maya Chen, Tessellate",
+        "headline": "Why I fit your Senior Data Analyst, Growth role",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "31%",
+            "label": "lift in week-4 retention at Brightline"
+          },
+          {
+            "value": "1 day",
+            "label": "average setup time"
+          },
+          {
+            "value": "140",
+            "label": "B2B teams use it weekly"
+          }
+        ]
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Worth a 15-minute look?",
+        "contact": "maya@tessellate.example",
+        "signoff": "Made for Lumen Health by Maya Chen at Tessellate"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.\n\nCOMPANY\nName: Lumen Health\nWebsite: lumenhealth.example\nHomepage headline: Patient intake that writes itself.\nDescription: Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\nf3 [stat] 11 minutes saved per visit on documentation\nf4 [stat] 212 clinics run intake on Lumen\nf5 [stat] 94% of patients finish intake before arrival\nf6 [claim] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start every visit already informed.\nf11 [claim] Symptoms, medications and history land in the right fields of your EHR, with the patient's original words attached.\nf13 [claim] A one-screen summary highlights what changed since the last visit.\n\nSENDER\nName: Maya Chen, Tessellate (Founder)\nOffer: Product analytics that shows which features keep customers\nPoints you may tailor:\n- See which features drive retention, not just clicks\n- Ask questions in plain English, answered from your warehouse\n- Set up in a day without a tracking plan\n- Alerts when a key account stops using a core feature\nProof (pick by index; shown verbatim):\n0: 31% lift in week-4 retention at Brightline\n1: 1 day average setup time\n2: 140 B2B teams use it weekly\nCall to action: Worth a 15-minute look?\n\nTHE JOB: Senior Data Analyst, Growth\nRequirements from the post (cite by id; feature one that is under 160 characters):\nj1 Build dashboards in SQL and Looker that teams use every week\n\nThis film answers a job post: Senior Data Analyst, Growth. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why answers it in the first person with something you have already done, taken from your points or proof. Pick the proof that answers the requirements best. The pitch headline may name the role. Numbers in your lines must come from your profile; the job post's numbers are what they want, not what you have done."
+    ]
+  },
+  "lumen | job | sales, creator set": {
+    "script": {
+      "hook": "A short film for Lumen Health",
+      "noticed": "Lumen leads with “Patient intake that writes itself”",
+      "insight": {
+        "factId": "j1",
+        "why": "My closest match: 31% lift in week-4 retention at Brightline"
+      },
+      "pitch": {
+        "headline": "Why I fit your Senior Data Analyst, Growth role",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Worth a 15-minute look?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "A short film for Lumen Health",
+        "sub": "For your Senior Data Analyst, Growth role"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Lumen leads with “Patient intake that writes itself”",
+        "host": "lumenhealth.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": null,
+        "text": "Build dashboards in SQL and Looker that teams use every week",
+        "source": "your Senior Data Analyst, Growth post",
+        "caption": "From your Senior Data Analyst, Growth post",
+        "why": "My closest match: 31% lift in week-4 retention at Brightline"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Maya Chen, Tessellate",
+        "headline": "Why I fit your Senior Data Analyst, Growth role",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "31%",
+            "label": "lift in week-4 retention at Brightline"
+          },
+          {
+            "value": "1 day",
+            "label": "average setup time"
+          },
+          {
+            "value": "140",
+            "label": "B2B teams use it weekly"
+          }
+        ]
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Worth a 15-minute look?",
+        "contact": "maya@tessellate.example",
+        "signoff": "Made for Lumen Health by Maya Chen at Tessellate"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.\n\nCOMPANY\nName: Lumen Health\nWebsite: lumenhealth.example\nHomepage headline: Patient intake that writes itself.\nDescription: Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\nf3 [stat] 11 minutes saved per visit on documentation\nf4 [stat] 212 clinics run intake on Lumen\nf5 [stat] 94% of patients finish intake before arrival\nf6 [claim] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start every visit already informed.\nf11 [claim] Symptoms, medications and history land in the right fields of your EHR, with the patient's original words attached.\nf13 [claim] A one-screen summary highlights what changed since the last visit.\n\nSENDER\nName: Maya Chen, Tessellate (Founder)\nOffer: Product analytics that shows which features keep customers\nPoints you may tailor:\n- See which features drive retention, not just clicks\n- Ask questions in plain English, answered from your warehouse\n- Set up in a day without a tracking plan\n- Alerts when a key account stops using a core feature\nProof (pick by index; shown verbatim):\n0: 31% lift in week-4 retention at Brightline\n1: 1 day average setup time\n2: 140 B2B teams use it weekly\nCall to action: Worth a 15-minute look?\n\nTHE JOB: Senior Data Analyst, Growth\nRequirements from the post (cite by id; feature one that is under 160 characters):\nj1 Build dashboards in SQL and Looker that teams use every week\n\nThis film answers a job post: Senior Data Analyst, Growth. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why answers it in the first person with something you have already done, taken from your points or proof. Pick the proof that answers the requirements best. The pitch headline may name the role. Numbers in your lines must come from your profile; the job post's numbers are what they want, not what you have done."
+    ]
+  },
+  "lumen | job | recruiter": {
+    "script": {
+      "hook": "Hi Priya, from Lumen Health",
+      "noticed": "Lumen leads with “Patient intake that writes itself”",
+      "insight": {
+        "factId": "j1",
+        "why": "Your closest match, at Harbor Grocers: 6h → 20m report prep time"
+      },
+      "pitch": {
+        "headline": "Why you fit our Senior Data Analyst, Growth role",
+        "points": [
+          "Wrote SQL pipelines in Snowflake",
+          "Rebuilt the weekly sales dashboard in Tableau",
+          "Built a demand forecasting model in Python"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Could we talk for 15 minutes?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Hi Priya, from Lumen Health",
+        "sub": "About our Senior Data Analyst, Growth role"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Lumen leads with “Patient intake that writes itself”",
+        "host": "lumenhealth.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": null,
+        "text": "Build dashboards in SQL and Looker that teams use every week",
+        "source": "our Senior Data Analyst, Growth post",
+        "caption": "From our Senior Data Analyst, Growth post",
+        "why": "Your closest match, at Harbor Grocers: 6h → 20m report prep time"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Hannah Brooks, Lumen Health",
+        "headline": "Why you fit our Senior Data Analyst, Growth role",
+        "points": [
+          "Wrote SQL pipelines in Snowflake",
+          "Rebuilt the weekly sales dashboard in Tableau",
+          "Built a demand forecasting model in Python"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "6h → 20m",
+            "label": "report prep time, from 6 hours to 20 minutes",
+            "did": "Rebuilt the weekly sales dashboard in Tableau",
+            "where": "Harbor Grocers"
+          },
+          {
+            "value": "$1.2M",
+            "label": "saved a year",
+            "did": "Analyzed 3M+ shipment records to find late-delivery drivers",
+            "where": "Northwind Logistics"
+          },
+          {
+            "value": "18%",
+            "label": "less fresh-produce waste across 42 stores",
+            "did": "Built a demand forecasting model in Python",
+            "where": "Harbor Grocers"
+          }
+        ],
+        "heading": "What caught our eye"
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Could we talk for 15 minutes?",
+        "contact": "hannah@example.com",
+        "signoff": "Made for Priya Shah by Hannah Brooks at Lumen Health"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender is a recruiter at this company, and the film is made for one candidate (named below) to pitch them the role. The company facts are your own company; the points and proof are the candidate's own record, taken from their résumé. Speak to the candidate as \"you\" and about your company as \"we\" or \"our\". Show them why their record fits this role. The call to action asks for a short conversation.\n\nCOMPANY\nName: Lumen Health\nWebsite: lumenhealth.example\nHomepage headline: Patient intake that writes itself.\nDescription: Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\nf3 [stat] 11 minutes saved per visit on documentation\nf4 [stat] 212 clinics run intake on Lumen\nf5 [stat] 94% of patients finish intake before arrival\nf6 [claim] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start every visit already informed.\nf11 [claim] Symptoms, medications and history land in the right fields of your EHR, with the patient's original words attached.\nf13 [claim] A one-screen summary highlights what changed since the last visit.\n\nSENDER\nName: Hannah Brooks, Lumen Health (Recruiter)\nOffer: Our Senior Data Analyst, Growth role\nCandidate: Priya Shah\nThe candidate's strengths you may tailor:\n- Wrote SQL pipelines in Snowflake\n- Built a demand forecasting model in Python\n- Rebuilt the weekly sales dashboard in Tableau\n- Partnered with merchandising leads\nThe candidate's proof (pick by index; shown verbatim):\n0: 6h → 20m report prep time, from 6 hours to 20 minutes (Harbor Grocers); did: Rebuilt the weekly sales dashboard in Tableau\n1: $1.2M saved a year (Northwind Logistics); did: Analyzed 3M+ shipment records to find late-delivery drivers\n2: 18% less fresh-produce waste across 42 stores (Harbor Grocers); did: Built a demand forecasting model in Python\n3: 12 core KPIs, with merchandising leads to define (Harbor Grocers); did: Partnered with merchandising leads to define 12 core KPIs\nCall to action: Could we talk for 15 minutes?\n\nTHE JOB: Senior Data Analyst, Growth\nRequirements from the post (cite by id; feature one that is under 160 characters):\nj1 Build dashboards in SQL and Looker that teams use every week\n\nThis film pitches your Senior Data Analyst, Growth role. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why tells the candidate, in the second person (\"You...\"), where their record already answers it, taken from their points or proof. Pick the proof that answers the requirements best. The pitch headline names the role. Numbers in your lines must come from the candidate's record; the job post's numbers are what you want, not what they have done."
+    ]
+  },
+  "lumen | job | hiring": {
+    "script": {
+      "hook": "Lumen Health is hiring",
+      "noticed": "Lumen leads with “Patient intake that writes itself”",
+      "insight": {
+        "factId": "f3",
+        "why": "Numbers like this are what you would work on"
+      },
+      "pitch": {
+        "headline": "What you would do as our Senior Data Analyst, Growth",
+        "points": [
+          "What you would do, from the job post",
+          "Filled in when the post is read"
+        ]
+      },
+      "proof": [
+        1,
+        2
+      ],
+      "cta": "See the role and apply"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Lumen Health is hiring",
+        "sub": "Now hiring: Senior Data Analyst, Growth"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Lumen leads with “Patient intake that writes itself”",
+        "host": "lumenhealth.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": "11",
+        "text": "minutes saved per visit on documentation",
+        "source": "lumenhealth.example",
+        "caption": "From our homepage",
+        "why": "Numbers like this are what you would work on"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Hannah Brooks, Lumen Health",
+        "headline": "What you would do as our Senior Data Analyst, Growth",
+        "points": [
+          "What you would do, from the job post",
+          "Filled in when the post is read"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "212",
+            "label": "clinics run intake on Lumen",
+            "where": "Lumen Health"
+          },
+          {
+            "value": "94%",
+            "label": "of patients finish intake before arrival",
+            "where": "Lumen Health"
+          }
+        ],
+        "heading": "Lumen Health, by the numbers"
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "See the role and apply",
+        "contact": "jobs.example/apply",
+        "signoff": "Posted by Hannah Brooks at Lumen Health"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender is on the team at this company and is announcing an open role to everyone, as a LinkedIn post. The company facts are your own company. Speak to whoever is watching as \"you\" and about your company as \"we\" or \"our\". Make the role feel concrete and worth applying for, without hype. The call to action points to the job post.\n\nCOMPANY\nName: Lumen Health\nWebsite: lumenhealth.example\nHomepage headline: Patient intake that writes itself.\nDescription: Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.\nf3 [stat] 11 minutes saved per visit on documentation\nf4 [stat] 212 clinics run intake on Lumen\nf5 [stat] 94% of patients finish intake before arrival\nf6 [claim] Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start every visit already informed.\nf11 [claim] Symptoms, medications and history land in the right fields of your EHR, with the patient's original words attached.\nf13 [claim] A one-screen summary highlights what changed since the last visit.\n\nSENDER\nName: Hannah Brooks, Lumen Health\nOffer: Our Senior Data Analyst, Growth role\nPoints you may tailor:\n- What you would do, from the job post\n- Filled in when the post is read\nProof (pick by index; shown verbatim):\n0: 11 minutes saved per visit on documentation (Lumen Health)\n1: 212 clinics run intake on Lumen (Lumen Health)\n2: 94% of patients finish intake before arrival (Lumen Health)\nCall to action: See the role and apply\n\nTHE JOB: Senior Data Analyst, Growth\nRequirements from the post (cite by id; feature one that is under 160 characters):\nj1 Build dashboards in SQL and Looker that teams use every week\n\nThis film announces your open Senior Data Analyst, Growth role to everyone who sees the post. Feature one stat from your own site (insight.factId) and say in insight.why what it means for someone joining (\"you would...\" or \"we...\"). The pitch headline names the role; the pitch points are what the person would do, taken from the role lines given as the points. Numbers come only from your site's facts."
+    ]
+  },
+  "parcelpine | - | sales": {
+    "script": {
+      "hook": "For the people building Parcelpine",
+      "noticed": "Parcelpine leads with “Returns that keep the customer”",
+      "insight": {
+        "factId": "f3",
+        "why": "Tessellate helps teams show what drives a number like this"
+      },
+      "pitch": {
+        "headline": "Product analytics that shows which features keep customers",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Worth a 15-minute look?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "For the people building Parcelpine",
+        "sub": "A 30-second film for Parcelpine"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Parcelpine leads with “Returns that keep the customer”",
+        "host": "parcelpine.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": "61%",
+        "text": "of returns become exchanges or store credit",
+        "source": "parcelpine.example",
+        "caption": "From their homepage",
+        "why": "Tessellate helps teams show what drives a number like this"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Maya Chen, Tessellate",
+        "headline": "Product analytics that shows which features keep customers",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "31%",
+            "label": "lift in week-4 retention at Brightline"
+          },
+          {
+            "value": "1 day",
+            "label": "average setup time"
+          },
+          {
+            "value": "140",
+            "label": "B2B teams use it weekly"
+          }
+        ]
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Worth a 15-minute look?",
+        "contact": "maya@tessellate.example",
+        "signoff": "Made for Parcelpine by Maya Chen at Tessellate"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.\n\nCOMPANY\nName: Parcelpine\nWebsite: parcelpine.example\nHomepage headline: Returns that keep the customer.\nDescription: Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\nf3 [stat] 61% of returns become exchanges or store credit\nf5 [stat] 2 days faster refunds with QR drop-off\nf6 [claim] Offer the exchange before the refund\nf7 [claim] Shoppers see in-stock alternatives and bonus credit first, so a size swap doesn't turn into lost revenue.\nf9 [claim] Serial returners and wardrobing patterns are flagged before a label is issued.\nf11 [stat] Made for brands shipping 1,000 to 100,000 orders a month.\n\nSENDER\nName: Maya Chen, Tessellate (Founder)\nOffer: Product analytics that shows which features keep customers\nPoints you may tailor:\n- See which features drive retention, not just clicks\n- Ask questions in plain English, answered from your warehouse\n- Set up in a day without a tracking plan\n- Alerts when a key account stops using a core feature\nProof (pick by index; shown verbatim):\n0: 31% lift in week-4 retention at Brightline\n1: 1 day average setup time\n2: 140 B2B teams use it weekly\nCall to action: Worth a 15-minute look?"
+    ]
+  },
+  "parcelpine | - | sales, creator set": {
+    "script": {
+      "hook": "For the people building Parcelpine",
+      "noticed": "Parcelpine leads with “Returns that keep the customer”",
+      "insight": {
+        "factId": "f3",
+        "why": "Tessellate helps teams show what drives a number like this"
+      },
+      "pitch": {
+        "headline": "Product analytics that shows which features keep customers",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Worth a 15-minute look?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "For the people building Parcelpine",
+        "sub": "A 30-second film for Parcelpine"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Parcelpine leads with “Returns that keep the customer”",
+        "host": "parcelpine.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": "61%",
+        "text": "of returns become exchanges or store credit",
+        "source": "parcelpine.example",
+        "caption": "From their homepage",
+        "why": "Tessellate helps teams show what drives a number like this"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Maya Chen, Tessellate",
+        "headline": "Product analytics that shows which features keep customers",
+        "points": [
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse",
+          "Set up in a day without a tracking plan"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "31%",
+            "label": "lift in week-4 retention at Brightline"
+          },
+          {
+            "value": "1 day",
+            "label": "average setup time"
+          },
+          {
+            "value": "140",
+            "label": "B2B teams use it weekly"
+          }
+        ]
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Worth a 15-minute look?",
+        "contact": "maya@tessellate.example",
+        "signoff": "Made for Parcelpine by Maya Chen at Tessellate"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.\n\nCOMPANY\nName: Parcelpine\nWebsite: parcelpine.example\nHomepage headline: Returns that keep the customer.\nDescription: Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\nf3 [stat] 61% of returns become exchanges or store credit\nf5 [stat] 2 days faster refunds with QR drop-off\nf6 [claim] Offer the exchange before the refund\nf7 [claim] Shoppers see in-stock alternatives and bonus credit first, so a size swap doesn't turn into lost revenue.\nf9 [claim] Serial returners and wardrobing patterns are flagged before a label is issued.\nf11 [stat] Made for brands shipping 1,000 to 100,000 orders a month.\n\nSENDER\nName: Maya Chen, Tessellate (Founder)\nOffer: Product analytics that shows which features keep customers\nPoints you may tailor:\n- See which features drive retention, not just clicks\n- Ask questions in plain English, answered from your warehouse\n- Set up in a day without a tracking plan\n- Alerts when a key account stops using a core feature\nProof (pick by index; shown verbatim):\n0: 31% lift in week-4 retention at Brightline\n1: 1 day average setup time\n2: 140 B2B teams use it weekly\nCall to action: Worth a 15-minute look?"
+    ]
+  },
+  "parcelpine | - | recruiter": {
+    "script": {
+      "hook": "Hi Priya, from Parcelpine",
+      "noticed": "Parcelpine leads with “Returns that keep the customer”",
+      "insight": {
+        "factId": "f3",
+        "why": "Parcelpine helps teams show what drives a number like this"
+      },
+      "pitch": {
+        "headline": "A role on our team",
+        "points": [
+          "Built a demand forecasting model in Python",
+          "Rebuilt the weekly sales dashboard in Tableau",
+          "Partnered with merchandising leads"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Could we talk for 15 minutes?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Hi Priya, from Parcelpine",
+        "sub": "A 30-second film from Parcelpine"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Parcelpine leads with “Returns that keep the customer”",
+        "host": "parcelpine.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": "61%",
+        "text": "of returns become exchanges or store credit",
+        "source": "parcelpine.example",
+        "caption": "From our homepage",
+        "why": "Parcelpine helps teams show what drives a number like this"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Hannah Brooks, Parcelpine",
+        "headline": "A role on our team",
+        "points": [
+          "Built a demand forecasting model in Python",
+          "Rebuilt the weekly sales dashboard in Tableau",
+          "Partnered with merchandising leads"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "6h → 20m",
+            "label": "report prep time, from 6 hours to 20 minutes",
+            "did": "Rebuilt the weekly sales dashboard in Tableau",
+            "where": "Harbor Grocers"
+          },
+          {
+            "value": "$1.2M",
+            "label": "saved a year",
+            "did": "Analyzed 3M+ shipment records to find late-delivery drivers",
+            "where": "Northwind Logistics"
+          },
+          {
+            "value": "18%",
+            "label": "less fresh-produce waste across 42 stores",
+            "did": "Built a demand forecasting model in Python",
+            "where": "Harbor Grocers"
+          }
+        ],
+        "heading": "What caught our eye"
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Could we talk for 15 minutes?",
+        "contact": "hannah@example.com",
+        "signoff": "Made for Priya Shah by Hannah Brooks at Parcelpine"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender is a recruiter at this company, and the film is made for one candidate (named below) to pitch them the role. The company facts are your own company; the points and proof are the candidate's own record, taken from their résumé. Speak to the candidate as \"you\" and about your company as \"we\" or \"our\". Show them why their record fits this role. The call to action asks for a short conversation.\n\nCOMPANY\nName: Parcelpine\nWebsite: parcelpine.example\nHomepage headline: Returns that keep the customer.\nDescription: Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\nf3 [stat] 61% of returns become exchanges or store credit\nf5 [stat] 2 days faster refunds with QR drop-off\nf6 [claim] Offer the exchange before the refund\nf7 [claim] Shoppers see in-stock alternatives and bonus credit first, so a size swap doesn't turn into lost revenue.\nf9 [claim] Serial returners and wardrobing patterns are flagged before a label is issued.\nf11 [stat] Made for brands shipping 1,000 to 100,000 orders a month.\n\nSENDER\nName: Hannah Brooks, Parcelpine (Recruiter)\nOffer: A role on our team\nCandidate: Priya Shah\nThe candidate's strengths you may tailor:\n- Built a demand forecasting model in Python\n- Rebuilt the weekly sales dashboard in Tableau\n- Partnered with merchandising leads\n- Wrote SQL pipelines in Snowflake\nThe candidate's proof (pick by index; shown verbatim):\n0: 6h → 20m report prep time, from 6 hours to 20 minutes (Harbor Grocers); did: Rebuilt the weekly sales dashboard in Tableau\n1: $1.2M saved a year (Northwind Logistics); did: Analyzed 3M+ shipment records to find late-delivery drivers\n2: 18% less fresh-produce waste across 42 stores (Harbor Grocers); did: Built a demand forecasting model in Python\n3: 12 core KPIs, with merchandising leads to define (Harbor Grocers); did: Partnered with merchandising leads to define 12 core KPIs\nCall to action: Could we talk for 15 minutes?"
+    ]
+  },
+  "parcelpine | - | hiring": {
+    "script": {
+      "hook": "Parcelpine is hiring",
+      "noticed": "Parcelpine leads with “Returns that keep the customer”",
+      "insight": {
+        "factId": "f3",
+        "why": "Numbers like this are what you would work on"
+      },
+      "pitch": {
+        "headline": "What you would do on our team",
+        "points": [
+          "What you would do, from the job post",
+          "Filled in when the post is read"
+        ]
+      },
+      "proof": [
+        1,
+        2
+      ],
+      "cta": "See the role and apply"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Parcelpine is hiring",
+        "sub": "An open role on our team"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Parcelpine leads with “Returns that keep the customer”",
+        "host": "parcelpine.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": "61%",
+        "text": "of returns become exchanges or store credit",
+        "source": "parcelpine.example",
+        "caption": "From our homepage",
+        "why": "Numbers like this are what you would work on"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Hannah Brooks, Parcelpine",
+        "headline": "What you would do on our team",
+        "points": [
+          "What you would do, from the job post",
+          "Filled in when the post is read"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "3,100",
+            "label": "Shopify brands use Parcelpine",
+            "where": "Parcelpine"
+          },
+          {
+            "value": "2 days",
+            "label": "faster refunds with QR drop-off",
+            "where": "Parcelpine"
+          }
+        ],
+        "heading": "Parcelpine, by the numbers"
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "See the role and apply",
+        "contact": "jobs.example/apply",
+        "signoff": "Posted by Hannah Brooks at Parcelpine"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender is on the team at this company and is announcing an open role to everyone, as a LinkedIn post. The company facts are your own company. Speak to whoever is watching as \"you\" and about your company as \"we\" or \"our\". Make the role feel concrete and worth applying for, without hype. The call to action points to the job post.\n\nCOMPANY\nName: Parcelpine\nWebsite: parcelpine.example\nHomepage headline: Returns that keep the customer.\nDescription: Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\nf3 [stat] 61% of returns become exchanges or store credit\nf5 [stat] 2 days faster refunds with QR drop-off\nf6 [claim] Offer the exchange before the refund\nf7 [claim] Shoppers see in-stock alternatives and bonus credit first, so a size swap doesn't turn into lost revenue.\nf9 [claim] Serial returners and wardrobing patterns are flagged before a label is issued.\nf11 [stat] Made for brands shipping 1,000 to 100,000 orders a month.\n\nSENDER\nName: Hannah Brooks, Parcelpine\nOffer: An open role on our team\nPoints you may tailor:\n- What you would do, from the job post\n- Filled in when the post is read\nProof (pick by index; shown verbatim):\n0: 61% of returns become exchanges or store credit (Parcelpine)\n1: 3,100 Shopify brands use Parcelpine (Parcelpine)\n2: 2 days faster refunds with QR drop-off (Parcelpine)\nCall to action: See the role and apply"
+    ]
+  },
+  "parcelpine | job | sales": {
+    "script": {
+      "hook": "For the people building Parcelpine",
+      "noticed": "Parcelpine leads with “Returns that keep the customer”",
+      "insight": {
+        "factId": "j1",
+        "why": "My closest match: 1 day average setup time"
+      },
+      "pitch": {
+        "headline": "Why I fit your Operations Analyst role",
+        "points": [
+          "Set up in a day without a tracking plan",
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse"
+        ]
+      },
+      "proof": [
+        1,
+        0,
+        2
+      ],
+      "cta": "Worth a 15-minute look?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "For the people building Parcelpine",
+        "sub": "For your Operations Analyst role"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Parcelpine leads with “Returns that keep the customer”",
+        "host": "parcelpine.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": null,
+        "text": "Experience building dashboards that operations teams use every day",
+        "source": "your Operations Analyst post",
+        "caption": "From your Operations Analyst post",
+        "why": "My closest match: 1 day average setup time"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Maya Chen, Tessellate",
+        "headline": "Why I fit your Operations Analyst role",
+        "points": [
+          "Set up in a day without a tracking plan",
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "1 day",
+            "label": "average setup time"
+          },
+          {
+            "value": "31%",
+            "label": "lift in week-4 retention at Brightline"
+          },
+          {
+            "value": "140",
+            "label": "B2B teams use it weekly"
+          }
+        ]
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Worth a 15-minute look?",
+        "contact": "maya@tessellate.example",
+        "signoff": "Made for Parcelpine by Maya Chen at Tessellate"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.\n\nCOMPANY\nName: Parcelpine\nWebsite: parcelpine.example\nHomepage headline: Returns that keep the customer.\nDescription: Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\nf3 [stat] 61% of returns become exchanges or store credit\nf5 [stat] 2 days faster refunds with QR drop-off\nf6 [claim] Offer the exchange before the refund\nf7 [claim] Shoppers see in-stock alternatives and bonus credit first, so a size swap doesn't turn into lost revenue.\nf9 [claim] Serial returners and wardrobing patterns are flagged before a label is issued.\nf11 [stat] Made for brands shipping 1,000 to 100,000 orders a month.\n\nSENDER\nName: Maya Chen, Tessellate (Founder)\nOffer: Product analytics that shows which features keep customers\nPoints you may tailor:\n- See which features drive retention, not just clicks\n- Ask questions in plain English, answered from your warehouse\n- Set up in a day without a tracking plan\n- Alerts when a key account stops using a core feature\nProof (pick by index; shown verbatim):\n0: 31% lift in week-4 retention at Brightline\n1: 1 day average setup time\n2: 140 B2B teams use it weekly\nCall to action: Worth a 15-minute look?\n\nTHE JOB: Operations Analyst\nRequirements from the post (cite by id; feature one that is under 160 characters):\nj1 Experience building dashboards that operations teams use every day\n\nThis film answers a job post: Operations Analyst. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why answers it in the first person with something you have already done, taken from your points or proof. Pick the proof that answers the requirements best. The pitch headline may name the role. Numbers in your lines must come from your profile; the job post's numbers are what they want, not what you have done."
+    ]
+  },
+  "parcelpine | job | sales, creator set": {
+    "script": {
+      "hook": "For the people building Parcelpine",
+      "noticed": "Parcelpine leads with “Returns that keep the customer”",
+      "insight": {
+        "factId": "j1",
+        "why": "My closest match: 1 day average setup time"
+      },
+      "pitch": {
+        "headline": "Why I fit your Operations Analyst role",
+        "points": [
+          "Set up in a day without a tracking plan",
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse"
+        ]
+      },
+      "proof": [
+        1,
+        0,
+        2
+      ],
+      "cta": "Worth a 15-minute look?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "For the people building Parcelpine",
+        "sub": "For your Operations Analyst role"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Parcelpine leads with “Returns that keep the customer”",
+        "host": "parcelpine.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": null,
+        "text": "Experience building dashboards that operations teams use every day",
+        "source": "your Operations Analyst post",
+        "caption": "From your Operations Analyst post",
+        "why": "My closest match: 1 day average setup time"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Maya Chen, Tessellate",
+        "headline": "Why I fit your Operations Analyst role",
+        "points": [
+          "Set up in a day without a tracking plan",
+          "See which features drive retention, not just clicks",
+          "Ask questions in plain English, answered from your warehouse"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "1 day",
+            "label": "average setup time"
+          },
+          {
+            "value": "31%",
+            "label": "lift in week-4 retention at Brightline"
+          },
+          {
+            "value": "140",
+            "label": "B2B teams use it weekly"
+          }
+        ]
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Worth a 15-minute look?",
+        "contact": "maya@tessellate.example",
+        "signoff": "Made for Parcelpine by Maya Chen at Tessellate"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.\n\nCOMPANY\nName: Parcelpine\nWebsite: parcelpine.example\nHomepage headline: Returns that keep the customer.\nDescription: Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\nf3 [stat] 61% of returns become exchanges or store credit\nf5 [stat] 2 days faster refunds with QR drop-off\nf6 [claim] Offer the exchange before the refund\nf7 [claim] Shoppers see in-stock alternatives and bonus credit first, so a size swap doesn't turn into lost revenue.\nf9 [claim] Serial returners and wardrobing patterns are flagged before a label is issued.\nf11 [stat] Made for brands shipping 1,000 to 100,000 orders a month.\n\nSENDER\nName: Maya Chen, Tessellate (Founder)\nOffer: Product analytics that shows which features keep customers\nPoints you may tailor:\n- See which features drive retention, not just clicks\n- Ask questions in plain English, answered from your warehouse\n- Set up in a day without a tracking plan\n- Alerts when a key account stops using a core feature\nProof (pick by index; shown verbatim):\n0: 31% lift in week-4 retention at Brightline\n1: 1 day average setup time\n2: 140 B2B teams use it weekly\nCall to action: Worth a 15-minute look?\n\nTHE JOB: Operations Analyst\nRequirements from the post (cite by id; feature one that is under 160 characters):\nj1 Experience building dashboards that operations teams use every day\n\nThis film answers a job post: Operations Analyst. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why answers it in the first person with something you have already done, taken from your points or proof. Pick the proof that answers the requirements best. The pitch headline may name the role. Numbers in your lines must come from your profile; the job post's numbers are what they want, not what you have done."
+    ]
+  },
+  "parcelpine | job | recruiter": {
+    "script": {
+      "hook": "Hi Priya, from Parcelpine",
+      "noticed": "Parcelpine leads with “Returns that keep the customer”",
+      "insight": {
+        "factId": "j1",
+        "why": "Your closest match, at Harbor Grocers: 6h → 20m report prep time"
+      },
+      "pitch": {
+        "headline": "Why you fit our Operations Analyst role",
+        "points": [
+          "Rebuilt the weekly sales dashboard in Tableau",
+          "Built a demand forecasting model in Python",
+          "Partnered with merchandising leads"
+        ]
+      },
+      "proof": [
+        0,
+        1,
+        2
+      ],
+      "cta": "Could we talk for 15 minutes?"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Hi Priya, from Parcelpine",
+        "sub": "About our Operations Analyst role"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Parcelpine leads with “Returns that keep the customer”",
+        "host": "parcelpine.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": null,
+        "text": "Experience building dashboards that operations teams use every day",
+        "source": "our Operations Analyst post",
+        "caption": "From our Operations Analyst post",
+        "why": "Your closest match, at Harbor Grocers: 6h → 20m report prep time"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Hannah Brooks, Parcelpine",
+        "headline": "Why you fit our Operations Analyst role",
+        "points": [
+          "Rebuilt the weekly sales dashboard in Tableau",
+          "Built a demand forecasting model in Python",
+          "Partnered with merchandising leads"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "6h → 20m",
+            "label": "report prep time, from 6 hours to 20 minutes",
+            "did": "Rebuilt the weekly sales dashboard in Tableau",
+            "where": "Harbor Grocers"
+          },
+          {
+            "value": "$1.2M",
+            "label": "saved a year",
+            "did": "Analyzed 3M+ shipment records to find late-delivery drivers",
+            "where": "Northwind Logistics"
+          },
+          {
+            "value": "18%",
+            "label": "less fresh-produce waste across 42 stores",
+            "did": "Built a demand forecasting model in Python",
+            "where": "Harbor Grocers"
+          }
+        ],
+        "heading": "What caught our eye"
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "Could we talk for 15 minutes?",
+        "contact": "hannah@example.com",
+        "signoff": "Made for Priya Shah by Hannah Brooks at Parcelpine"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender is a recruiter at this company, and the film is made for one candidate (named below) to pitch them the role. The company facts are your own company; the points and proof are the candidate's own record, taken from their résumé. Speak to the candidate as \"you\" and about your company as \"we\" or \"our\". Show them why their record fits this role. The call to action asks for a short conversation.\n\nCOMPANY\nName: Parcelpine\nWebsite: parcelpine.example\nHomepage headline: Returns that keep the customer.\nDescription: Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\nf3 [stat] 61% of returns become exchanges or store credit\nf5 [stat] 2 days faster refunds with QR drop-off\nf6 [claim] Offer the exchange before the refund\nf7 [claim] Shoppers see in-stock alternatives and bonus credit first, so a size swap doesn't turn into lost revenue.\nf9 [claim] Serial returners and wardrobing patterns are flagged before a label is issued.\nf11 [stat] Made for brands shipping 1,000 to 100,000 orders a month.\n\nSENDER\nName: Hannah Brooks, Parcelpine (Recruiter)\nOffer: Our Operations Analyst role\nCandidate: Priya Shah\nThe candidate's strengths you may tailor:\n- Built a demand forecasting model in Python\n- Rebuilt the weekly sales dashboard in Tableau\n- Partnered with merchandising leads\n- Wrote SQL pipelines in Snowflake\nThe candidate's proof (pick by index; shown verbatim):\n0: 6h → 20m report prep time, from 6 hours to 20 minutes (Harbor Grocers); did: Rebuilt the weekly sales dashboard in Tableau\n1: $1.2M saved a year (Northwind Logistics); did: Analyzed 3M+ shipment records to find late-delivery drivers\n2: 18% less fresh-produce waste across 42 stores (Harbor Grocers); did: Built a demand forecasting model in Python\n3: 12 core KPIs, with merchandising leads to define (Harbor Grocers); did: Partnered with merchandising leads to define 12 core KPIs\nCall to action: Could we talk for 15 minutes?\n\nTHE JOB: Operations Analyst\nRequirements from the post (cite by id; feature one that is under 160 characters):\nj1 Experience building dashboards that operations teams use every day\n\nThis film pitches your Operations Analyst role. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why tells the candidate, in the second person (\"You...\"), where their record already answers it, taken from their points or proof. Pick the proof that answers the requirements best. The pitch headline names the role. Numbers in your lines must come from the candidate's record; the job post's numbers are what you want, not what they have done."
+    ]
+  },
+  "parcelpine | job | hiring": {
+    "script": {
+      "hook": "Parcelpine is hiring",
+      "noticed": "Parcelpine leads with “Returns that keep the customer”",
+      "insight": {
+        "factId": "f3",
+        "why": "Numbers like this are what you would work on"
+      },
+      "pitch": {
+        "headline": "What you would do as our Operations Analyst",
+        "points": [
+          "What you would do, from the job post",
+          "Filled in when the post is read"
+        ]
+      },
+      "proof": [
+        1,
+        2
+      ],
+      "cta": "See the role and apply"
+    },
+    "scenes": [
+      {
+        "kind": "hook",
+        "dur": 3.2,
+        "text": "Parcelpine is hiring",
+        "sub": "Now hiring: Operations Analyst"
+      },
+      {
+        "kind": "site",
+        "dur": 5.2,
+        "caption": "Parcelpine leads with “Returns that keep the customer”",
+        "host": "parcelpine.example",
+        "focus": "f1"
+      },
+      {
+        "kind": "insight",
+        "dur": 5.4,
+        "value": "61%",
+        "text": "of returns become exchanges or store credit",
+        "source": "parcelpine.example",
+        "caption": "From our homepage",
+        "why": "Numbers like this are what you would work on"
+      },
+      {
+        "kind": "pitch",
+        "dur": 6,
+        "from": "Hannah Brooks, Parcelpine",
+        "headline": "What you would do as our Operations Analyst",
+        "points": [
+          "What you would do, from the job post",
+          "Filled in when the post is read"
+        ]
+      },
+      {
+        "kind": "proof",
+        "dur": 4.8,
+        "stats": [
+          {
+            "value": "3,100",
+            "label": "Shopify brands use Parcelpine",
+            "where": "Parcelpine"
+          },
+          {
+            "value": "2 days",
+            "label": "faster refunds with QR drop-off",
+            "where": "Parcelpine"
+          }
+        ],
+        "heading": "Parcelpine, by the numbers"
+      },
+      {
+        "kind": "cta",
+        "dur": 4.6,
+        "line": "See the role and apply",
+        "contact": "jobs.example/apply",
+        "signoff": "Posted by Hannah Brooks at Parcelpine"
+      }
+    ],
+    "prompt": [
+      "You write the script for a 30-second personalized video that a sender makes for one specific company.\nThe film plays as six short scenes: a hook greeting the company, what the sender noticed on their homepage (shown over a screenshot of it), one real fact from their site with why it matters, the pitch, the sender's proof, and a call to action.\n\nTaste rules (these are checked in code; a violation means a rewrite):\n- Be specific. Mention one concrete thing that is actually on their homepage.\n- Plain words. Write like a sharp person talking, not like marketing copy.\n- Short. Respect every word limit exactly: hook <= 6, noticed <= 12, why <= 14, headline <= 10, each point <= 10, cta <= 8 words.\n- Sentence case. No ALL CAPS, no exclamation marks, no emoji, no hashtags.\n- No flattery (\"amazing\", \"impressive\", \"love what you're doing\") and no filler (\"just wanted to\", \"reach out\").\n- Never use these words: revolutionize, drive growth, great work, great job, kudos, congrats, deeper insights, made easy, shows the impact, boost your, revolutionizing, game-changer, game changer, unlock, unleash, supercharge, seamless, seamlessly, cutting-edge, cutting edge, state-of-the-art, next-level, next level, synergy.\n- Never invent numbers, customers or results. Any number you write must appear in the facts or the sender profile.\n- The insight must point at a real fact id from the list. Its exact text is shown on screen, so pick the fact that best connects their goal to what the sender offers. If any fact is marked [stat], pick one of those: a number on screen lands harder than a sentence.\n- Every line has a job. The hook greets them (3+ words, not just their name). \"noticed\" says something about their homepage; it doesn't repeat their headline (quote it in quotation marks if you use it). \"why\" connects the fact to the sender: name the sender's company or the problem it solves (as a job seeker, say what you would do: \"I…\"). It never repeats the fact, which is already on screen, and is never a compliment.\n- The pitch headline names what the sender offers in 4+ words, not a slogan like \"drive growth\". Show 2 or 3 proof items.\n- The pitch connects the sender's offer to that fact. Tailor the profile points to this company; do not add claims the profile doesn't make.\n\nReply with only a JSON object of this exact shape:\n{\"hook\": string, \"noticed\": string, \"insight\": {\"factId\": string, \"why\": string}, \"pitch\": {\"headline\": string, \"points\": [string, string, string]}, \"proof\": [number, ...], \"cta\": string}",
+      "The sender is on the team at this company and is announcing an open role to everyone, as a LinkedIn post. The company facts are your own company. Speak to whoever is watching as \"you\" and about your company as \"we\" or \"our\". Make the role feel concrete and worth applying for, without hype. The call to action points to the job post.\n\nCOMPANY\nName: Parcelpine\nWebsite: parcelpine.example\nHomepage headline: Returns that keep the customer.\nDescription: Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\n\nFACTS FROM THEIR SITE (cite by id)\nf2 [description] Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.\nf3 [stat] 61% of returns become exchanges or store credit\nf5 [stat] 2 days faster refunds with QR drop-off\nf6 [claim] Offer the exchange before the refund\nf7 [claim] Shoppers see in-stock alternatives and bonus credit first, so a size swap doesn't turn into lost revenue.\nf9 [claim] Serial returners and wardrobing patterns are flagged before a label is issued.\nf11 [stat] Made for brands shipping 1,000 to 100,000 orders a month.\n\nSENDER\nName: Hannah Brooks, Parcelpine\nOffer: Our Operations Analyst role\nPoints you may tailor:\n- What you would do, from the job post\n- Filled in when the post is read\nProof (pick by index; shown verbatim):\n0: 61% of returns become exchanges or store credit (Parcelpine)\n1: 3,100 Shopify brands use Parcelpine (Parcelpine)\n2: 2 days faster refunds with QR drop-off (Parcelpine)\nCall to action: See the role and apply\n\nTHE JOB: Operations Analyst\nRequirements from the post (cite by id; feature one that is under 160 characters):\nj1 Experience building dashboards that operations teams use every day\n\nThis film announces your open Operations Analyst role to everyone who sees the post. Feature one stat from your own site (insight.factId) and say in insight.why what it means for someone joining (\"you would...\" or \"we...\"). The pitch headline names the role; the pitch points are what the person would do, taken from the role lines given as the points. Numbers come only from your site's facts."
+    ]
+  }
+}

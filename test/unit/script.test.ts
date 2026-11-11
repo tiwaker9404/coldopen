@@ -1,9 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import type { BrandKit } from '../../src/brand/types.ts'
-import { checkScript, clampScript, notAlone, standsAlone } from '../../src/script/checks.ts'
+import { JOB_WORDS } from '../../src/outreach/voice.ts'
+import {
+  checkScript,
+  clampScript,
+  jobPitchIn,
+  notAlone,
+  standsAlone,
+} from '../../src/script/checks.ts'
 import { buildStoryboard, captionFor, splitStat } from '../../src/script/storyboard.ts'
+import { LIMITS } from '../../src/script/taste.ts'
 import type { Script } from '../../src/script/types.ts'
-import { buildMessages, deterministicScript, writeScript } from '../../src/script/writer.ts'
+import {
+  buildMessages,
+  CTAS,
+  deterministicScript,
+  HEADLINES,
+  topicOf,
+  writeScript,
+} from '../../src/script/writer.ts'
 import { profile } from '../helpers/index.ts'
 
 const kit = {
@@ -243,7 +258,8 @@ describe('writer', () => {
     const [sys, user] = buildMessages(kit, profile('candidate'))
     expect(sys!.content).toContain('Never invent numbers')
     expect(user!.content).toContain('f2 [stat] 38% fewer late deliveries')
-    expect(user!.content).toContain('job candidate')
+    expect(user!.content).toContain('curious builder')
+    expect(user!.content).not.toContain('connect their strengths')
   })
 })
 
@@ -483,5 +499,144 @@ describe('the caption under the quote', () => {
     )
     expect(home).toMatchObject({ caption: 'From their homepage' })
     expect(home).not.toHaveProperty('sourceUrl')
+  })
+})
+
+describe("a job seeker's film: a builder's take on their product", () => {
+  const COMPANIES = [
+    'Northwind Freight',
+    'Parcelpine',
+    'Lumen Health',
+    'Acme Robotics',
+    'Hiring Hub',
+    'Tidewater',
+    'Bluefin Labs',
+    'Orchard',
+    'Quill',
+    'Kestrel AI',
+    'Marigold Pay',
+    'Stackwise',
+    'Ferrous',
+    'Juniper Data',
+    'Cobalt',
+    'Waypoint',
+    'Ember Health',
+    'Lattice Works',
+    'Pebble',
+    'Sundial',
+  ]
+  const kitOf = (name: string, job = false): BrandKit =>
+    ({
+      ...kit,
+      name,
+      host: `${name.toLowerCase().replace(/\s+/g, '')}.example`,
+      headline: 'Returns that keep the customer.',
+      description: `${name} turns returns into exchanges for Shopify brands.`,
+      facts: [
+        { id: 'f1', text: 'Returns that keep the customer.', kind: 'headline' },
+        { id: 'f2', text: '61% of returns become exchanges or store credit', kind: 'stat' },
+        ...(job
+          ? [
+              {
+                id: 'j1',
+                text: 'Experience with hiring pipelines and job boards, from the first application',
+                kind: 'requirement',
+              },
+            ]
+          : []),
+      ],
+      ...(job ? { job: { title: 'Operations Analyst' } } : {}),
+    }) as unknown as BrandKit
+
+  it('candidate lines never pitch the job', () => {
+    const p = profile('candidate')
+    for (const n of COMPANIES)
+      for (const job of [false, true]) {
+        const k = kitOf(n, job)
+        const s = deterministicScript(k, p)
+        expect(checkScript(s, k, p), `${n} ${job}`).toEqual([])
+        for (const line of [s.hook, s.noticed, s.insight.why, s.pitch.headline, s.cta])
+          expect(jobPitchIn(line, n), `${n}: ${line}`).toEqual([])
+        const board = buildStoryboard(k, p, s)
+        const hook = board.scenes[0]!
+        expect(hook.kind === 'hook' && jobPitchIn(hook.sub ?? '', n)).toEqual([])
+      }
+    // the model's lines are held to the same rule, and every job word is caught
+    const k = kitOf('Parcelpine', true)
+    const s = deterministicScript(k, p)
+    for (const w of [...JOB_WORDS, 'hire me', 'interview']) {
+      const v = checkScript({ ...s, cta: `Talk about the ${w}?` }, k, p)
+      expect(
+        v.some((x) => x.includes('not_job_pitch')),
+        w,
+      ).toBe(true)
+    }
+    const headline = checkScript(
+      { ...s, pitch: { ...s.pitch, headline: 'Why I fit your Operations Analyst role' } },
+      k,
+      p,
+    )
+    expect(headline.join(' ')).toContain('pitch.headline says "role"')
+    // their own words in quotation marks, and their name, aren't the sender's pitch
+    expect(jobPitchIn('Hiring Hub leads with "Hiring that feels human"', 'Hiring Hub')).toEqual([])
+    // sellers aren't held to it
+    const sales = profile('sales')
+    const ss = deterministicScript(k, sales)
+    expect(
+      checkScript({ ...ss, cta: 'Worth a look for your hiring team?' }, k, sales).join(' '),
+    ).not.toContain('not_job_pitch')
+  })
+
+  it('the cta invites a conversation', () => {
+    const p = profile('candidate')
+    for (const n of COMPANIES)
+      for (const job of [false, true]) {
+        const k = kitOf(n, job)
+        const { cta } = deterministicScript(k, p)
+        expect(cta.endsWith('?'), cta).toBe(true)
+        expect(cta.split(/\s+/).length).toBeLessThanOrEqual(LIMITS.cta)
+        expect(cta).toMatch(/\b(notes|talk|chat)\b/)
+        expect(jobPitchIn(cta, n)).toEqual([])
+        const board = buildStoryboard(k, p, deterministicScript(k, p))
+        const end = board.scenes.find((x) => x.kind === 'cta')!
+        expect(end.kind === 'cta' && end.line).toBe(cta)
+      }
+    // every line says their thing, and fits with a long name
+    for (const c of CTAS) expect(c("Parcelpine's returns")).toContain("Parcelpine's returns")
+    expect(topicOf(kitOf('Parcelpine'), kitOf('Parcelpine').facts[1]!)).toBe('returns')
+  })
+
+  it('different companies rarely share a headline', () => {
+    const p = profile('candidate')
+    const heads = COMPANIES.map((n) => deterministicScript(kitOf(n), p).pitch.headline)
+    expect(new Set(heads).size).toBe(COMPANIES.length)
+    for (const h of heads) {
+      expect(h).toMatch(/^(What|Where) I'd/)
+      expect(h.split(/\s+/).length).toBeGreaterThanOrEqual(4)
+      expect(h.split(/\s+/).length).toBeLessThanOrEqual(LIMITS.headline)
+    }
+    // all four kinds of line turn up, so it isn't one template with a name swapped in
+    const kinds = new Set(
+      heads.map((h) =>
+        HEADLINES.findIndex(
+          (f) =>
+            f('X').split('X')[0] ===
+            h.split(
+              /(?=Northwind|Parcelpine|Lumen|Acme|Hiring|Tidewater|Bluefin|Orchard|Quill|Kestrel|Marigold|Stackwise|Ferrous|Juniper|Cobalt|Waypoint|Ember|Lattice|Pebble|Sundial)/,
+            )[0],
+        ),
+      ),
+    )
+    expect(kinds.size).toBeGreaterThanOrEqual(3)
+  })
+
+  it("the model is told to write a builder's take, and never the job words", () => {
+    const [, user] = buildMessages(kitOf('Parcelpine', true), profile('candidate'))
+    expect(user!.content).toContain(
+      "what the sender would try or build with this company's product",
+    )
+    expect(user!.content).toContain('"hire me" or "interview"')
+    expect(user!.content).toContain(`says, in the first person, what you'd do about it ("I'd …")`)
+    expect(user!.content).not.toContain('The pitch headline may name the role')
   })
 })

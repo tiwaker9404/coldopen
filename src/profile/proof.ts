@@ -30,6 +30,19 @@ export type ProofCheck = (typeof CHECKS)[number]
 export const numbersIn = (s: string) =>
   (s.match(/\d[\d,.]*/g) ?? []).map((n) => n.replace(/[,.]$/, ''))
 
+/**
+ * A proof as a message quotes it, saying each number once. A change card's value ("6h → 45m")
+ * is already in its label ("report prep, from 6 hours to 45 minutes"), so the label goes alone;
+ * any other card reads value then label ("40% faster month-end close"). Where is the caller's.
+ */
+export function proofPhrase(p: { value: string; label: string }): string {
+  const said = numbersIn(p.label)
+  const change =
+    /→|->/.test(p.value) ||
+    (numbersIn(p.value).length > 0 && numbersIn(p.value).every((n) => said.includes(n)))
+  return change ? p.label : `${p.value} ${p.label}`
+}
+
 /* ------------------------------------------------------------- before → after */
 
 const UNIT: Record<string, { short: string; one: string; many: string; mins: number }> = {

@@ -119,11 +119,15 @@ function sceneHtml(s: Scene, i: number, start: number, c: SceneCtx): string {
         <div class="cta-wrap">
           <h2 class="display cta-line" data-fit data-lines="3">${wordsHtml(s.line, 250, 110)}</h2>
           <p class="contact in" style="animation-delay:1200ms">${esc(s.contact)}</p>
+          ${s.made ? `<p class="made-with in" style="animation-delay:1500ms" data-fit data-lines="1" data-min="0.7">${esc(madeLine(s.made.name))}</p>` : ''}
         </div>
         <p class="signoff in" style="animation-delay:1700ms">${esc(s.signoff)}</p>
       </section>`
   }
 }
+
+/** Under the ask, when the sender built the tool that made the film */
+export const madeLine = (name: string) => `Made with ${name}, which I built`
 
 /**
  * The screenshot the homepage scene shows, and what it points at: the fact the "noticed"
@@ -259,6 +263,8 @@ html,body{width:${width}px;height:${height}px;overflow:hidden;background:#000}
 .cta-line{font-size:calc(var(--u)*10);max-width:92%}
 .contact{font-size:calc(var(--u)*3.6);margin-top:calc(var(--u)*4);font-weight:600;border-bottom:calc(var(--u)*.4) solid var(--accent);display:inline-block;padding-bottom:calc(var(--u)*.5)}
 .signoff{font-size:calc(var(--u)*2.3);color:var(--muted)}
+/* who built the tool that made it: small, under the ask, in the scene's own text color so it keeps AA */
+.made-with{font-size:calc(var(--u)*2.3);color:var(--fg);font-weight:500;margin-top:calc(var(--u)*2.6);letter-spacing:.01em;white-space:nowrap}
 </style></head><body>
 <div id="stage">
 ${scenes.join('\n')}

@@ -14,6 +14,7 @@ import { z } from 'zod'
 import { type Homework, type HomeworkItem, pickResearch } from '../brand/homework.ts'
 import type { FilmResult } from '../film.ts'
 import { type ChatMessage, estimateTokens } from '../llm/types.ts'
+import { proofPhrase } from '../profile/proof.ts'
 import { BANNED, BEGGING, TASTE_RULES } from '../script/taste.ts'
 import type { Profile } from '../script/types.ts'
 import {
@@ -148,7 +149,7 @@ const firstName = (p: Profile) => p.sender.name.split(' ')[0]!
 /** "40% faster month-end close at Initech", the number the film leads with */
 function bestProof(film: MessageFilm): string {
   const p = film.highlights?.proof[0]
-  return p ? clean(`${p.value} ${p.label}${p.where ? ` at ${p.where}` : ''}`) : ''
+  return p ? clean(`${proofPhrase(p)}${p.where ? ` at ${p.where}` : ''}`) : ''
 }
 
 /** The post text a research line must stay close to: its summary (a cut one loses its "…"), or its title */
@@ -420,7 +421,7 @@ export function briefFor(
     }
   }
   const proof = (film.highlights?.proof ?? []).map((p) =>
-    clean(`${p.value} ${p.label}${p.where ? ` at ${p.where}` : ''}`),
+    clean(`${proofPhrase(p)}${p.where ? ` at ${p.where}` : ''}`),
   )
   const best = bestProof(film)
   return {

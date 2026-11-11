@@ -63,6 +63,7 @@ describe('message checks', () => {
     expect(checkMessage('note', note, ctx).map((c) => c.rule)).toEqual([
       'length',
       'grounded',
+      'no_repeated_numbers',
       'no_begging',
       'one_ask',
       'names_company',

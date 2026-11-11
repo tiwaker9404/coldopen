@@ -32,7 +32,18 @@ export type Scene =
       /** a line above the numbers; recruiter films say whose record they are */
       heading?: string
     }
-  | { kind: 'cta'; dur: number; line: string; contact: string; signoff: string }
+  | {
+      kind: 'cta'
+      dur: number
+      line: string
+      contact: string
+      signoff: string
+      /**
+       * a job seeker who built the tool that made the film: under the ask, "Made with <name>,
+       * which I built", and a link to it on the share page (https only)
+       */
+      made?: { name: string; url: string }
+    }
 
 export interface Storyboard {
   company: string
@@ -167,7 +178,8 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
           ? kit.job
             ? `About our ${kit.job.title} role`
             : `A 30-second film from ${kit.name}`
-          : kit.job
+          : // a job seeker's film is about their product, even when it began from their post
+            kit.job && profile.preset !== 'candidate'
             ? `For your ${kit.job.title} role`
             : `A 30-second film for ${kit.name}`,
     },
@@ -230,6 +242,9 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
         : recruiter
           ? `Made for ${them ?? 'you'} by ${profile.sender.name} at ${profile.sender.company ?? kit.name}`
           : `Made for ${kit.name} by ${profile.sender.name}${profile.sender.company ? ` at ${profile.sender.company}` : ''}`,
+      ...(profile.preset === 'candidate' && profile.creator
+        ? { made: { name: profile.creator.name, url: profile.creator.url } }
+        : {}),
     },
   ]
   return {

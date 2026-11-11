@@ -213,3 +213,73 @@ describe('the proof card says what they did', () => {
     expect(scene.match(/class="(display value|label|where)"/g)).toHaveLength(9)
   })
 })
+
+describe('the end card says who built the tool that made it', () => {
+  // the longest name the profile allows (40 characters)
+  const CREATOR = {
+    name: 'coldopen, the open-source outreach films',
+    url: 'https://tiwaker9404.github.io/coldopen/',
+    line: 'Paste a company website, get a 30-second film made for them',
+  }
+
+  async function endCard(creator?: typeof CREATOR, preset: 'candidate' | 'sales' = 'candidate') {
+    const { kit: home, dir } = await kitFor('parcelpine')
+    const kit = withHomework(home, HOMEWORK)
+    const p = { ...profile(preset), ...(creator ? { creator } : {}) }
+    const board = buildStoryboard(kit, p, deterministicScript(kit, p))
+    const theme = await buildTheme(kit, p, { allowPrivateNetworks: true })
+    const shot = `data:image/jpeg;base64,${readFileSync(join(dir, kit.screenshot.file)).toString('base64')}`
+    return { kit, board, theme, shot }
+  }
+
+  it('leaves it out when the profile has no creator, and for sellers', async () => {
+    for (const film of [await endCard(), await endCard(CREATOR, 'sales')]) {
+      const end = film.board.scenes.find((s) => s.kind === 'cta')!
+      expect(end.kind === 'cta' && end.made).toBeUndefined()
+      const html = compose({ ...film, format: 'square', screenshotDataUrl: film.shot })
+      expect(html).not.toContain('class="made-with')
+    }
+  })
+
+  it.each(FORMATS)(
+    'the end card shows the creator line when set and it fits: %s',
+    async (format) => {
+      const { kit, board, theme, shot } = await endCard(CREATOR)
+      const html = compose({ board, kit, theme, format, screenshotDataUrl: shot })
+      const end = html.slice(html.indexOf('cta-wrap'))
+      // under the ask and the contact
+      expect(end.indexOf('class="made-with')).toBeGreaterThan(end.indexOf('class="contact'))
+      const c = await openComposition(html, format)
+      try {
+        expect(c.report.issues).toEqual([])
+        const start = board.scenes.slice(0, -1).reduce((a, s) => a + s.dur, 0)
+        await seek(c.page, start + 3)
+        const got = await c.page.evaluate(() => {
+          const el = document.querySelector('.scene.cta .made-with') as HTMLElement
+          const scene = el.closest('.scene') as HTMLElement
+          const r = el.getBoundingClientRect()
+          const s = scene.getBoundingClientRect()
+          const line = (document.querySelector('.scene.cta .cta-line') as HTMLElement) ?? el
+          return {
+            text: el.textContent,
+            color: getComputedStyle(el).color,
+            bg: getComputedStyle(scene).backgroundColor,
+            inside:
+              r.left >= s.left && r.right <= s.right + 1 && r.bottom <= s.bottom && r.width > 0,
+            wraps: el.scrollWidth > el.clientWidth + 1,
+            smaller:
+              parseFloat(getComputedStyle(el).fontSize) <
+              parseFloat(getComputedStyle(line).fontSize),
+          }
+        })
+        expect(got.text).toBe(`Made with ${CREATOR.name}, which I built`)
+        expect(got.inside).toBe(true)
+        expect(got.wraps).toBe(false)
+        expect(got.smaller).toBe(true)
+        expect(contrast(parseColor(got.color)!, parseColor(got.bg)!)).toBeGreaterThanOrEqual(4.5)
+      } finally {
+        await c.close()
+      }
+    },
+  )
+})

@@ -1,8 +1,9 @@
 import type { BrandKit, Fact } from '../brand/types.ts'
 import { answers, proofText } from '../job/fit.ts'
 import type { ChatMessage } from '../llm/types.ts'
+import { JOB_WORDS } from '../outreach/voice.ts'
 import { isDuty } from '../profile/pitch.ts'
-import { checkScript, clampScript, overlap, quotableFacts, words } from './checks.ts'
+import { checkScript, clampScript, jobPitchIn, overlap, quotableFacts, words } from './checks.ts'
 import { monthOf } from './storyboard.ts'
 import { LIMITS, TASTE_RULES } from './taste.ts'
 import type { Profile, Script, ScriptMeta } from './types.ts'
@@ -15,11 +16,15 @@ ${TASTE_RULES}
 Reply with only a JSON object of this exact shape:
 {"hook": string, "noticed": string, "insight": {"factId": string, "why": string}, "pitch": {"headline": string, "points": [string, string, string]}, "proof": [number, ...], "cta": string}`
 
+/** what a job seeker's lines never say, as the prompt lists it */
+const CANDIDATE_NEVER = `${JOB_WORDS.filter((w) => w !== 'openings' && w !== 'résumé')
+  .map((w) => `"${w}"`)
+  .join(', ')}, "hire me" or "interview"`
+
 const PRESETS: Record<Profile['preset'], string> = {
   sales:
     'The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.',
-  candidate:
-    'The sender is a job candidate who wants to work at this company. Show that they understand what the company builds and who it serves, and connect their strengths to it. The call to action asks for a conversation, never for a job. Write in the first person ("I").',
+  candidate: `The sender is a curious builder writing to people at this company about their product. They know from the sender's profile that the sender is looking for work, so the film never says so: it reads like a builder's take on what they make, not an application. Show that the sender understands what the company builds and who it serves. pitch.headline names what the sender would try or build with this company's product, or for its customers, in 4 to 10 words grounded in the sender's points and the fact you quote ("What I'd build next for <their thing>"), never "why I fit". The pitch points stay tailored from the sender's points. insight.why says what the sender would do with that fact ("I'd …"). The cta is a warm invitation to talk about their work, at most 8 words ("Trade notes on <their thing>?", "15 minutes on what's next?"). Never write ${CANDIDATE_NEVER} in the hook, noticed, why, headline or cta. Write in the first person ("I").`,
   hiring:
     'The sender is on the team at this company and is announcing an open role to everyone, as a LinkedIn post. The company facts are your own company. Speak to whoever is watching as "you" and about your company as "we" or "our". Make the role feel concrete and worth applying for, without hype. The call to action points to the job post.',
   recruiter:
@@ -34,6 +39,9 @@ const RECRUITER_JOB_BRIEF = (title: string) =>
 
 const JOB_BRIEF = (title: string) =>
   `This film answers a job post: ${title}. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why answers it in the first person with something you have already done, taken from your points or proof. Pick the proof that answers the requirements best. The pitch headline may name the role. Numbers in your lines must come from your profile; the job post's numbers are what they want, not what you have done.`
+
+const CANDIDATE_JOB_BRIEF = (title: string) =>
+  `The sender read their post for: ${title}. The insight scene quotes one of the post's requirements word for word (pick its id, j1, j2...), and insight.why says, in the first person, what you'd do about it ("I'd …"), drawing on something you have already done, taken from your points or proof. Pick the proof that answers the requirements best. The pitch headline still names what you'd try or build with their product, never the post itself. Numbers in your lines must come from your profile; the post's numbers are what they want, not what you have done.`
 
 /** "(changelog, Oct 2026)": where a fact beyond the homepage is from, for the model to weigh */
 function sourceTag(f: Fact): string {
@@ -68,7 +76,7 @@ THE JOB: ${kit.job.title}
 Requirements from the post (cite by id; feature one that is under 160 characters):
 ${reqs.map((f) => `${f.id} ${f.text}`).join('\n')}
 
-${profile.preset === 'recruiter' ? RECRUITER_JOB_BRIEF(kit.job.title) : profile.preset === 'hiring' ? HIRING_JOB_BRIEF(kit.job.title) : JOB_BRIEF(kit.job.title)}`
+${profile.preset === 'recruiter' ? RECRUITER_JOB_BRIEF(kit.job.title) : profile.preset === 'hiring' ? HIRING_JOB_BRIEF(kit.job.title) : profile.preset === 'candidate' ? CANDIDATE_JOB_BRIEF(kit.job.title) : JOB_BRIEF(kit.job.title)}`
     : ''
   const recruiter = profile.preset === 'recruiter'
   const proof = profile.proof
@@ -95,7 +103,7 @@ ${recruiter ? "The candidate's strengths you may tailor" : 'Points you may tailo
 ${profile.points.map((p) => `- ${p}`).join('\n')}
 ${recruiter ? "The candidate's proof" : 'Proof'} (pick by index; shown verbatim):
 ${proof}
-Call to action: ${profile.cta.line}${job}`
+${profile.preset === 'candidate' ? `The sender's own ask, for its tone (write a warm invitation about their work instead): ${profile.cta.line}` : `Call to action: ${profile.cta.line}`}${job}`
   return [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'user', content: user },
@@ -299,25 +307,78 @@ function hookFor(name: string, first: string): string {
   return `Hi ${first} team`
 }
 
+/**
+ * A job seeker's pitch headline: what they'd try or build with this company's product, never
+ * "why I fit". The slot is their thing ("Parcelpine's returns", or the company), so two
+ * companies rarely share a line.
+ */
 export const HEADLINES = [
-  (n: string) => `What I would bring to ${n}`,
-  (n: string) => `What I would do for ${n}`,
-  (n: string) => `What I would build at ${n}`,
-  (n: string) => `What I would work on at ${n}`,
+  (thing: string) => `What I'd build next for ${thing}`,
+  (thing: string) => `What I'd try first with ${thing}`,
+  (thing: string) => `Where I'd take ${thing} next`,
+  (thing: string) => `What I'd prototype with ${thing}`,
 ] as const
 
+/**
+ * A job seeker's ask on the end card: a warm invitation to talk about their work, at most 8
+ * words, never about a job. The slot is their thing, as in HEADLINES.
+ */
+export const CTAS = [
+  (thing: string) => `Trade notes on ${thing}?`,
+  (thing: string) => `Could we talk about ${thing} sometime?`,
+  (thing: string) => `Up for a short chat about ${thing}?`,
+  (thing: string) => `Swap notes on what's next for ${thing}?`,
+] as const
+
+// plural words that are verbs or say nothing about what they make ("turns", "teams")
+const NOT_A_TOPIC = new Set(
+  'turns gives makes helps runs uses keeps saves lets brings builds works sends offers means does goes takes always others teams customers companies businesses users people results thanks years hours minutes days weeks months times ways things'.split(
+    ' ',
+  ),
+)
+
+/**
+ * What the quoted fact is about, when their homepage says it too: "61% of returns become
+ * exchanges" on a site about returns gives "returns". A plural noun the two share, or null.
+ */
+export function topicOf(
+  kit: Pick<BrandKit, 'headline' | 'description'>,
+  fact: Fact,
+): string | null {
+  const about = ` ${`${kit.headline} ${kit.description}`.toLowerCase().replace(/[^a-z\s-]/g, ' ')} `
+  for (const w of fact.text.toLowerCase().match(/[a-z][a-z-]{4,}/g) ?? [])
+    if (/[^s]s$/.test(w) && !NOT_A_TOPIC.has(w) && about.includes(` ${w} `)) return w
+  return null
+}
+
+/** The line, with the longest version of their thing that fits the word limit */
+function fitted(
+  pick: (thing: string) => string,
+  name: string,
+  topic: string | null,
+  max: number,
+  fallback: string,
+): string {
+  const first = name.split(/\s+/)[0]!
+  const things = topic ? [`${name}'s ${topic}`, `${first}'s ${topic}`, name, first] : [name, first]
+  for (const t of things)
+    if (words(pick(t)) <= max && !jobPitchIn(pick(t), name).length) return pick(t)
+  return fallback
+}
+
 export const WHY = {
+  // what the sender would do with the fact ("I'd …"), not why they fit
   candidateStat: [
-    'I want to help move a number like this one',
-    'This is the number I would work on first',
-    'Numbers like this are what I like to build toward',
-    'I would want to help this number keep climbing',
+    "I'd want to find out what moves this number next",
+    "I'd start by asking which customers move this number most",
+    "I'd build something small to push this number further",
+    "I'd dig into what sits behind a number like this",
   ],
   candidateClaim: [
-    'That is the kind of outcome I want to help build',
-    'This is the promise I would want to help keep',
-    'I would like to help make this true for more customers',
-    'I want to help build more outcomes like this one',
+    "I'd try building on this for the next set of customers",
+    "I'd start by asking customers where this lands best",
+    "I'd prototype the next step that makes this true",
+    "I'd want to see how far this promise can go",
   ],
   salesStat: [
     (who: string) => `${who} teams measure what moves a number like this`,
@@ -366,7 +427,13 @@ export function deterministicScript(kit: BrandKit, profile: Profile): Script {
     pitch: {
       headline: clip(
         candidate
-          ? variant(name, 'headline', HEADLINES)(name)
+          ? fitted(
+              variant(name, 'headline', HEADLINES),
+              name,
+              topicOf(kit, fact),
+              LIMITS.headline,
+              `What I'd try first with ${first}`,
+            )
           : words(profile.offer) >= 4
             ? profile.offer
             : `${profile.offer.replace(/[.]$/, '')}, made for ${first}`,
@@ -379,8 +446,13 @@ export function deterministicScript(kit: BrandKit, profile: Profile): Script {
         .map((p) => clip(p, LIMITS.point)),
     },
     proof: profile.proof.slice(0, 3).map((_, i) => i),
-    cta: clip(profile.cta.line, LIMITS.cta),
+    cta: candidate ? candidateCta(name, topicOf(kit, fact)) : clip(profile.cta.line, LIMITS.cta),
   }
+}
+
+/** A job seeker's ask: a warm invitation about their work, picked per company (CTAS) */
+function candidateCta(name: string, topic: string | null): string {
+  return fitted(variant(name, 'cta', CTAS), name, topic, LIMITS.cta, "Trade notes on what's next?")
 }
 
 /** "Deployed AI agents at 14 warehouses" -> "You did this: deployed AI agents at 14 warehouses" */
@@ -514,17 +586,29 @@ function jobScript(kit: BrandKit, profile: Profile, title: string): Script {
     .filter((i) => i !== answer)
   const them = profile.recipient?.name.split(/\s+/)[0]
   const hook = recruiter ? recruiterHook(them, name, first) : hookFor(name, first)
+  // a job seeker's film is a builder's take on their product, not an answer to the post: the
+  // headline and the ask are about what they make (the topic comes from their homepage's stat)
+  const candidate = profile.preset === 'candidate'
+  const topic = candidate ? topicOf(kit, bestFact(kit, profile)) : null
   const headline = recruiter
     ? words(`Why you fit our ${title} role`) <= LIMITS.headline
       ? `Why you fit our ${title} role`
       : `Why you fit the role at ${first}`
-    : words(`Why I fit your ${title} role`) <= LIMITS.headline
-      ? `Why I fit your ${title} role`
-      : 'Why I fit the role you posted'
+    : !candidate
+      ? words(`Why I fit your ${title} role`) <= LIMITS.headline
+        ? `Why I fit your ${title} role`
+        : 'Why I fit the role you posted'
+      : fitted(
+          variant(name, 'headline', HEADLINES),
+          name,
+          topic,
+          LIMITS.headline,
+          `What I'd try first with ${first}`,
+        )
   return {
     hook,
     noticed: noticedLine(kit, first),
-    insight: { factId: req.id, why },
+    insight: { factId: req.id, why: candidate ? ownWords(why, profile, name) : why },
     pitch: {
       headline: clip(headline, LIMITS.headline),
       points: byFit(profile.points, allReqs)
@@ -536,8 +620,19 @@ function jobScript(kit: BrandKit, profile: Profile, title: string): Script {
         .map((p) => clip(p, LIMITS.point)),
     },
     proof: [answer, ...rest].slice(0, 3),
-    cta: clip(profile.cta.line, LIMITS.cta),
+    cta: candidate ? candidateCta(name, topic) : clip(profile.cta.line, LIMITS.cta),
   }
+}
+
+/**
+ * A job seeker's answer to a requirement says what they did, in their record's words; when those
+ * words happen to include a job word ("loan applications"), it says where instead.
+ */
+function ownWords(why: string, profile: Profile, name: string): string {
+  if (!jobPitchIn(why, name).length) return why
+  const where = profile.proof.find((p) => p.where && !jobPitchIn(p.where, name).length)?.where
+  const line = where ? `I'd start here, the way I did at ${where}` : null
+  return line && words(line) <= LIMITS.why ? line : "I'd start here, with what I've built before"
 }
 
 /* ------------------------------------------------- a hiring film, for everyone */

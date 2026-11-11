@@ -1,4 +1,5 @@
 import type { BrandKit, Fact } from '../brand/types.ts'
+import { jobWordsIn } from '../outreach/voice.ts'
 import { BANNED, LIMITS } from './taste.ts'
 import type { Profile, Script } from './types.ts'
 
@@ -112,6 +113,30 @@ export function notAlone(fact: Pick<Fact, 'text'>, company: FactContext): string
   if (!named && !ours && !shares && !measured)
     return `it doesn't name ${company.name} or what it does`
   return null
+}
+
+/* --------------------------------------------- a builder's take, not an application */
+
+const ESC = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * The words in a job seeker's line that read like a job pitch: the JOB_WORDS from voice.ts, and
+ * "hire me" or "interview". Quoted text is theirs (a requirement or a fact read back in
+ * quotation marks), and so is the company's own name ("Hiring Hub"), so neither counts.
+ */
+export function jobPitchIn(text: string, company = ''): string[] {
+  // their name, and the short form lines use ("Hiring" for Hiring Hub)
+  const names = company.trim() ? [company.trim(), company.trim().split(/\s+/)[0]!] : []
+  const t = names.reduce((acc, n) => acc.replace(new RegExp(`\\b${ESC(n)}\\b`, 'gi'), ' '), text)
+  const asks = [/\bhire me\b/i, /\binterview(s|ed|ing)?\b/i]
+    .map((re) =>
+      t
+        .replace(/"[^"\n]*"|“[^”\n]*”/g, ' ')
+        .match(re)?.[0]
+        ?.toLowerCase(),
+    )
+    .filter((w): w is string => Boolean(w))
+  return [...jobWordsIn(t), ...asks]
 }
 
 /** A fact the film may quote: it makes sense to someone seeing it with no other context. */
@@ -289,11 +314,34 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
           ? 'insight.why must connect it to the person watching (use "you" or "your"); a compliment alone is filler'
           : `insight.why must connect the fact to what ${profile.sender.company ?? 'the sender'} offers (name it, or the problem it solves); a compliment alone is filler`,
     )
+  // a job seeker's film reads like a builder's take on their product, not an application: the
+  // hook, noticed, why, headline and ask never say role, job, hiring or "hire me"
+  if (profile.preset === 'candidate') {
+    const said: [string, string][] = [
+      ['hook', script.hook],
+      ['noticed', script.noticed],
+      ['insight.why', script.insight.why],
+      ['pitch.headline', script.pitch.headline],
+      ['cta', script.cta],
+    ]
+    for (const [field, text] of said) {
+      const pitch = jobPitchIn(text, kit.name)
+      if (pitch.length)
+        v.push(
+          `${field} says "${pitch[0]}", which reads like a job pitch (not_job_pitch); talk about their product and what you'd try with it instead`,
+        )
+    }
+  }
   // the pitch may be tailored to them, but it can't claim things the profile doesn't say
   // (deel.com: a job seeker's film pitched "AI agent platform for global payroll")
-  // naming the company you're writing to is tailoring, not a claim
+  // naming the company you're writing to is tailoring, not a claim; for a job seeker, so is
+  // naming the fact the film quotes and what they'd try or build with it
+  const builder =
+    profile.preset === 'candidate'
+      ? ` ${chosen?.kind === 'requirement' ? '' : (chosen?.text ?? '')} try trying first next build building prototype take where`
+      : ''
   const own = `${profile.offer} ${profile.points.join(' ')} ${profile.sender.role ?? ''} ${kit.name} ${kit.job?.title ?? ''} role`
-  if (overlap(script.pitch.headline, own) < 0.3)
+  if (overlap(script.pitch.headline, own + builder) < 0.3)
     v.push(
       `pitch.headline "${script.pitch.headline}" claims things the profile doesn't say; build it from the offer: "${profile.offer}"`,
     )

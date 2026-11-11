@@ -106,12 +106,14 @@ describe('a film that answers the job', () => {
     const req = jobKit.facts.find((f) => f.id === s.insight.factId)!
     expect(req.kind).toBe('requirement')
     expect(s.insight.why).toMatch(/^(I did this|I have done this|My closest match)/)
-    expect(s.pitch.headline).toContain('Forward Deployed Engineer')
+    // a builder's take on their product, not an answer to the post
+    expect(s.pitch.headline).toMatch(/^(What|Where) I'd/)
+    expect(s.pitch.headline).not.toContain('Forward Deployed Engineer')
 
     const board = buildStoryboard(jobKit, candidate, s)
     const hook = board.scenes[0]!
     const insight = board.scenes[2]!
-    expect(hook.kind === 'hook' && hook.sub).toBe('For your Forward Deployed Engineer role')
+    expect(hook.kind === 'hook' && hook.sub).toBe(`A 30-second film for ${jobKit.name}`)
     expect(insight.kind === 'insight' && insight.source).toBe('your Forward Deployed Engineer post')
     // their words, shown as a quote: never turned into a big "3+"
     expect(insight.kind === 'insight' && insight.value).toBeNull()
