@@ -44,6 +44,7 @@ const NAMES: Record<string, string> = {
   'proof.#.value': 'the number in result #',
   'proof.#.label': 'what result # measures',
   'proof.#.where': 'where result # happened',
+  'proof.#.did': 'what you did for result #',
   cta: 'the ask',
   'cta.line': 'the ask',
   'cta.contact': 'your contact',

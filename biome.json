@@ -12,6 +12,7 @@
       "!**/node_modules",
       "!bench/results",
       "!evals/results.md",
+      "!evals/resume/results.md",
       "!pnpm-lock.yaml",
       "!src/jobs/yc.json",
       "!src/jobs/visa.json",

@@ -56,7 +56,8 @@ Options
                           your proof. A careers or Greenhouse/Lever/Ashby page, or a .txt file
                           with the pasted description (LinkedIn needs a login: paste it)
       --role <title>      profile: the role you're applying for; picks the résumé points that fit
-      --exclude <names>   profile: comma-separated employers or words to leave out entirely
+      --exclude <names>   profile: comma-separated employers or words to keep out (an employer's
+                          work stays, said as "Current <role> role"; a bullet naming a word goes)
       --contact <email>   profile: the contact line for the film (default: the résumé's email)
   -c, --concurrency <n>   films rendered in parallel in batch mode (default: 2)
       --share             batch: upload each film as it finishes and add its link to results.csv
@@ -578,8 +579,10 @@ async function main() {
     )
     for (const [i, p] of profile.proof.entries())
       done(
-        `  ${String(i + 1).padStart(2)}. ${p.value.padEnd(12)} ${p.label}${p.where ? `  (${p.where})` : ''}`,
+        `  ${String(i + 1).padStart(2)}. ${p.value.padEnd(12)} ${p.label}${p.where ? `  (${p.where})` : ''}${p.did ? `\n      ${''.padEnd(12)} ${p.did}` : ''}`,
       )
+    if (meta.rebuilt.length)
+      done(`  rebuilt from the résumé's own words: ${meta.rebuilt.join(', ')}`)
     if (meta.dropped.length)
       done(`  left out, not grounded in the résumé: ${meta.dropped.join(', ')}`)
     done(`Check every line, then: coldopen https://their-company.com -p ${out} --proof 1,2,3`)

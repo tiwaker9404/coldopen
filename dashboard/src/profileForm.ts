@@ -70,6 +70,7 @@ export const MAX = {
   proofValue: P.value.maxLength ?? 12,
   proofLabel: P.label.maxLength ?? 60,
   proofWhere: P.where.unwrap().maxLength ?? 40,
+  proofDid: P.did.unwrap().maxLength ?? 90,
   projectName: J.name.maxLength ?? 60,
   projectLine: J.line.maxLength ?? 120,
   creatorName: C.name.maxLength ?? 40,
@@ -123,8 +124,9 @@ export function prepare(d: ProfileData, name: string): { body: ProfileBody; rows
     const value = clean(p.value)
     const label = clean(p.label)
     const where = clean(p.where ?? '')
-    if (!value && !label && !where) return
-    proof.push({ value, label, ...(where ? { where } : {}) })
+    const did = clean(p.did ?? '')
+    if (!value && !label && !where && !did) return
+    proof.push({ value, label, ...(where ? { where } : {}), ...(did ? { did } : {}) })
     rows.proof.push(i)
   })
   const projects: NonNullable<ProfileData['projects']> = []

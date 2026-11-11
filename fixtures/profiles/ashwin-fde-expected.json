@@ -1,0 +1,140 @@
+{
+  "resume": "fixtures/resumes/ashwin-fde.md",
+  "role": "Forward Deployed Engineer",
+  "note": "Hand-checked proof for Ashwin's FDE résumé (redacted: the current employer is left out). Each row names the bullet it comes from by a phrase only that bullet has. best marks the picks a stranger finds most impressive, which the drafter should rank first.",
+  "rows": [
+    {
+      "bullet": "Current: HubSpot migration",
+      "from": "1.5M HubSpot records",
+      "value": "1.5M",
+      "label": "HubSpot records moved to PostgreSQL, 100% consistent",
+      "did": "Built an automated Python migration pipeline",
+      "where": "Current FDE role",
+      "best": true
+    },
+    {
+      "bullet": "Current: partner middleware",
+      "from": "50,000+ daily payloads",
+      "value": "50,000+",
+      "label": "partner payloads a day, reconciled automatically",
+      "did": "Built Python middleware syncing partner APIs",
+      "where": "Current FDE role"
+    },
+    {
+      "bullet": "Current: Docker on AWS",
+      "from": "zero-downtime AWS deployments",
+      "value": "60%",
+      "label": "less manual configuration, zero-downtime deploys",
+      "did": "Containerized client apps with Docker on AWS",
+      "where": "Current FDE role"
+    },
+    {
+      "bullet": "Rail: ETL",
+      "from": "from 6 hours to 45 minutes",
+      "value": "6h → 45m",
+      "label": "daily client data sync, from 6 hours to 45 minutes",
+      "did": "Built containerized ETL with Docker and PostgreSQL",
+      "where": "Rail Inc.",
+      "best": true
+    },
+    {
+      "bullet": "Rail: analytics engine",
+      "from": "50GB of daily supply chain data",
+      "value": "50GB",
+      "label": "supply chain data a day, on the client's own servers",
+      "did": "Deployed a Python analytics engine at an enterprise client",
+      "where": "Rail Inc."
+    },
+    {
+      "bullet": "Rail: blockers",
+      "from": "12+ critical live-environment",
+      "value": "12+",
+      "label": "live deployment blockers resolved, ahead of SLA",
+      "did": "Led scoping with enterprise engineering teams",
+      "where": "Rail Inc."
+    },
+    {
+      "bullet": "Duke: middleware",
+      "from": "Node.js custom middleware",
+      "value": "30%",
+      "label": "faster deployments than planned",
+      "did": "Built Node.js middleware unifying third-party API data",
+      "where": "Duke consulting club"
+    },
+    {
+      "bullet": "Duke: RBAC",
+      "from": "1,500+ active user identities",
+      "value": "1,500+",
+      "label": "user identities moved to RBAC, zero errors",
+      "did": "Built a Python migration engine for access control",
+      "where": "Duke consulting club",
+      "best": true
+    },
+    {
+      "bullet": "Deloitte: Oracle",
+      "from": "2.5M+ historical financial records",
+      "value": "2.5M+",
+      "label": "financial records moved off legacy Oracle",
+      "did": "Migrated a Tier-1 bank's database to hybrid cloud",
+      "where": "Deloitte",
+      "best": true
+    },
+    {
+      "bullet": "Deloitte: validation",
+      "from": "99% data ingestion accuracy",
+      "value": "99%",
+      "label": "ingestion accuracy, anomalies fixed automatically",
+      "did": "Deployed validation microservices on client servers",
+      "where": "Deloitte"
+    },
+    {
+      "bullet": "ITC: Databricks",
+      "from": "150+ concurrent queries",
+      "value": "150+",
+      "label": "queries a second, no throttling",
+      "did": "Built a real-time inventory engine on Databricks",
+      "where": "ITC Infotech"
+    },
+    {
+      "bullet": "ITC: runbooks",
+      "from": "previous undocumented 5-day baseline",
+      "value": "5 → 3 days",
+      "label": "customer onboarding, from 5 days to 3",
+      "did": "Wrote deployment runbooks for regional teams",
+      "where": "ITC Infotech"
+    },
+    {
+      "bullet": "stmtflow",
+      "from": "1,000 synthetic financial statements",
+      "value": "100%",
+      "label": "precision on 1,000 statements, 99.5% of tampering caught",
+      "did": "Rebuilt a financial statement parser with balance checks",
+      "where": "Statement Flow"
+    },
+    {
+      "bullet": "Gateway: webhooks",
+      "from": "100,000+ daily client webhook payloads",
+      "value": "100,000+",
+      "label": "webhook payloads a day at 99.9% uptime",
+      "did": "Built a serverless gateway on AWS Lambda",
+      "where": "B2B Integration Gateway"
+    },
+    {
+      "bullet": "Gateway: errors",
+      "from": "database insertion errors by 85%",
+      "value": "85%",
+      "label": "fewer database insertion errors",
+      "did": "Added JSON schema checks at the network edge",
+      "where": "B2B Integration Gateway"
+    },
+    {
+      "bullet": "Gateway: onboarding",
+      "from": "from 3 days to 4 hours",
+      "value": "3d → 4h",
+      "label": "client onboarding, from 3 days to 4 hours",
+      "did": "Automated provisioning with Terraform and GitHub Actions",
+      "where": "B2B Integration Gateway",
+      "best": true
+    }
+  ]
+}

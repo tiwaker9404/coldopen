@@ -2,7 +2,7 @@
   "Northwind Freight | - | recruiter": {
     "email": {
       "subject": "A role at Northwind Freight, made for you",
-      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Northwind Freight. Instead of a long message about a role on our team at Northwind Freight, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 18% less fresh-produce waste across 42 stores at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
+      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Northwind Freight. Instead of a long message about a role on our team at Northwind Freight, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 6h → 20m report prep time, from 6 hours to 20 minutes at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
     },
     "linkedin": "Hi Priya, I'm Hannah, recruiter at Northwind Freight. I made you a 30-second film about a role on our team at Northwind Freight. Would like to connect. – Hannah",
     "afterAccept": "Hi Priya, I made you a 30-second film about a role on our team at Northwind Freight. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
@@ -15,7 +15,7 @@
     "linkedinFollowUp": "Hi Priya, following up on the film I made you: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
     "intro": "Hi [First name],\n\nWe're hiring for a role on our team at Northwind Freight, and I made a 30-second film for a candidate you may know: https://share.example/f/abc123\n\nWould you be open to introducing us?\n\nThank you.\nHannah",
     "checks": {
-      "words": 60,
+      "words": 65,
       "short": true,
       "aboutThem": true,
       "detail": false,
@@ -130,7 +130,7 @@
   "Lumen Health | - | recruiter": {
     "email": {
       "subject": "A role at Lumen Health, made for you",
-      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Lumen Health. Instead of a long message about a role on our team at Lumen Health, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 18% less fresh-produce waste across 42 stores at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
+      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Lumen Health. Instead of a long message about a role on our team at Lumen Health, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 6h → 20m report prep time, from 6 hours to 20 minutes at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
     },
     "linkedin": "Hi Priya, I'm Hannah, recruiter at Lumen Health. I made you a 30-second film about a role on our team at Lumen Health. Would like to connect. – Hannah",
     "afterAccept": "Hi Priya, I made you a 30-second film about a role on our team at Lumen Health. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
@@ -143,7 +143,7 @@
     "linkedinFollowUp": "Hi Priya, following up on the film I made you: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
     "intro": "Hi [First name],\n\nWe're hiring for a role on our team at Lumen Health, and I made a 30-second film for a candidate you may know: https://share.example/f/abc123\n\nWould you be open to introducing us?\n\nThank you.\nHannah",
     "checks": {
-      "words": 60,
+      "words": 65,
       "short": true,
       "aboutThem": true,
       "detail": false,
@@ -194,7 +194,7 @@
   "Lumen Health | job | recruiter": {
     "email": {
       "subject": "Lumen Health's Senior Data Analyst, Growth role, made for you",
-      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Lumen Health. Instead of a long message about our Senior Data Analyst, Growth role, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 18% less fresh-produce waste across 42 stores at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
+      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Lumen Health. Instead of a long message about our Senior Data Analyst, Growth role, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 6h → 20m report prep time, from 6 hours to 20 minutes at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
     },
     "linkedin": "Hi Priya, I'm Hannah, recruiter at Lumen Health. I made you a 30-second film about our Senior Data Analyst, Growth role. Would like to connect. – Hannah",
     "afterAccept": "Hi Priya, I made you a 30-second film about our Senior Data Analyst, Growth role at Lumen Health. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
@@ -207,7 +207,7 @@
     "linkedinFollowUp": "Hi Priya, following up on the film I made you: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
     "intro": "Hi [First name],\n\nWe're hiring for our Senior Data Analyst, Growth role, and I made a 30-second film for a candidate you may know: https://share.example/f/abc123\n\nWould you be open to introducing us?\n\nThank you.\nHannah",
     "checks": {
-      "words": 58,
+      "words": 63,
       "short": true,
       "aboutThem": true,
       "detail": false,
@@ -258,7 +258,7 @@
   "Parcelpine | - | recruiter": {
     "email": {
       "subject": "A role at Parcelpine, made for you",
-      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Parcelpine. Instead of a long message about a role on our team at Parcelpine, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 18% less fresh-produce waste across 42 stores at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
+      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Parcelpine. Instead of a long message about a role on our team at Parcelpine, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 6h → 20m report prep time, from 6 hours to 20 minutes at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
     },
     "linkedin": "Hi Priya, I'm Hannah, recruiter at Parcelpine. I made you a 30-second film about a role on our team at Parcelpine. Would like to connect. – Hannah",
     "afterAccept": "Hi Priya, I made you a 30-second film about a role on our team at Parcelpine. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
@@ -271,7 +271,7 @@
     "linkedinFollowUp": "Hi Priya, following up on the film I made you: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
     "intro": "Hi [First name],\n\nWe're hiring for a role on our team at Parcelpine, and I made a 30-second film for a candidate you may know: https://share.example/f/abc123\n\nWould you be open to introducing us?\n\nThank you.\nHannah",
     "checks": {
-      "words": 58,
+      "words": 63,
       "short": true,
       "aboutThem": true,
       "detail": false,
@@ -322,7 +322,7 @@
   "Parcelpine | job | recruiter": {
     "email": {
       "subject": "Parcelpine's Operations Analyst role, made for you",
-      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Parcelpine. Instead of a long message about our Operations Analyst role, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 18% less fresh-produce waste across 42 stores at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
+      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Parcelpine. Instead of a long message about our Operations Analyst role, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 6h → 20m report prep time, from 6 hours to 20 minutes at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
     },
     "linkedin": "Hi Priya, I'm Hannah, recruiter at Parcelpine. I made you a 30-second film about our Operations Analyst role. Would like to connect. – Hannah",
     "afterAccept": "Hi Priya, I made you a 30-second film about our Operations Analyst role at Parcelpine. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
@@ -335,7 +335,7 @@
     "linkedinFollowUp": "Hi Priya, following up on the film I made you: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
     "intro": "Hi [First name],\n\nWe're hiring for our Operations Analyst role, and I made a 30-second film for a candidate you may know: https://share.example/f/abc123\n\nWould you be open to introducing us?\n\nThank you.\nHannah",
     "checks": {
-      "words": 55,
+      "words": 60,
       "short": true,
       "aboutThem": true,
       "detail": false,

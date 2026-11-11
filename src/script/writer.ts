@@ -72,7 +72,10 @@ ${profile.preset === 'recruiter' ? RECRUITER_JOB_BRIEF(kit.job.title) : profile.
     : ''
   const recruiter = profile.preset === 'recruiter'
   const proof = profile.proof
-    .map((p, i) => `${i}: ${p.value} ${p.label}${p.where ? ` (${p.where})` : ''}`)
+    .map(
+      (p, i) =>
+        `${i}: ${p.value} ${p.label}${p.where ? ` (${p.where})` : ''}${p.did ? `; did: ${p.did}` : ''}`,
+    )
     .join('\n')
   const user = `${PRESETS[profile.preset]}
 

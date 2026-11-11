@@ -114,3 +114,102 @@ describe('the fact scene says where the quote is from', () => {
     expect(html).toContain('>From their homepage</p>')
   })
 })
+
+/**
+ * The proof card: the number, what changed, then what they did in a smaller line, and where.
+ * The longest card the schema allows still fits square, wide and tall; a card without "did"
+ * is the card it always was.
+ */
+describe('the proof card says what they did', () => {
+  // the limits: value 12, label 60, did 90, where 40 characters
+  const LONG = [
+    {
+      value: '3.1% → 4.6%',
+      label: 'trial sign-up conversion on paid landing pages, 3.1% to 4.6%',
+      did: 'Built containerized ETL workflows using Docker and PostgreSQL for three enterprise clients',
+      where: 'Enterprise B2B Integration Gateway, Inc',
+    },
+    {
+      value: '6h → 45m',
+      label: 'daily client data sync cycles, from 6 hours to 45 minutes',
+      did: "Migrated a Tier-1 bank's core operational database from legacy Oracle to a hybrid cloud",
+      where: 'Deloitte',
+    },
+    {
+      value: '100,000+',
+      label: 'webhook payloads a day at 99.9% uptime',
+      did: 'Built a serverless gateway on AWS Lambda',
+      where: 'B2B Integration Gateway',
+    },
+  ]
+
+  async function proofFilm(
+    stats: typeof LONG | { value: string; label: string; where?: string }[],
+  ) {
+    const { kit: home, dir } = await kitFor('parcelpine')
+    const kit = withHomework(home, HOMEWORK)
+    const p = { ...profile('candidate'), proof: stats }
+    const script = { ...deterministicScript(kit, p), proof: [0, 1, 2] }
+    const board = buildStoryboard(kit, p, script)
+    const theme = await buildTheme(kit, p, { allowPrivateNetworks: true })
+    const shot = `data:image/jpeg;base64,${readFileSync(join(dir, kit.screenshot.file)).toString('base64')}`
+    return { kit, board, theme, shot }
+  }
+
+  it.each(FORMATS)('fits the longest cards with AA contrast: %s', async (format) => {
+    const { kit, board, theme, shot } = await proofFilm(LONG)
+    const c = await openComposition(
+      compose({ board, kit, theme, format, screenshotDataUrl: shot }),
+      format,
+    )
+    try {
+      expect(c.report.issues).toEqual([])
+      const i = board.scenes.findIndex((s) => s.kind === 'proof')
+      const start = board.scenes.slice(0, i).reduce((a, s) => a + s.dur, 0)
+      await seek(c.page, start + 3.5)
+      const cards = await c.page.evaluate(() =>
+        [...document.querySelectorAll('.scene.proof .stat')].map((stat) => {
+          const scene = stat.closest('.scene') as HTMLElement
+          const s = scene.getBoundingClientRect()
+          const part = (cls: string) => stat.querySelector(`.${cls}`) as HTMLElement
+          const box = (el: HTMLElement) => el.getBoundingClientRect()
+          const did = part('did')
+          return {
+            order: [...stat.children].map((x) => x.className.replace(/\s.*$/, '')),
+            did: did.textContent,
+            inside: ['value', 'label', 'did', 'where'].every((k) => {
+              const r = box(part(k))
+              return (
+                r.left >= s.left && r.right <= s.right + 1 && r.bottom <= s.bottom && r.width > 0
+              )
+            }),
+            smaller:
+              parseFloat(getComputedStyle(did).fontSize) <
+              parseFloat(getComputedStyle(part('label')).fontSize),
+            color: getComputedStyle(did).color,
+            bg: getComputedStyle(scene).backgroundColor,
+          }
+        }),
+      )
+      expect(cards).toHaveLength(3)
+      for (const [j, card] of cards.entries()) {
+        expect(card.order).toEqual(['display', 'label', 'did', 'where'])
+        expect(card.did).toBe(LONG[j]!.did)
+        expect(card.inside).toBe(true)
+        expect(card.smaller).toBe(true)
+        expect(contrast(parseColor(card.color)!, parseColor(card.bg)!)).toBeGreaterThanOrEqual(4.5)
+      }
+    } finally {
+      await c.close()
+    }
+  })
+
+  it('shows a card without "did" exactly as before: the number, the label, where', async () => {
+    const old = LONG.map(({ did: _, ...rest }) => rest)
+    const { kit, board, theme, shot } = await proofFilm(old)
+    const html = compose({ board, kit, theme, format: 'square', screenshotDataUrl: shot })
+    const scene = html.slice(html.indexOf('class="scene proof"'), html.indexOf('class="scene cta"'))
+    expect(scene).not.toContain('class="did"')
+    expect(scene.match(/class="(display value|label|where)"/g)).toHaveLength(9)
+  })
+})

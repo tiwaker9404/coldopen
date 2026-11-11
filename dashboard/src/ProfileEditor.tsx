@@ -346,7 +346,8 @@ export function ProfileEditor({
         <fieldset>
           <legend>Results with numbers</legend>
           <p className="hint">
-            Shown word for word. Each film shows the 3 that fit the company best.
+            Shown word for word. Each film shows the 3 that fit the company best. Say what you did
+            under each, so someone who never saw your résumé knows what you built.
           </p>
           {listError('proof')}
           <div className="proof proof-head" aria-hidden="true">
@@ -383,6 +384,18 @@ export function ProfileEditor({
                 value={p.where ?? ''}
                 onValue={(v) => setProof(i, 'where', v)}
               />
+              <label className="proof-did" htmlFor={fid(`proof.${i}.did`)}>
+                What you did
+                <Text
+                  path={`proof.${i}.did`}
+                  aria-label={`Result ${i + 1}: what you did`}
+                  max={MAX.proofDid}
+                  error={err(`proof.${i}.did`)}
+                  placeholder="Built containerized ETL with Docker and PostgreSQL"
+                  value={p.did ?? ''}
+                  onValue={(v) => setProof(i, 'did', v)}
+                />
+              </label>
             </div>
           ))}
           {d.proof.length < MAX_PROOF && (

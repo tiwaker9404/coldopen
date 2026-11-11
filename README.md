@@ -178,7 +178,7 @@ Keep keys in the environment, not on the command line, so they never show up in 
 coldopen profile resume.pdf me.json --role "Senior data analyst" --exclude "Current Co"
 ```
 
-It reads a PDF, Word, Markdown or text résumé and picks the bullets that fit the role, turning them into proof: **45 minutes**, _report prep, down from 6 hours_, at **Harbor Grocers**. Every number is checked against the résumé, so a draft can't inflate it. `--exclude` keeps an employer out entirely. The web app does the same from **New profile → Start from your résumé**, and there are [starter profiles](profiles/examples) for seven roles. See [docs/PROFILES.md](docs/PROFILES.md).
+It reads a PDF, Word, Markdown or text résumé and turns the bullets that would impress a stranger most into proof cards that say what you did, where, and what changed: **6h → 45m**, _daily client data sync, from 6 hours to 45 minutes_, _Built containerized ETL with Docker and PostgreSQL_, at **Rail Inc.** Every number is checked against the résumé, so a draft can't inflate it. `--exclude` keeps an employer's name out while its work stays, as "Current FDE role". The web app does the same from **New profile → Start from your résumé**, and there are [starter profiles](profiles/examples) for seven roles. See [docs/PROFILES.md](docs/PROFILES.md).
 
 Applying to different kinds of roles? Keep one profile per résumé in a folder and pass the folder (`-p me/`). coldopen reads each company's site, suggests the profile that fits, and asks before it renders.
 
@@ -247,7 +247,7 @@ The counter, "x of 10 this week", is the recruiter's playbook target (10 people 
 ## Quality, measured
 
 ```bash
-pnpm test         # 639 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish
+pnpm test         # 675 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 180 quality checks across 16 evals on 3 fixture companies x 2 presets
 ```
@@ -286,6 +286,8 @@ Every kind of draft falls back at most 8% of the time, and a fallback still pass
 The misses are listed in the run: one site took longer than 60 seconds, Apple's system font can't be embedded, and three headers drew their logo in a way it wasn't captured.
 
 The [fit eval](evals/fit/results.md) grades job matching: does "this line of your record answers that requirement" agree with a person? On 128 hand-labeled pairs, built so many share words without answering (and many answer without sharing words), shared-word matching finds 15% of real answers (F1 0.25). A small sentence-embedding model, bge-small-en-v1.5 run on the CPU through ONNX with no API, finds 76% at 74% precision (F1 0.75, AUC 0.83). Its cut-off is picked on half the pairs and scored on the other half, and fit uses it when `FIT_SEMANTIC=on`. The workflow reruns the eval whenever the matching changes (`pnpm eval:fit`).
+
+The [résumé eval](evals/resume/results.md) grades "Start from your résumé": every drafted proof card must say what was done, the result and where, keep a before and after, and use only the bullet's numbers. It drafts Ashwin's own FDE résumé (redacted) and matches each card by meaning to the 16 rows he checked by hand. The built-in drafter passes every check on all 17 cards it drafts and picks all 5 of his best; the Groq run is in [resume-eval.yml](.github/workflows/resume-eval.yml).
 
 The fixture companies in [fixtures/sites](fixtures/sites) (a freight platform, a health-tech startup and an e-commerce returns tool) are fictional, but they're built like real sites: web fonts, stat tiles, testimonials and CTAs.
 

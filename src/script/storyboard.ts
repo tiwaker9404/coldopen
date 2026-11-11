@@ -28,7 +28,7 @@ export type Scene =
   | {
       kind: 'proof'
       dur: number
-      stats: { value: string; label: string; where?: string }[]
+      stats: { value: string; label: string; where?: string; did?: string }[]
       /** a line above the numbers; recruiter films say whose record they are */
       heading?: string
     }

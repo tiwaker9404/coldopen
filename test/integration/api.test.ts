@@ -190,8 +190,15 @@ describe('auth and profiles', () => {
     const { profile, meta } = res.json()
     expect(meta.model).toBe('deterministic')
     expect(profile.sender).toEqual({ name: 'Marco Ruiz', role: 'Lifecycle marketing manager' })
-    expect(profile.proof.map((p: { value: string }) => p.value)).toContain('$31')
+    // a before and an after is drafted as the change, with what was done
+    expect(profile.proof).toContainEqual(
+      expect.objectContaining({ value: '$48 → $31', did: 'Rebuilt paid social creative testing' }),
+    )
+    // the excluded employer's name is gone; its work stays, placed by the role
     expect(JSON.stringify(profile)).not.toMatch(/brightside/i)
+    expect(
+      profile.proof.some((p: { where?: string }) => p.where === 'Marketing Associate role'),
+    ).toBe(true)
 
     const junk = await app.inject({
       method: 'POST',

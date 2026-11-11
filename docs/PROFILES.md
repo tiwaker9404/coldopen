@@ -14,19 +14,36 @@ Or, in the web app, choose **New profile → Start from your résumé**.
 
 - **Formats:** PDF, Word (.docx), Markdown and plain text. A scanned image PDF has no text to read; export a text PDF instead.
 - **`--role`** is the job you're applying for. It decides which of your bullets become proof, so one résumé can produce an "analyst" profile and a "data engineer" profile.
-- **`--exclude`** leaves an employer (or any word) out entirely: `--exclude "Current Co"`. Every bullet under that job is dropped before anything is written.
+- **`--exclude`** keeps an employer (or any word) out: `--exclude "Current Co"`. The employer's name never appears, but its work stays, placed by your role there: proof from the job you still have says **Current FDE role** (an earlier one says **Data analyst role**). A bullet that names an excluded word itself is dropped. A résumé that already says `[Current employer, left out]` in the employer's place is read the same way, without `--exclude`.
 - **`--contact`** sets the email or link on the last scene. The default is the email on your résumé.
+
+### Proof a stranger understands
+
+The person watching your film has never seen your résumé, so each proof card says four things: the number, the result, **what you did**, and where.
+
+|              |                                                    |
+| ------------ | -------------------------------------------------- |
+| Number       | **6h → 45m**                                       |
+| Result       | daily client data sync, from 6 hours to 45 minutes |
+| What you did | Built containerized ETL with Docker and PostgreSQL |
+| Where        | Rail Inc.                                          |
+
+- **What you did** starts with a plain verb and names what you built, in your bullet's own words. Résumé padding ("leveraged", "orchestrated", "relative to the legacy baseline") is dropped.
+- **A before and an after are both kept.** "From 6 hours to 45 minutes" becomes **6h → 45m**, never **6** or **45 minutes** alone. "By 2 days against the 5-day baseline" becomes **5 → 3 days**; the 3 is the one number a card may show that the bullet doesn't, because it's worked out from the two that it does.
+- **The most impressive come first:** a before and after, then big scale (millions of records, thousands a day), then the rest. The film shows the first 3 that fit the company.
+
+Every card is checked in code (`readableProof` in `src/profile/proof.ts`): it says what was done, has a result, keeps the before and after, says where, uses only the bullet's numbers, names no excluded employer, and fits its limits. A card the model still gets wrong after a rewrite is rebuilt from the bullet's own words. The [résumé eval](../evals/resume/results.md) measures this on a real résumé with hand-checked answers.
 
 ### It can't inflate your résumé
 
 The same rule as the films: the writer points at sources, and code checks them.
 
-- Each proof item names the résumé bullet it came from. The number must appear in that bullet, character for character, and the label can only use numbers from that same bullet.
+- Each proof item names the résumé bullet it came from. Its numbers must appear in that bullet, and the label and "what you did" can only use numbers from that same bullet.
 - The "where" must be an employer, school or project that's actually on the résumé.
 - Strengths and the one-liner can't use numbers that aren't on the résumé, or describe things it doesn't mention.
 - Anything the model can't ground after a rewrite is dropped, not softened. The CLI lists what it left out.
 
-Without a model, a deterministic drafter reads common résumé phrasing into proof lines: "cut waste by 18%" becomes **18%: less waste**, "from 6 hours to 45 minutes" becomes **45 minutes: down from 6 hours**, "saved $1.2M a year" becomes **$1.2M: saved a year**. With a model (`--model`, see the README), the lines are shorter and better matched to the role.
+Without a model, a deterministic drafter reads common résumé phrasing into proof cards: "cut waste by 18%" becomes **18%: less waste**, "report prep from 6 hours to 20 minutes" becomes **6h → 20m: report prep time, from 6 hours to 20 minutes**, and "Engineered an automated Python pipeline migrating 1.5M records" gives _Built an automated Python pipeline_ as what you did. With a model (`--model`, see the README), the lines are shorter and better matched to the role.
 
 Either way, **read every line before you send a film.** It's your name on it.
 
@@ -50,14 +67,14 @@ Copy one, replace every line with your own, and keep the shape.
 
 ## The fields
 
-| Field         | Limit                   | Shown in the film                                                                             |
-| ------------- | ----------------------- | --------------------------------------------------------------------------------------------- |
-| `sender.name` |                         | Top of every scene, and the sign-off                                                          |
-| `sender.role` |                         | Used by the writer to frame the pitch                                                         |
-| `offer`       | 120 characters          | Seeds the pitch headline. The writer may tailor it, never extend it.                          |
-| `points`      | 2 to 6                  | The writer picks 2 or 3 for the pitch and may reword them for the company                     |
-| `proof`       | 1 to 8                  | 3 are shown, **word for word**: `value` (12 characters), `label` (60), `where` (40, optional) |
-| `cta`         | `line` 60, `contact` 80 | The last scene                                                                                |
+| Field         | Limit                   | Shown in the film                                                                                                                                             |
+| ------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sender.name` |                         | Top of every scene, and the sign-off                                                                                                                          |
+| `sender.role` |                         | Used by the writer to frame the pitch                                                                                                                         |
+| `offer`       | 120 characters          | Seeds the pitch headline. The writer may tailor it, never extend it.                                                                                          |
+| `points`      | 2 to 6                  | The writer picks 2 or 3 for the pitch and may reword them for the company                                                                                     |
+| `proof`       | 1 to 8                  | 3 are shown, **word for word**: `value` (12 characters), `label` (60), `did` (12 to 90, optional: what you did, starting with a verb), `where` (40, optional) |
+| `cta`         | `line` 60, `contact` 80 | The last scene                                                                                                                                                |
 
 ## Choosing which proof a film shows
 

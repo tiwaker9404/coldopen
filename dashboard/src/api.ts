@@ -292,7 +292,8 @@ export interface ProfileData {
   recipient?: { name: string; role?: string }
   offer: string
   points: string[]
-  proof: { value: string; label: string; where?: string }[]
+  /** did: what they did to get it, starting with a verb; shown under the result */
+  proof: { value: string; label: string; where?: string; did?: string }[]
   cta: { line: string; contact: string; book?: string }
   /** skills and tools, counted by Fit check */
   skills?: string[]

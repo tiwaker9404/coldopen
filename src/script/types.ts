@@ -31,6 +31,11 @@ export const ProfileSchema = z.object({
         label: z.string().min(3).max(60),
         /** where it happened ("Rail Inc.", "Deloitte"); context is what makes a number credible */
         where: z.string().min(2).max(40).optional(),
+        /**
+         * what they did to get it, starting with a verb ("Built containerized ETL with Docker
+         * and PostgreSQL"): a stranger needs the act, not just the number. Shown under it.
+         */
+        did: z.string().min(12).max(90).optional(),
       }),
     )
     .min(1)

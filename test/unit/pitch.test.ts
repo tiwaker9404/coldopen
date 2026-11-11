@@ -69,8 +69,9 @@ describe('Pitch a role', () => {
     expect(profile.preset).toBe('recruiter')
     expect(profile.recipient?.name).toBe('Priya Shah')
     expect(profile.sender).toMatchObject({ name: 'Sam Lee', company: 'Northwind Freight' })
-    // every proof number is in the résumé
-    for (const p of profile.proof) expect(RESUME).toContain(p.value.replace(/\s.*/, ''))
+    // every proof number is in the résumé ("6h → 20m" is 6 hours to 20 minutes)
+    for (const p of profile.proof)
+      for (const n of p.value.match(/\d[\d,.]*/g) ?? []) expect(RESUME).toContain(n)
   })
 
   it('refuses text with no results to show, and a profile with no name', () => {

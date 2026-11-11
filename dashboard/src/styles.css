@@ -2000,6 +2000,12 @@ dl.tally dd {
   color: var(--faint);
 }
 
+/* what you did: a full-width line under the number, measure and place */
+.proof-did {
+  grid-column: 1 / -1;
+  margin-bottom: 8px;
+}
+
 .editor .link {
   justify-self: start;
 }

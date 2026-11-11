@@ -38,7 +38,8 @@ export function answers(record: string, requirement: string): number {
 }
 
 type ProofItem = Profile['proof'][number]
-export const proofText = (p: ProofItem) => `${p.value} ${p.label} ${p.where ?? ''}`
+export const proofText = (p: ProofItem) =>
+  `${p.value} ${p.label} ${p.where ?? ''}${p.did ? ` ${p.did}` : ''}`
 
 /** a requirement counts as answered from this much overlap on (the writer's "plainly matches") */
 export const ANSWERED = 0.34

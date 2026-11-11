@@ -324,7 +324,7 @@ function profileText(profile: Profile): string {
   return [
     profile.offer,
     ...profile.points,
-    ...profile.proof.map((p) => `${p.value} ${p.label} ${p.where ?? ''}`),
+    ...profile.proof.map((p) => `${p.value} ${p.label} ${p.where ?? ''} ${p.did ?? ''}`),
     profile.sender.role ?? '',
     profile.sender.company ?? '',
   ].join(' ')
@@ -338,7 +338,7 @@ function allSourceText(kit: BrandKit, profile: Profile): string {
     ...kit.facts.map((f) => f.text),
     profile.offer,
     ...profile.points,
-    ...profile.proof.map((p) => `${p.value} ${p.label} ${p.where ?? ''}`),
+    ...profile.proof.map((p) => `${p.value} ${p.label} ${p.where ?? ''} ${p.did ?? ''}`),
     profile.cta.line,
     profile.cta.contact,
     profile.sender.name,

@@ -1,0 +1,53 @@
+name: Résumé eval
+
+# Measures a real model (Groq's gpt-oss-120b) drafting proof from résumés: Ashwin's FDE résumé
+# (scored against his hand-checked rows) and the fixture résumés, every card checked on
+# readableProof. Started by hand, or by a push to a batch branch that changes the drafter, so
+# a new drafter is measured before the batch reaches main (a dispatch-only workflow can't be
+# started from a branch until main has it). Reads the existing LLM_API_KEY secret, writes its
+# report to the job summary, and never commits.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["batch/**"]
+    paths:
+      - "src/profile/**"
+      - "evals/resume/**"
+      - "fixtures/resumes/**"
+      - "fixtures/profiles/ashwin-fde-expected.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: resume-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+        env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
+      - name: Run the résumé eval against Groq
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        # --pace 30: one résumé (up to three calls) per 30 seconds keeps under Groq's 8k
+        # tokens a minute; a 429 still gets one wait-and-retry
+        run: >
+          node evals/resume/run.ts
+          --model openai/gpt-oss-120b
+          --base-url https://api.groq.com/openai/v1
+          --pace 30
+          --out resume-eval.md
+      - name: Job summary
+        if: always()
+        run: test -f resume-eval.md && cat resume-eval.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: { name: resume-eval, path: resume-eval.md, if-no-files-found: ignore }

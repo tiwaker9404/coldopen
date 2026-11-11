@@ -1,6 +1,7 @@
 import { isStat } from '../brand/text.ts'
 import { BANNED } from '../script/taste.ts'
 import type { Profile } from '../script/types.ts'
+import { changeOf, didOf, impressive, PROOF_LIMITS, unpad } from './proof.ts'
 
 /** One thing the person did: a bullet from the résumé, and where they did it. */
 export interface Entry {
@@ -52,7 +53,7 @@ export function schoolsOf(lines: string[], max = 3): string[] {
 
 const BULLET = /^\s*[•●▪◦‣∙·\-–*]\s+/
 const SECTION =
-  /^(summary|profile|about|objective|experience|work experience|employment|employment history|professional experience|education|projects?|selected projects|publications|research|skills|technical skills|certifications?|awards|honors|leadership|volunteering|activities)\b[:\s]*$/i
+  /^(summary|profile|about|objective|experience|work experience|employment|employment history|professional experience|education|projects?|selected projects|(?:engineering|personal|side|academic|key|technical) projects|publications|research|skills|technical skills|certifications?|awards|honors|leadership|volunteering|activities)\b[:\s]*$/i
 const DATES =
   /\b((jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+)?(19|20)\d{2}\s*[-–—]\s*(((jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+)?(19|20)\d{2}|present|current|now)\b/gi
 
@@ -76,6 +77,7 @@ export function parseResume(raw: string, exclude: string[] = []): ParsedResume {
     lines.find((l) => l && !/@|\d{3}/.test(l) && l.split(' ').length <= 5) ?? '',
   )
 
+  const banned = exclude.map((e) => e.trim().toLowerCase()).filter(Boolean)
   const entries: Entry[] = []
   let section = ''
   let header: string[] = []
@@ -97,6 +99,9 @@ export function parseResume(raw: string, exclude: string[] = []): ParsedResume {
     if (BULLET.test(line)) {
       flush()
       current = { text: line.replace(BULLET, ''), org: orgOf(header), section }
+      // an employer left out ("[Current employer, left out]", or one --exclude names) keeps its
+      // work, named by the role instead: "Current FDE role"
+      if (redacted(header[0] ?? '', banned)) current.org = roleLabel(header)
       continue
     }
     // a wrapped bullet continues until its sentence ends; a line with a date range never does
@@ -114,10 +119,12 @@ export function parseResume(raw: string, exclude: string[] = []): ParsedResume {
   }
   flush()
 
-  const banned = exclude.map((e) => e.toLowerCase()).filter(Boolean)
+  // a bullet that names an excluded word itself can't be told without it, so it's left out
   const kept = entries.filter(
     (e) => !banned.some((b) => e.org.toLowerCase().includes(b) || e.text.toLowerCase().includes(b)),
   )
+  const scrub = (s: string) =>
+    banned.reduce((t, b) => t.replace(new RegExp(escapeRe(b), 'gi'), ''), s)
   const lower = raw.toLowerCase()
   const unmatchedExcludes = exclude.filter(
     (x) => x.trim() && !lower.includes(x.trim().toLowerCase()),
@@ -125,23 +132,71 @@ export function parseResume(raw: string, exclude: string[] = []): ParsedResume {
   return {
     name,
     email,
-    summary,
+    summary: collapse(scrub(summary)),
     entries: kept,
-    text: collapse(raw),
+    text: collapse(scrub(raw)),
     unmatchedExcludes,
     schools: schoolsOf(lines),
   }
 }
 
-/** "Rail Inc. Mar 2026 - May 2026" -> "Rail Inc." */
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+// "[Current employer, left out]", "[Redacted]", "(confidential)": a name the person kept off
+const PLACEHOLDER = /^\s*[[(][^\])]*(left out|redacted|confidential|employer|company)[^\])]*[\])]/i
+
+function redacted(line: string, banned: string[]): boolean {
+  const l = line.toLowerCase()
+  return PLACEHOLDER.test(line) || banned.some((b) => l.includes(b))
+}
+
+// titles people shorten; anything else is said in full when it fits
+const TITLE_SHORT: Record<string, string> = {
+  'forward deployed engineer': 'FDE',
+  'software development engineer': 'SDE',
+  'software engineer': 'SWE',
+  'site reliability engineer': 'SRE',
+  'technical program manager': 'TPM',
+  'product manager': 'PM',
+  'account executive': 'AE',
+  'sales development representative': 'SDR',
+}
+
+/**
+ * How proof from an employer left out is placed: "Current FDE role" for the job the person
+ * still has, "<Title> role" for an earlier one, "Current role" when the title won't fit.
+ */
+function roleLabel(header: string[]): string {
+  const dates = header[0] ?? ''
+  const now = /\b(present|current|now)\b/i.test(dates)
+  const titleLine = header[1] ?? ''
+  const title = collapse(
+    titleLine
+      .split(/\s{2,}|\t|\s[|·]\s/)[0]!
+      .replace(DATES, '')
+      // "Marketing Associate New York, NY": a two-word city starts with one of these
+      .replace(
+        /\s+(?:(?:New|San|Los|Las|Salt|St\.?|Fort|Santa|El|Palo|Mountain|Redwood|Menlo)\s)?[A-Z][a-zA-Z.]+,\s*([A-Z]{2}|USA|India|UK)\b.*$/,
+        '',
+      ),
+  )
+  DATES.lastIndex = 0
+  const short = TITLE_SHORT[title.toLowerCase()] ?? title
+  const label = title && !SECTION.test(title) ? `${now ? 'Current ' : ''}${short} role` : ''
+  return label && label.length <= 40 ? label : now ? 'Current role' : 'Earlier role'
+}
+
+/** "Rail Inc. Mar 2026 - May 2026" -> "Rail Inc."; "Statement Flow (Financial Engine)" -> "Statement Flow" */
 function orgOf(header: string[]): string {
   const first = header[0] ?? ''
-  return collapse(
+  const org = collapse(
     first
       .replace(DATES, '')
       .replace(/\s+[A-Z][a-zA-Z]+,\s*([A-Z]{2}|USA|India|UK)\b.*$/, '') // trailing "Durham, NC"
       .split(/\s[|·]\s|,\s/)[0]!,
-  ).slice(0, 40)
+  )
+  DATES.lastIndex = 0
+  const bare = org.replace(/\s*\([^)]*\)\s*$/, '')
+  return (bare.length >= 2 ? bare : org).slice(0, 40)
 }
 
 function titleCase(s: string): string {
@@ -268,6 +323,28 @@ export function statOf(text: string): { value: string; label: string } | null {
   return { value, label }
 }
 
+/**
+ * A proof card built only from one bullet's own words: the change when it gives a before and
+ * an after ("6h → 45m", "daily client data sync cycles, from 6 hours to 45 minutes"),
+ * otherwise its strongest number and what it counts, plus what was done and where.
+ */
+export function proofFromBullet(e: Entry): Profile['proof'][number] | null {
+  const ch = changeOf(e.text)
+  const st = ch
+    ? { value: ch.value, label: clipWords(`${ch.what}, from ${ch.before} to ${ch.after}`, 60) }
+    : statOf(e.text)
+  if (!st) return null
+  const label = ch ? st.label : unpad(st.label)
+  if (label.length < 3) return null
+  const did = didOf(e.text)
+  return {
+    value: st.value,
+    label,
+    ...(did.length >= PROOF_LIMITS.didMin && did.length <= PROOF_LIMITS.didMax ? { did } : {}),
+    ...(e.org.length >= 2 ? { where: e.org } : {}),
+  }
+}
+
 function score(v: string): number {
   return (
     (/[%+x]|gb|tb|m\b|k\b/i.test(v) ? 2 : 0) + (/,/.test(v) ? 1 : 0) + Math.min(v.length, 6) / 6
@@ -328,11 +405,14 @@ export function deterministicDraft(
   const ranked = [...resume.entries].sort(
     (a, b) => relevance(b, opts.role) - relevance(a, opts.role),
   )
+  // proof a stranger finds most impressive first: a before → after, then big scale
+  const cards = ranked
+    .map((e) => proofFromBullet(e))
+    .filter((p): p is NonNullable<typeof p> => p !== null)
   const proof: Profile['proof'] = []
-  for (const e of ranked) {
-    const st = statOf(e.text)
-    if (!st || proof.some((p) => p.value === st.value)) continue
-    proof.push({ ...st, ...(e.org.length >= 2 ? { where: e.org } : {}) })
+  for (const p of [...cards].sort((a, b) => impressive(b) - impressive(a))) {
+    if (proof.some((x) => x.value === p.value)) continue
+    proof.push(p)
     if (proof.length === 8) break
   }
   const points = ranked

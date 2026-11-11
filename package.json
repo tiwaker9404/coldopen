@@ -37,6 +37,7 @@
     "evals": "node evals/run.ts",
     "eval:fit": "node evals/fit/run.ts",
     "eval:extract": "node evals/extract/run.ts",
+    "eval:resume": "node evals/resume/run.ts",
     "test:chaos": "vitest run test/chaos",
     "db:test": "docker run -d --rm --name coldopen-test-pg -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17-alpine",
     "coldopen": "node src/cli.ts",

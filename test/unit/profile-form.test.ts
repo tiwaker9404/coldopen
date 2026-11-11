@@ -192,3 +192,62 @@ describe('the creator line: something you built that made the film', () => {
     expect(blank.ok && 'creator' in JSON.parse(JSON.stringify(blank.body.data))).toBe(false)
   })
 })
+
+describe('what you did, under each result', () => {
+  // a profile as GET /v1/profiles returned it before results had "what you did"
+  const saved = JSON.parse(
+    readFileSync(join(import.meta.dirname, '../../fixtures/profiles/saved-candidate.json'), 'utf8'),
+  ) as { name: string; data: ProfileData }
+  const did = 'Built containerized ETL with Docker and PostgreSQL'
+
+  it('keeps an old profile without it valid and unchanged', () => {
+    expect(saved.data.proof.every((p) => p.did === undefined)).toBe(true)
+    expect(ProfileSchema.safeParse(saved.data).success).toBe(true)
+    const r = validate(saved.data, saved.name)
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(JSON.parse(JSON.stringify(r.body.data))).toEqual(saved.data)
+  })
+
+  it('round-trips through the editor, tidied, and is left out when blank', () => {
+    const typed: ProfileData = {
+      ...good,
+      proof: [
+        {
+          value: '6h → 45m',
+          label: 'daily client data sync',
+          where: 'Rail Inc.',
+          did: `  ${did}\n`,
+        },
+        { value: '57%', label: 'reply rate on films', where: 'coldopen', did: '  ' },
+      ],
+    }
+    const r = validate(typed, '')
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.body.data.proof).toEqual([
+      { value: '6h → 45m', label: 'daily client data sync', where: 'Rail Inc.', did },
+      { value: '57%', label: 'reply rate on films', where: 'coldopen' },
+    ])
+    // saved and opened again, it's the same
+    const again = validate(r.body.data, r.body.name)
+    expect(again.ok && again.body.data).toEqual(r.body.data)
+    expect(ProfileSchema.parse(r.body.data).proof[0]!.did).toBe(did)
+  })
+
+  it('says, on its own row, when it is too short or too long', () => {
+    expect(MAX.proofDid).toBe(90)
+    const f = fieldsOf({
+      ...good,
+      proof: [
+        { value: '1', label: 'blank row stays', where: 'x' },
+        { value: '6h → 45m', label: 'daily client data sync', did: 'Built ETL' },
+        { value: '9', label: 'nine things', did: `Built ${'x'.repeat(90)}` },
+      ],
+    })
+    expect(f['proof.1.did']).toBe('What you did for result 2 needs at least 12 characters')
+    expect(f['proof.2.did']).toBe('What you did for result 3 can be at most 90 characters')
+    // a row with only "what you did" typed is kept, so it can say what's missing
+    const { body } = prepare({ ...good, proof: [{ value: '', label: '', did }] }, '')
+    expect(body.data.proof).toEqual([{ value: '', label: '', did }])
+  })
+})

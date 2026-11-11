@@ -104,8 +104,9 @@ function sceneHtml(s: Scene, i: number, start: number, c: SceneCtx): string {
           ${s.stats
             .map(
               (st, j) => `<div class="stat in-up" style="animation-delay:${200 + j * 380}ms">
-                <div class="display value" data-fit data-lines="1" data-min="0.4"><span class="count" data-count="${esc(st.value)}" data-delay="${300 + j * 380}" data-ms="1100">${esc(st.value)}</span></div>
+                <div class="display value" data-fit data-lines="1" data-min="${st.value.includes('→') ? '0.3' : '0.4'}"><span class="count" data-count="${esc(st.value)}" data-delay="${300 + j * 380}" data-ms="1100">${esc(st.value)}</span></div>
                 <div class="label">${esc(st.label)}</div>
+                ${st.did ? `<div class="did" data-fit data-lines="4" data-min="0.6">${esc(st.did)}</div>` : ''}
                 ${st.where ? `<div class="where">${esc(st.where)}</div>` : ''}
               </div>`,
             )
@@ -249,6 +250,8 @@ html,body{width:${width}px;height:${height}px;overflow:hidden;background:#000}
 .stat .value{font-size:calc(var(--u)*13);line-height:1;color:var(--accent);letter-spacing:-0.04em;white-space:nowrap}
 .stat{min-width:0}
 .stat .label{font-size:calc(var(--u)*2.9);margin-top:calc(var(--u)*1.6);line-height:1.3;max-width:24ch}
+/* what they did: smaller than the result, in the scene's own text color so it keeps AA */
+.stat .did{font-size:calc(var(--u)*2.3);margin-top:calc(var(--u)*1.2);line-height:1.3;max-width:30ch;color:var(--fg);opacity:1;font-weight:400}
 .stat .where{font-size:calc(var(--u)*2.2);margin-top:calc(var(--u)*1.4);color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;overflow-wrap:anywhere}
 
 /* cta */
@@ -344,6 +347,8 @@ if (pw) {
 }
 
 function fmtCount(target, p) {
+  // a before → after is read as a pair; counting one side up would show a wrong change
+  if (target.includes('→')) return target;
   const m = target.match(/^([^\\d]*)(\\d[\\d,.]*)(.*)$/);
   if (!m) return target;
   const raw = m[2].replace(/,/g, '');
