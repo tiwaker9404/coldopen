@@ -194,6 +194,20 @@ const boardByHost = new Map(
   DEFAULT_BOARDS.filter((b) => b.site).map((b) => [host(b.site), boardKey(b)] as const),
 )
 
+/**
+ * Every board's latest Form D as filed, by the company's website host, without the 3-month cut:
+ * Network this week dates it against its own pinned `now`
+ */
+export function raisedByHost(): Record<string, { date: string; amount?: number }> {
+  const out: Record<string, { date: string; amount?: number }> = {}
+  for (const [key, r] of Object.entries(RAISED)) {
+    const b = DEFAULT_BOARDS.find((x) => boardKey(x) === key)
+    const h = b?.site ? host(b.site) : ''
+    if (h) out[h] = r.amount ? { date: r.date, amount: r.amount } : { date: r.date }
+  }
+  return out
+}
+
 /** The company's latest Form D, found by its website (a film knows the site, not the board) */
 export function raisedBySite(site: string): { date: string; filer: string } | null {
   const h = host(/^https?:\/\//.test(site) ? site : `https://${site}`)

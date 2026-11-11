@@ -262,6 +262,22 @@ export async function listings(
   return { jobs, failed, updatedAt }
 }
 
+/**
+ * What the cache holds for these boards right now, reading none of them: for pages that rank
+ * companies (Network this week), which shouldn't wait on a job board
+ */
+export async function cachedJobs(sql: Sql, boards: Board[]): Promise<Job[]> {
+  if (!boards.length) return []
+  const cache = await cachedRows(sql, boards.map(boardKey))
+  return boards.flatMap((b) =>
+    (cache.get(boardKey(b))?.jobs ?? []).map((j) => ({
+      ...j,
+      company: b.name,
+      ...(b.site ? { site: b.site } : {}),
+    })),
+  )
+}
+
 /** default boards and theirs, without the same board twice */
 export function boardsFor(own: Board[]): Board[] {
   const seen = new Set<string>()
@@ -431,6 +447,8 @@ const RANKED = new Map<
     failed: Board[]
     updatedAt: Date | null
     recent: Suggestion[]
+    /** every fitted role before the cut, for the warm sort */
+    pool: JobWithFit[]
   }
 >()
 
@@ -438,7 +456,17 @@ export async function suggestions(
   sql: Sql,
   owner: string,
   profile: Profile | undefined,
-  opts: { limit?: number; fetch?: FetchFn; now?: number; search?: Search } = {},
+  opts: {
+    limit?: number
+    fetch?: FetchFn
+    now?: number
+    search?: Search
+    /**
+     * for the "Worth a warm message" sort: each company's Network this week score by website
+     * host, and the hosts they hid (their roles are left out of this sort)
+     */
+    warm?: () => Promise<{ score: Map<string, number>; hidden: Set<string> }>
+  } = {},
 ): Promise<Suggested> {
   const saved = await getSearch(sql, owner, profile?.sender.role)
   // a search to try without saving it (the MCP server's search_jobs)
@@ -533,14 +561,28 @@ export async function suggestions(
           )
         : []
 
-      return { at: Date.now(), ranked, gaps, failed, updatedAt, recent }
+      return { at: Date.now(), ranked, gaps, failed, updatedAt, recent, pool: fitted }
     })()
     if (!opts.fetch && !opts.now) {
       RANKED.set(key, hit)
       if (RANKED.size > 200) RANKED.delete(RANKED.keys().next().value!)
     }
   }
-  const { ranked, gaps, failed, updatedAt, recent } = hit
+  const { gaps, failed, updatedAt, recent } = hit
+  let ranked = hit.ranked
+  // worth a warm message: the companies Network this week scores highest first, hidden ones out
+  if (state.search.sort === 'warm' && opts.warm) {
+    const { score, hidden } = await opts.warm()
+    const h = (j: JobWithFit) => hostOf(j.site) ?? ''
+    const order = new Map(hit.pool.map((j, i) => [j.id, i]))
+    const kept = hit.pool
+      .filter((j) => !hidden.has(h(j)))
+      .sort(
+        (a, b) =>
+          (score.get(h(b)) ?? -1) - (score.get(h(a)) ?? -1) || order.get(a.id)! - order.get(b.id)!,
+      )
+    ranked = spread(kept, 3).slice(0, opts.limit ?? 24)
+  }
   // which of these already have a film: the job link, given as the job post or as the website
   const urls = ranked.map((j) => j.url)
   const made = urls.length

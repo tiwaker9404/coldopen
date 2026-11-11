@@ -313,6 +313,25 @@ export interface Profile {
 }
 
 /** The hosted app's account state (on a private install, hosted is false and the rest null). */
+/** one company in Network this week, with why it's on the list */
+export interface Target {
+  company: string
+  site: string
+  oneLiner: string | null
+  teamSize: number | null
+  score: number
+  reasons: string[]
+  yc?: { batch: string; slug: string }
+}
+
+export interface Targets {
+  data: Target[]
+  /** films made this week against the 10-a-week target */
+  week: { made: number; target: number }
+  /** the roles it was worked out for: the saved job search's, then the profile's */
+  roles: string[]
+}
+
 export interface Me {
   hosted: boolean
   signIn: boolean
@@ -544,8 +563,8 @@ export interface JobSearch {
   skipSenior: boolean
   /** only YC companies */
   ycOnly: boolean
-  /** best fit first, or the companies hiring fastest first */
-  sort: 'best' | 'fastest'
+  /** best fit first, the companies hiring fastest first, or the ones worth a warm message first */
+  sort: 'best' | 'fastest' | 'warm'
   /** only companies with H-1B approvals last year */
   visaOnly: boolean
   /** only companies that raised a private round in the last 3 months */

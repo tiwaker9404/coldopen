@@ -28,6 +28,7 @@ import { Pitch } from './Pitch.tsx'
 import { ProfilesPage } from './Profiles.tsx'
 import { jobBoxNote, pasteBody, pasteNote, pasting, walledInList } from './pasteJob.ts'
 import { Startups } from './Startups.tsx'
+import { NetworkThisWeek } from './Targets.tsx'
 import { ErrorNote, notify, useToast } from './ui.tsx'
 
 // the editor checks against the server's own schema, so it brings Zod: load it when opened
@@ -53,6 +54,8 @@ export function App() {
   const [editing, setEditing] = useState<Editing | null>(null)
   // a failed film's job post, sent back to the composer to paste its description
   const [paste, setPaste] = useState<PasteDraft | null>(null)
+  // a company's site from Network this week, sent to the make form
+  const [fill, setFill] = useState<{ url: string; n: number } | null>(null)
   const [stats, setStats] = useState(false)
   const [side, setSide] = useState<'guide' | 'tools' | null>(null)
   const toast = useToast()
@@ -233,11 +236,13 @@ export function App() {
                 me={me.data}
                 profiles={profiles.data?.data ?? []}
                 draft={paste}
+                fill={fill}
                 onMade={setOpen}
                 onEdit={(p) => setEditing({ profile: p })}
               />
               <GettingStarted films={list} onOpen={setOpen} onGuide={() => setSide('guide')} />
               <FollowUps onOpen={setOpen} />
+              <NetworkThisWeek onMake={(url) => setFill({ url, n: Date.now() })} />
               <InProduction list={list} name={name} open={open} onOpen={setOpen} />
               <Jobs onMade={setOpen} variant="preview" />
               <Openers />
@@ -501,12 +506,15 @@ function Composer({
   me,
   profiles,
   draft,
+  fill,
   onMade,
   onEdit,
 }: {
   me: Me | undefined
   profiles: Profile[]
   draft?: PasteDraft | null
+  /** a company's website to make a film for, from Network this week */
+  fill?: { url: string; n: number } | null
   onMade: (id: string) => void
   onEdit: (p: Profile) => void
 }) {
@@ -550,6 +558,17 @@ function Composer({
     setForced(true)
     window.scrollTo(0, 0)
   }, [draft])
+  // "Make the film" on a Network this week card: the site goes in the box, ready to make
+  useEffect(() => {
+    if (!fill) return
+    setMany(false)
+    setText(fill.url)
+    setJob('')
+    setSite('')
+    setForced(false)
+    window.scrollTo(0, 0)
+    input.current?.focus()
+  }, [fill])
   // "/" anywhere jumps to the link field, as on most tools people know
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

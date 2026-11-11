@@ -2768,6 +2768,158 @@
           "a": "Start from what they said: “61% of returns become exchanges or store credit.” Then say which part of it you want to help with."
         }
       ]
+    },
+    "/v1/targets?limit=10": {
+      "data": [
+        {
+          "company": "David AI",
+          "site": "https://www.withdavid.ai/",
+          "oneLiner": "Data for audio AI",
+          "teamSize": 10,
+          "score": 4.25,
+          "reasons": [
+            "10 people, so the founders read their own email",
+            "Posted a Forward Deployed Engineer role today"
+          ],
+          "yc": {
+            "batch": "S24",
+            "slug": "david-ai"
+          }
+        },
+        {
+          "company": "Vitalize",
+          "site": "https://vitalize.care/",
+          "oneLiner": "Transforming how health systems optimize labor",
+          "teamSize": 28,
+          "score": 3.25,
+          "reasons": [
+            "28 people, so a note reaches the team that builds it",
+            "Posted an Enterprise Solutions Engineer role 3 days ago"
+          ],
+          "yc": {
+            "batch": "W23",
+            "slug": "vitalize"
+          }
+        },
+        {
+          "company": "PointOne",
+          "site": "https://pointone.com/",
+          "oneLiner": "AI Time Platform for Law Firms",
+          "teamSize": 35,
+          "score": 3.25,
+          "reasons": [
+            "35 people, so a note reaches the team that builds it",
+            "Posted a Forward Deployed Engineer role today"
+          ],
+          "yc": {
+            "batch": "W24",
+            "slug": "pointone"
+          }
+        },
+        {
+          "company": "Databricks",
+          "site": "https://www.databricks.com/",
+          "oneLiner": null,
+          "teamSize": null,
+          "score": 3.25,
+          "reasons": ["Posted a Delivery Partner Manager, FDE role today", "Raised $241M in August"]
+        },
+        {
+          "company": "Anchorhead",
+          "site": "https://www.anchorhead.ai/",
+          "oneLiner": "Evals for frontier research agents",
+          "teamSize": 1,
+          "score": 3,
+          "reasons": [
+            "1 person, so the founders read their own email",
+            "What they do mentions agents and evals, all in your profile"
+          ],
+          "yc": {
+            "batch": "W26",
+            "slug": "anchorhead"
+          }
+        },
+        {
+          "company": "Confident AI",
+          "site": "https://confident-ai.com/",
+          "oneLiner": "Production Monitoring & Evals for AI Agents",
+          "teamSize": 7,
+          "score": 3,
+          "reasons": [
+            "7 people, so the founders read their own email",
+            "What they do mentions agents and evals, all in your profile"
+          ],
+          "yc": {
+            "batch": "W25",
+            "slug": "confident-ai"
+          }
+        },
+        {
+          "company": "Allowance",
+          "site": "https://useallowance.com/",
+          "oneLiner": "The spend control layer for AI agents",
+          "teamSize": 1,
+          "score": 2.5,
+          "reasons": [
+            "1 person, so the founders read their own email",
+            "What they do mentions agents, all in your profile"
+          ],
+          "yc": {
+            "batch": "X26",
+            "slug": "allowance"
+          }
+        },
+        {
+          "company": "Clawvisor",
+          "site": "https://clawvisor.com/",
+          "oneLiner": "The Authorization Layer for AI Agents",
+          "teamSize": 1,
+          "score": 2.5,
+          "reasons": [
+            "1 person, so the founders read their own email",
+            "What they do mentions agents, all in your profile"
+          ],
+          "yc": {
+            "batch": "X26",
+            "slug": "clawvisor"
+          }
+        },
+        {
+          "company": "Click",
+          "site": "https://www.useclick.ai/",
+          "oneLiner": "Managed Agents API",
+          "teamSize": 1,
+          "score": 2.5,
+          "reasons": [
+            "1 person, so the founders read their own email",
+            "What they do mentions agents, all in your profile"
+          ],
+          "yc": {
+            "batch": "S26",
+            "slug": "click"
+          }
+        },
+        {
+          "company": "Codag",
+          "site": "https://codag.ai/",
+          "oneLiner": "The AI gateway for cheaper, faster, permissioned agents.",
+          "teamSize": 1,
+          "score": 2.5,
+          "reasons": [
+            "1 person, so the founders read their own email",
+            "What they do mentions agents, all in your profile"
+          ],
+          "yc": {
+            "batch": "S26",
+            "slug": "codag"
+          }
+        }
+      ],
+      "week": {
+        "made": 3,
+        "target": 10
+      },
+      "roles": ["Forward Deployed Engineer", "Solutions Engineer", "Solutions Architect"]
     }
   }
 }

@@ -53,8 +53,11 @@ export const SearchSchema = z.object({
   raisedOnly: z.boolean().default(false),
   /** with raisedOnly: only rounds of this size, from the amount the Form D says was sold */
   raisedSize: z.enum(['any', 'seed', 'a', 'b', 'c']).default('any'),
-  /** best fit first, or the companies adding the most roles lately first */
-  sort: z.enum(['best', 'fastest']).default('best'),
+  /**
+   * best fit first, the companies adding the most roles lately first, or the companies most
+   * worth a warm message (Network this week's score) first
+   */
+  sort: z.enum(['best', 'fastest', 'warm']).default('best'),
   /** only roles posted in the last week or month */
   within: z.enum(['any', 'day', '3days', 'week', 'month']).default('any'),
   /** companies to leave out, by name */

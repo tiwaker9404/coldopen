@@ -24,6 +24,7 @@ describe('coldopen as an MCP server', () => {
       'draft_messages',
       'find_founders',
       'find_startups',
+      'find_targets',
       'follow_ups_due',
       'get_film',
       'list_films',
@@ -33,6 +34,18 @@ describe('coldopen as an MCP server', () => {
     ])
     expect(tools.find((t) => t.name === 'search_jobs')?.annotations?.readOnlyHint).toBe(true)
     expect(tools.find((t) => t.name === 'make_film')?.annotations?.readOnlyHint).toBeUndefined()
+    expect(tools.find((t) => t.name === 'find_targets')?.annotations?.readOnlyHint).toBe(true)
+  })
+
+  it('find_targets is a thin call to Network this week', async () => {
+    const week = {
+      data: [{ company: 'Anchor', reasons: ['6 people'] }],
+      week: { made: 4, target: 10 },
+    }
+    const { client, calls } = await connect({ 'GET /v1/targets': { status: 200, json: week } })
+    const r = await client.callTool({ name: 'find_targets', arguments: { limit: 5 } })
+    expect(calls).toEqual([{ method: 'GET', url: '/v1/targets?limit=5' }])
+    expect(JSON.parse((r.content as { text: string }[])[0]!.text)).toEqual(week)
   })
 
   it('calls the REST API with what the agent asked, and passes its errors on', async () => {

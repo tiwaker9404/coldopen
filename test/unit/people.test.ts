@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { openGroup, peopleGroups } from '../../dashboard/src/peopleTabs.ts'
+import { targetRoles } from '../../src/jobs/targets.ts'
 import {
   companyKey,
   flatSearches,
@@ -122,6 +123,32 @@ describe('people to send a film to', () => {
     expect(urls(own)).toContain(
       'https://www.linkedin.com/search/results/people/?keywords=forward deployed engineer Acme&origin=GLOBAL_SEARCH_HEADER',
     )
+  })
+
+  it('with no job link, looks for people doing the roles in your saved job search before your profile role', () => {
+    const p = profile('candidate') // sender.role is "Forward deployed engineer"
+    const labels = (roles?: string[]) =>
+      peopleSearches('Acme', { profile: p, roles })
+        .find((g) => g.id === 'doing')!
+        .searches.map((s) => s.label)
+    // the saved search's roles, from targetRoles(): search first, then the profile's role
+    const roles = targetRoles({ roles: ['Data Analyst', 'GTM Engineer'] }, p)
+    expect(roles).toEqual(['Data Analyst', 'GTM Engineer', 'Forward deployed engineer'])
+    expect(labels(roles)).toEqual([
+      'Data analysts',
+      'GTM engineers',
+      'Account executives',
+      'Growth team',
+      'New grads',
+    ])
+    // nothing saved: the profile's role, as before
+    expect(labels(targetRoles({ roles: [] }, p))).toEqual(labels(undefined))
+    expect(labels(undefined)[0]).toBe('Forward deployed engineers')
+    // a job link still wins over both
+    const withJob = peopleSearches('Acme', { profile: p, roles, jobTitle: 'Backend Engineer' })
+      .find((g) => g.id === 'doing')!
+      .searches.map((s) => s.label)
+    expect(withJob).toEqual(['Software engineers', 'New grads'])
   })
 
   it('adds warm paths: alumni of your schools, people from your past employers, and people you know', () => {

@@ -23,6 +23,17 @@ describe('the demo account', () => {
     }
     const jobs = await demoApi<{ data: unknown[] }>('/v1/jobs/suggested?limit=24')
     expect(jobs.data.length).toBeGreaterThan(10)
+    // Today's Network this week: 10 companies, each with a reason, none of the demo's films
+    const week = await demoApi<{
+      data: { site: string; reasons: string[] }[]
+      week: { made: number; target: number }
+    }>('/v1/targets?limit=10')
+    expect(week.data).toHaveLength(10)
+    for (const t of week.data) expect(t.reasons.length).toBeGreaterThan(0)
+    const filmed = films.data.map((f) => f.company)
+    expect(week.data.map((t) => t.site).join()).not.toMatch(/\.example/)
+    expect(filmed).toHaveLength(3)
+    expect(week.week).toEqual({ made: 3, target: 10 })
   })
 
   it('serves a filtered startups page from the recorded one, and a plain 404 for anything else', async () => {

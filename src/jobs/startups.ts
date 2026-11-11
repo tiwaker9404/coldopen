@@ -15,6 +15,9 @@ const ALL: Startup[] = (() => {
   }
 })()
 
+/** every startup as YC lists it, for Network this week */
+export const allStartups = (): Startup[] => ALL
+
 /** companies whose open roles Jobs for you already reads */
 const WITH_BOARD = new Set(YC_BOARDS.map((b) => b.slug))
 
@@ -31,6 +34,11 @@ export interface StartupQuery {
   us?: boolean | undefined
   limit?: number | undefined
   offset?: number | undefined
+  /**
+   * "Worth a warm message": the Network this week score by website host. Scored startups come
+   * first, best first; the rest follow in the usual order; hidden ones are left out.
+   */
+  warm?: { score: Map<string, number>; hidden: Set<string> } | undefined
 }
 
 export interface StartupRow {
@@ -74,7 +82,7 @@ export function searchStartups(query: StartupQuery): {
   const q = query.q?.trim().toLowerCase()
   const us = query.us ?? true
   const base = ALL.filter((s) => !us || s.us)
-  const match = base.filter(
+  const match: Startup[] = base.filter(
     (s) =>
       (!q ||
         s.n.toLowerCase().includes(q) ||
@@ -87,6 +95,16 @@ export function searchStartups(query: StartupQuery): {
       (query.hiring !== 'yc-only' || (s.h && !WITH_BOARD.has(s.s))) &&
       (query.hiring !== 'quiet' || !s.h),
   )
+  if (query.warm) {
+    const { score, hidden } = query.warm
+    const h = (s: Startup) => hostOf(s.w)
+    const kept = match.filter((s) => !hidden.has(h(s)))
+    const order = new Map(kept.map((s, i) => [s, i]))
+    kept.sort(
+      (a, b) => (score.get(h(b)) ?? -1) - (score.get(h(a)) ?? -1) || order.get(a)! - order.get(b)!,
+    )
+    match.splice(0, match.length, ...kept)
+  }
   const counts = new Map<string, number>()
   for (const s of base) if (s.i) counts.set(s.i, (counts.get(s.i) ?? 0) + 1)
   const offset = query.offset ?? 0

@@ -4,6 +4,7 @@ import { createServer, type Server } from 'node:http'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApi } from '../../src/api/server.ts'
+import { makeToken } from '../../src/api/tokens.ts'
 import type { Sql } from '../../src/db/index.ts'
 import { searchStartups } from '../../src/jobs/startups.ts'
 import { SlackClient } from '../../src/slack.ts'
@@ -813,5 +814,97 @@ describe('slack', () => {
     const replies = slackCalls.filter((c) => c.method === 'chat.postMessage')
     expect(replies).toHaveLength(1)
     expect(JSON.parse(replies[0]!.body)).toMatchObject({ channel: 'C9', thread_ts: '100.1' })
+  })
+})
+
+describe('network this week', () => {
+  type Card = { company: string; site: string; reasons: string[]; score: number }
+  const week = async (headers: Record<string, string> = auth) => {
+    const r = await app.inject({ url: '/v1/targets', headers })
+    expect(r.statusCode).toBe(200)
+    return r.json() as { data: Card[]; week: { made: number; target: number }; roles: string[] }
+  }
+  const sites = (cards: Card[]) => cards.map((c) => c.site)
+
+  it('lists 10 companies with their reasons, owner-scoped, and clears when a film is made', async () => {
+    // a job seeker's profile is the newest, so it's the one Network this week reads
+    const put = await app.inject({
+      method: 'PUT',
+      url: '/v1/profiles/alex',
+      headers: auth,
+      payload: { name: 'Alex', data: { ...profile('candidate'), skills: ['Python'] } },
+    })
+    expect(put.statusCode).toBeLessThan(300)
+    const first = await week()
+    expect(first.data).toHaveLength(10)
+    expect(first.roles).toEqual(['Forward deployed engineer'])
+    expect(first.week.target).toBe(10)
+    for (const c of first.data) {
+      expect(c.reasons.length).toBeGreaterThan(0)
+      expect(c.site).toMatch(/^https?:\/\//)
+    }
+    const scores = first.data.map((c) => c.score)
+    expect(scores).toEqual([...scores].sort((a, b) => b - a))
+
+    // making a film for the top company takes it off the list, and counts toward the week
+    const [top, second, third] = first.data as [Card, Card, Card]
+    const made = await app.inject({
+      method: 'POST',
+      url: '/v1/films',
+      headers: auth,
+      payload: { url: top.site, profileId: 'alex' },
+    })
+    expect(made.statusCode).toBe(202)
+    const after = await week()
+    expect(sites(after.data)).not.toContain(top.site)
+    expect(sites(after.data).slice(0, 2)).toEqual([second.site, third.site])
+    expect(after.week.made).toBe(first.week.made + 1)
+
+    // "Not for me" hides it from Today and from the Startups warm sort; undo brings it back
+    const hide = await app.inject({
+      method: 'POST',
+      url: '/v1/targets/hide',
+      headers: auth,
+      payload: { site: second.site },
+    })
+    expect(hide.statusCode).toBe(200)
+    expect(sites((await week()).data)).not.toContain(second.site)
+    const warm = (
+      await app.inject({ url: '/v1/startups?sort=warm&since=2005&limit=60', headers: auth })
+    ).json() as { data: { website: string | null; reasons?: string[] }[] }
+    const host = (u: string | null) => new URL(u ?? 'https://x').hostname.replace(/^www\./, '')
+    expect(warm.data.map((s) => host(s.website))).not.toContain(host(second.site))
+    expect(warm.data[0]!.reasons?.length).toBeGreaterThan(0)
+    const bad = await app.inject({
+      method: 'POST',
+      url: '/v1/targets/hide',
+      headers: auth,
+      payload: { site: 'nothing' },
+    })
+    expect(bad.statusCode).toBe(422)
+    expect(bad.json().error.code).toBe('bad_site')
+
+    // someone else's hides and films don't touch this list, and they see their own
+    const other = await makeToken(sql, 'u:another-sender', 'test')
+    const them = { authorization: `Bearer ${other.token}` }
+    await app.inject({
+      method: 'POST',
+      url: '/v1/targets/hide',
+      headers: them,
+      payload: { site: third.site },
+    })
+    await sql`insert into runs (id, agent, input, owner) values ('run_other_target', 'film', ${sql.json({ url: third.site } as never)}, 'u:another-sender')`
+    expect(sites((await week()).data)).toContain(third.site)
+    const theirs = await app.inject({ url: '/v1/targets', headers: them })
+    expect(theirs.statusCode).toBe(200)
+    expect(theirs.json().week.made).toBe(1)
+
+    await app.inject({
+      method: 'POST',
+      url: '/v1/targets/unhide',
+      headers: auth,
+      payload: { site: second.site },
+    })
+    expect(sites((await week()).data)).toContain(second.site)
   })
 })

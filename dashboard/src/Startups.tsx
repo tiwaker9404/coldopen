@@ -19,6 +19,8 @@ interface Startup {
   yc: string
   ycJobs: string | null
   filmId?: string
+  /** with the warm sort: why it's worth a warm message */
+  reasons?: string[]
 }
 
 interface StartupPage {
@@ -41,6 +43,7 @@ export function Startups({ onMade }: { onMade: (id: string) => void }) {
   const [hiring, setHiring] = useState<'any' | 'hiring' | 'yc-only' | 'quiet'>(() =>
     new URLSearchParams(window.location.search).get('hiring') === 'yc-only' ? 'yc-only' : 'any',
   )
+  const [sort, setSort] = useState<'newest' | 'warm'>('newest')
   const [page, setPage] = useState(0)
   const params = new URLSearchParams({
     ...(q.trim() ? { q: q.trim() } : {}),
@@ -48,6 +51,7 @@ export function Startups({ onMade }: { onMade: (id: string) => void }) {
     ...(since ? { since } : {}),
     ...(maxTeam ? { maxTeam } : {}),
     hiring,
+    ...(sort === 'warm' ? { sort } : {}),
     limit: String(PAGE),
     offset: String(page * PAGE),
   })
@@ -110,10 +114,18 @@ export function Startups({ onMade }: { onMade: (id: string) => void }) {
           <option value="hiring">Hiring on YC</option>
           <option value="yc-only">Roles only on YC (not in Jobs)</option>
         </select>
+        <select
+          value={sort}
+          onChange={(e) => reset(setSort)(e.target.value as typeof sort)}
+          aria-label="Sort by"
+        >
+          <option value="newest">Newest batch first</option>
+          <option value="warm">Worth a warm message</option>
+        </select>
       </div>
       <p className="jobs-note">
         {d
-          ? `${d.total.toLocaleString()} YC startups with people in the US, newest first. The founders are named on each YC page; at this size they read their own inbox.`
+          ? `${d.total.toLocaleString()} YC startups with people in the US, ${sort === 'warm' ? 'the ones most worth a warm message first' : 'newest first'}. The founders are named on each YC page; at this size they read their own inbox.`
           : 'Reading YC’s directory…'}
       </p>
       {r.isError && <ErrorNote error={r.error} lead="Couldn’t load startups: " />}
@@ -161,6 +173,7 @@ function StartupRow({ s, onMade }: { s: Startup; onMade: (id: string) => void })
       <div className="job-what">
         <b>{s.name}</b>
         {s.oneLiner && <span className="startup-line">{s.oneLiner}</span>}
+        {s.reasons?.length ? <span className="startup-line">{s.reasons.join(' · ')}</span> : null}
         <span className="job-why">
           {s.batch && <span className="tag yc">YC {s.batch}</span>}
           {s.team && <span className="tag">{s.team} people</span>}

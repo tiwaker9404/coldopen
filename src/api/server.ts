@@ -16,11 +16,14 @@ import type { Config } from '../config.ts'
 import type { Sql } from '../db/index.ts'
 import { FilmInputSchema, type FilmResult } from '../film.ts'
 import { newId } from '../ids.ts'
+import { semanticNow } from '../job/semantic.ts'
 import { pastedTextProblem } from '../job/walled.ts'
 import { type BoardSchema, type FetchFn, parseBoardLink } from '../jobs/boards.ts'
-import { RAISED_COUNT, raisedBySite, YC_BOARDS, ycOf } from '../jobs/companies.ts'
+import { RAISED_COUNT, raisedByHost, raisedBySite, YC_BOARDS, ycOf } from '../jobs/companies.ts'
 import { SearchSchema } from '../jobs/rank.ts'
 import {
+  boardsFor,
+  cachedJobs,
   getSearch,
   hideJob,
   ignoreGap,
@@ -30,7 +33,15 @@ import {
   suggestions,
   warmBoards,
 } from '../jobs/service.ts'
-import { searchStartups, startupOf } from '../jobs/startups.ts'
+import { allStartups, searchStartups, startupOf } from '../jobs/startups.ts'
+import {
+  type Target,
+  hostOf as targetHost,
+  targetRoles,
+  targets,
+  WEEKLY_TARGET,
+  weekStart,
+} from '../jobs/targets.ts'
 import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
@@ -951,6 +962,7 @@ export async function buildApi({
       const r = await suggestions(sql, req.owner, await newestProfile(req.owner), {
         limit: req.query.limit,
         ...(jobsFetch ? { fetch: jobsFetch } : {}),
+        warm: () => warmScores(req.owner),
       })
       return {
         data: r.data.map(({ score: _s, board: _b, ...j }) => j),
@@ -993,11 +1005,15 @@ export async function buildApi({
             .transform((v) => v === 'true'),
           limit: z.coerce.number().int().min(1).max(60).default(30),
           offset: z.coerce.number().int().min(0).max(10_000).default(0),
+          /** newest batch first, or worth a warm message first (Network this week's score) */
+          sort: z.enum(['newest', 'warm']).default('newest'),
         }),
       },
     },
     async (req) => {
-      const r = searchStartups(req.query)
+      const { sort, ...query } = req.query
+      const warm = sort === 'warm' ? await warmScores(req.owner) : null
+      const r = searchStartups({ ...query, ...(warm ? { warm } : {}) })
       // the ones they already made a film for
       const hosts = r.data.flatMap((s) => {
         try {
@@ -1021,9 +1037,156 @@ export async function buildApi({
           try {
             id = s.website ? film.get(new URL(s.website).hostname.replace(/^www\./, '')) : undefined
           } catch {}
-          return id ? { ...s, filmId: id } : s
+          const why = warm?.reasons.get(targetHost(s.website))
+          return { ...s, ...(id ? { filmId: id } : {}), ...(why ? { reasons: why } : {}) }
         }),
       }
+    },
+  )
+
+  /* ------------------------------------------------------ network this week */
+  /**
+   * Each person's scored companies, kept for the day and recomputed as soon as anything they
+   * depend on changes: their search, profile, connections, films (made, edited or marked sent)
+   * or hidden companies. The fingerprint is read from the database, so every API process agrees.
+   */
+  const TARGETS = new Map<string, { key: string; list: Target[] }>()
+  const targetsFor = async (owner: Owner): Promise<{ list: Target[]; roles: string[] }> => {
+    const [f] = await sql<
+      { films: string; conns: string; search: string; prof: string; hides: string }[]
+    >`
+      select
+        (select count(*) || ':' || coalesce(max(updated_at)::text, '') || ':' || count(outreach)
+           || ':' || coalesce(max(outreach->>'at'), '')
+           from runs where agent = 'film' and owner = ${owner}) as films,
+        (select count(*) || ':' || coalesce(max(added_at)::text, '')
+           from connections where owner = ${owner}) as conns,
+        (select coalesce(max(updated_at)::text, '') from job_searches where owner = ${owner}) as search,
+        (select coalesce(max(updated_at)::text, '') from profiles where owner = ${owner}) as prof,
+        (select count(*) || ':' || coalesce(max(created_at)::text, '')
+           from target_hides where owner = ${owner}) as hides`
+    const profile = await newestProfile(owner)
+    const state = await getSearch(sql, owner, profile?.sender.role)
+    const roles = targetRoles(state.search, profile)
+    const startups = allStartups()
+    // fit by meaning, when it's on: from what's embedded so far, never waiting on the model
+    const sem = profile ? semanticNow() : null
+    const meaning =
+      sem && profile
+        ? sem.known(profile, [...new Set(startups.flatMap((x) => (x.o ? [x.o] : [])))])
+        : undefined
+    const day = new Date().toISOString().slice(0, 10)
+    const key = JSON.stringify([day, f, meaning?.size ?? -1])
+    const hit = TARGETS.get(owner)
+    if (hit?.key === key) return { list: hit.list, roles }
+
+    const [jobs, films, connections, hidden] = await Promise.all([
+      cachedJobs(sql, boardsFor(state.boards)),
+      sql<{ host: string | null; company: string | null; at: Date; sentAt: string | null }[]>`
+        select coalesce(output->>'host', input->>'url') as host, output->>'company' as company,
+          created_at as at, outreach->>'sentAt' as sent_at
+        from runs where agent = 'film' and owner = ${owner} and status not in ('failed', 'cancelled')
+          and (created_at > now() - interval '120 days' or outreach is not null)`,
+      sql<{ name: string; company: string }[]>`
+        select name, company from connections where owner = ${owner} limit 30000`,
+      sql<{ host: string }[]>`select host from target_hides where owner = ${owner}`,
+    ])
+    const list = targets(
+      {
+        profile,
+        search: state.search,
+        jobs,
+        startups,
+        raised: raisedByHost(),
+        connections,
+        films: films.map((x) => ({ ...x, at: x.at.toISOString() })),
+        hidden: hidden.map((h) => h.host),
+        meaning,
+      },
+      Date.now(),
+      500,
+    )
+    TARGETS.set(owner, { key, list })
+    if (TARGETS.size > 500) TARGETS.delete(TARGETS.keys().next().value!)
+    return { list, roles }
+  }
+  /** the same score, by website host, for the "Worth a warm message" sorts on Jobs and Startups */
+  const warmScores = async (owner: Owner) => {
+    const [{ list }, hidden] = await Promise.all([
+      targetsFor(owner),
+      sql<{ host: string }[]>`select host from target_hides where owner = ${owner}`,
+    ])
+    return {
+      score: new Map(list.map((t) => [targetHost(t.site), t.score])),
+      reasons: new Map(list.map((t) => [targetHost(t.site), t.reasons])),
+      hidden: new Set(hidden.map((h) => h.host)),
+    }
+  }
+
+  app.get(
+    '/v1/targets',
+    {
+      schema: {
+        tags: ['jobs'],
+        summary: 'Network this week: the companies most worth a film and a warm message now',
+        description:
+          'Companies, not jobs, for the roles you want (your saved job search, then your profile role), whether or not they have an opening today. Scored on fit (what they do and the roles they post, against your skills and points), how reachable they are (small teams, people you know there) and timing (a round in the last 90 days, a matching role in the last 14, hiring fast). Each comes with its reasons, in plain words. Companies you filmed or messaged in the last 60 days, ones you hid and your current employer are left out. `week` counts the films you made this week against the 10-a-week target.',
+        querystring: z.object({ limit: z.coerce.number().int().min(1).max(50).default(10) }),
+      },
+    },
+    async (req) => {
+      const { list, roles } = await targetsFor(req.owner)
+      const [{ n } = { n: 0 }] = await sql<{ n: number }[]>`
+        select count(*)::int as n from runs
+        where agent = 'film' and owner = ${req.owner} and status not in ('failed', 'cancelled')
+          and created_at >= ${weekStart(Date.now())}`
+      return {
+        data: list.slice(0, req.query.limit),
+        week: { made: n, target: WEEKLY_TARGET },
+        roles,
+      }
+    },
+  )
+
+  const SiteBody = z.object({ site: z.string().trim().min(3).max(300) })
+  const siteHost = (site: string) => {
+    const h = targetHost(site)
+    return h.includes('.') ? h : ''
+  }
+  const badSite = (reply: FastifyReply) =>
+    reply.status(422).send({
+      error: { code: 'bad_site', message: "that doesn't look like a company website" },
+    })
+
+  app.post(
+    '/v1/targets/hide',
+    {
+      schema: {
+        tags: ['jobs'],
+        summary: '"Not for me": keep a company off Network this week and the warm sorts',
+        body: SiteBody,
+      },
+    },
+    async (req, reply) => {
+      const host = siteHost(req.body.site)
+      if (!host) return badSite(reply)
+      await sql`
+        insert into target_hides (owner, host) values (${req.owner}, ${host})
+        on conflict (owner, host) do nothing`
+      return { hidden: host }
+    },
+  )
+
+  app.post(
+    '/v1/targets/unhide',
+    {
+      schema: { tags: ['jobs'], summary: 'Undo "Not for me" for a company', body: SiteBody },
+    },
+    async (req, reply) => {
+      const host = siteHost(req.body.site)
+      if (!host) return badSite(reply)
+      await sql`delete from target_hides where owner = ${req.owner} and host = ${host}`
+      return { shown: host }
     },
   )
 
@@ -2319,9 +2482,12 @@ export async function buildApi({
     const startup = startupOf({ site, slug: hiring?.slug })
     const yc = hiring ?? (startup ? { batch: startup.batch, slug: startup.slug } : null)
     const known = knownAt(rows, out.company, out.host, title).slice(0, 25)
+    // with no job link, the roles in their saved job search say what the job is
+    const saved = title ? null : await getSearch(sql, owner, undefined)
     const groups = peopleSearches(out.company, {
       jobTitle: title,
       profile: run.input.profile,
+      ...(saved ? { roles: targetRoles(saved.search, run.input.profile) } : {}),
       yc,
       team: startup?.team ?? null,
       known,

@@ -150,6 +150,18 @@ export function buildMcp(call: Call): McpServer {
   )
 
   mcp.registerTool(
+    'find_targets',
+    {
+      title: 'Companies worth a warm message this week',
+      description:
+        'Network this week: the companies most worth a film and a warm message now for the roles the person wants, whether or not they have an opening today, each with the plain reasons it’s on the list (team size, a recent round, a matching role, people they know there, what they do). Leaves out companies filmed or messaged in the last 60 days, ones they hid and their current employer. `week` is films made this week against the 10-a-week target. Make one with make_film and the company’s site.',
+      inputSchema: { limit: z.number().int().min(1).max(30).default(10) },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ limit }) => answer(call, 'GET', `/v1/targets?limit=${limit}`),
+  )
+
+  mcp.registerTool(
     'make_film',
     {
       title: 'Make a film',

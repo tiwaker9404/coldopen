@@ -167,6 +167,7 @@ export function Jobs({
               r.search.raisedSize !== 'any' &&
               ` (${RAISED_SIZES.find((x) => x.id === r.search.raisedSize)?.label})`}
             {r.search.sort === 'fastest' && ', hiring fastest first'}
+            {r.search.sort === 'warm' && ', the companies most worth a warm message first'}
             {`. ${r.data.length} matches across ${r.companies} companies`}
             {r.updatedAt && `, checked ${ago(r.updatedAt)}`}
             {r.failed.length > 0 && `. Couldn’t read ${r.failed.join(', ')}`}.
@@ -798,6 +799,7 @@ function SearchForm({
           <select value={sort} onChange={(e) => setSort(e.target.value as JobSearch['sort'])}>
             <option value="best">Best fit</option>
             <option value="fastest">Hiring fastest</option>
+            <option value="warm">Worth a warm message</option>
           </select>
         </label>
       </div>

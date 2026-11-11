@@ -165,6 +165,11 @@ export function peopleSearches(
     team?: number | null | undefined
     /** people you're connected to there, from your Connections.csv */
     known?: Connection[] | undefined
+    /**
+     * the roles the sender wants, when the film has no job link: their saved job search's roles
+     * first, then their profile's role (targetRoles() in src/jobs/targets.ts)
+     */
+    roles?: string[] | undefined
   } = {},
 ): PeopleGroup[] {
   const size = sizeOf(opts.team)
@@ -274,9 +279,15 @@ export function peopleSearches(
     },
   }
 
-  const title =
-    opts.jobTitle ?? (opts.profile?.preset === 'candidate' ? opts.profile.sender.role : undefined)
-  const doing = doingTheJob(title)
+  // the job's own title; with no job link, the roles a job seeker wants (two at most)
+  const titles = opts.jobTitle
+    ? [opts.jobTitle]
+    : opts.profile?.preset === 'candidate'
+      ? (opts.roles?.length ? opts.roles : [opts.profile.sender.role ?? '']).slice(0, 2)
+      : []
+  const doing = titles
+    .flatMap((t) => doingTheJob(t || undefined))
+    .filter(([k], i, all) => all.findIndex(([x]) => x === k) === i)
   if (doing.length)
     groups.doing.searches = [
       ...doing.map(([k, label]) => ({
