@@ -6,6 +6,8 @@ name: Résumé eval
 # a new drafter is measured before the batch reaches main (a dispatch-only workflow can't be
 # started from a branch until main has it). Reads the existing LLM_API_KEY secret, writes its
 # report to the job summary, and never commits.
+# Runs that never leave "Queued" can't be cancelled from the web page; a new push to the
+# batch branch starts fresh runs.
 on:
   workflow_dispatch:
   push:
