@@ -74,7 +74,7 @@ interface Run {
   results: CardResult[]
   ba: ReturnType<typeof beforeAfter>
   rows?: RowResult[]
-  meta: { model: string; rounds: number; dropped: string[]; rebuilt: string[] }
+  meta: { model: string; rounds: number; dropped: string[]; rebuilt: string[]; error?: string }
 }
 
 async function main() {
@@ -88,6 +88,8 @@ async function main() {
     process.stdout.write(`drafting ${r.file} (${resume.entries.length} bullets)… `)
     const t = Date.now()
     const { profile, meta } = await draftProfile({ resume, role: r.role, exclude: r.exclude, llm })
+    // the model failing is a result too: the built-in draft stood in, and the report says so
+    if (meta.error) process.stdout.write(`model failed (${meta.error}); built-in draft used. `)
     process.stdout.write(
       `${((Date.now() - t) / 1000).toFixed(1)}s, ${profile.proof.length} cards\n`,
     )
@@ -118,6 +120,12 @@ function report(runs: Run[]): string {
     '',
     `Model: ${model}. ${runs.length} résumés, ${all.length} drafted proof cards.`,
     '',
+    ...runs
+      .filter((r) => r.meta.error)
+      .map(
+        (r) =>
+          `**${r.file}: the model failed, so these are the built-in drafter's cards.** ${cell(r.meta.error)}\n`,
+      ),
     '## Targets',
     '',
     '| Target | Result | |',

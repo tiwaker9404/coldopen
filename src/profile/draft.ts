@@ -30,14 +30,28 @@ export const DraftSchema = z.object({
           .string()
           .describe('what they did and what they built, starting with a verb, 12 to 90 chars'),
         where: z.string().describe('the employer, school or project, max 4 words'),
-        before: z.string().optional().describe('the starting figure, when the bullet has one'),
-        after: z.string().optional().describe('the ending figure, when the bullet has one'),
+        // nullable, not optional: strict structured outputs (Groq, OpenAI) need every field
+        // required, and an endpoint that rejects the schema falls back to plain JSON, where
+        // the model no longer sees the fields at all
+        before: z
+          .string()
+          .nullable()
+          .describe('the starting figure, when the bullet has a before and an after; else null'),
+        after: z
+          .string()
+          .nullable()
+          .describe('the ending figure, when the bullet has a before and an after; else null'),
       }),
     )
     .min(3)
     .max(8),
 })
-export type Draft = z.infer<typeof DraftSchema>
+type DraftOut = z.infer<typeof DraftSchema>
+type DraftCard = DraftOut['proof'][number]
+/** a draft as checked: before and after may be left out where the bullet has neither */
+export type Draft = Omit<DraftOut, 'proof'> & {
+  proof: (Omit<DraftCard, 'before' | 'after'> & Partial<Pick<DraftCard, 'before' | 'after'>>)[]
+}
 
 export interface DraftMeta {
   model: string
@@ -47,6 +61,8 @@ export interface DraftMeta {
   dropped: string[]
   /** proof the model kept writing so a stranger couldn't follow it, rebuilt from its bullet */
   rebuilt: string[]
+  /** the model failed outright (unreachable, or invalid JSON after repairs) */
+  error?: string
 }
 
 const isHard = (problem: string) => /isn't in the bullet|must stay out|placeholder/.test(problem)
@@ -71,7 +87,7 @@ export function draftMessages(resume: ParsedResume, role: string): ChatMessage[]
   return [
     {
       role: 'system',
-      content: `You turn a résumé into a profile for coldopen, which makes a 30-second film a job seeker sends to a company. The film shows their offer, 3 strengths and 3 proof cards (the number, what changed, what they did, where).\n\n${RULES}\n\nReply with JSON matching the schema.`,
+      content: `You turn a résumé into a profile for coldopen, which makes a 30-second film a job seeker sends to a company. The film shows their offer, 3 strengths and 3 proof cards (the number, what changed, what they did, where).\n\n${RULES}\n\nReply with JSON matching the schema: {"role", "offer", "points": [...], "proof": [{"entry", "value", "label", "did", "where", "before", "after"}, ...]}, where "entry" is the bullet id and "before"/"after" are null when the bullet has no before and after.`,
     },
     {
       role: 'user',
@@ -228,11 +244,29 @@ export async function draftProfile(opts: {
   let draft: Draft | null = null
   const max = opts.maxRounds ?? 3
   for (let round = 1; round <= max; round++) {
-    const { value } = await callModel(
-      opts.llm,
-      { schema: DraftSchema, messages, temperature: 0 },
-      AbortSignal.timeout(180_000),
-    )
+    let value: unknown
+    try {
+      ;({ value } = await callModel(
+        opts.llm,
+        { schema: DraftSchema, messages, temperature: 0 },
+        AbortSignal.timeout(180_000),
+      ))
+    } catch (err) {
+      // a later round failing keeps the last draft; a first round failing means the résumé
+      // is still drafted, from its own words, rather than the person getting an error
+      if (draft) break
+      return {
+        profile: fallback,
+        meta: {
+          model: 'deterministic',
+          rounds: round,
+          violations: [],
+          dropped: [],
+          rebuilt: [],
+          error: (err as Error).message,
+        },
+      }
+    }
     draft = value as Draft
     const v = checkDraft(draft, resume, exclude)
     history.push(v)

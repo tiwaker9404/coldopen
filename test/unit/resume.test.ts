@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import type { LlmProvider } from '../../src/llm/types.ts'
-import { checkDraft, type Draft, draftProfile } from '../../src/profile/draft.ts'
+import { checkDraft, type Draft, DraftSchema, draftProfile } from '../../src/profile/draft.ts'
 import {
   deterministicDraft,
   parseResume,
@@ -150,6 +151,13 @@ describe('turning bullets into proof', () => {
   })
 })
 
+/** a draft as a model sends it: every field present, null where the bullet has no change */
+const reply = (d: Draft) =>
+  JSON.stringify({
+    ...d,
+    proof: d.proof.map((p) => ({ ...p, before: p.before ?? null, after: p.after ?? null })),
+  })
+
 const goodDraft: Draft = {
   role: 'Senior data analyst',
   offer: 'Data analyst who turns messy operational data into dashboards leaders use',
@@ -227,7 +235,7 @@ describe('checking a model-written draft', () => {
       complete: async (req) => {
         seen.push(req.messages.at(-1)!.content)
         return {
-          text: JSON.stringify(replies.shift()),
+          text: reply(replies.shift()!),
           model: 'fake',
           inputTokens: 1,
           outputTokens: 1,
@@ -260,7 +268,7 @@ describe('checking a model-written draft', () => {
     const llm: LlmProvider = {
       name: 'fake',
       complete: async () => ({
-        text: JSON.stringify(stubborn),
+        text: reply(stubborn),
         model: 'fake',
         inputTokens: 1,
         outputTokens: 1,
@@ -288,7 +296,7 @@ function scripted(...replies: Draft[]) {
     complete: async (req) => {
       seen.push(req.messages.at(-1)!.content)
       return {
-        text: JSON.stringify(replies.length > 1 ? replies.shift() : replies[0]),
+        text: reply(replies.length > 1 ? replies.shift()! : replies[0]!),
         model: 'fake',
         inputTokens: 1,
         outputTokens: 1,
@@ -512,5 +520,42 @@ describe('an employer left out stays out', () => {
       const text = JSON.stringify(profile).toLowerCase()
       for (const w of only) expect(text).not.toContain(w)
     }
+  })
+})
+
+describe('the draft works with strict structured outputs', () => {
+  it('requires every field, so Groq and OpenAI accept the schema and the model sees it', () => {
+    // an optional field makes strict mode reject the schema; the provider then falls back to
+    // plain JSON, and the model, no longer shown the fields, leaves out "entry" (11 Nov)
+    const unrequired: string[] = []
+    const walk = (s: unknown, at: string) => {
+      if (!s || typeof s !== 'object') return
+      const o = s as { properties?: Record<string, unknown>; required?: string[]; items?: unknown }
+      if (o.properties)
+        for (const [k, v] of Object.entries(o.properties)) {
+          if (!o.required?.includes(k)) unrequired.push(`${at}.${k}`)
+          walk(v, `${at}.${k}`)
+        }
+      if (o.items) walk(o.items, `${at}[]`)
+    }
+    walk(z.toJSONSchema(DraftSchema), 'draft')
+    expect(unrequired).toEqual([])
+  })
+
+  it('drafts from the résumé’s own words when the model fails outright', async () => {
+    const llm: LlmProvider = {
+      name: 'fake',
+      complete: async () => ({
+        text: JSON.stringify({ role: FDE, offer: 'x', points: [], proof: [{ value: '6h' }] }),
+        model: 'fake',
+        inputTokens: 1,
+        outputTokens: 1,
+        latencyMs: 1,
+      }),
+    }
+    const { profile, meta } = await draftProfile({ resume: ashwin, role: FDE, llm })
+    expect(meta.model).toBe('deterministic')
+    expect(meta.error).toMatch(/failed validation/)
+    expect(profile.proof[0]!.value).toBe('6h → 45m')
   })
 })
