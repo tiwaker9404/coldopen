@@ -69,15 +69,69 @@ The messages that go with a film are checked too ([src/outreach/checks.ts](../sr
 | `research_grounded` | The email's research line stays close to what their post says: a word overlap of at least 0.6 with the post. A restatement, never an invention                                                                     |
 | `film_once`         | The email says "film" or "video" once, in the line code writes before the link                                                                                                                                     |
 
+A job seeker's connection note, after-accept message, InMail and email are also checked in the voice below (`candidate: true` in the check context; `voiceFor()` fills in the rest):
+
+| Rule                | What it checks                                                                                                                                                                                                       |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `not_job_pitch`     | No job words (`JOB_WORDS`: role, position, opening, hiring, apply, application, candidate, résumé, job…), subject included. A title quoted from their own post doesn't count inside quotation marks                  |
+| `thanks`            | The after-accept message, InMail and email end with thanks (`THANKS`: "Thanks for reading", "Thank you for your time"…) just before the signature                                                                    |
+| `no_proof_numbers`  | None of the proof values the film shows. The 15-minute offer and the film's length don't count                                                                                                                       |
+| `curious`           | The email and after-accept message ask one question about their work: it shares a word with their site, posts or your notes on their product, or it's your saved question word for word                              |
+| `one_ask`           | In the voice: the email asks its curious question and may add the 15-minute offer as a second question (or say it as a statement), never two asks for time. The note may ask one curious question, never for time    |
+| `homework_grounded` | A first-person product claim ("I tried", "I used", "I built", "when I") in the email or after-accept message matches your saved detail or built line (overlap ≥ 0.5) or names what you built. No homework, no claims |
+
 A failed rule comes back as a flag with a plain sentence saying why, which the film panel shows under "Why this is the template version". When code changes a kept draft (for example, leaving out the funding line to stay under 125 words), that's a note, not a flag.
 
 ### Begging and referral words
 
 Matched case-insensitively as whole phrases, with curly apostrophes counted as straight ones:
 
-> refer me, referral, any openings, any opportunities, grateful if you could, I'd be grateful for, pass my resume, pick your brain, just checking in, desperate, please consider me, sorry to bother
+> refer me, referral, any openings, any opportunities, grateful if you could, I'd be grateful if you, would mean the world, pass my resume, pick your brain, just checking in, desperate, please consider me, sorry to bother
+
+"I'd be grateful for" used to be on the list. It's off now, because it blocked real thanks ("I'd be grateful for any thoughts").
 
 They live in `BEGGING` in [src/script/taste.ts](../src/script/taste.ts). The ask is always one small, clear thing: a 15-minute call, after you've offered the film.
+
+## Networking messages
+
+A job seeker's messages go to people who already know from the profile that the sender is looking: founders, recruiting, people doing the job. What earns their time is a curious person who did real homework on their product. So these messages ask for insight, not a job, and the referral comes later, from the relationship. The rules live in [src/outreach/voice.ts](../src/outreach/voice.ts) (`VOICE_RULES` for the model, `JOB_WORDS` and `THANKS` for the checks), and the templates in [src/outreach/messages.ts](../src/outreach/messages.ts) are written to them. Sales, recruiter and hiring messages keep their own voice.
+
+1. **Their work first.** The first line is about them: what you used, read or built with their product, never the role or a number. _Why:_ openers about the person's own product get answered. Ben Lang's founder emails open with a product detail only a user would notice.
+2. **One thing that isn't on the résumé.** Your homework (a product detail, a small build, a docs or changelog observation), or the line saying you built the tool that made the film. _Why:_ building something for the company is the strongest signal, and the film is already a version of it.
+3. **The film is a gift with a reason to open it.** One line about what's in it, in terms of their work ("I put what I'd try next with your rate API into a 30-second film"), never "I made a film for your role". _Why:_ the film makes you memorable; the line around it has to make them want to open it.
+4. **One real question about their work.** Something you wondered while using the product or reading their post (your saved question, word for word, when you have one), then a soft 15-minute offer as a statement. _Why:_ a question about what they're building is easier to answer than a request for a call.
+5. **Thanks for their time.** "Thanks for reading" or "Thank you for your time": grateful, never begging. _Why:_ in Boomerang's study of 350,000 emails, closings with thanks got replies 62% of the time against 46% without.
+6. **No job words, no numbers.** No "role, position, opening, hiring, apply, candidate, résumé, job" in the note, after-accept message, InMail or email, and no proof numbers: the film shows them. _Why:_ "the goal of a cold email is to get time, not to get hired" (Eli Kamerow), and a number they've already seen reads as a pitch.
+7. **Sounds like a person.** Contractions, plain words, under 125 words, no flattery, and the banned list still applies. _Why:_ a YC founder found only 22 of 172 daily applicants looked like a person; sounding human is the edge.
+
+On LinkedIn, a free account gets three personalized invites a month and 200 characters each. A note barely changes acceptance but nearly doubles replies after accepting (9.36% vs 5.44% across 20M+ requests), so the note is short and about their work, and the message after they accept carries the film. A job seeker follows up once, a week on (or 2 days after a watch), with something new: a fresh fact from their site, a newer post, or something you tried since. Then let it go. One follow-up that adds something lifts replies by about 66%.
+
+The email opens one of two ways, half and half by film: with your homework, or with your question for them. Today shows which one gets more replies (`/v1/me/openers`). Each film counts under the opener it had when you marked it sent.
+
+**Before (the old proof opener, roughly):**
+
+> I saw the Operations Analyst role at Parcelpine. 40% faster month-end close at Initech. I made a 30-second film for your Operations Analyst role at Parcelpine: [link] … Could we find 15 minutes this week?
+
+**After:**
+
+> Subject: Parcelpine's new carrier-rate API
+>
+> Hi Dana,
+>
+> I tried Parcelpine's rate API this weekend to compare two carriers for a side project, and the per-zone breakdown saved me a spreadsheet. I put what I'd build next with it into a 30-second film: [GIF]
+>
+> I built the tool that made it, coldopen, so I spend a lot of time on how small teams reach people.
+>
+> One thing I wondered: are most of your customers calling the API directly, or going through the Shopify app? If you ever have 15 minutes, I'd love to hear how you think about it.
+>
+> Thanks for reading,
+> Ashwin
+
+Why the after works: it opens with something only a user would know, the film line says what's in it for them, it shows something that isn't on the résumé, it asks one question they can answer, and it ends with thanks. It never says "role" and never repeats a number from the film.
+
+Every claim of experience must come from what you saved. A template only says "I tried…" or "I built…" in your own words (your detail, your built line, your creator line). A saved line that would break a rule (a job word, a number from the film) is left out, never edited, and the draft opens on their homepage instead.
+
+Sources: [Next Play, the guide to getting a job with cold email](https://nextplayso.substack.com/p/the-guide-to-getting-a-job-with-cold); [cold outreach research notes](https://quartz-e47.pages.dev/zasoby/strategie/cold_outreach_research) (Aline Lerner, Eli Kamerow, Nick Singh, a YC founder on HN); [Boomerang on email sign-offs](https://blog.boomerangapp.com/2017/01/how-to-end-an-email-email-sign-offs/); [Expandi on notes vs no notes](https://expandi.io/blog/linkedin-connection-message-templates/); [LinkedIn note limits on free accounts](https://www.hublead.io/linkedin-character-limit); [cold email follow-up data](https://cut-the-saas.com/guides/cold-email-templates).
 
 ## Design rules (also enforced)
 

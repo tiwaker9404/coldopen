@@ -1,9 +1,10 @@
-import { type HomeworkItem, pickResearch } from '../brand/homework.ts'
+import { type Homework, type HomeworkItem, pickResearch } from '../brand/homework.ts'
 import type { FilmResult } from '../film.ts'
 import { BANNED } from '../script/taste.ts'
 import type { Profile } from '../script/types.ts'
 import {
   type Check,
+  type CheckContext,
   checkMessage,
   emailWords,
   FILM_LENGTH,
@@ -11,7 +12,22 @@ import {
   MESSAGE_LIMITS,
   type MessageKind,
   passed,
+  voiceFor,
 } from './checks.ts'
+import {
+  detailLine,
+  homeworkLine,
+  lower,
+  lowerStart,
+  OFFER,
+  researchSentence,
+  type SenderHomework,
+  SIGN_OFF,
+  wholeClause,
+} from './voice.ts'
+
+export type { SenderHomework } from './voice.ts'
+export { detailLine, researchSentence, wholeClause } from './voice.ts'
 
 /**
  * The messages that carry a film, in the order you send them: a LinkedIn connection note
@@ -21,17 +37,6 @@ import {
  * with a [First name] placeholder for the person they go to. Every one passes checkMessage
  * (checks.ts), because these templates are the fallback when a model's draft doesn't.
  */
-/**
- * The sender's own homework for one film, saved after it was made (PUT /v1/films/:id/homework):
- * a detail from using the product, their question for these people, and something small they
- * built with it. Each is null until saved.
- */
-export interface SenderHomework {
-  detail: string | null
-  question: string | null
-  built: { url: string; line: string } | null
-}
-
 export interface Messages {
   email: { subject: string; body: string }
   /** the connection note (the key is kept for older clients): no link, no question */
@@ -75,15 +80,19 @@ export interface Messages {
 export type DraftName = MessageKind
 
 /**
- * Two ways to open: with the film ("I made a 30-second film for…") or with your best number
- * ("40% faster onboarding at Rail Inc."). Each film gets one, by its id, so about half of what
- * you send leads each way and the replies show which works for you.
+ * Two ways to open, so you learn which gets replies. A job seeker's email leads with their
+ * homework (what they used, read or built) or with their question for them; a seller's with
+ * the film ("I made a 30-second film for…") or with their best number. Each film gets one, by a
+ * hash of its id, so about half of what you send leads each way. A film keeps the opener it was
+ * marked sent with (Outreach.opener); one sent before that was kept opened with the film or the
+ * number.
  */
-export type Opener = 'film' | 'proof'
+export type Opener = 'homework' | 'question' | 'film' | 'proof'
 
-export function openerFor(id: string): Opener {
+export function openerFor(id: string, preset?: Profile['preset']): Opener {
   let h = 0
   for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  if (preset === 'candidate') return h % 2 === 0 ? 'homework' : 'question'
   return h % 2 === 0 ? 'film' : 'proof'
 }
 
@@ -154,33 +163,37 @@ const firstFit = <T>(drafts: T[], fits: (d: T) => boolean): T =>
 /** The headline the film's noticed line quotes ("Northwind leads with “Every pallet…”") */
 const promiseIn = (noticed: string | undefined) => noticed?.match(/\u201c([^\u201d]+)\u201d/)?.[1]
 
+export interface DraftOptions {
+  /** what the sender saved for this film: their detail, question and small build */
+  homework?: SenderHomework | null
+  /** a newer post than the one the email reads, for a job seeker's follow-up to bring */
+  newer?: { title: string; line: string } | null
+  /** something from their site the film didn't use, for the follow-up to bring */
+  fresh?: string | null
+  /** which opener to lead with (see openerFor); the film one when there's no number to lead with */
+  opener?: Opener
+  /** their latest private round, from SEC Form D filings: a reason to write now */
+  raised?: { date: string } | null
+  /**
+   * one thing they published lately (homework), for the email's research line: the line
+   * itself, the text it came from, and the post's title
+   */
+  research?: { line: string; source: string; title?: string } | null
+}
+
 export function draftMessages(
   out: Pick<FilmResult, 'company' | 'job' | 'highlights' | 'script' | 'related'>,
   profile: Profile,
   link: string,
-  more: {
-    /** the sender's one detail from using their product, in their words */
-    detail?: string | null
-    /** something from their site the film didn't use, for the follow-up to bring */
-    fresh?: string | null
-    /** which opener to lead with (see openerFor); the film one when there's no number to lead with */
-    opener?: Opener
-    /** their latest private round, from SEC Form D filings: a reason to write now */
-    raised?: { date: string } | null
-    /**
-     * one thing they published lately (homework), for the email's research line: the line
-     * itself, the text it came from, and the post's title
-     */
-    research?: { line: string; source: string; title?: string } | null
-  } = {},
+  more: DraftOptions = {},
 ): Messages {
   if (profile.preset === 'recruiter') return recruiterMessages(out, profile, link)
   if (profile.preset === 'hiring') return hiringMessages(out, profile, link)
+  if (profile.preset === 'candidate') return candidateMessages(out, profile, link, more)
   const company = out.company
   const role = out.job?.title
   const me = profile.sender.name
   const first = me.split(' ')[0]!
-  const candidate = profile.preset === 'candidate'
   const rawQuote = out.highlights?.quote.text ? clean(out.highlights.quote.text) : ''
   const quote = quotable(rawQuote) ? rawQuote : ''
   const fromPost = /post$/.test(out.highlights?.quote.source ?? '')
@@ -199,7 +212,7 @@ export function draftMessages(
       ? `${headline.replace(/[!?]$/, '')}.`
       : ''
 
-  const detail = more.detail ? clean(more.detail) : ''
+  const detail = more.homework?.detail ? clean(more.homework.detail) : ''
   // lead with the best number only when there is one
   const lead: Opener = more.opener === 'proof' && proof.length ? 'proof' : 'film'
   const whyNow = freshRound(more.raised)
@@ -234,8 +247,7 @@ export function draftMessages(
     const shown = all ? rest : rest.slice(0, 1)
     if (shown.length)
       return `${lead === 'proof' ? "More of what I've done" : "What I'd bring"}: ${shown.join('; ')}.`
-    if (lead === 'proof') return ''
-    return candidate ? 'Everything about me in it comes from my résumé.' : ''
+    return ''
   }
   const emailBody = (o: { quote: boolean; pitch: boolean; related: boolean; all: boolean }) =>
     [
@@ -299,13 +311,9 @@ export function draftMessages(
   const hello = 'Hi [First name],'
   const sign = `Would like to connect. – ${first}`
   const about = (withRole: boolean) =>
-    candidate
-      ? withRole && role
-        ? `I'm applying for the ${role} role at ${company} and made something for the team.`
-        : `I'd like to work with the ${company} team and made something for you.`
-      : withRole && role
-        ? `I made something for the ${company} team about the ${role} role.`
-        : `I made something for the ${company} team.`
+    withRole && role
+      ? `I made something for the ${company} team about the ${role} role.`
+      : `I made something for the ${company} team.`
   const notes = [
     ...(lead === 'proof' ? [true, false].map((r) => `${hello} ${best}. ${about(r)} ${sign}`) : []),
     `${hello} ${about(true)} ${sign}`,
@@ -433,6 +441,319 @@ export function draftMessages(
   }
 }
 
+/* ------------------------------------------------------------ a job seeker's messages */
+
+/**
+ * A job seeker's messages, in the voice (voice.ts). The email: their work first (the sender's
+ * homework, or what their homepage leads with), the film as a tease about their work, what the
+ * sender built, one real question (their saved one when there is one), the 15-minute offer as a
+ * statement, and thanks. No job words and no numbers: the film shows the proof. Each draft is
+ * the first, from fullest to plainest, that passes every check, so a saved line or a quote that
+ * would break a rule is left out (never edited), and the plainest draft always passes.
+ */
+function candidateMessages(
+  out: Pick<FilmResult, 'company' | 'job' | 'highlights' | 'script' | 'related'>,
+  profile: Profile,
+  link: string,
+  more: DraftOptions,
+): Messages {
+  const company = out.company
+  const me = profile.sender.name
+  const first = me.split(' ')[0]!
+  const hw = more.homework ?? null
+  const lead: Opener = more.opener === 'question' ? 'question' : 'homework'
+  const fundingNews = freshRound(more.raised)
+
+  // their own words: the homepage's promise, or its quoted line (never a line from a job post)
+  const rawQuote = out.highlights?.quote.text ? clean(out.highlights.quote.text) : ''
+  const fromPost = /post$/.test(out.highlights?.quote.source ?? '')
+  const siteQuote = !fromPost && quotable(rawQuote) ? rawQuote : ''
+  const rawPromise = promiseIn(out.script?.noticed)
+  const promise = rawPromise && quotable(rawPromise) ? clean(rawPromise) : ''
+  // what they published lately: the title only when it can be quoted
+  const rawTitle = more.research?.title ? clean(more.research.title) : ''
+  const title = quotable(rawTitle) ? rawTitle : ''
+  const post = more.research?.line ? { title, line: clean(more.research.line) } : null
+
+  /* the parts, each fullest first */
+  const opening = promise
+    ? `${company}'s homepage leads with "${promise}".`
+    : siteQuote
+      ? `${company}'s site says "${siteQuote}".`
+      : `I've been reading about what ${company} is building.`
+  // the opening, with what it's about: a line about their post names the post once
+  const mine = homeworkLine(company, hw, post)
+  const theirPost = homeworkLine(company, null, post)
+  const leads = [
+    ...(mine ? [{ line: mine.line, post: mine.kind === 'post' }] : []),
+    ...(theirPost && theirPost.line !== mine?.line ? [{ line: theirPost.line, post: true }] : []),
+    { line: opening, post: false },
+  ]
+  const teasesFor = (l: { post: boolean }) => [
+    ...(title && !l.post
+      ? [`I put what I'd try next after "${title}" into a ${FILM_LENGTH} film:`]
+      : []),
+    ...(!title && promise
+      ? [`I put what I'd build on "${promise}" into a ${FILM_LENGTH} film:`]
+      : []),
+    `I put what I'd try next with ${company} into a ${FILM_LENGTH} film:`,
+  ]
+  const c = profile.creator
+  const creators = [
+    ...(c
+      ? [
+          `I built the tool that made it, ${c.name}: ${lowerStart(clean(c.line))}.`,
+          `I built the tool that made it, ${c.name}.`,
+        ]
+      : out.related
+        ? [`Something I built that's close to what you do: ${out.related.name}, ${out.related.url}`]
+        : []),
+    '',
+  ]
+  const saved = hw?.question ? hw.question.replace(/\s+/g, ' ').trim() : ''
+  const asked = saved && !saved.endsWith('?') ? `${saved.replace(/[.!]$/, '')}?` : saved
+  const questionsFor = (l: { post: boolean }) =>
+    unique([
+      asked,
+      title && !l.post ? `What have customers said since "${title}" went out?` : '',
+      hw?.built || hw?.detail ? `How do most ${company} customers use it?` : '',
+      promise ? `What made you lead the homepage with "${promise}"?` : '',
+      `What's the hardest part of what ${company} is building right now?`,
+    ])
+  const subjects = unique([
+    title
+      ? title.toLowerCase().includes(company.toLowerCase())
+        ? title
+        : `${company}'s ${lower(title)}`
+      : '',
+    hw?.built ? `Something I built with ${company}` : '',
+    hw?.detail ? `Notes from using ${company}` : '',
+    promise ? `${company}'s "${promise}"` : '',
+    `A question about ${company}`,
+  ])
+
+  /* checked as they'll be checked again: the voice, the film's facts and the sender's homework */
+  const ctx: CheckContext = {
+    ...contextFor(out, profile, link, hw),
+    research: more.research ? { line: more.research.line, source: more.research.source } : null,
+  }
+  // what they published lately, and the posts a follow-up may bring, are theirs too
+  const theirs = [more.research?.title, more.research?.source, more.newer?.title, more.newer?.line]
+  ctx.known = [ctx.known, ...theirs, more.fresh].filter(Boolean).join('\n')
+  ctx.theirs = [ctx.theirs, ...theirs].filter(Boolean).join('\n')
+  // a quote said twice (the opening, then the tease, then the question) reads as a mail merge
+  const ok = (kind: MessageKind, t: string | { subject: string; body: string }) =>
+    !quotesTwice(typeof t === 'string' ? t : t.body) && passed(checkMessage(kind, t, ctx))
+
+  /* ------------------------------------------------------------ the email */
+
+  const emailBody = (o: { now: boolean; lead: string; tease: string; built: string; q: string }) =>
+    [
+      'Hi [First name],',
+      '',
+      ...(o.now ? ['Congratulations on the new funding round.', ''] : []),
+      // the question opener asks first, then shows the homework
+      ...(lead === 'question'
+        ? [`I've had one question about ${company} in mind: ${midSentence(o.q)}`, '']
+        : []),
+      o.lead,
+      '',
+      o.tease,
+      link,
+      ...(o.built ? ['', o.built] : []),
+      '',
+      lead === 'question' ? OFFER : `One thing I wondered: ${midSentence(o.q)} ${OFFER}`,
+      '',
+      SIGN_OFF,
+      me,
+      profile.cta.contact,
+    ].join('\n')
+  // what goes first, when something must: the tease's detail, then the built line, then the
+  // question, then the homework; the funding line before all of them
+  let email: { subject: string; body: string } | null = null
+  let whyNow = false
+  search: for (const now of fundingNews ? [true, false] : [false])
+    for (const l of leads)
+      for (const q of questionsFor(l))
+        for (const built of creators)
+          for (const tease of teasesFor(l)) {
+            const body = emailBody({ now, lead: l.line, tease, built, q })
+            const subject = subjects.find((t) => ok('email', { subject: t, body }))
+            if (subject) {
+              email = { subject, body }
+              whyNow = now
+              break search
+            }
+          }
+  email ??= {
+    subject: subjects.at(-1)!,
+    body: emailBody({
+      now: false,
+      lead: opening,
+      tease: teasesFor({ post: false }).at(-1)!,
+      built: '',
+      q: questionsFor({ post: false }).at(-1)!,
+    }),
+  }
+
+  /* ------------------------------------------------------------ LinkedIn */
+
+  // the connection note: their work and one curious line, no link and no ask
+  const tail = `Curious how most ${company} customers use it.`
+  const noteBuilt = hw?.built
+    ? `I built something small with ${company}: ${lowerStart(clean(hw.built.line))}.`
+    : ''
+  const noteDetail = hw?.detail ? detailLine(company, clean(hw.detail)) : ''
+  const linkedin = firstFit(
+    unique([
+      noteBuilt && `${noteBuilt} ${tail}`,
+      noteBuilt,
+      noteDetail && `${noteDetail} ${tail}`,
+      noteDetail,
+      asked && `I've been looking at ${company} and wondered: ${asked}`,
+      title && `I read ${company}'s post "${title}". Curious what customers make of it.`,
+      promise && `${company}'s homepage leads with "${promise}". Curious how you landed on it.`,
+      `I've been reading about what ${company} is building and would like to connect.`,
+      `Curious about what ${company} is building.`,
+    ]).map((x) => `Hi [First name], ${x} – ${first}`),
+    (n) => ok('note', n),
+  )
+
+  // once they accept, and InMail: the homework, the tease with the film, the question, thanks
+  const dm = (hello: string[], o: { lead: string; tease: string; q: string }) =>
+    [
+      ...hello,
+      o.lead,
+      '',
+      `${o.tease} ${link}`,
+      '',
+      o.q,
+      '',
+      'Thank you for your time,',
+      first,
+    ].join('\n')
+  const dms = (hello: string[]) =>
+    leads.flatMap((l) =>
+      questionsFor(l).flatMap((q) =>
+        teasesFor(l).map((tease) => dm(hello, { lead: l.line, tease, q })),
+      ),
+    )
+  const afterAccept = firstFit(dms(['Hi [First name], thanks for connecting.', '']), (a) =>
+    ok('afterAccept', a),
+  )
+  const inmailBodies = dms(['Hi [First name],', ''])
+  const inmailSubjects = [...subjects, company]
+  let inmail: { subject: string; body: string } | null = null
+  for (const body of inmailBodies) {
+    const subject = inmailSubjects.find((t) => ok('inmail', { subject: t, body }))
+    if (subject) {
+      inmail = { subject, body }
+      break
+    }
+  }
+  inmail ??= { subject: company, body: inmailBodies.at(-1)! }
+
+  /* ------------------------------------------------------------ the one follow-up */
+
+  // a week on, one note that brings something new, then let it go
+  const fresh = more.fresh && quotable(clean(more.fresh)) ? clean(more.fresh) : ''
+  const newer = more.newer?.title ? clean(more.newer.title) : ''
+  const news = unique([
+    fresh && `One more thing I noticed since I wrote: ${company}'s site says "${fresh}".`,
+    newer && quotable(newer) ? `I just read your newer post, "${newer}".` : '',
+    // the email led with the build, so the detail is new here
+    hw?.built && hw.detail
+      ? `Since I wrote, I've kept using ${company}, and ${lowerStart(clean(hw.detail))}.`
+      : '',
+  ])
+  const followUp = firstFit(
+    [...news, ''].map((n) =>
+      [
+        'Hi [First name],',
+        '',
+        ...(n
+          ? [n, '', `The film is here if it helps: ${link}`]
+          : [`Writing once more in case this got buried. The film is here: ${link}`]),
+        '',
+        'Thanks either way,',
+        first,
+      ].join('\n'),
+    ),
+    (f) => ok('followUp', f),
+  )
+  const lastNote = [
+    'Hi [First name],',
+    '',
+    `One last note on the film I made for ${company}: ${link}`,
+    '',
+    `If the timing isn't right, no problem at all. Thanks for taking a look.`,
+    '',
+    first,
+  ].join('\n')
+  const linkedinFollowUp = firstFit(
+    [
+      ...news.map((n) => `Hi [First name], ${n} The film is here if it helps: ${link} – ${first}`),
+      `Hi [First name], writing once more about the film I made for ${company}: ${link} – ${first}`,
+    ],
+    (t) => ok('linkedinFollowUp', t),
+  )
+
+  // to someone you know there: would they pass the film on (no job words: it's about their work)
+  const forward = [
+    `${me} has been digging into what we're building and made a ${FILM_LENGTH} film for the team: ${link}`,
+    `Reach ${first} at ${profile.cta.contact}.`,
+  ].join('\n')
+  const intro = [
+    'Hi [First name],',
+    '',
+    `Hope you're doing well. I've been curious about what ${company} is building, and I put what I'd try next with it into a ${FILM_LENGTH} film: ${link}`,
+    '',
+    `Would you be open to passing it to whoever leads that work, or pointing me to the right person? Here's a short note you can forward as is:`,
+    '',
+    forward,
+    '',
+    'Thank you,',
+    first,
+  ].join('\n')
+
+  const saidHomework = hw?.built ? clean(hw.built.line) : hw?.detail ? clean(hw.detail) : null
+  return {
+    email,
+    linkedin,
+    afterAccept,
+    inmail,
+    followUp,
+    lastNote,
+    linkedinFollowUp,
+    intro,
+    forward,
+    checks: checkEmail(email, company, saidHomework),
+    opener: lead,
+    whyNow,
+    writer: allTemplate(true),
+    flags: {},
+  }
+}
+
+/** A question after a colon ("One thing I wondered: are most…"), its words otherwise its own */
+const midSentence = (q: string) =>
+  /^(Are|Is|Do|Does|Did|How|What|What's|Why|When|Where|Which|Who|Would|Could|Can|Have|Has)\b/.test(
+    q,
+  )
+    ? q[0]!.toLowerCase() + q.slice(1)
+    : q
+
+/** Whether a draft quotes the same words twice */
+const quotesTwice = (body: string) => {
+  const quoted = (body.match(/"[^"\n]+"/g) ?? []).map((q) => q.toLowerCase())
+  return new Set(quoted).size < quoted.length
+}
+
+/** Each option once, in order, without the empty ones */
+const unique = (xs: (string | null | undefined | false)[]): string[] => [
+  ...new Set(xs.filter((x): x is string => !!x)),
+]
+
 /** Every draft written by these templates (step 5's model replaces some of them) */
 const allTemplate = (inmail: boolean): Messages['writer'] => ({
   note: 'template',
@@ -443,59 +764,6 @@ const allTemplate = (inmail: boolean): Messages['writer'] => ({
   lastNote: 'template',
   linkedinFollowUp: 'template',
 })
-
-/**
- * A summary cut at 200 characters ends in "…". The email never ends a sentence on a cut word:
- * it ends at the last whole clause instead, or leaves the research line out when what's left
- * is too short to say anything.
- */
-export function wholeClause(s: string): string {
-  if (!/…$/.test(s)) return s
-  const t = s.replace(/[\s.,;:–—-]*…$/, '')
-  const at = Math.max(...[', ', '; ', ': ', ' – ', ' — '].map((b) => t.lastIndexOf(b)))
-  const head = at > 0 ? t.slice(0, at).trim() : ''
-  return head.split(/\s+/).length >= 5 ? head : ''
-}
-
-const words = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter((w) => w.length > 2)
-
-/**
- * The summary repeats the title when it opens with the title's first words ("Route planning,
- * now with live traffic" / "Route planning now reroutes trucks…") or carries most of them.
- */
-function echoes(title: string, line: string): boolean {
-  const t = words(title)
-  const l = words(line)
-  if (!t.length) return false
-  if (t.length >= 2 && l[0] === t[0] && l[1] === t[1]) return true
-  return t.filter((w) => l.includes(w)).length / t.length >= 0.6
-}
-
-/**
- * Part 3 of the email: what they published, said once. When the summary already says what the
- * title says, the summary stands alone; otherwise the title names the post.
- */
-export function researchSentence(title: string, raw: string): string {
-  const line = raw.trim().replace(/\.$/, '')
-  if (!title) return `I read your recent post, and ${lower(line)}.`
-  if (echoes(title, line)) return `I read that ${lower(line)}.`
-  return `I read "${title}", and ${lower(line)}.`
-}
-
-/** The sender's detail, in their voice ("I read your post…") or after "I've been using…" */
-export const detailLine = (company: string, detail: string) =>
-  /^I\b/.test(detail)
-    ? `${detail.replace(/[.!]$/, '')}.`
-    : `I've been using ${company}, and ${lower(detail)}.`
-
-/** "The one thing I kept hitting" -> "the one thing I kept hitting", keeping "I" and names */
-const lower = (s: string) =>
-  /^[A-Z][a-z]/.test(s) && !/^I\b/.test(s) ? s[0]!.toLowerCase() + s.slice(1) : s
 
 /**
  * The same messages addressed to one person: "[First name]" becomes their first name in all of
@@ -724,6 +992,53 @@ const MODEL_DRAFTS = ['note', 'afterAccept', 'inmail', 'email'] as const
 const postText = (i: HomeworkItem) => (i.summary ?? i.title).replace(/\s*…$/, '')
 
 /**
+ * What a film's drafts are checked against: the film's facts and the sender's profile, their
+ * posts, and the sender's own homework (whose words, and numbers, are theirs to say). A job
+ * seeker's drafts are checked in the voice too (voiceFor). The research line, when an email
+ * carries one, is added by the caller.
+ */
+export function contextFor(
+  out: Pick<FilmResult, 'company' | 'job' | 'highlights' | 'script' | 'related'> &
+    Partial<Pick<FilmResult, 'homework'>>,
+  profile: Profile,
+  link: string,
+  homework?: SenderHomework | null,
+): CheckContext {
+  const known = [
+    knownFor(out, profile, out.homework),
+    homework?.detail ?? '',
+    homework?.question ?? '',
+    homework?.built?.line ?? '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+  return {
+    company: out.company,
+    known,
+    link,
+    ...(profile.preset === 'candidate' ? voiceFor(out, profile, out.homework, homework) : {}),
+  }
+}
+
+/**
+ * A post newer than the one the email read, for a job seeker's one follow-up to bring something
+ * new: the newest dated item after it (or the newest, when the email read none), up to `now`.
+ */
+export function newerPost(
+  homework: Homework | null | undefined,
+  read: HomeworkItem | null,
+  now = Date.now(),
+): HomeworkItem | null {
+  const after = read?.date ? Date.parse(read.date) : Number.NEGATIVE_INFINITY
+  const dated = (homework?.items ?? [])
+    .filter((i) => i.url !== read?.url && i.date)
+    .map((i) => ({ i, t: Date.parse(i.date!) }))
+    .filter(({ t }) => Number.isFinite(t) && t > after && t <= now + 86_400_000)
+    .sort((a, b) => b.t - a.t)
+  return dated[0]?.i ?? null
+}
+
+/**
  * The messages a film is served with: the templates, with the model's drafts swapped in where
  * the model wrote them (step 5 stores them with a [film] slot), then the parts code owns for
  * every email: the detail the sender saved after the film and the funding line. Each swapped
@@ -739,8 +1054,7 @@ export function messagesFor(
     homework,
     ...more
   }: {
-    detail?: string | null
-    /** what the sender saved for this film; its detail wins over `detail` */
+    /** what the sender saved for this film: their detail, question and small build */
     homework?: SenderHomework
     fresh?: string | null
     opener?: Opener
@@ -749,10 +1063,8 @@ export function messagesFor(
     now?: number
   } = {},
 ): Messages {
-  // the question and the small build are carried for the drafts that will use them; only the
-  // detail is written into messages so far
-  if (homework) more.detail = homework.detail
   const seeker = profile.preset === 'candidate' || profile.preset === 'sales'
+  const candidate = profile.preset === 'candidate'
   // the post the email reads: the model's, when it wrote one, so template and model agree
   const stored = out.messages?.research
   const item = !seeker
@@ -769,17 +1081,20 @@ export function messagesFor(
             more.now,
           )
         : null
+  const newer = candidate ? newerPost(out.homework, item, more.now) : null
   const t = draftMessages(out, profile, link, {
     ...more,
+    ...(homework ? { homework } : {}),
+    ...(newer ? { newer: { title: newer.title, line: postText(newer) } } : {}),
     research: item ? { line: postText(item), source: postText(item), title: item.title } : null,
   })
   const m = out.messages
   if (!m || !seeker) return { ...t, notes: {} }
 
   const company = out.company
-  const detail = more.detail ? clean(more.detail) : ''
-  const known = `${knownFor(out, profile, out.homework)}\n${detail}`
-  const ctx = { company, known, link }
+  const detail = homework?.detail ? clean(homework.detail) : ''
+  // a job seeker's drafts are checked in the voice, so a stored draft from before it falls back
+  const ctx = contextFor(out, profile, link, homework)
   const fill = (s: string) => s.replaceAll(FILM_SLOT, link)
   const writer = { ...t.writer }
   const flags: Record<string, Check[]> = {}
@@ -807,7 +1122,8 @@ export function messagesFor(
   if (m.writer.email === 'model') {
     const email = modelEmail(m.drafts.email, {
       company,
-      detail,
+      // a job seeker's model email opens from the homework itself, so code doesn't add it again
+      detail: candidate ? '' : detail,
       whyNow: t.whyNow,
       fill,
       research: m.research && item ? { line: m.research.line, source: postText(item) } : null,
@@ -852,7 +1168,7 @@ function modelEmail(
     whyNow: boolean
     fill: (s: string) => string
     research: { line: string; source: string } | null
-    ctx: { company: string; known: string; link: string }
+    ctx: CheckContext
   },
 ):
   | { ok: true; email: { subject: string; body: string }; whyNow: boolean; notes: string[] }

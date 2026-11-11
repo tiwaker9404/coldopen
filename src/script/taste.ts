@@ -83,7 +83,9 @@ export const BEGGING = [
   'any openings',
   'any opportunities',
   'grateful if you could',
-  "I'd be grateful for",
+  // "I'd be grateful for" isn't here: it blocked real thanks ("I'd be grateful for any thoughts")
+  "I'd be grateful if you",
+  'would mean the world',
   'pass my resume',
   'pick your brain',
   'just checking in',

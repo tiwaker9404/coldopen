@@ -47,9 +47,10 @@ describe('messages', () => {
     'https://f.example/x',
   )
   it('writes an intro request for someone you know there', () => {
-    expect(m.intro).toContain('Forward Deployed Engineer role at Sierra')
+    expect(m.intro).toContain("I've been curious about what Sierra is building")
+    expect(m.intro).not.toMatch(/\b(role|hiring)\b/)
     expect(m.intro).toContain('https://f.example/x')
-    expect(m.intro).toMatch(/passing it to the hiring manager/)
+    expect(m.intro).toMatch(/passing it to whoever leads that work/)
   })
   it('greets the person it is for, everywhere but the intro', () => {
     const a = addressed(m, 'Priya Shah')

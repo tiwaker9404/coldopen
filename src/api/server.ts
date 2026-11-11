@@ -50,10 +50,17 @@ import {
   OUTREACH,
   type Outreach,
   type OutreachStatus,
+  waitDaysFor,
   watchedFrom,
 } from '../outreach/followup.ts'
 import { type CrmState, checkHubSpot, HubSpotError, syncFilm } from '../outreach/hubspot.ts'
-import { addressed, messagesFor, openerFor, type SenderHomework } from '../outreach/messages.ts'
+import {
+  addressed,
+  messagesFor,
+  type Opener,
+  openerFor,
+  type SenderHomework,
+} from '../outreach/messages.ts'
 import {
   type Connection,
   companyKey,
@@ -142,6 +149,11 @@ const homeworkOf = (r: FilmRow): SenderHomework => ({
   built: r.built ?? null,
 })
 
+/** who made the film: a job seeker, a seller, a recruiter or a hiring team */
+const presetOf = (r: FilmRow) => (r.output?.profile ?? r.input.profile).preset
+/** a job seeker's film gets one follow-up, a seller's two */
+const waitsOf = (r: FilmRow) => waitDaysFor(presetOf(r))
+
 interface FilmRow extends Run {
   /** what's been synced to the sender's HubSpot */
   crm?: CrmState | null
@@ -202,7 +214,10 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
     views: out ? (views ?? NO_VIEWS) : null,
     /** what happened after it was sent, as the sender marked it, and what to do next */
     outreach: r.outreach
-      ? { ...r.outreach, next: nextStep(r.outreach, Date.now(), watchedFrom(views)) }
+      ? {
+          ...r.outreach,
+          next: nextStep(r.outreach, Date.now(), watchedFrom(views), waitsOf(r)),
+        }
       : null,
     /** who it's going to (or went to), when the sender said */
     recipient: r.recipient ?? null,
@@ -1454,7 +1469,16 @@ export async function buildApi({
       const prev = (run as FilmRow).outreach
       // follow-ups already sent stay on the record when the status changes
       const next: Outreach | null = req.body.status
-        ? { ...(prev ?? {}), status: req.body.status, at: now, sentAt: prev?.sentAt ?? now }
+        ? {
+            ...(prev ?? {}),
+            status: req.body.status,
+            at: now,
+            sentAt: prev?.sentAt ?? now,
+            // the way its email opened when it went out, kept for the A/B (/v1/me/openers)
+            ...(prev?.sentAt
+              ? {}
+              : { opener: openerFor(run.id, presetOf(run as FilmRow)) satisfies Opener }),
+          }
         : null
       const [r] = await sql<FilmRow[]>`
         update runs set outreach = ${next ? sql.json(next as never) : null}
@@ -1750,9 +1774,9 @@ export async function buildApi({
       schema: {
         tags: ['films'],
         summary:
-          'Which email opener gets you more replies: the film first, or your best number first',
+          'Which email opener gets you more replies: your homework first or your question first (job seekers), the film first or your best number first (sellers)',
         description:
-          "Half your films' drafts lead with the film and half with your strongest number. Counts films you marked sent in the last 180 days.",
+          "Half your films' drafts lead each way. A job seeker's email opens with their homework (homework) or their question for them (question); a seller's with the film (film) or their strongest number (proof). Each film counts under the opener it had when you marked it sent; films sent before that was kept count as film or proof. Counts films you marked sent in the last 180 days. `leader` is the winner of the pair you're sending now, once each side has 5 sends.",
       },
     },
     async (req) => {
@@ -1761,26 +1785,33 @@ export async function buildApi({
           and outreach is not null and created_at > now() - interval '180 days'
         order by id desc limit 500`
       const seen = await summariesFor(rows)
-      const arms = {
-        film: { sent: 0, watched: 0, replied: 0 },
-        proof: { sent: 0, watched: 0, replied: 0 },
+      const arm = () => ({ sent: 0, watched: 0, replied: 0 })
+      const arms: Record<Opener, { sent: number; watched: number; replied: number }> = {
+        homework: arm(),
+        question: arm(),
+        film: arm(),
+        proof: arm(),
       }
       for (const r of rows) {
+        // the opener stored when it was marked sent; a film sent before that was kept opened
+        // the old way (the film or the number), whoever made it
+        const opener = r.outreach?.opener ?? openerFor(r.id)
         // a film with no number to lead with always opened with the film
-        const arm = r.output?.highlights?.proof?.length ? openerFor(r.id) : 'film'
-        const a = arms[arm]
+        const a = arms[opener === 'proof' && !r.output?.highlights?.proof?.length ? 'film' : opener]
         a.sent++
         if ((seen.get(r.id)?.plays ?? 0) > 0) a.watched++
         if (r.outreach?.status === 'replied' || r.outreach?.status === 'interview') a.replied++
       }
       const rate = (a: { sent: number; replied: number }) => (a.sent ? a.replied / a.sent : 0)
       // a winner needs enough sends on each side to mean something
-      const leader =
-        arms.film.sent >= 5 && arms.proof.sent >= 5 && rate(arms.film) !== rate(arms.proof)
-          ? rate(arms.film) > rate(arms.proof)
-            ? 'film'
-            : 'proof'
+      const winner = <K extends Opener>(x: K, y: K): K | null =>
+        arms[x].sent >= 5 && arms[y].sent >= 5 && rate(arms[x]) !== rate(arms[y])
+          ? rate(arms[x]) > rate(arms[y])
+            ? x
+            : y
           : null
+      const sendingNew = arms.homework.sent + arms.question.sent > 0
+      const leader = sendingNew ? winner('homework', 'question') : winner('film', 'proof')
       return { ...arms, leader }
     },
   )
@@ -1793,7 +1824,7 @@ export async function buildApi({
         tags: ['films'],
         summary: 'Sent films that are due a follow-up, with the message ready',
         description:
-          'A film marked sent with no reply is due a first follow-up after 4 days and a last, shorter one 7 days later; 7 days after that it is due to be marked no reply. Each comes with the email (subject "Re: …") and a LinkedIn version, with a [First name] placeholder.',
+          'A film marked sent with no reply is due a follow-up. A job seeker\'s film gets one, 7 days after it was sent (or 2 days after someone watched it), that brings something new; a seller\'s gets a first after 4 days and a last, shorter one 7 days later. 7 days after the last one it is due to be marked no reply. Each comes with the email (subject "Re: …") and a LinkedIn version, with a [First name] placeholder.',
       },
     },
     async (req) => {
@@ -1808,7 +1839,7 @@ export async function buildApi({
       )
       const steps = rows.map((r) => ({
         r,
-        next: nextStep(r.outreach, now, watchedFrom(seen.get(r.id)))!,
+        next: nextStep(r.outreach, now, watchedFrom(seen.get(r.id)), waitsOf(r))!,
       }))
       const due = steps
         .filter((s) => s.next.due)
@@ -1827,7 +1858,7 @@ export async function buildApi({
                     messagesFor(r.output, r.output.profile ?? r.input.profile, film.share, {
                       homework: homeworkOf(r),
                       fresh: await freshFact(r),
-                      opener: openerFor(r.id),
+                      opener: openerFor(r.id, presetOf(r)),
                       raised: raisedBySite(r.output.host),
                       now: new Date(r.createdAt).getTime(),
                     }),
@@ -2091,7 +2122,7 @@ export async function buildApi({
         messagesFor(run.output, run.output.profile ?? run.input.profile, link, {
           homework: homeworkOf(row),
           fresh: await freshFact(row),
-          opener: openerFor(run.id),
+          opener: openerFor(run.id, presetOf(row)),
           raised: raisedBySite(run.output.host),
           // the research pick is the one the film had when it was made
           now: new Date(run.createdAt).getTime(),

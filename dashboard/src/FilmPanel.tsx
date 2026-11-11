@@ -29,6 +29,7 @@ import {
   type MessageTab,
   messageTabs,
   noteCount,
+  OPENER_NOTE,
   openingTab,
 } from './messageTabs.ts'
 import { safeUrl } from './safe.ts'
@@ -1213,10 +1214,8 @@ function Message({
       {kind === 'email' && <Checks c={m.checks} />}
       {kind !== 'followUp' && m.opener && (
         <p className="small muted opener-note">
-          {m.opener === 'proof'
-            ? 'This one leads with your best number.'
-            : 'This one leads with the film.'}{' '}
-          Half your films open each way; Today shows which gets more replies.
+          {OPENER_NOTE[m.opener]} Half your films open each way; Today shows which gets more
+          replies.
           {m.whyNow && ' It also congratulates them on their recent funding round.'}
         </p>
       )}

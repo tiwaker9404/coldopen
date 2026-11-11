@@ -34,6 +34,13 @@ beforeAll(async () => {
     headers: auth,
     payload: { name: 'Alex', data: profile('candidate') },
   })
+  // a seller's films show how stored model drafts are served; a job seeker's are checked in the voice too
+  await app.inject({
+    method: 'PUT',
+    url: '/v1/profiles/maya',
+    headers: auth,
+    payload: { name: 'Maya', data: profile('sales') },
+  })
 })
 
 afterAll(async () => {
@@ -83,8 +90,8 @@ const modelMessages = (o: Partial<FilmMessages> = {}): FilmMessages => ({
         '',
         'Could we find 15 minutes this week?',
         '',
-        'Alex Rivera',
-        'alex@example.com',
+        'Maya Chen',
+        'maya@example.com',
       ].join('\n'),
     },
   },
@@ -98,12 +105,12 @@ const modelMessages = (o: Partial<FilmMessages> = {}): FilmMessages => ({
 })
 
 /** A finished film, as a worker leaves it: with model drafts, or without (made before step 5) */
-async function film(messages?: FilmMessages): Promise<string> {
+async function film(messages?: FilmMessages, profileId = 'maya'): Promise<string> {
   const res = await app.inject({
     method: 'POST',
     url: '/v1/films',
     headers: auth,
-    payload: { url: 'parcelpine.example', profileId: 'alex' },
+    payload: { url: 'parcelpine.example', profileId },
   })
   const id = res.json().id as string
   mkdirSync(join(filmsDir, id), { recursive: true })
@@ -260,6 +267,62 @@ describe('the messages API', () => {
       .data.find((d: { film: { id: string } }) => d.film.id === id)
     expect(due.message.subject).toBe('Re: Parcelpine: 6 open-source AI projects shipped')
     expect(due.message.linkedin).toContain(`https://films.example.com/f/${id}`)
+  })
+
+  it("a job seeker's drafts from before the voice fall back to the warm template, which asks the saved question", async () => {
+    const id = await film(modelMessages(), 'alex')
+    const question = 'Are most of your customers calling the API directly?'
+    const put = await app.inject({
+      method: 'PUT',
+      url: `/v1/films/${id}/homework`,
+      headers: auth,
+      payload: { detail: 'I tried the rate API to compare two carriers', question },
+    })
+    expect(put.statusCode).toBe(200)
+    const m = await messagesOf(id)
+    expect(m.writer.email).toBe('template')
+    expect(m.flags.email.map((c: { rule: string }) => c.rule)).toEqual(
+      expect.arrayContaining(['not_job_pitch', 'thanks']),
+    )
+    expect(m.email.body).toContain('I tried the rate API to compare two carriers.')
+    expect(m.email.body.toLowerCase()).toContain(question.toLowerCase())
+    expect(m.email.body).toContain('Thanks for reading,')
+    expect(`${m.email.subject} ${m.email.body} ${m.linkedin} ${m.afterAccept}`).not.toMatch(
+      /\b(role|hiring|apply|job)\b/i,
+    )
+    expect(['homework', 'question']).toContain(m.opener)
+  })
+
+  it("a job seeker's film gets one follow-up, a week after it was sent", async () => {
+    const id = await film(undefined, 'alex')
+    const sent = await app.inject({
+      method: 'PUT',
+      url: `/v1/films/${id}/outreach`,
+      headers: auth,
+      payload: { status: 'sent' },
+    })
+    // it keeps the opener it went out with, which the A/B counts it under
+    const opener = sent.json().outreach.opener
+    expect(['homework', 'question']).toContain(opener)
+    expect((await messagesOf(id)).opener).toBe(opener)
+    const op = (await app.inject({ url: '/v1/me/openers', headers: auth })).json()
+    expect(op.homework.sent + op.question.sent).toBe(1)
+    expect(op[opener].sent).toBe(1)
+    const dueFor = async (days: number) => {
+      const back = new Date(Date.now() - days * 86_400_000).toISOString()
+      await sql`update runs set outreach = jsonb_set(jsonb_set(outreach, '{sentAt}', to_jsonb(${back}::text)), '{at}', to_jsonb(${back}::text)) where id = ${id}`
+      return (await app.inject({ url: '/v1/followups', headers: auth }))
+        .json()
+        .data.find((d: { film: { id: string } }) => d.film.id === id)
+    }
+    // a seller would be due by now; a job seeker waits the week
+    expect(await dueFor(5)).toBeUndefined()
+    const due = await dueFor(8)
+    expect(due.next).toMatchObject({ kind: 'follow_up', step: 1, due: true })
+    expect(due.message.body).toContain('Thanks either way,')
+    const f = await app.inject({ method: 'POST', url: `/v1/films/${id}/followup`, headers: auth })
+    // then it lets go: the next step is to call it, not a second note
+    expect(f.json().outreach.next).toMatchObject({ kind: 'close', due: false })
   })
 
   it('MCP draft_messages returns the same JSON as the GET', async () => {

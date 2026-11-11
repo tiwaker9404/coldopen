@@ -1,0 +1,386 @@
+{
+  "Northwind Freight | - | recruiter": {
+    "email": {
+      "subject": "A role at Northwind Freight, made for you",
+      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Northwind Freight. Instead of a long message about a role on our team at Northwind Freight, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 18% less fresh-produce waste across 42 stores at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
+    },
+    "linkedin": "Hi Priya, I'm Hannah, recruiter at Northwind Freight. I made you a 30-second film about a role on our team at Northwind Freight. Would like to connect. – Hannah",
+    "afterAccept": "Hi Priya, I made you a 30-second film about a role on our team at Northwind Freight. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
+    "inmail": {
+      "subject": "A role at Northwind Freight, made for you",
+      "body": "Hi Priya, I made you a 30-second film about a role on our team at Northwind Freight. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah"
+    },
+    "followUp": "Hi Priya,\n\nBumping this in case it got buried: the film I made you about a role on our team at Northwind Freight is here, https://share.example/f/abc123\n\nCould we talk for 15 minutes?\n\nHannah",
+    "lastNote": "Hi Priya,\n\nLast note from me on a role on our team at Northwind Freight: https://share.example/f/abc123\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nHannah",
+    "linkedinFollowUp": "Hi Priya, following up on the film I made you: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
+    "intro": "Hi [First name],\n\nWe're hiring for a role on our team at Northwind Freight, and I made a 30-second film for a candidate you may know: https://share.example/f/abc123\n\nWould you be open to introducing us?\n\nThank you.\nHannah",
+    "checks": {
+      "words": 60,
+      "short": true,
+      "aboutThem": true,
+      "detail": false,
+      "oneAsk": true
+    },
+    "whyNow": false,
+    "writer": {
+      "note": "template",
+      "afterAccept": "template",
+      "inmail": "template",
+      "email": "template",
+      "followUp": "template",
+      "lastNote": "template",
+      "linkedinFollowUp": "template"
+    },
+    "flags": {}
+  },
+  "Northwind Freight | - | hiring": {
+    "email": {
+      "subject": "Know someone for our an open role role?",
+      "body": "Hi [First name],\n\nWe're hiring for an open role at Northwind Freight, and I made a 30-second film about the role: https://share.example/f/abc123\n\nWho's the best person you know for it? The post is here: https://jobs.example/apply\n\nThank you.\nHannah Brooks"
+    },
+    "linkedin": "Hi [First name], we're hiring for an open role at Northwind Freight and I thought of you. Would like to connect. – Hannah",
+    "afterAccept": "Hi [First name], thanks for connecting. We're hiring for an open role at Northwind Freight and I thought of you. A 30-second film about it: https://share.example/f/abc123 Would you take a look? – Hannah",
+    "followUp": "Hi [First name],\n\nBumping this: we're still hiring for the an open role role, and the film is here, https://share.example/f/abc123\n\nHannah",
+    "lastNote": "Hi [First name],\n\nBumping this: we're still hiring for the an open role role, and the film is here, https://share.example/f/abc123\n\nHannah",
+    "linkedinFollowUp": "Hi [First name], one more nudge on our an open role role: https://share.example/f/abc123 – Hannah",
+    "intro": "Hi [First name],\n\nWe're hiring for an open role at Northwind Freight, and I made a 30-second film about the role: https://share.example/f/abc123\n\nWho's the best person you know for it? The post is here: https://jobs.example/apply\n\nThank you.\nHannah Brooks",
+    "post": "We're hiring: an open role at Northwind Freight.\n\nWhat you would do:\n→ What you would do, from the job post\n→ Filled in when the post is read\n\n1,400+ shippers track freight on Northwind.\n\nWatch the 30-second film: https://share.example/f/abc123\nApply: https://jobs.example/apply\n\nKnow someone who would be great at this? Tag them or send this their way.",
+    "checks": {
+      "words": 39,
+      "short": true,
+      "aboutThem": false,
+      "detail": false,
+      "oneAsk": true
+    },
+    "whyNow": false,
+    "writer": {
+      "note": "template",
+      "afterAccept": "template",
+      "email": "template",
+      "followUp": "template",
+      "lastNote": "template",
+      "linkedinFollowUp": "template"
+    },
+    "flags": {}
+  },
+  "Northwind Freight | job | recruiter": {
+    "email": {
+      "subject": "Northwind Freight's Forward Deployed Engineer - Platform role, made for you",
+      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Northwind Freight. Instead of a long message about our Forward Deployed Engineer - Platform role, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 18% less fresh-produce waste across 42 stores at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
+    },
+    "linkedin": "Hi Priya, I'm Hannah, recruiter at Northwind Freight. I made you a 30-second film about our Forward Deployed Engineer - Platform role. Would like to connect. – Hannah",
+    "afterAccept": "Hi Priya, I made you a 30-second film about our Forward Deployed Engineer - Platform role at Northwind Freight. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
+    "inmail": {
+      "subject": "A role at Northwind Freight, made for you",
+      "body": "Hi Priya, I made you a 30-second film about our Forward Deployed Engineer - Platform role at Northwind Freight. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah"
+    },
+    "followUp": "Hi Priya,\n\nBumping this in case it got buried: the film I made you about our Forward Deployed Engineer - Platform role is here, https://share.example/f/abc123\n\nCould we talk for 15 minutes?\n\nHannah",
+    "lastNote": "Hi Priya,\n\nLast note from me on our Forward Deployed Engineer - Platform role: https://share.example/f/abc123\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nHannah",
+    "linkedinFollowUp": "Hi Priya, following up on the film I made you: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
+    "intro": "Hi [First name],\n\nWe're hiring for our Forward Deployed Engineer - Platform role, and I made a 30-second film for a candidate you may know: https://share.example/f/abc123\n\nWould you be open to introducing us?\n\nThank you.\nHannah",
+    "checks": {
+      "words": 59,
+      "short": true,
+      "aboutThem": true,
+      "detail": false,
+      "oneAsk": true
+    },
+    "whyNow": false,
+    "writer": {
+      "note": "template",
+      "afterAccept": "template",
+      "inmail": "template",
+      "email": "template",
+      "followUp": "template",
+      "lastNote": "template",
+      "linkedinFollowUp": "template"
+    },
+    "flags": {}
+  },
+  "Northwind Freight | job | hiring": {
+    "email": {
+      "subject": "Know someone for our Forward Deployed Engineer - Platform role?",
+      "body": "Hi [First name],\n\nWe're hiring a Forward Deployed Engineer - Platform at Northwind Freight, and I made a 30-second film about the role: https://share.example/f/abc123\n\nWho's the best person you know for it? The post is here: https://jobs.example/apply\n\nThank you.\nHannah Brooks"
+    },
+    "linkedin": "Hi [First name], we're hiring a Forward Deployed Engineer - Platform at Northwind Freight and I thought of you. Would like to connect. – Hannah",
+    "afterAccept": "Hi [First name], thanks for connecting. We're hiring a Forward Deployed Engineer - Platform at Northwind Freight and I thought of you. A 30-second film about it: https://share.example/f/abc123 Would you take a look? – Hannah",
+    "followUp": "Hi [First name],\n\nBumping this: we're still hiring for the Forward Deployed Engineer - Platform role, and the film is here, https://share.example/f/abc123\n\nHannah",
+    "lastNote": "Hi [First name],\n\nBumping this: we're still hiring for the Forward Deployed Engineer - Platform role, and the film is here, https://share.example/f/abc123\n\nHannah",
+    "linkedinFollowUp": "Hi [First name], one more nudge on our Forward Deployed Engineer - Platform role: https://share.example/f/abc123 – Hannah",
+    "intro": "Hi [First name],\n\nWe're hiring a Forward Deployed Engineer - Platform at Northwind Freight, and I made a 30-second film about the role: https://share.example/f/abc123\n\nWho's the best person you know for it? The post is here: https://jobs.example/apply\n\nThank you.\nHannah Brooks",
+    "post": "We're hiring: Forward Deployed Engineer - Platform at Northwind Freight.\n\nWhat you would do:\n→ Deploy our routing agents inside customer warehouses\n→ Turn messy shipment data from customer ERPs into reliable pipelines\n\n1,400+ shippers track freight on Northwind.\n\nWatch the 30-second film: https://share.example/f/abc123\nApply: https://jobs.example/apply\n\nKnow someone who would be great at this? Tag them or send this their way.",
+    "checks": {
+      "words": 41,
+      "short": true,
+      "aboutThem": false,
+      "detail": false,
+      "oneAsk": true
+    },
+    "whyNow": false,
+    "writer": {
+      "note": "template",
+      "afterAccept": "template",
+      "email": "template",
+      "followUp": "template",
+      "lastNote": "template",
+      "linkedinFollowUp": "template"
+    },
+    "flags": {}
+  },
+  "Lumen Health | - | recruiter": {
+    "email": {
+      "subject": "A role at Lumen Health, made for you",
+      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Lumen Health. Instead of a long message about a role on our team at Lumen Health, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 18% less fresh-produce waste across 42 stores at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
+    },
+    "linkedin": "Hi Priya, I'm Hannah, recruiter at Lumen Health. I made you a 30-second film about a role on our team at Lumen Health. Would like to connect. – Hannah",
+    "afterAccept": "Hi Priya, I made you a 30-second film about a role on our team at Lumen Health. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
+    "inmail": {
+      "subject": "A role at Lumen Health, made for you",
+      "body": "Hi Priya, I made you a 30-second film about a role on our team at Lumen Health. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah"
+    },
+    "followUp": "Hi Priya,\n\nBumping this in case it got buried: the film I made you about a role on our team at Lumen Health is here, https://share.example/f/abc123\n\nCould we talk for 15 minutes?\n\nHannah",
+    "lastNote": "Hi Priya,\n\nLast note from me on a role on our team at Lumen Health: https://share.example/f/abc123\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nHannah",
+    "linkedinFollowUp": "Hi Priya, following up on the film I made you: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
+    "intro": "Hi [First name],\n\nWe're hiring for a role on our team at Lumen Health, and I made a 30-second film for a candidate you may know: https://share.example/f/abc123\n\nWould you be open to introducing us?\n\nThank you.\nHannah",
+    "checks": {
+      "words": 60,
+      "short": true,
+      "aboutThem": true,
+      "detail": false,
+      "oneAsk": true
+    },
+    "whyNow": false,
+    "writer": {
+      "note": "template",
+      "afterAccept": "template",
+      "inmail": "template",
+      "email": "template",
+      "followUp": "template",
+      "lastNote": "template",
+      "linkedinFollowUp": "template"
+    },
+    "flags": {}
+  },
+  "Lumen Health | - | hiring": {
+    "email": {
+      "subject": "Know someone for our an open role role?",
+      "body": "Hi [First name],\n\nWe're hiring for an open role at Lumen Health, and I made a 30-second film about the role: https://share.example/f/abc123\n\nWho's the best person you know for it? The post is here: https://jobs.example/apply\n\nThank you.\nHannah Brooks"
+    },
+    "linkedin": "Hi [First name], we're hiring for an open role at Lumen Health and I thought of you. Would like to connect. – Hannah",
+    "afterAccept": "Hi [First name], thanks for connecting. We're hiring for an open role at Lumen Health and I thought of you. A 30-second film about it: https://share.example/f/abc123 Would you take a look? – Hannah",
+    "followUp": "Hi [First name],\n\nBumping this: we're still hiring for the an open role role, and the film is here, https://share.example/f/abc123\n\nHannah",
+    "lastNote": "Hi [First name],\n\nBumping this: we're still hiring for the an open role role, and the film is here, https://share.example/f/abc123\n\nHannah",
+    "linkedinFollowUp": "Hi [First name], one more nudge on our an open role role: https://share.example/f/abc123 – Hannah",
+    "intro": "Hi [First name],\n\nWe're hiring for an open role at Lumen Health, and I made a 30-second film about the role: https://share.example/f/abc123\n\nWho's the best person you know for it? The post is here: https://jobs.example/apply\n\nThank you.\nHannah Brooks",
+    "post": "We're hiring: an open role at Lumen Health.\n\nWhat you would do:\n→ What you would do, from the job post\n→ Filled in when the post is read\n\n11 minutes saved per visit on documentation.\n\nWatch the 30-second film: https://share.example/f/abc123\nApply: https://jobs.example/apply\n\nKnow someone who would be great at this? Tag them or send this their way.",
+    "checks": {
+      "words": 39,
+      "short": true,
+      "aboutThem": false,
+      "detail": false,
+      "oneAsk": true
+    },
+    "whyNow": false,
+    "writer": {
+      "note": "template",
+      "afterAccept": "template",
+      "email": "template",
+      "followUp": "template",
+      "lastNote": "template",
+      "linkedinFollowUp": "template"
+    },
+    "flags": {}
+  },
+  "Lumen Health | job | recruiter": {
+    "email": {
+      "subject": "Lumen Health's Senior Data Analyst, Growth role, made for you",
+      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Lumen Health. Instead of a long message about our Senior Data Analyst, Growth role, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 18% less fresh-produce waste across 42 stores at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
+    },
+    "linkedin": "Hi Priya, I'm Hannah, recruiter at Lumen Health. I made you a 30-second film about our Senior Data Analyst, Growth role. Would like to connect. – Hannah",
+    "afterAccept": "Hi Priya, I made you a 30-second film about our Senior Data Analyst, Growth role at Lumen Health. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
+    "inmail": {
+      "subject": "A role at Lumen Health, made for you",
+      "body": "Hi Priya, I made you a 30-second film about our Senior Data Analyst, Growth role at Lumen Health. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah"
+    },
+    "followUp": "Hi Priya,\n\nBumping this in case it got buried: the film I made you about our Senior Data Analyst, Growth role is here, https://share.example/f/abc123\n\nCould we talk for 15 minutes?\n\nHannah",
+    "lastNote": "Hi Priya,\n\nLast note from me on our Senior Data Analyst, Growth role: https://share.example/f/abc123\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nHannah",
+    "linkedinFollowUp": "Hi Priya, following up on the film I made you: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
+    "intro": "Hi [First name],\n\nWe're hiring for our Senior Data Analyst, Growth role, and I made a 30-second film for a candidate you may know: https://share.example/f/abc123\n\nWould you be open to introducing us?\n\nThank you.\nHannah",
+    "checks": {
+      "words": 58,
+      "short": true,
+      "aboutThem": true,
+      "detail": false,
+      "oneAsk": true
+    },
+    "whyNow": false,
+    "writer": {
+      "note": "template",
+      "afterAccept": "template",
+      "inmail": "template",
+      "email": "template",
+      "followUp": "template",
+      "lastNote": "template",
+      "linkedinFollowUp": "template"
+    },
+    "flags": {}
+  },
+  "Lumen Health | job | hiring": {
+    "email": {
+      "subject": "Know someone for our Senior Data Analyst, Growth role?",
+      "body": "Hi [First name],\n\nWe're hiring a Senior Data Analyst, Growth at Lumen Health, and I made a 30-second film about the role: https://share.example/f/abc123\n\nWho's the best person you know for it? The post is here: https://jobs.example/apply\n\nThank you.\nHannah Brooks"
+    },
+    "linkedin": "Hi [First name], we're hiring a Senior Data Analyst, Growth at Lumen Health and I thought of you. Would like to connect. – Hannah",
+    "afterAccept": "Hi [First name], thanks for connecting. We're hiring a Senior Data Analyst, Growth at Lumen Health and I thought of you. A 30-second film about it: https://share.example/f/abc123 Would you take a look? – Hannah",
+    "followUp": "Hi [First name],\n\nBumping this: we're still hiring for the Senior Data Analyst, Growth role, and the film is here, https://share.example/f/abc123\n\nHannah",
+    "lastNote": "Hi [First name],\n\nBumping this: we're still hiring for the Senior Data Analyst, Growth role, and the film is here, https://share.example/f/abc123\n\nHannah",
+    "linkedinFollowUp": "Hi [First name], one more nudge on our Senior Data Analyst, Growth role: https://share.example/f/abc123 – Hannah",
+    "intro": "Hi [First name],\n\nWe're hiring a Senior Data Analyst, Growth at Lumen Health, and I made a 30-second film about the role: https://share.example/f/abc123\n\nWho's the best person you know for it? The post is here: https://jobs.example/apply\n\nThank you.\nHannah Brooks",
+    "post": "We're hiring: Senior Data Analyst, Growth at Lumen Health.\n\nWhat you would do:\n→ Own the metrics that tell us which clinics are growing\n→ Build dashboards in SQL\n\n212 clinics run intake on Lumen.\n\nWatch the 30-second film: https://share.example/f/abc123\nApply: https://jobs.example/apply\n\nKnow someone who would be great at this? Tag them or send this their way.",
+    "checks": {
+      "words": 40,
+      "short": true,
+      "aboutThem": false,
+      "detail": false,
+      "oneAsk": true
+    },
+    "whyNow": false,
+    "writer": {
+      "note": "template",
+      "afterAccept": "template",
+      "email": "template",
+      "followUp": "template",
+      "lastNote": "template",
+      "linkedinFollowUp": "template"
+    },
+    "flags": {}
+  },
+  "Parcelpine | - | recruiter": {
+    "email": {
+      "subject": "A role at Parcelpine, made for you",
+      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Parcelpine. Instead of a long message about a role on our team at Parcelpine, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 18% less fresh-produce waste across 42 stores at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
+    },
+    "linkedin": "Hi Priya, I'm Hannah, recruiter at Parcelpine. I made you a 30-second film about a role on our team at Parcelpine. Would like to connect. – Hannah",
+    "afterAccept": "Hi Priya, I made you a 30-second film about a role on our team at Parcelpine. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
+    "inmail": {
+      "subject": "A role at Parcelpine, made for you",
+      "body": "Hi Priya, I made you a 30-second film about a role on our team at Parcelpine. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah"
+    },
+    "followUp": "Hi Priya,\n\nBumping this in case it got buried: the film I made you about a role on our team at Parcelpine is here, https://share.example/f/abc123\n\nCould we talk for 15 minutes?\n\nHannah",
+    "lastNote": "Hi Priya,\n\nLast note from me on a role on our team at Parcelpine: https://share.example/f/abc123\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nHannah",
+    "linkedinFollowUp": "Hi Priya, following up on the film I made you: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
+    "intro": "Hi [First name],\n\nWe're hiring for a role on our team at Parcelpine, and I made a 30-second film for a candidate you may know: https://share.example/f/abc123\n\nWould you be open to introducing us?\n\nThank you.\nHannah",
+    "checks": {
+      "words": 58,
+      "short": true,
+      "aboutThem": true,
+      "detail": false,
+      "oneAsk": true
+    },
+    "whyNow": false,
+    "writer": {
+      "note": "template",
+      "afterAccept": "template",
+      "inmail": "template",
+      "email": "template",
+      "followUp": "template",
+      "lastNote": "template",
+      "linkedinFollowUp": "template"
+    },
+    "flags": {}
+  },
+  "Parcelpine | - | hiring": {
+    "email": {
+      "subject": "Know someone for our an open role role?",
+      "body": "Hi [First name],\n\nWe're hiring for an open role at Parcelpine, and I made a 30-second film about the role: https://share.example/f/abc123\n\nWho's the best person you know for it? The post is here: https://jobs.example/apply\n\nThank you.\nHannah Brooks"
+    },
+    "linkedin": "Hi [First name], we're hiring for an open role at Parcelpine and I thought of you. Would like to connect. – Hannah",
+    "afterAccept": "Hi [First name], thanks for connecting. We're hiring for an open role at Parcelpine and I thought of you. A 30-second film about it: https://share.example/f/abc123 Would you take a look? – Hannah",
+    "followUp": "Hi [First name],\n\nBumping this: we're still hiring for the an open role role, and the film is here, https://share.example/f/abc123\n\nHannah",
+    "lastNote": "Hi [First name],\n\nBumping this: we're still hiring for the an open role role, and the film is here, https://share.example/f/abc123\n\nHannah",
+    "linkedinFollowUp": "Hi [First name], one more nudge on our an open role role: https://share.example/f/abc123 – Hannah",
+    "intro": "Hi [First name],\n\nWe're hiring for an open role at Parcelpine, and I made a 30-second film about the role: https://share.example/f/abc123\n\nWho's the best person you know for it? The post is here: https://jobs.example/apply\n\nThank you.\nHannah Brooks",
+    "post": "We're hiring: an open role at Parcelpine.\n\nWhat you would do:\n→ What you would do, from the job post\n→ Filled in when the post is read\n\n61% of returns become exchanges or store credit.\n\nWatch the 30-second film: https://share.example/f/abc123\nApply: https://jobs.example/apply\n\nKnow someone who would be great at this? Tag them or send this their way.",
+    "checks": {
+      "words": 38,
+      "short": true,
+      "aboutThem": false,
+      "detail": false,
+      "oneAsk": true
+    },
+    "whyNow": false,
+    "writer": {
+      "note": "template",
+      "afterAccept": "template",
+      "email": "template",
+      "followUp": "template",
+      "lastNote": "template",
+      "linkedinFollowUp": "template"
+    },
+    "flags": {}
+  },
+  "Parcelpine | job | recruiter": {
+    "email": {
+      "subject": "Parcelpine's Operations Analyst role, made for you",
+      "body": "Hi Priya,\n\nI'm Hannah, a recruiter at Parcelpine. Instead of a long message about our Operations Analyst role, I made you a 30-second film:\nhttps://share.example/f/abc123\n\nIt starts from your own work. 18% less fresh-produce waste across 42 stores at Harbor Grocers is what caught our eye.\n\nCould we talk for 15 minutes?\n\nHannah Brooks\nhannah@example.com"
+    },
+    "linkedin": "Hi Priya, I'm Hannah, recruiter at Parcelpine. I made you a 30-second film about our Operations Analyst role. Would like to connect. – Hannah",
+    "afterAccept": "Hi Priya, I made you a 30-second film about our Operations Analyst role at Parcelpine. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
+    "inmail": {
+      "subject": "Parcelpine's Operations Analyst role, made for you",
+      "body": "Hi Priya, I made you a 30-second film about our Operations Analyst role at Parcelpine. It starts from your own work at Harbor Grocers: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah"
+    },
+    "followUp": "Hi Priya,\n\nBumping this in case it got buried: the film I made you about our Operations Analyst role is here, https://share.example/f/abc123\n\nCould we talk for 15 minutes?\n\nHannah",
+    "lastNote": "Hi Priya,\n\nLast note from me on our Operations Analyst role: https://share.example/f/abc123\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nHannah",
+    "linkedinFollowUp": "Hi Priya, following up on the film I made you: https://share.example/f/abc123 Could we talk for 15 minutes? – Hannah",
+    "intro": "Hi [First name],\n\nWe're hiring for our Operations Analyst role, and I made a 30-second film for a candidate you may know: https://share.example/f/abc123\n\nWould you be open to introducing us?\n\nThank you.\nHannah",
+    "checks": {
+      "words": 55,
+      "short": true,
+      "aboutThem": true,
+      "detail": false,
+      "oneAsk": true
+    },
+    "whyNow": false,
+    "writer": {
+      "note": "template",
+      "afterAccept": "template",
+      "inmail": "template",
+      "email": "template",
+      "followUp": "template",
+      "lastNote": "template",
+      "linkedinFollowUp": "template"
+    },
+    "flags": {}
+  },
+  "Parcelpine | job | hiring": {
+    "email": {
+      "subject": "Know someone for our Operations Analyst role?",
+      "body": "Hi [First name],\n\nWe're hiring an Operations Analyst at Parcelpine, and I made a 30-second film about the role: https://share.example/f/abc123\n\nWho's the best person you know for it? The post is here: https://jobs.example/apply\n\nThank you.\nHannah Brooks"
+    },
+    "linkedin": "Hi [First name], we're hiring an Operations Analyst at Parcelpine and I thought of you. Would like to connect. – Hannah",
+    "afterAccept": "Hi [First name], thanks for connecting. We're hiring an Operations Analyst at Parcelpine and I thought of you. A 30-second film about it: https://share.example/f/abc123 Would you take a look? – Hannah",
+    "followUp": "Hi [First name],\n\nBumping this: we're still hiring for the Operations Analyst role, and the film is here, https://share.example/f/abc123\n\nHannah",
+    "lastNote": "Hi [First name],\n\nBumping this: we're still hiring for the Operations Analyst role, and the film is here, https://share.example/f/abc123\n\nHannah",
+    "linkedinFollowUp": "Hi [First name], one more nudge on our Operations Analyst role: https://share.example/f/abc123 – Hannah",
+    "intro": "Hi [First name],\n\nWe're hiring an Operations Analyst at Parcelpine, and I made a 30-second film about the role: https://share.example/f/abc123\n\nWho's the best person you know for it? The post is here: https://jobs.example/apply\n\nThank you.\nHannah Brooks",
+    "post": "We're hiring: Operations Analyst at Parcelpine.\n\nWhat you would do:\n→ What you would do, from the job post\n→ Filled in when the post is read\n\n61% of returns become exchanges or store credit.\n\nWatch the 30-second film: https://share.example/f/abc123\nApply: https://jobs.example/apply\n\nKnow someone who would be great at this? Tag them or send this their way.",
+    "checks": {
+      "words": 37,
+      "short": true,
+      "aboutThem": false,
+      "detail": false,
+      "oneAsk": true
+    },
+    "whyNow": false,
+    "writer": {
+      "note": "template",
+      "afterAccept": "template",
+      "email": "template",
+      "followUp": "template",
+      "lastNote": "template",
+      "linkedinFollowUp": "template"
+    },
+    "flags": {}
+  }
+}

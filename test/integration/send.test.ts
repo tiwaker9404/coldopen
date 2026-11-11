@@ -143,7 +143,8 @@ describe('sending', () => {
     expect(m.email.body.startsWith('Hi Priya,')).toBe(true)
     expect(m.intro).toContain('[First name]')
 
-    const back = new Date(Date.now() - 5 * 86_400_000).toISOString()
+    // a job seeker's one follow-up comes a week on
+    const back = new Date(Date.now() - 8 * 86_400_000).toISOString()
     await sql`update runs set outreach = ${sql.json({ status: 'sent', at: back, sentAt: back } as never)} where id = ${film}`
     const fu = (await app.inject({ url: '/v1/followups', headers: auth })).json()
     expect(fu.data[0].message.to).toBe('priya.shah@sierra.ai')

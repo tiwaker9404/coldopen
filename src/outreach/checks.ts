@@ -10,6 +10,7 @@ import type { FilmResult } from '../film.ts'
 import { numbersIn, overlap, sameNumber } from '../script/checks.ts'
 import { BANNED, BEGGING } from '../script/taste.ts'
 import type { Profile } from '../script/types.ts'
+import { builtLine, detailLine, endsWithThanks, jobWordsIn, type SenderHomework } from './voice.ts'
 
 export const MESSAGE_LIMITS = {
   /** a connection note on a free LinkedIn account */
@@ -42,6 +43,11 @@ export type CheckRule =
   | 'no_exclamation'
   | 'research_grounded'
   | 'film_once'
+  | 'not_job_pitch'
+  | 'thanks'
+  | 'no_proof_numbers'
+  | 'curious'
+  | 'homework_grounded'
 
 export interface Check {
   rule: CheckRule
@@ -58,6 +64,23 @@ export interface CheckContext {
   link?: string
   /** the email's research line and the post text it came from */
   research?: { line: string; source: string } | null
+  /**
+   * a job seeker's message: the voice rules apply (voice.ts): no job words, thanks at the end,
+   * no proof numbers, one curious question and only the experiences their homework says.
+   * voiceFor builds the fields below.
+   */
+  candidate?: boolean
+  /** what they wrote and do (their site, their posts, the sender's notes on their product): a curious question shares a word with it */
+  theirs?: string
+  /** the sender's own saved question for them, which is always curious */
+  question?: string | null
+  /** the values of the proof the film shows: the film says them, so the messages don't */
+  proof?: string[]
+  /**
+   * what a first-person claim ("I tried…", "I built…") may rest on: the sender's saved detail and
+   * built line, and the names of what they built (their creator line, a related project)
+   */
+  own?: { claims: string[]; names: string[] }
 }
 
 /**
@@ -73,6 +96,12 @@ const EMAILS: MessageKind[] = ['email', 'followUp', 'lastNote']
 const ONE_ASK: MessageKind[] = ['afterAccept', 'inmail', 'email']
 const NAMES_COMPANY: MessageKind[] = ['note', 'afterAccept', 'inmail', 'email']
 const HAS_LINK: MessageKind[] = ['afterAccept', 'inmail', 'email']
+/** A job seeker's first messages, which carry the voice: their work, not the job */
+const VOICE: MessageKind[] = ['note', 'afterAccept', 'inmail', 'email']
+/** The ones that end with thanks before the signature */
+const THANKED: MessageKind[] = ['afterAccept', 'inmail', 'email']
+/** The ones that ask one real question about their work */
+const CURIOUS: MessageKind[] = ['afterAccept', 'email']
 
 const URL = /\bhttps?:\/\/\S+|\bwww\.\S+/gi
 const PLACEHOLDER = /\[[^\]]*\]/g
@@ -185,7 +214,8 @@ export function checkMessage(
 
   // questions are counted in the body: a subject that asks is still a subject
   const asks = count(body, /\?/g)
-  if (kind === 'note')
+  if (ctx.candidate && VOICE.includes(kind)) checks.push(voiceAsk(kind, body))
+  else if (kind === 'note')
     checks.push(
       asks === 0
         ? { rule: 'one_ask', ok: true }
@@ -305,8 +335,170 @@ export function checkMessage(
           },
     )
   }
+  if (ctx.candidate && VOICE.includes(kind)) checks.push(...voiceChecks(kind, subject, body, ctx))
   return checks
 }
+
+/* ------------------------------------------------------------ a job seeker's voice (voice.ts) */
+
+/**
+ * A question that asks for their time rather than about their work: "15 minutes", or "could we
+ * talk / can you hop on a call". A question about their sales calls is about their work.
+ */
+const TIME_ASK =
+  /\b\d+[\s-]*min(ute)?s?\b|\b(could|can|would|shall|should|may)\s+(we|you|i)\b[^?]*\b(talk|chat|call|meet|speak|connect|hop on|find time|grab time|grab coffee)\b|\b(free|available|open)\s+(for|to)\s+(a\s+)?(quick\s+|short\s+)?(call|chat|talk)\b/i
+/** The 15-minute offer said as a statement ("If you ever have 15 minutes, …") */
+const TIME_OFFER = /\b\d+[\s-]*min(ute)?s?\b/i
+/** "I tried…", "I used…", "I built…", "when I…": the sender claiming an experience */
+const CLAIM =
+  /\b(I tried|I used|I built|when I|I've been using|I've used|I tested|I played with)\b/i
+
+/** The sentences of a text, each with its end mark */
+const sentencesOf = (s: string) =>
+  (s.replace(URL, ' ').match(/[^.?!\n]+[.?!]*/g) ?? []).map((x) => x.trim()).filter(Boolean)
+const questionsOf = (s: string) => sentencesOf(s).filter((x) => x.endsWith('?'))
+
+/** Words too common to show a question is about their work */
+const COMMON = new Set(
+  'what when where which while would could should have your yours youre about most more does like with that this there their them they been being from into just also some much many really curious wonder wondered anyone people team teams thing things think using used something someone else ever here other others over than then were will want wanted know hear love'.split(
+    ' ',
+  ),
+)
+const contentWords = (s: string) =>
+  new Set(
+    straight(s)
+      .toLowerCase()
+      .replace(/'/g, '')
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length >= 4 && !COMMON.has(w)),
+  )
+const sharesWord = (a: string, b: string) => {
+  const theirs = contentWords(b)
+  return [...contentWords(a)].some((w) => theirs.has(w))
+}
+
+/**
+ * How many questions a job seeker's message asks: the note one curious question at most and no
+ * time ask; the after-accept message and InMail one question; the email its curious question
+ * and, optionally, the 15-minute offer as a second (or as a statement). Never two asks for time.
+ */
+function voiceAsk(kind: MessageKind, body: string): Check {
+  const qs = questionsOf(body)
+  const timeQs = qs.filter((q) => TIME_ASK.test(q))
+  const offers = sentencesOf(body).filter((x) => !x.endsWith('?') && TIME_OFFER.test(x))
+  const timeAsks = timeQs.length + offers.length
+  const fail = (why: string): Check => ({ rule: 'one_ask', ok: false, why })
+  if (kind === 'note') {
+    if (timeAsks)
+      return fail('Asks for their time; the note only says hello, and the ask comes later')
+    if (qs.length > 1) return fail(`Asks ${qs.length} questions; a note has room for one at most`)
+    return { rule: 'one_ask', ok: true }
+  }
+  if (timeAsks > 1) return fail('Asks for their time twice; offer the 15 minutes once')
+  if (!qs.length) return fail('Has no question; ask one thing about their work')
+  const most = kind === 'email' ? 2 : 1
+  if (qs.length > most)
+    return fail(`Asks ${qs.length} questions; keep one about their work, so it's easy to answer`)
+  if (qs.length === 2 && timeQs.length !== 1)
+    return fail(
+      'Asks 2 questions; the second may only be the 15-minute offer, so keep one about their work',
+    )
+  return { rule: 'one_ask', ok: true }
+}
+
+function voiceChecks(kind: MessageKind, subject: string, body: string, ctx: CheckContext): Check[] {
+  const out: Check[] = []
+  const all = `${subject}\n${body}`
+
+  const job = jobWordsIn(all)
+  out.push(
+    job.length
+      ? {
+          rule: 'not_job_pitch',
+          ok: false,
+          why: `Says "${job[0]}"; they know you're looking, so talk about their product instead`,
+        }
+      : { rule: 'not_job_pitch', ok: true },
+  )
+
+  if (THANKED.includes(kind))
+    out.push(
+      endsWithThanks(body)
+        ? { rule: 'thanks', ok: true }
+        : {
+            rule: 'thanks',
+            ok: false,
+            why: 'Doesn\'t end with thanks; close with "Thanks for reading" before your name',
+          },
+    )
+
+  // the film shows the proof; a number of it here is the job pitch the film already makes
+  const said = numbersIn(
+    (ctx.link ? all.replaceAll(ctx.link, ' ') : all)
+      .replace(URL, ' ')
+      .replace(PLACEHOLDER, ' ')
+      .replace(FILM_LENGTH_RE, ' ')
+      .replace(/\b\d+[\s-]*min(ute)?s?\b/gi, ' '),
+  )
+  const shown = (ctx.proof ?? []).filter((v) =>
+    numbersIn(v).some((n) => said.some((s) => sameNumber(s, n))),
+  )
+  out.push(
+    shown.length
+      ? {
+          rule: 'no_proof_numbers',
+          ok: false,
+          why: `Says "${shown[0]}", which the film already shows; leave the numbers to the film`,
+        }
+      : { rule: 'no_proof_numbers', ok: true },
+  )
+
+  if (CURIOUS.includes(kind)) {
+    const asked = questionsOf(body).filter((q) => !TIME_ASK.test(q))
+    // word for word, though a question after a colon may start lower-case ("I wondered: are…")
+    const saved = ctx.question?.replace(/\s+/g, ' ').trim().toLowerCase()
+    const verbatim = !!saved && body.replace(/\s+/g, ' ').toLowerCase().includes(saved)
+    const about = asked.some((q) => sharesWord(q, `${ctx.company}\n${ctx.theirs ?? ''}`))
+    out.push(
+      verbatim || about
+        ? { rule: 'curious', ok: true }
+        : {
+            rule: 'curious',
+            ok: false,
+            why: asked.length
+              ? "The question isn't about their work; ask about something in their post, site or product"
+              : 'Has no question about their work; ask one thing you wondered about their product or post',
+          },
+    )
+
+    // an experience with their product is the sender's to claim, in their own saved words
+    const claims = sentencesOf(body).filter((x) => CLAIM.test(x))
+    const names = (ctx.own?.names ?? []).filter(Boolean).map((n) => straight(n).toLowerCase())
+    const sources = (ctx.own?.claims ?? []).filter(Boolean)
+    const ungrounded = claims.filter(
+      (x) =>
+        !names.some((n) => straight(x).toLowerCase().includes(n)) &&
+        !sources.some((src) => overlap(x, src) >= HOMEWORK_OVERLAP),
+    )
+    out.push(
+      ungrounded.length
+        ? {
+            rule: 'homework_grounded',
+            ok: false,
+            why: `Claims "${ungrounded[0]!.slice(0, 60)}", which your homework doesn't say; keep to what you saved`,
+          }
+        : { rule: 'homework_grounded', ok: true },
+    )
+  }
+  return out
+}
+
+/**
+ * How close a first-person claim must stay to the sender's saved homework: at least half its
+ * words are theirs. Looser than the research line's bar, since "I tried it" wraps their words.
+ */
+export const HOMEWORK_OVERLAP = 0.5
 
 export const passed = (checks: Check[]) => checks.every((c) => c.ok)
 
@@ -353,4 +545,47 @@ export function knownFor(
   ]
     .filter(Boolean)
     .join('\n')
+}
+
+/**
+ * The voice fields of a job seeker's CheckContext: what they wrote (their site's quote, the
+ * film's noticed line, their posts, and the sender's notes on their product), the sender's
+ * saved question, the proof values the film shows, and what a first-person claim may rest on.
+ */
+export function voiceFor(
+  out: Partial<Pick<FilmResult, 'company' | 'highlights' | 'script' | 'related'>>,
+  profile: Profile,
+  homework?: Homework | null,
+  sender?: SenderHomework | null,
+): Required<Pick<CheckContext, 'candidate' | 'theirs' | 'question' | 'proof' | 'own'>> {
+  const posts = (homework?.items ?? []).flatMap((i) => [i.title, i.summary ?? ''])
+  return {
+    candidate: true,
+    theirs: [
+      out.company ?? '',
+      out.highlights?.quote.text ?? '',
+      out.script?.noticed ?? '',
+      ...posts,
+      sender?.detail ?? '',
+      sender?.built?.line ?? '',
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    question: sender?.question ?? null,
+    proof: (out.highlights?.proof ?? []).map((p) => p.value),
+    own: {
+      // their words as saved, and as the templates say them ("I've been using Acme, and …")
+      claims: [
+        sender?.detail ?? '',
+        sender?.built?.line ?? '',
+        sender?.detail && out.company ? detailLine(out.company, sender.detail) : '',
+        sender?.built && out.company ? builtLine(out.company, sender.built) : '',
+      ].filter(Boolean),
+      names: [
+        profile.creator?.name ?? '',
+        out.related?.name ?? '',
+        sender?.built?.url ?? '',
+      ].filter(Boolean),
+    },
+  }
 }

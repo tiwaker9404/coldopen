@@ -178,9 +178,9 @@ describe('the model writes the messages, and code checks them', () => {
     expect(revise).toMatch(/- note: \d+ of 200 characters/)
     expect(r.writer.note).toBe('template')
     expect(r.flags.note?.map((c) => c.rule)).toEqual(['length'])
-    expect(r.drafts.note).toMatch(
-      /^Hi \[First name\], I'm applying for the Operations Analyst role/,
-    )
+    // the template note is about their work, in the job seeker's voice
+    expect(r.drafts.note).toMatch(/^Hi \[First name\], .*Parcelpine.* – Alex$/)
+    expect(r.drafts.note).not.toMatch(/\b(applying|role)\b/)
     // the other drafts were fine the first time and stay the model's
     expect(r.writer.email).toBe('model')
     expect(r.writer.afterAccept).toBe('model')

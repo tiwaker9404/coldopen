@@ -181,7 +181,12 @@ describe('referral kit', () => {
       me,
       'https://films.example/f/xyz',
     )
-    expect(m.forward).toContain('Priya Shah is interested in our Senior Data Analyst role')
+    // about their work, not the opening, and the numbers stay in the film
+    expect(m.forward).toContain(
+      "Priya Shah has been digging into what we're building and made a 30-second film for the team",
+    )
+    expect(m.forward).not.toMatch(/\brole\b/)
+    for (const p of me.proof.slice(0, 2)) expect(m.forward).not.toContain(p.value)
     expect(m.forward).toContain('Reach Priya at priya@example.com')
     expect(m.intro).toContain(m.forward!)
     expect(m.intro).not.toContain('[forward]')

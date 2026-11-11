@@ -13,15 +13,20 @@ import {
 } from '../../src/outreach/checks.ts'
 import {
   addressed,
+  contextFor,
   draftMessages,
   freshRound,
   messagesFor,
+  newerPost,
   openerFor,
   researchSentence,
+  type SenderHomework,
   wholeClause,
 } from '../../src/outreach/messages.ts'
+import { jobWordsIn } from '../../src/outreach/voice.ts'
 import type { FilmMessages } from '../../src/outreach/writer.ts'
 import { hiringProfile, recruiterProfile, withRole } from '../../src/profile/pitch.ts'
+import { numbersIn, sameNumber } from '../../src/script/checks.ts'
 import { buildStoryboard } from '../../src/script/storyboard.ts'
 import { BEGGING } from '../../src/script/taste.ts'
 import { type Profile, ProfileSchema } from '../../src/script/types.ts'
@@ -53,34 +58,41 @@ const out = {
 }
 
 describe('the messages that go with a film', () => {
-  it('quotes the post and the proof the film shows, and nothing else', () => {
+  it("a job seeker's: about their work, the film as a tease, a question and thanks; no job words, no numbers", () => {
     const p = profile('candidate')
     const m = draftMessages(out as never, p, 'https://share.example/f/x')
-    expect(m.email.subject).toBe("A 30-second film for Parcelpine's Operations Analyst team")
-    expect(m.email.body).toContain(
-      'I made a 30-second film for your Operations Analyst role at Parcelpine:\nhttps://share.example/f/x',
-    )
-    expect(m.email.body).toContain(
-      'It answers one line from the post: "Experience building dashboards that operations teams use every day".',
-    )
-    expect(m.email.body).toContain(
-      "What I'd bring: 40% faster month-end close at Initech; 12 dashboards in daily use.",
-    )
-    expect(m.email.body).not.toContain('not shown')
-    // a headline that only restates the role isn't worth a line
-    expect(m.email.body).not.toMatch(/Why I fit/)
-    expect(m.email.body.trimEnd().endsWith(p.cta.contact)).toBe(true)
+    expect(m.email.subject).toBe('A question about Parcelpine')
+    // no homework and nothing quotable from their homepage (the quote is from the job post)
     expect(
       m.email.body.startsWith(
-        'Hi [First name],\n\nI saw the Operations Analyst role at Parcelpine.',
+        "Hi [First name],\n\nI've been reading about what Parcelpine is building.\n\n",
       ),
     ).toBe(true)
-    expect(m.linkedin).toBe(
-      "Hi [First name], I'm applying for the Operations Analyst role at Parcelpine and made something for the team. Would like to connect. – Alex",
+    expect(m.email.body).toContain(
+      "I put what I'd try next with Parcelpine into a 30-second film:\nhttps://share.example/f/x",
     )
+    // this profile has no creator line, and the film has no related project
+    expect(m.email.body).not.toContain('I built')
+    expect(m.email.body).toContain(
+      "One thing I wondered: what's the hardest part of what Parcelpine is building right now? If you ever have 15 minutes, I'd love to hear how you think about it.",
+    )
+    expect(
+      m.email.body.trimEnd().endsWith(`Thanks for reading,\nAlex Rivera\n${p.cta.contact}`),
+    ).toBe(true)
+    for (const t of [m.email.subject, m.email.body, m.linkedin, m.afterAccept!, m.inmail!.body]) {
+      expect(jobWordsIn(t), t).toEqual([])
+      // the film shows the proof
+      expect(t).not.toContain('40%')
+      expect(t).not.toContain('dashboards in daily use')
+    }
+    expect(m.linkedin).toBe(
+      "Hi [First name], I've been reading about what Parcelpine is building and would like to connect. – Alex",
+    )
+    expect(m.afterAccept).toContain('thanks for connecting')
     expect(m.afterAccept).toContain('https://share.example/f/x')
+    expect(m.afterAccept?.trimEnd().endsWith('Thank you for your time,\nAlex')).toBe(true)
     expect(m.inmail?.subject).toContain('Parcelpine')
-    expect(m.followUp).toContain('Bumping this')
+    expect(m.opener).toBe('homework')
   })
 
   it('works without a job or highlights', () => {
@@ -100,31 +112,104 @@ describe('the messages that go with a film', () => {
 })
 
 describe('what makes a cold email work', () => {
+  const hw = (o: Partial<SenderHomework>): SenderHomework => ({
+    detail: null,
+    question: null,
+    built: null,
+    ...o,
+  })
+
   it('opens with your detail, and checks length, subject, detail and ask', () => {
     const p = profile('candidate')
     const plain = draftMessages(out as never, p, 'https://share.example/f/x')
     expect(plain.checks).toMatchObject({ aboutThem: true, detail: false, oneAsk: true })
     const m = draftMessages(out as never, p, 'https://share.example/f/x', {
-      detail: 'The one thing I kept hitting was losing a draft when my wifi dropped',
+      homework: hw({
+        detail: 'The one thing I kept hitting was losing a draft when my wifi dropped',
+      }),
     })
+    expect(m.email.subject).toBe('Notes from using Parcelpine')
     expect(m.email.body).toContain(
-      "I've been using Parcelpine, and the one thing I kept hitting was losing a draft when my wifi dropped.",
+      "Hi [First name],\n\nI've been using Parcelpine, and the one thing I kept hitting was losing a draft when my wifi dropped.\n\nI put what I'd try next",
     )
-    expect(m.email.body).toContain(
-      "I saw the Operations Analyst role at Parcelpine.\nI've been using Parcelpine",
-    )
-    expect(m.email.body).toContain('So I made a 30-second film')
+    expect(m.email.body).toContain('One thing I wondered: how do most Parcelpine customers use it?')
     expect(m.checks.detail).toBe(true)
     expect(m.checks.short).toBe(m.checks.words <= 125)
   })
 
-  it('brings something new to the follow-up when there is something', () => {
+  it('asks your saved question word for word, and leads with what you built', () => {
+    const p = profile('candidate')
+    const question =
+      'Are most of your customers calling the API directly, or going through the Shopify app?'
+    const m = draftMessages(out as never, p, 'https://share.example/f/x', {
+      homework: hw({
+        detail: 'the rate API saved me a spreadsheet',
+        question,
+        built: {
+          url: 'https://github.com/alex/rates',
+          line: 'A carrier rate comparer on your API',
+        },
+      }),
+    })
+    expect(m.email.subject).toBe('Something I built with Parcelpine')
+    expect(m.email.body).toContain(
+      'I built something small with Parcelpine: a carrier rate comparer on your API (https://github.com/alex/rates).',
+    )
+    expect(m.email.body.toLowerCase()).toContain(question.toLowerCase())
+    expect(m.afterAccept).toContain(question)
+    expect(m.inmail?.body).toContain(question)
+    // the note leads with the build too, without its link
+    expect(m.linkedin).toContain('I built something small with Parcelpine: a carrier rate comparer')
+    expect(m.linkedin).not.toContain('http')
+    expect(m.checks.detail).toBe(true)
+  })
+
+  it('says you built the tool that made the film, when you did', () => {
+    const p = ProfileSchema.parse({
+      ...profile('candidate'),
+      creator: {
+        name: 'coldopen',
+        url: 'https://tiwaker9404.github.io/coldopen/',
+        line: 'An open-source agent that turns a site into a short on-brand pitch',
+      },
+    })
+    const m = draftMessages(out as never, p, 'https://share.example/f/x')
+    expect(m.email.body).toContain(
+      'I built the tool that made it, coldopen: an open-source agent that turns a site into a short on-brand pitch.',
+    )
+    // the creator line takes the related project's place
+    expect(m.email.body).not.toContain("Something I built that's close")
+    // a creator line that says "film" again keeps only the name, so the film is named once
+    const filmy = ProfileSchema.parse({
+      ...p,
+      creator: {
+        ...p.creator!,
+        line: "Paste a company's website, get a 30-second film made for them",
+      },
+    })
+    const f = draftMessages(out as never, filmy, 'https://share.example/f/x')
+    expect(f.email.body).toContain('I built the tool that made it, coldopen.\n')
+  })
+
+  it('brings something new to the one follow-up when there is something', () => {
     const p = profile('candidate')
     const m = draftMessages(out as never, p, 'https://share.example/f/x', {
       fresh: 'Trusted by 4,000 shippers',
     })
-    expect(m.followUp).toContain('your site says "Trusted by 4,000 shippers"')
-    expect(m.followUp).not.toContain('Bumping')
+    expect(m.followUp).toContain(
+      `One more thing I noticed since I wrote: Parcelpine's site says "Trusted by 4,000 shippers".`,
+    )
+    expect(m.followUp).not.toContain('Writing once more')
+    expect(m.followUp).toContain('Thanks either way,')
+    const newer = draftMessages(out as never, p, 'https://share.example/f/x', {
+      newer: { title: 'Returns, now with QR drop-off', line: 'QR drop-off is live' },
+    })
+    expect(newer.followUp).toContain(
+      'I just read your newer post, "Returns, now with QR drop-off".',
+    )
+    // nothing new: one plain note, then let it go
+    const plain = draftMessages(out as never, p, 'https://share.example/f/x')
+    expect(plain.followUp).toContain('Writing once more in case this got buried.')
   })
 })
 
@@ -137,8 +222,39 @@ describe('two openers, to learn which gets replies', () => {
     expect(openerFor('abc')).toBe(openerFor('abc'))
   })
 
-  it('leads with your best number, keeping the subject about them', () => {
+  it("splits a job seeker's films between their homework and their question, on the same hash", () => {
+    const ids = Array.from({ length: 200 }, (_, i) => `film_${i.toString(36)}x${i * 7}`)
+    for (const id of ids)
+      expect(openerFor(id, 'candidate')).toBe(openerFor(id) === 'film' ? 'homework' : 'question')
+    expect(openerFor('abc', 'sales')).toBe(openerFor('abc'))
+  })
+
+  it('the question opener asks first; the homework opener shows the homework first', () => {
     const p = profile('candidate')
+    const homework = {
+      detail: 'I tried the rate API to compare two carriers',
+      question: 'Are most of your customers calling the API directly?',
+      built: null,
+    }
+    const q = draftMessages(out as never, p, LINK, { homework, opener: 'question' })
+    expect(q.opener).toBe('question')
+    expect(q.email.body).toContain(
+      "Hi [First name],\n\nI've had one question about Parcelpine in mind: are most of your customers calling the API directly?\n\nI tried the rate API",
+    )
+    expect(q.email.body).toContain(
+      "If you ever have 15 minutes, I'd love to hear how you think about it.\n\nThanks for reading,",
+    )
+    const h = draftMessages(out as never, p, LINK, { homework, opener: 'homework' })
+    expect(h.opener).toBe('homework')
+    expect(h.email.body.startsWith('Hi [First name],\n\nI tried the rate API')).toBe(true)
+    // a stored opener from before (film or proof) reads as the homework one
+    expect(draftMessages(out as never, p, LINK, { homework, opener: 'proof' }).opener).toBe(
+      'homework',
+    )
+  })
+
+  it("leads a seller's email with your best number, keeping the subject about them", () => {
+    const p = profile('sales')
     const m = draftMessages(out as never, p, 'https://share.example/f/x', { opener: 'proof' })
     expect(m.opener).toBe('proof')
     expect(m.email.subject).toBe('Parcelpine: 40% faster month-end close at Initech')
@@ -323,48 +439,156 @@ const failures = (checks: Check[]) =>
     .map((c) => `${c.rule}: ${c.why}`)
     .join('; ')
 
+/** The sender's homework, every way they can save it (or not) */
+const HOMEWORK: [string, SenderHomework | null][] = [
+  ['no homework', null],
+  [
+    'a detail',
+    {
+      detail: 'the export to CSV kept every custom field, which saved me a report',
+      question: null,
+      built: null,
+    },
+  ],
+  [
+    'something built',
+    {
+      detail: null,
+      question: null,
+      built: {
+        url: 'https://github.com/alex/small-build',
+        line: 'A tiny dashboard on their public API',
+      },
+    },
+  ],
+  [
+    'a question',
+    {
+      detail: null,
+      question: 'Which part of the product do new customers set up first?',
+      built: null,
+    },
+  ],
+  [
+    'all three',
+    {
+      detail: 'I tried the docs quickstart and had it running in an afternoon',
+      question: 'Do most customers start from the quickstart or a sales call?',
+      built: {
+        url: 'https://github.com/alex/small-build',
+        line: 'A tiny dashboard on their public API',
+      },
+    },
+  ],
+]
+const CREATOR = {
+  name: 'coldopen',
+  url: 'https://tiwaker9404.github.io/coldopen/',
+  line: "Paste a company's website, get a 30-second film made for them",
+}
+/** The research post, as the site's feed has it: messagesFor picks it the way a film does */
+const POSTS = {
+  items: [
+    {
+      kind: 'changelog' as const,
+      title: RESEARCH.title,
+      url: 'https://example.com/changelog/route-planning',
+      date: '2026-10-28',
+      summary: RESEARCH.source,
+    },
+  ],
+  pages: [],
+}
+const NOW = Date.parse('2026-11-03')
+
+/** The proof values a draft says, ignoring its link, placeholders, the film's length and the 15 minutes */
+const proofSaid = (text: string, proof: string[]) => {
+  const said = numbersIn(
+    text
+      .replaceAll(LINK, ' ')
+      .replace(/\[[^\]]*\]/g, ' ')
+      .replace(/https?:\/\/\S+/g, ' ')
+      .replace(/\b30[\s-]*second\b/g, ' ')
+      .replace(/\b\d+[\s-]*min(ute)?s?\b/gi, ' '),
+  )
+  return proof.filter((v) => numbersIn(v).some((n) => said.some((x) => sameNumber(x, n))))
+}
+
 describe('every template passes the checks', () => {
   it('has fixture films and example profiles to check', () => {
     expect(KITS).toHaveLength(6)
     expect(PROFILES.length).toBeGreaterThanOrEqual(8)
   })
 
-  // one case per fixture film, over every profile, both openers, with and without research
+  // one case per fixture film, over every profile, both openers and with and without research;
+  // a job seeker's also with every kind of homework, with and without a creator line, and checked
+  // in the voice, through messagesFor as the API serves them
   for (const kit of KITS)
     it(`${kit.name}${kit.job ? ', with its job' : ''}: every draft, for every profile`, () => {
-      for (const p of PROFILES)
-        for (const opener of ['film', 'proof'] as const)
-          for (const research of [null, RESEARCH]) {
-            const out = filmFor(kit, p)
-            const m = draftMessages(out, p, LINK, { opener, research })
-            const ctx = {
-              company: kit.name,
-              known: knownFor(out, p),
-              link: LINK,
-              research: research ? { line: research.line, source: research.source } : null,
-            }
-            const drafts: [MessageKind, string | { subject: string; body: string }][] = [
-              ['note', m.linkedin],
-              ['afterAccept', m.afterAccept!],
-              ['inmail', m.inmail!],
-              ['email', m.email],
-              ['followUp', m.followUp],
-              ['lastNote', m.lastNote],
-              ['linkedinFollowUp', m.linkedinFollowUp],
-            ]
-            const who = `${p.sender.name}, ${opener} first${research ? ', with research' : ''}`
-            for (const [kind, text] of drafts) {
-              const checks = checkMessage(kind, text, ctx)
-              expect(
-                passed(checks),
-                `${who}, ${kind}: ${failures(checks)}\n${JSON.stringify(text)}`,
-              ).toBe(true)
-              // the email says "film" once, in its film line
-              if (kind === 'email') expect(checks.map((c) => c.rule)).toContain('film_once')
-            }
-            expect(Object.values(m.writer).every((w) => w === 'template')).toBe(true)
-            expect(m.flags).toEqual({})
-          }
+      for (const base of PROFILES) {
+        const seeker = base.preset === 'candidate'
+        const profiles = seeker
+          ? [base, ProfileSchema.parse({ ...base, creator: CREATOR })]
+          : [base]
+        for (const p of profiles)
+          for (const opener of seeker
+            ? (['homework', 'question'] as const)
+            : (['film', 'proof'] as const))
+            for (const research of [null, RESEARCH])
+              for (const [what, hw] of seeker ? HOMEWORK : HOMEWORK.slice(0, 1)) {
+                const film = { ...filmFor(kit, p), ...(research ? { homework: POSTS } : {}) }
+                const m = seeker
+                  ? messagesFor(film, p, LINK, {
+                      opener,
+                      now: NOW,
+                      ...(hw ? { homework: hw } : {}),
+                    })
+                  : draftMessages(film, p, LINK, { opener, research })
+                const ctx = {
+                  ...(seeker
+                    ? contextFor(film, p, LINK, hw)
+                    : { company: kit.name, known: knownFor(film, p), link: LINK }),
+                  research: research
+                    ? { line: seeker ? RESEARCH.source : RESEARCH.line, source: RESEARCH.source }
+                    : null,
+                }
+                const drafts: [MessageKind, string | { subject: string; body: string }][] = [
+                  ['note', m.linkedin],
+                  ['afterAccept', m.afterAccept!],
+                  ['inmail', m.inmail!],
+                  ['email', m.email],
+                  ['followUp', m.followUp],
+                  ['lastNote', m.lastNote],
+                  ['linkedinFollowUp', m.linkedinFollowUp],
+                ]
+                const who = `${p.sender.name}${p.creator ? ' (creator)' : ''}, ${opener} first${research ? ', with research' : ''}, ${what}`
+                for (const [kind, text] of drafts) {
+                  const checks = checkMessage(kind, text, ctx)
+                  expect(
+                    passed(checks),
+                    `${who}, ${kind}: ${failures(checks)}\n${JSON.stringify(text)}`,
+                  ).toBe(true)
+                  // the email says "film" once, in its film line
+                  if (kind === 'email') expect(checks.map((c) => c.rule)).toContain('film_once')
+                  if (seeker) {
+                    // no candidate draft has a job word or a number the film shows
+                    const all = typeof text === 'string' ? text : `${text.subject}\n${text.body}`
+                    expect(jobWordsIn(all), `${who}, ${kind}: ${all}`).toEqual([])
+                    expect(proofSaid(all, ctx.proof ?? []), `${who}, ${kind}: ${all}`).toEqual([])
+                  }
+                }
+                if (seeker) {
+                  for (const t of [m.intro, m.forward ?? ''])
+                    expect(jobWordsIn(t), `${who}, intro: ${t}`).toEqual([])
+                  // the email asks the saved question when there is one
+                  if (hw?.question)
+                    expect(m.email.body.toLowerCase(), who).toContain(hw.question.toLowerCase())
+                  expect(m.opener).toBe(opener)
+                }
+                expect(Object.values(m.writer).every((w) => w === 'template')).toBe(true)
+                expect(m.flags).toEqual({})
+              }
+      }
     })
 })
 
@@ -383,13 +607,23 @@ describe('the connection note has no link and no ask', () => {
         }
   })
 
-  it('shortens step by step, from the role to the company alone, instead of cutting', () => {
+  it('shortens step by step, from your detail and a curious line to their work alone, instead of cutting', () => {
     const p = profile('candidate')
-    const long =
-      'Senior Staff Platform Reliability and Developer Experience Engineer, Infrastructure'
-    const m = draftMessages({ ...out, job: { title: long } } as never, p, LINK)
-    expect(m.linkedin).toBe(
-      "Hi [First name], I'd like to work with the Parcelpine team and made something for you. Would like to connect. – Alex",
+    const note = (detail: string) =>
+      draftMessages(out as never, p, LINK, { homework: { detail, question: null, built: null } })
+        .linkedin
+    // room for the detail and the curious line
+    expect(note('the rate API saved me a spreadsheet')).toBe(
+      "Hi [First name], I've been using Parcelpine, and the rate API saved me a spreadsheet. Curious how most Parcelpine customers use it. – Alex",
+    )
+    // room for the detail alone
+    const mid =
+      'the per-zone breakdown in the rate API saved me a whole spreadsheet when I compared two carriers for a side project'
+    expect(note(mid)).toBe(`Hi [First name], I've been using Parcelpine, and ${mid}. – Alex`)
+    // a detail too long for a note: their work, in a whole sentence
+    const long = `${mid}, and the docs for the webhook retries were clearer than most I've read this year`
+    expect(note(long)).toBe(
+      "Hi [First name], I've been reading about what Parcelpine is building and would like to connect. – Alex",
     )
   })
 
@@ -421,8 +655,8 @@ describe('the connection note has no link and no ask', () => {
   })
 })
 
-describe('the warm email in five parts', () => {
-  const p = profile('candidate')
+describe("a seller's warm email in five parts", () => {
+  const p = profile('sales')
   const parts = (body: string) => ({
     opening: body.includes('I saw the Operations Analyst role at Parcelpine.'),
     film: body.includes(
@@ -459,7 +693,7 @@ describe('the warm email in five parts', () => {
     expect(without).not.toContain('I read')
 
     for (const kit of KITS)
-      for (const q of PROFILES) {
+      for (const q of PROFILES.filter((x) => x.preset === 'sales')) {
         const film = filmFor(kit, q)
         const e = draftMessages(film, q, LINK, { research: RESEARCH }).email
         const checks = checkMessage('email', e, {
@@ -497,6 +731,77 @@ describe('the warm email in five parts', () => {
   })
 })
 
+describe("a job seeker's email in the voice", () => {
+  const p = profile('candidate')
+  const homework = {
+    detail: 'I tried the rate API to compare two carriers for a side project',
+    question: 'Are most of your customers calling the API directly?',
+    built: null,
+  }
+
+  it('runs homework, film, built, question and offer, thanks: in that order, under 125 words', () => {
+    const film = {
+      ...out,
+      related: {
+        name: 'integration-triage',
+        url: 'https://github.com/a/it',
+        line: 'Diagnoses failing API calls',
+      },
+    }
+    const body = draftMessages(film as never, p, LINK, { homework }).email.body
+    const at = (t: string) => body.indexOf(t)
+    for (const t of [
+      homework.detail,
+      "I put what I'd try next",
+      "Something I built that's close",
+      'One thing I wondered',
+      'If you ever have 15 minutes',
+      'Thanks for reading,',
+    ])
+      expect(at(t), t).toBeGreaterThan(0)
+    expect(at(homework.detail)).toBeLessThan(at("I put what I'd try next"))
+    expect(at("I put what I'd try next")).toBeLessThan(at("Something I built that's close"))
+    expect(at("Something I built that's close")).toBeLessThan(at('One thing I wondered'))
+    expect(at('One thing I wondered')).toBeLessThan(at('If you ever have 15 minutes'))
+    expect(at('If you ever have 15 minutes')).toBeLessThan(at('Thanks for reading,'))
+  })
+
+  it("leads with their latest post when you haven't saved homework, on every fixture", () => {
+    for (const kit of KITS)
+      for (const q of PROFILES.filter((x) => x.preset === 'candidate')) {
+        const film = filmFor(kit, q)
+        const e = draftMessages(film, q, LINK, { research: RESEARCH }).email
+        expect(e.body, e.body).toContain('Hi [First name],\n\nI read that route planning')
+        // the post is named once: the tease and the question don't quote its title again
+        expect(e.body.toLowerCase().split('route planning')).toHaveLength(2)
+        // and the subject is about it
+        expect(e.subject).toBe(`${kit.name}'s route planning, now with live traffic`)
+      }
+  })
+
+  it('leaves out a quote from their site that would add a question or shout', () => {
+    const loud = {
+      ...out,
+      highlights: {
+        ...out.highlights,
+        quote: { text: 'Ready to ship faster?', source: 'their homepage' },
+      },
+    }
+    const m = draftMessages(loud as never, p, LINK)
+    expect(m.email.body).not.toContain('Ready to ship faster')
+    expect(m.email.body).toContain("I've been reading about what Parcelpine is building.")
+  })
+
+  it('leaves out a saved line that would break a rule, rather than editing it', () => {
+    // their own words, but a job word: the draft opens on their work instead
+    const m = draftMessages(out as never, p, LINK, {
+      homework: { detail: 'I saw the opening on your careers page', question: null, built: null },
+    })
+    expect(m.email.body).not.toContain('careers page')
+    expect(jobWordsIn(m.email.body)).toEqual([])
+  })
+})
+
 describe('follow-ups', () => {
   it('lastNote has no begging, and is easy to answer either way', () => {
     for (const q of [profile('candidate'), profile('sales')]) {
@@ -506,6 +811,48 @@ describe('follow-ups', () => {
       const lower = m.lastNote.toLowerCase()
       for (const b of BEGGING) expect(lower).not.toContain(b.toLowerCase())
     }
+  })
+})
+
+describe("a job seeker's one follow-up brings a newer post", () => {
+  const item = (title: string, date: string, kind: 'blog' | 'news' = 'blog') => ({
+    kind,
+    title,
+    url: `https://example.com/${title.toLowerCase().replace(/\W+/g, '-')}`,
+    date,
+    summary: `${title}, explained.`,
+  })
+  const read = item('Route planning, now with live traffic', '2026-10-28')
+  const posts = {
+    // the email reads the blog post (news ranks below it), so the newer news item is new to them
+    items: [
+      read,
+      item('Older notes', '2026-10-01'),
+      item('QR drop-off is live', '2026-11-01', 'news'),
+    ],
+    pages: [],
+  }
+  const now = Date.parse('2026-11-03')
+
+  it('picks the newest post after the one the email read, never the same one', () => {
+    expect(newerPost(posts, read, now)?.title).toBe('QR drop-off is live')
+    expect(newerPost({ ...posts, items: [read] }, read, now)).toBeNull()
+    // the email read nothing: the newest one
+    expect(newerPost(posts, null, now)?.title).toBe('QR drop-off is live')
+    // nothing from the future
+    expect(newerPost(posts, read, Date.parse('2026-10-30'))).toBeNull()
+  })
+
+  it('messagesFor puts it in the follow-up', () => {
+    const m = messagesFor(
+      { ...(out as never as object), homework: posts } as never,
+      profile('candidate'),
+      LINK,
+      { now },
+    )
+    expect(m.email.body).toContain('I read that route planning, now with live traffic, explained.')
+    expect(m.followUp).toContain('I just read your newer post, "QR drop-off is live".')
+    expect(m.linkedinFollowUp).toContain('QR drop-off is live')
   })
 })
 
@@ -655,7 +1002,8 @@ describe('the research line names the post once and ends on a whole clause', () 
 /* ------------------------------------------------ the model's drafts, served */
 
 describe("messagesFor: the model's drafts with the real link, checked again", () => {
-  const p = profile('candidate')
+  // a seller's drafts: how a stored model draft is served (a job seeker's are checked in the voice too, below)
+  const p = profile('sales')
   const homework = {
     items: [
       {
@@ -688,8 +1036,8 @@ describe("messagesFor: the model's drafts with the real link, checked again", ()
       '',
       'Could we find 15 minutes this week?',
       '',
-      'Alex Rivera',
-      'alex@example.com',
+      'Maya Chen',
+      'maya@example.com',
     ].join('\n'),
   })
   const stored = (o: Partial<FilmMessages> = {}): FilmMessages => ({
@@ -714,6 +1062,7 @@ describe("messagesFor: the model's drafts with the real link, checked again", ()
   const film = (m: FilmMessages | undefined) =>
     ({ ...(out as never as object), homework, messages: m }) as never
   const now = Date.parse('2026-11-03')
+  const hw = (detail: string): SenderHomework => ({ detail, question: null, built: null })
 
   it("swaps in the model's drafts with the real link, and says the model wrote them", () => {
     const m = messagesFor(film(stored()), p, LINK, { opener: 'film', now })
@@ -778,7 +1127,7 @@ describe("messagesFor: the model's drafts with the real link, checked again", ()
 
   it('adds the detail saved after the film as the line after the opening', () => {
     const detail = 'the export to CSV dropped every custom field, so I rebuilt my report by hand'
-    const m = messagesFor(film(stored()), p, LINK, { opener: 'film', now, detail })
+    const m = messagesFor(film(stored()), p, LINK, { opener: 'film', now, homework: hw(detail) })
     expect(m.writer.email).toBe('model')
     expect(m.email.body).toContain(
       "I saw the Operations Analyst role at Parcelpine.\nI've been using Parcelpine, and the export to CSV",
@@ -805,7 +1154,7 @@ describe("messagesFor: the model's drafts with the real link, checked again", ()
       {
         opener: 'film',
         now,
-        detail,
+        homework: hw(detail),
         raised,
       },
     )
@@ -827,7 +1176,7 @@ describe("messagesFor: the model's drafts with the real link, checked again", ()
       {
         opener: 'film',
         now,
-        detail: long,
+        homework: hw(long),
       },
     )
     expect(back.writer.email).toBe('template')
@@ -861,5 +1210,162 @@ describe("messagesFor: the model's drafts with the real link, checked again", ()
       now: now + 365 * 86_400_000,
     })
     expect(later.email.body).not.toContain('I read')
+  })
+})
+
+describe("messagesFor: a job seeker's drafts are checked in the voice", () => {
+  const p = profile('candidate')
+  const now = Date.parse('2026-11-03')
+  const homework = { items: [], pages: [] }
+  const saved: SenderHomework = {
+    detail: 'I tried the rate API to compare two carriers for a side project',
+    question: 'Are most of your customers calling the API directly?',
+    built: null,
+  }
+  // a voice draft of the model's, as step 3 will write them
+  const voiceDrafts = (): FilmMessages['drafts'] => ({
+    note: 'Hi [First name], I tried the Parcelpine rate API to compare two carriers. Curious how most teams use it. – Alex',
+    afterAccept:
+      "Hi [First name], thanks for connecting.\n\nI tried the rate API to compare two carriers for a side project.\n\nI put what I'd try next with Parcelpine into a 30-second film: [film]\n\nAre most of your customers calling the API directly?\n\nThank you for your time,\nAlex",
+    inmail: {
+      subject: 'The Parcelpine rate API',
+      body: "Hi [First name],\n\nI tried the rate API to compare two carriers for a side project.\n\nI put what I'd try next with Parcelpine into a 30-second film: [film]\n\nAre most of your customers calling the API directly?\n\nThank you for your time,\nAlex",
+    },
+    email: {
+      subject: 'The Parcelpine rate API',
+      body: [
+        'Hi [First name],',
+        '',
+        'I tried the rate API to compare two carriers for a side project.',
+        '',
+        "I put what I'd try next with Parcelpine into a 30-second film:",
+        '[film]',
+        '',
+        "One thing I wondered: are most of your customers calling the API directly? If you ever have 15 minutes, I'd love to hear how you think about it.",
+        '',
+        'Thanks for reading,',
+        'Alex Rivera',
+        'alex@example.com',
+      ].join('\n'),
+    },
+  })
+  const stored = (drafts: FilmMessages['drafts']): FilmMessages => ({
+    drafts,
+    writer: { note: 'model', afterAccept: 'model', inmail: 'model', email: 'model' },
+    flags: {},
+    research: null,
+    model: 'test',
+    rounds: 1,
+    firstTry: ['note', 'afterAccept', 'inmail', 'email'],
+  })
+  const film = (m: FilmMessages) =>
+    ({ ...(out as never as object), homework, messages: m }) as never
+
+  it('keeps a model draft that passes the voice checks, word for word', () => {
+    const m = messagesFor(film(stored(voiceDrafts())), p, LINK, { homework: saved, now })
+    expect(m.writer).toMatchObject({
+      note: 'model',
+      afterAccept: 'model',
+      inmail: 'model',
+      email: 'model',
+    })
+    expect(m.flags).toEqual({})
+    // the homework isn't added a second time: the model's opening is the homework
+    expect(m.email.body.split('I tried the rate API')).toHaveLength(2)
+  })
+
+  it('sends a draft from before the voice back to the template, with the reasons', () => {
+    const old = voiceDrafts()
+    old.email = {
+      subject: 'A 30-second film for Parcelpine',
+      body: old.email.body
+        .replace(
+          'I tried the rate API to compare two carriers for a side project.',
+          'I saw the Operations Analyst role at Parcelpine. 40% faster month-end close at Initech.',
+        )
+        .replace('\nThanks for reading,', ''),
+    }
+    old.afterAccept = old.afterAccept.replace('Thank you for your time,\n', '')
+    const m = messagesFor(film(stored(old)), p, LINK, { homework: saved, now })
+    expect(m.writer.email).toBe('template')
+    expect(m.flags.email?.map((c) => c.rule)).toEqual(
+      expect.arrayContaining(['not_job_pitch', 'thanks', 'no_proof_numbers']),
+    )
+    expect(m.writer.afterAccept).toBe('template')
+    expect(m.flags.afterAccept?.map((c) => c.rule)).toEqual(['thanks'])
+    // what's served is the warm template, with the saved question word for word
+    expect(m.email.body.toLowerCase()).toContain(saved.question!.toLowerCase())
+    expect(jobWordsIn(`${m.email.subject}\n${m.email.body}`)).toEqual([])
+  })
+
+  it("a model draft that claims an experience the homework doesn't say falls back", () => {
+    const made = voiceDrafts()
+    made.email = {
+      ...made.email,
+      body: made.email.body.replace(
+        'I tried the rate API to compare two carriers for a side project.',
+        'I used Parcelpine to run returns for my store for a year.',
+      ),
+    }
+    const m = messagesFor(film(stored(made)), p, LINK, { homework: saved, now })
+    expect(m.writer.email).toBe('template')
+    expect(m.flags.email?.map((c) => c.rule)).toEqual(['homework_grounded'])
+  })
+})
+
+/* ------------------------------------------------ other presets keep their voice */
+
+describe('sales, recruiter and hiring templates are unchanged', () => {
+  // taken before the candidate voice changed (batch 4, step 2): only candidate drafts move
+  it('sales templates are unchanged, for every fixture, opener, research and detail', async () => {
+    const all: Record<string, unknown> = {}
+    const sales = PROFILES.filter((p) => p.preset === 'sales')
+    expect(sales.length).toBeGreaterThan(0)
+    for (const kit of KITS)
+      for (const p of sales)
+        for (const opener of ['film', 'proof'] as const)
+          for (const research of [null, RESEARCH])
+            for (const detail of [null, 'I read your post on lanes'])
+              for (const fresh of [null, 'Trusted by 4,000 shippers']) {
+                const key = [kit.name, kit.job ? 'job' : '-', p.sender.name, opener]
+                  .concat(research ? 'research' : '-', detail ? 'detail' : '-')
+                  .concat(fresh ? 'fresh' : '-')
+                  .join(' | ')
+                all[key] = draftMessages(filmFor(kit, p), p, LINK, {
+                  opener,
+                  research,
+                  ...(detail ? { homework: { detail, question: null, built: null } } : {}),
+                  ...(fresh ? { fresh } : {}),
+                })
+              }
+    await expect(`${JSON.stringify(all, null, 2)}\n`).toMatchFileSnapshot(
+      '__snapshots__/sales-templates.json',
+    )
+  })
+
+  it('recruiter and hiring templates are unchanged', async () => {
+    const all: Record<string, unknown> = {}
+    for (const kit of KITS) {
+      const hiring = withRole(
+        hiringProfile({
+          recruiter: { name: 'Hannah Brooks', company: kit.name },
+          ...(kit.job ? { role: kit.job.title } : {}),
+        }),
+        kit,
+        'https://jobs.example/apply',
+      )
+      for (const [who, p] of [
+        ['recruiter', recruiterFor(kit)],
+        ['hiring', hiring],
+      ] as const)
+        all[`${kit.name} | ${kit.job ? 'job' : '-'} | ${who}`] = draftMessages(
+          filmFor(kit, p),
+          p,
+          LINK,
+        )
+    }
+    await expect(`${JSON.stringify(all, null, 2)}\n`).toMatchFileSnapshot(
+      '__snapshots__/recruiter-hiring-templates.json',
+    )
   })
 })

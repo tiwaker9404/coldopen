@@ -169,7 +169,25 @@ describe('message checks', () => {
         ).toBe(true)
       expect(
         fails(
-          checkMessage('note', 'Parcelpine. I’d be grateful for a pointer.', ctx),
+          checkMessage('note', 'Parcelpine. I’d be grateful if you could pass this on.', ctx),
+          'no_begging',
+        ),
+      ).toBe(true)
+    })
+
+    it('lets real thanks through: "I\'d be grateful for" is no longer on the list', () => {
+      expect(BEGGING).not.toContain("I'd be grateful for")
+      expect(BEGGING).toContain("I'd be grateful if you")
+      expect(BEGGING).toContain('would mean the world')
+      expect(
+        fails(
+          checkMessage('note', 'Parcelpine. I’d be grateful for any thoughts.', ctx),
+          'no_begging',
+        ),
+      ).toBe(false)
+      expect(
+        fails(
+          checkMessage('note', 'Parcelpine. It would mean the world to me.', ctx),
           'no_begging',
         ),
       ).toBe(true)
@@ -402,6 +420,243 @@ describe('message checks', () => {
           'research_grounded',
         ),
       ).toBeUndefined()
+    })
+  })
+})
+
+/* ------------------------------------------------ a job seeker's voice */
+
+describe("a job seeker's messages, checked in the voice", () => {
+  const voice = {
+    ...ctx,
+    known: `${ctx.known}\n15 minutes`,
+    candidate: true,
+    theirs: 'Parcelpine\nRoute planning, now with live traffic\nThe carrier rate API',
+    question: 'Are most of your customers calling the API directly?',
+    proof: ['40%', '12'],
+    own: {
+      claims: ['I tried the rate API to compare two carriers for a side project'],
+      names: ['coldopen'],
+    },
+  }
+  const good = {
+    subject: "Parcelpine's route planning",
+    body: [
+      'Hi [First name],',
+      '',
+      'I tried the rate API to compare two carriers for a side project.',
+      '',
+      "I put what I'd try next with Parcelpine into a 30-second film:",
+      link,
+      '',
+      'I built the tool that made it, coldopen.',
+      '',
+      "One thing I wondered: are most of your customers calling the API directly? If you ever have 15 minutes, I'd love to hear how you think about it.",
+      '',
+      'Thanks for reading,',
+      'Ashwin Tiwari',
+    ].join('\n'),
+  }
+  const accept = `Hi [First name], thanks for connecting.\n\nI read Parcelpine's post on route planning.\n\nI put what I'd try next into a 30-second film: ${link}\n\nWhat have customers said about the new route planning?\n\nThank you for your time,\nAshwin`
+  const goodNote =
+    "Hi [First name], I tried Parcelpine's rate API this weekend. Curious how most teams use it. – Ashwin"
+  const email = (body: string, subject = good.subject) => ({ subject, body })
+
+  it('passes a good note, after-accept, InMail and email, and checks each new rule', () => {
+    for (const [kind, text] of [
+      ['note', goodNote],
+      ['afterAccept', accept],
+      ['inmail', { subject: 'Parcelpine route planning', body: accept }],
+      ['email', good],
+    ] as const) {
+      const checks = checkMessage(kind, text, voice)
+      expect(
+        checks.filter((c) => !c.ok),
+        kind,
+      ).toEqual([])
+    }
+    const rules = checkMessage('email', good, voice).map((c) => c.rule)
+    for (const r of ['not_job_pitch', 'thanks', 'no_proof_numbers', 'curious', 'homework_grounded'])
+      expect(rules).toContain(r)
+    // the note and InMail aren't asked for thanks or a curious question the same way
+    expect(checkMessage('note', goodNote, voice).map((c) => c.rule)).not.toContain('thanks')
+    expect(
+      checkMessage('inmail', { subject: 's', body: accept }, voice).map((c) => c.rule),
+    ).not.toContain('curious')
+    // and none of it applies to a seller's messages
+    expect(checkMessage('email', good, ctx).map((c) => c.rule)).not.toContain('not_job_pitch')
+  })
+
+  describe('not_job_pitch', () => {
+    it('fails "role" in the body or the subject, with its why', () => {
+      const c = rule(
+        checkMessage('email', email(good.body.replace('a side project', 'the role')), voice),
+        'not_job_pitch',
+      )
+      expect(c?.ok).toBe(false)
+      expect(c?.why).toBe(
+        `Says "role"; they know you're looking, so talk about their product instead`,
+      )
+      expect(
+        fails(
+          checkMessage('email', email(good.body, 'Operations Analyst inquiry, applying'), voice),
+          'not_job_pitch',
+        ),
+      ).toBe(true)
+      expect(
+        fails(checkMessage('note', `${goodNote} I'm hiring-curious.`, voice), 'not_job_pitch'),
+      ).toBe(true)
+    })
+
+    it('lets a title through when it is quoted from their own post', () => {
+      const quoted = good.body.replace(
+        'I tried the rate API',
+        'Your post "Operations Analyst role, Denver" made me curious, and I tried the rate API',
+      )
+      expect(fails(checkMessage('email', email(quoted), voice), 'not_job_pitch')).toBe(false)
+    })
+  })
+
+  describe('thanks', () => {
+    it('fails an email, after-accept or InMail that ends without thanks', () => {
+      const noThanks = good.body.replace('Thanks for reading,\n', 'Best,\n')
+      const c = rule(checkMessage('email', email(noThanks), voice), 'thanks')
+      expect(c?.ok).toBe(false)
+      expect(c?.why).toMatch(/end with thanks/)
+      const bare = accept.replace('Thank you for your time,\n', '')
+      expect(fails(checkMessage('afterAccept', bare, voice), 'thanks')).toBe(true)
+      expect(
+        fails(checkMessage('inmail', { subject: 's Parcelpine', body: bare }, voice), 'thanks'),
+      ).toBe(true)
+      // "thanks for connecting" at the top isn't the ending
+      expect(bare).toContain('thanks for connecting')
+    })
+  })
+
+  describe('no_proof_numbers', () => {
+    it("fails a number the film's proof shows, but not the 15 minutes or the film's length", () => {
+      const said = good.body.replace('a side project', 'a side project, after a 40% faster close')
+      const c = rule(
+        checkMessage('email', email(said), { ...voice, known: `${voice.known} 40%` }),
+        'no_proof_numbers',
+      )
+      expect(c?.ok).toBe(false)
+      expect(c?.why).toBe('Says "40%", which the film already shows; leave the numbers to the film')
+      expect(
+        fails(checkMessage('note', `${goodNote} 12 dashboards.`, voice), 'no_proof_numbers'),
+      ).toBe(true)
+      // a proof value of 15 doesn't trip on the 15-minute offer
+      expect(
+        fails(checkMessage('email', good, { ...voice, proof: ['15', '30'] }), 'no_proof_numbers'),
+      ).toBe(false)
+    })
+  })
+
+  describe('curious', () => {
+    it('passes a question that shares a word with their work, or the saved question word for word', () => {
+      expect(fails(checkMessage('email', good, voice), 'curious')).toBe(false)
+      // the saved question passes whatever it shares
+      const own = good.body.replace(
+        'are most of your customers calling the API directly?',
+        'do you ever sleep?',
+      )
+      expect(
+        fails(
+          checkMessage('email', email(own), { ...voice, question: 'Do you ever sleep?' }),
+          'curious',
+        ),
+      ).toBe(false)
+    })
+
+    it('fails a question about nothing of theirs, and an email with only a time ask', () => {
+      const vague = good.body.replace(
+        'are most of your customers calling the API directly?',
+        'what keeps you up at night?',
+      )
+      const c = rule(checkMessage('email', email(vague), { ...voice, question: null }), 'curious')
+      expect(c?.ok).toBe(false)
+      expect(c?.why).toMatch(/isn't about their work/)
+      const timeOnly = [
+        'Hi [First name],',
+        '',
+        'I tried the rate API to compare two carriers for a side project.',
+        "I put what I'd try next with Parcelpine into a 30-second film:",
+        link,
+        '',
+        'Could we talk for 15 minutes this week?',
+        '',
+        'Thanks for reading,',
+        'Ashwin',
+      ].join('\n')
+      const t = rule(
+        checkMessage('email', email(timeOnly), { ...voice, question: null }),
+        'curious',
+      )
+      expect(t?.ok).toBe(false)
+      expect(t?.why).toMatch(/no question about their work/)
+    })
+  })
+
+  describe('one_ask in the voice', () => {
+    it('lets the email ask its curious question and then the 15 minutes, never two of either', () => {
+      const two = good.body.replace(
+        "If you ever have 15 minutes, I'd love to hear how you think about it.",
+        'Could we talk for 15 minutes this week?',
+      )
+      expect(fails(checkMessage('email', email(two), voice), 'one_ask')).toBe(false)
+      const twoCurious = good.body.replace(
+        "If you ever have 15 minutes, I'd love to hear how you think about it.",
+        'And do you use the Shopify app?',
+      )
+      expect(rule(checkMessage('email', email(twoCurious), voice), 'one_ask')?.why).toMatch(
+        /the second may only be the 15-minute offer/,
+      )
+      // the offer as a statement and as a question: time asked twice
+      const twice = good.body.replace(
+        "I'd love to hear how you think about it.",
+        "I'd love to hear how you think about it. Could we talk this week?",
+      )
+      expect(rule(checkMessage('email', email(twice), voice), 'one_ask')?.why).toBe(
+        'Asks for their time twice; offer the 15 minutes once',
+      )
+    })
+
+    it('lets the note ask one curious question, but never for time', () => {
+      const q =
+        "Hi [First name], tried Parcelpine's rate API. Do most teams use the zones view? – Ashwin"
+      expect(fails(checkMessage('note', q, voice), 'one_ask')).toBe(false)
+      const time = "Hi [First name], tried Parcelpine's rate API. Could we talk this week? – Ashwin"
+      expect(rule(checkMessage('note', time, voice), 'one_ask')?.why).toMatch(/Asks for their time/)
+      // a question about their sales calls is about their work
+      const calls =
+        "Hi [First name], tried Parcelpine's API. Do most customers start from a sales call? – Ashwin"
+      expect(fails(checkMessage('note', calls, voice), 'one_ask')).toBe(false)
+    })
+  })
+
+  describe('homework_grounded', () => {
+    it('passes an experience your homework says, or one naming what you built', () => {
+      const checks = checkMessage('email', good, voice)
+      expect(rule(checks, 'homework_grounded')?.ok).toBe(true)
+    })
+
+    it("fails a first-person product claim your homework doesn't say", () => {
+      const made = good.body.replace(
+        'I tried the rate API to compare two carriers for a side project.',
+        'I used Parcelpine to run returns for my store for a year.',
+      )
+      const c = rule(checkMessage('email', email(made), voice), 'homework_grounded')
+      expect(c?.ok).toBe(false)
+      expect(c?.why).toMatch(/^Claims "I used Parcelpine to run returns/)
+      // with no homework saved, no first-person product claims at all
+      const none = { ...voice, own: { claims: [], names: [] } }
+      expect(fails(checkMessage('email', good, none), 'homework_grounded')).toBe(true)
+      expect(
+        fails(
+          checkMessage('afterAccept', accept.replace('I read', 'When I tried'), none),
+          'homework_grounded',
+        ),
+      ).toBe(true)
     })
   })
 })

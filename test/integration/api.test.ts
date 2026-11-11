@@ -433,6 +433,9 @@ describe('films', () => {
     // which opener did better, and the public totals for the landing page
     const op = (await app.inject({ url: '/v1/me/openers', headers: auth })).json()
     expect(op.film.sent + op.proof.sent).toBe(2)
+    // a seller's films: the job seeker's pair has no sends
+    expect(op.homework).toEqual({ sent: 0, watched: 0, replied: 0 })
+    expect(op.question).toEqual({ sent: 0, watched: 0, replied: 0 })
     expect(op.film.replied + op.proof.replied).toBe(1)
     expect(op.leader).toBeNull()
     expect(typeof m.opener).toBe('string')

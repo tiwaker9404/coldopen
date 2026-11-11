@@ -182,8 +182,11 @@ export interface Messages {
   post?: string
   /** how the email measures up: short, about them, your detail, one ask */
   checks: { words: number; short: boolean; aboutThem: boolean; detail: boolean; oneAsk: boolean }
-  /** which way this film's drafts open: half your films lead with the film, half with your best number */
-  opener?: 'film' | 'proof'
+  /**
+   * which way this film's email opens: a job seeker's with their homework or their question, a
+   * seller's with the film or their best number. Half your films lead each way.
+   */
+  opener?: Opener
   /** opens on their recent funding round */
   whyNow?: boolean
   /** who wrote each draft (note, afterAccept, inmail, email, followUp, lastNote, linkedinFollowUp) */
@@ -194,11 +197,13 @@ export interface Messages {
   notes?: Partial<Record<string, string[]>>
 }
 
+/** homework or question (job seekers), film or proof (sellers, and job seekers' older films) */
+export type Opener = 'homework' | 'question' | 'film' | 'proof'
+
 /** how each opener is doing: films you marked sent, watched and replied */
-export interface Openers {
-  film: { sent: number; watched: number; replied: number }
-  proof: { sent: number; watched: number; replied: number }
-  leader: 'film' | 'proof' | null
+export type Openers = Record<Opener, { sent: number; watched: number; replied: number }> & {
+  /** the winner of the pair you're sending now */
+  leader: Opener | null
 }
 
 /** "3 min ago", "yesterday", "Oct 12" */

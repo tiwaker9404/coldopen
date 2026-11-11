@@ -83,10 +83,11 @@ export function progressLabel(film: Film): string {
 /** has anyone watched it yet? */
 export function watched(film: Film): string {
   const v = film.views
-  // sent, no answer after 4 days: time for the one follow-up
-  if (film.outreach?.status === 'sent') {
-    const days = Math.floor((Date.now() - Date.parse(film.outreach.sentAt)) / 86_400_000)
-    if (days >= 4) return `No reply in ${days} days. Time to follow up`
+  // sent, no answer, and its follow-up is due (a week on for a job seeker, 4 days for a seller)
+  const o = film.outreach
+  if (o?.status === 'sent' && o.next?.kind === 'follow_up' && o.next.due) {
+    const days = Math.floor((Date.now() - Date.parse(o.sentAt)) / 86_400_000)
+    return `No reply in ${days} days. Time to follow up`
   }
   if (!v || v.opens === 0) return 'Ready, not opened yet'
   if (v.plays === 0) return `Opened ${v.opens === 1 ? 'once' : `${v.opens} times`}, not played`

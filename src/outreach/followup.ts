@@ -1,8 +1,13 @@
 /**
- * When to follow up on a film that was sent and hasn't had a reply: a first nudge after a few
- * days, one short last note a week later, then it's time to call it "no reply" and move on.
- * Two follow-ups is the usual advice: enough to catch a buried email, not enough to annoy.
+ * When to follow up on a film that was sent and hasn't had a reply. A seller nudges after a few
+ * days and sends one short last note a week later: enough to catch a buried email, not enough
+ * to annoy. A job seeker writes once more, a week on, with something new (a fresh fact, a newer
+ * post, something they tried since), then lets it go: one follow-up that adds something lifts
+ * replies, and a second reads as pressure on someone who owes them nothing. After the last one
+ * it's time to call it "no reply" and move on.
  */
+import type { Profile } from '../script/types.ts'
+import type { Opener } from './messages.ts'
 
 export const OUTREACH = ['sent', 'replied', 'interview', 'no_reply'] as const
 export type OutreachStatus = (typeof OUTREACH)[number]
@@ -15,11 +20,22 @@ export interface Outreach {
   /** follow-ups sent since */
   followUps?: number
   followedUpAt?: string
+  /**
+   * how its email opened when it was marked sent (openerFor), so the A/B counts it the way it
+   * went out even after the drafts change. Missing on films sent before it was kept.
+   */
+  opener?: Opener
 }
 
 const DAY = 86_400_000
 /** days to wait before each follow-up: after the film, then after the first follow-up */
 export const WAIT_DAYS = [4, 7] as const
+/** a job seeker's one follow-up, a week after the film */
+export const CANDIDATE_WAIT_DAYS = [7] as const
+
+/** The follow-ups a film gets, by who sent it */
+export const waitDaysFor = (preset: Profile['preset'] | undefined): readonly number[] =>
+  preset === 'candidate' ? CANDIDATE_WAIT_DAYS : WAIT_DAYS
 /** days after the last follow-up before suggesting it be marked "no reply" */
 export const CLOSE_DAYS = 7
 
@@ -48,14 +64,16 @@ export function nextStep(
   o: Outreach | null | undefined,
   now = Date.now(),
   watched?: Watched | null,
+  /** the follow-ups this film gets (waitDaysFor): a job seeker's one, or a seller's two */
+  waits: readonly number[] = WAIT_DAYS,
 ): NextStep | null {
   if (o?.status !== 'sent') return null
   const n = Math.max(0, o.followUps ?? 0)
   const last = Date.parse(o.followedUpAt ?? o.sentAt)
   if (Number.isNaN(last)) return null
   const at = (days: number) => new Date(last + days * DAY)
-  if (n < WAIT_DAYS.length) {
-    let dueAt = at(WAIT_DAYS[n]!)
+  if (n < waits.length) {
+    let dueAt = at(waits[n]!)
     // watched since the last message and no reply: follow up while it's fresh
     const w = watched ? Date.parse(watched.at) : Number.NaN
     const early = !Number.isNaN(w) && w > last ? new Date(w + AFTER_WATCH_DAYS * DAY) : null

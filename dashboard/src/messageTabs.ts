@@ -6,7 +6,7 @@
  * and the wording are tested without a browser.
  */
 import { MESSAGE_LIMITS, type MessageKind } from '../../src/outreach/checks.ts'
-import type { Messages } from './api.ts'
+import type { Messages, Opener } from './api.ts'
 
 export type MessageTab = 'post' | 'note' | 'afterAccept' | 'inmail' | 'email' | 'followUp'
 
@@ -37,7 +37,16 @@ export const HINT: Record<MessageTab, string> = {
   inmail:
     'InMail is free only if they have an Open Profile or you’re in a group together. Otherwise, use the connection note.',
   email: 'Your first message, with the film’s link in it.',
-  followUp: 'A friendly nudge for 4 or 5 days later, if you haven’t heard back.',
+  followUp:
+    'One more note if you haven’t heard back, with something new: a week on, or 4 days for a sales film.',
+}
+
+/** What the film panel says about the way this film's email opens (the A/B in Today) */
+export const OPENER_NOTE: Record<Opener, string> = {
+  homework: 'This one leads with your homework.',
+  question: 'This one leads with your question for them.',
+  film: 'This one leads with the film.',
+  proof: 'This one leads with your best number.',
 }
 
 /** "143 of 200 characters", the connection note's limit on a free LinkedIn account */
