@@ -7,7 +7,7 @@ name: Résumé eval
 # started from a branch until main has it). Reads the existing LLM_API_KEY secret, writes its
 # report to the job summary, and never commits.
 # Runs that never leave "Queued" can't be cancelled from the web page; a new push to the
-# batch branch starts fresh runs.
+# batch branch starts a fresh run.
 on:
   workflow_dispatch:
   push:
@@ -21,9 +21,10 @@ on:
 permissions:
   contents: read
 
+# one group per commit: a run stuck in GitHub's queue can't be cancelled, and a group per
+# branch would hold every later run behind it (11 Nov)
 concurrency:
-  group: resume-eval-${{ github.ref }}
-  cancel-in-progress: true
+  group: resume-eval-${{ github.sha }}
 
 jobs:
   eval:
