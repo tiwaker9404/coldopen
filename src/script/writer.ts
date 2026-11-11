@@ -2,7 +2,8 @@ import type { BrandKit, Fact } from '../brand/types.ts'
 import { answers, proofText } from '../job/fit.ts'
 import type { ChatMessage } from '../llm/types.ts'
 import { isDuty } from '../profile/pitch.ts'
-import { checkScript, clampScript, overlap, words } from './checks.ts'
+import { checkScript, clampScript, overlap, quotableFacts, words } from './checks.ts'
+import { monthOf } from './storyboard.ts'
 import { LIMITS, TASTE_RULES } from './taste.ts'
 import type { Profile, Script, ScriptMeta } from './types.ts'
 
@@ -34,12 +35,31 @@ const RECRUITER_JOB_BRIEF = (title: string) =>
 const JOB_BRIEF = (title: string) =>
   `This film answers a job post: ${title}. The insight scene quotes one of the job's requirements word for word (pick its id, j1, j2...), and insight.why answers it in the first person with something you have already done, taken from your points or proof. Pick the proof that answers the requirements best. The pitch headline may name the role. Numbers in your lines must come from your profile; the job post's numbers are what they want, not what you have done.`
 
+/** "(changelog, Oct 2026)": where a fact beyond the homepage is from, for the model to weigh */
+function sourceTag(f: Fact): string {
+  const s = f.source
+  if (!s || s.kind === 'homepage' || s.kind === 'job') return ''
+  const when = s.date ? `, ${monthOf(s.date)}` : ''
+  return ` (${s.kind}${when})`
+}
+
+/** Lines about what they built lately: a changelog or engineering post (all from the last 120 days) */
+const shipped = (f: Fact) => f.source?.kind === 'changelog' || f.source?.kind === 'engineering'
+
 export function buildMessages(kit: BrandKit, profile: Profile): ChatMessage[] {
-  const facts = kit.facts
-    .filter((f) => f.kind !== 'requirement')
+  // only facts a stranger can read on their own are offered (checks.ts standsAlone)
+  const offered = quotableFacts(kit).filter((f) => f.kind !== 'requirement')
+  const facts = offered
     .slice(0, 24)
-    .map((f) => `${f.id} [${f.kind}] ${f.text.length > 220 ? `${f.text.slice(0, 220)}…` : f.text}`)
+    .map(
+      (f) =>
+        `${f.id} [${f.kind}]${sourceTag(f)} ${f.text.length > 220 ? `${f.text.slice(0, 220)}…` : f.text}`,
+    )
     .join('\n')
+  // the facts from their own posts: a recent changelog or engineering line beats a homepage claim
+  const prefer = offered.some(shipped)
+    ? '\nFacts marked (changelog …) or (engineering …) are what they shipped in the last 120 days. Pick in this order: a [stat], then one of those lines about what they built, then a homepage claim.'
+    : ''
   const reqs = kit.facts.filter((f) => f.kind === 'requirement')
   const job = kit.job
     ? `
@@ -63,7 +83,7 @@ Homepage headline: ${kit.headline}
 Description: ${kit.description}
 
 FACTS FROM THEIR SITE (cite by id)
-${facts}
+${facts}${prefer}
 
 SENDER
 Name: ${profile.sender.name}${profile.sender.company ? `, ${profile.sender.company}` : ''}${profile.sender.role ? ` (${profile.sender.role})` : ''}
@@ -225,10 +245,13 @@ function bestFact(kit: BrandKit, profile: Profile): Fact {
       ? 3
       : 0) -
     (f.text.length < 25 ? 1 : 0)
+  // in order: a stat, then a recent changelog or engineering line about what they built, then
+  // anything else (a homepage claim); the best-scoring line within each
+  const tier = (f: Fact) => (f.kind === 'stat' ? 0 : shipped(f) ? 1 : 2)
   return (
-    [...kit.facts]
+    quotableFacts(kit)
       .filter((f) => f.kind !== 'headline' && f.kind !== 'requirement')
-      .sort((a, b) => score(b) - score(a))[0] ?? kit.facts[0]!
+      .sort((a, b) => tier(a) - tier(b) || score(b) - score(a))[0] ?? kit.facts[0]!
   )
 }
 

@@ -71,13 +71,14 @@ function sceneHtml(s: Scene, i: number, start: number, c: SceneCtx): string {
     case 'insight':
       return `${open(c.theme.brand)}
         <div class="insight-wrap">
-          <p class="from in" style="animation-delay:150ms">From ${esc(s.source)}</p>
+          <p class="from in" style="animation-delay:150ms">${esc(s.caption ? c.kit.host : `From ${s.source}`)}</p>
           ${
             s.value
               ? `<div class="big display"><span class="count" data-count="${esc(s.value)}" data-delay="350" data-ms="1300">${esc(s.value)}</span></div>
                  <p class="display fact" data-fit data-lines="3">${wordsHtml(s.text, 900, 60)}</p>`
               : `<p class="display quote" data-fit data-lines="5"><span class="q in" style="animation-delay:200ms">“</span>${wordsHtml(s.text, 350, 45, 'w', '”')}</p>`
           }
+          ${s.caption ? `<p class="source in" style="animation-delay:1500ms" data-fit data-lines="1" data-min="0.7">${esc(s.caption)}</p>` : ''}
           <p class="why in" style="animation-delay:2300ms" data-fit data-lines="3">${esc(s.why)}</p>
         </div>
       </section>`
@@ -230,6 +231,8 @@ html,body{width:${width}px;height:${height}px;overflow:hidden;background:#000}
 .fact{font-size:calc(var(--u)*6.2);max-width:92%;margin-top:calc(var(--u)*3)}
 .quote{font-size:calc(var(--u)*6.4);max-width:94%;line-height:1.08}
 .q{display:inline-block;color:var(--accent)}
+/* where the quote is from: small, in the scene's own text color so it keeps AA contrast */
+.source{font-size:calc(var(--u)*2.3);color:var(--fg);font-weight:500;margin-top:calc(var(--u)*2.2);letter-spacing:.01em;white-space:nowrap}
 .why{font-size:calc(var(--u)*3.3);max-width:74%;margin-top:calc(var(--u)*5);line-height:1.35;padding-left:calc(var(--u)*2.2);border-left:calc(var(--u)*.6) solid var(--accent)}
 
 /* pitch */

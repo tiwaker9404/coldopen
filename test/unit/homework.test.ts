@@ -3,8 +3,10 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   decode,
+  docsSentence,
   feedLinks,
   type Homework,
+  homeworkFacts,
   parseFeed,
   pickResearch,
   readHomework,
@@ -228,5 +230,185 @@ describe('pickResearch: the one post an email should mention', () => {
   it('returns null when every item is older than 90 days', () => {
     expect(pickResearch(hw, ops, Date.parse('2027-06-01T00:00:00Z'))).toBeNull()
     expect(pickResearch({ items: [], pages: [] }, ops, NOW)).toBeNull()
+  })
+})
+
+/* ------------------------------------------------ facts from everything they publish */
+
+const PODCAST = readFileSync(
+  join(import.meta.dirname, '../../fixtures/sites/parcelpine/podcast.xml'),
+  'utf8',
+)
+/** Parcelpine's changelog and podcast, read directly, as a film would have read them on NOW */
+const published = (): Homework => ({
+  items: [
+    ...parseFeed(PARCELPINE, 'https://parcelpine.example/').map((i) => ({
+      kind: 'changelog' as const,
+      ...i,
+    })),
+    ...parseFeed(PODCAST, 'https://parcelpine.example/').map((i) => ({
+      kind: 'podcast' as const,
+      ...i,
+    })),
+  ],
+  pages: [],
+  readAt: new Date(NOW).toISOString(),
+})
+
+describe('homeworkFacts: what they published, as facts the film can quote', () => {
+  it('turns recent changelog and podcast items into facts, newest first, each with its source', () => {
+    const facts = homeworkFacts(published())
+    expect(facts.map((f) => f.text)).toEqual([
+      'Route planning now reroutes trucks around live traffic before a delivery runs late, for every lane.',
+      'When a shopper sends something back for fit, Parcelpine now offers the next size up before the refund.',
+      'Our team walks through how 4 in 10 fit returns became exchanges once shoppers saw the next size first.',
+    ])
+    // a number makes it a stat; the rest are quotes
+    expect(facts.map((f) => f.kind)).toEqual(['quote', 'quote', 'stat'])
+    expect(facts[1]!.source).toEqual({
+      kind: 'changelog',
+      title: 'Exchanges suggest the next size up',
+      url: 'https://parcelpine.example/parcelpine/changelog/next-size',
+      date: '2026-10-06',
+    })
+    expect(facts[2]!.source).toMatchObject({ kind: 'podcast', date: '2026-09-22' })
+  })
+
+  it('keeps at most two of a kind: the third changelog item gives way to the podcast', () => {
+    // Proof of delivery photos (15 Sep) is recent, but two changelog items are already in
+    expect(homeworkFacts(published()).some((f) => /photo at the door/.test(f.text))).toBe(false)
+  })
+
+  it('quotes a podcast from its episode notes only, never its title', () => {
+    const facts = homeworkFacts(published())
+    // episode 11 has no notes, so it isn't quoted at all
+    expect(facts.some((f) => /returns desk/i.test(f.text))).toBe(false)
+    expect(facts.filter((f) => f.source?.kind === 'podcast')).toHaveLength(1)
+  })
+
+  it('measures "recent" from the day it was read, so the calendar moving changes nothing', () => {
+    const a = homeworkFacts(published())
+    const b = homeworkFacts(published())
+    expect(b).toEqual(a)
+    // read on a later day: the same items, but May's dark mode is long gone either way, and by
+    // March 2027 all of these are older than 120 days
+    expect(homeworkFacts(published(), Date.parse('2027-03-01'))).toEqual([])
+    // ids come from the url, so a newer post doesn't renumber the others
+    expect(new Set(a.map((f) => f.id)).size).toBe(a.length)
+    expect(a.every((f) => /^h[0-9a-z]{1,6}$/.test(f.id))).toBe(true)
+  })
+
+  it('uses a title that is already a full sentence when a post has no summary', () => {
+    const hw: Homework = {
+      items: [
+        {
+          kind: 'blog',
+          title: 'Refunds now land in your customers’ accounts within two days.',
+          url: 'https://parcelpine.example/blog/refunds',
+          date: '2026-10-20',
+        },
+        {
+          kind: 'blog',
+          title: 'Q3 recap',
+          url: 'https://parcelpine.example/blog/q3',
+          date: '2026-10-01',
+        },
+      ],
+      pages: [],
+    }
+    expect(homeworkFacts(hw, NOW).map((f) => f.text)).toEqual([
+      'Refunds now land in your customers’ accounts within two days.',
+    ])
+  })
+
+  it('gives at most 6 facts, the docs sentence included', () => {
+    const items = Array.from({ length: 12 }, (_, i) => ({
+      kind: (['blog', 'changelog', 'news', 'engineering', 'podcast', 'blog'] as const)[i % 6]!,
+      title: `Post ${i}`,
+      url: `https://acme.example/p/${i}`,
+      date: `2026-10-${String(28 - i).padStart(2, '0')}`,
+      summary: `Acme shipped improvement number ${i} for every warehouse team this month.`,
+    }))
+    const docs = {
+      url: 'https://docs.acme.example/',
+      text: 'Acme routes freight for every lane you run.',
+    }
+    const facts = homeworkFacts({ items, pages: [], docs }, NOW)
+    expect(facts).toHaveLength(6)
+    expect(facts.at(-1)!.source).toEqual({ kind: 'docs', url: docs.url })
+    expect(homeworkFacts({ items, pages: [] }, NOW)).toHaveLength(6)
+    // mixed kinds: never more than two of one
+    const kinds = facts.map((f) => f.source!.kind)
+    for (const k of new Set(kinds))
+      expect(kinds.filter((x) => x === k).length).toBeLessThanOrEqual(2)
+  })
+})
+
+describe('the docs page: its first real sentence', () => {
+  const DOCS = `<html><body><header><p>Docs home. Search the docs.</p></header>
+<nav><p>Getting started with the API in five minutes or less today.</p></nav>
+<main><div class="cookie"><p>We use cookies to keep you signed in to the dashboard.</p></div>
+<p>Welcome!</p>
+<p>The Parcelpine API turns any return into an exchange offer before a refund is issued. It takes an order id.</p>
+<pre><code><p>curl https://api.parcelpine.example/v1/returns with your key in the header.</p></code></pre>
+</main><footer><p>© 2026 Parcelpine. All rights reserved by the company.</p></footer></body></html>`
+
+  it('skips the nav, header, footer, cookie banner and short lines', () => {
+    expect(docsSentence(DOCS)).toBe(
+      'The Parcelpine API turns any return into an exchange offer before a refund is issued.',
+    )
+    expect(docsSentence('<p>Docs.</p>')).toBeNull()
+  })
+
+  it('reads the one docs page the homepage links to, and makes it a fact', async () => {
+    let docsReads = 0
+    const pages = {
+      'https://pp.example/': `<html><head><link rel="alternate" type="application/atom+xml" href="/changelog.xml"></head>
+<body><a href="https://docs.pp.example/">Docs</a></body></html>`,
+      'https://pp.example/changelog.xml': PARCELPINE,
+      'https://docs.pp.example/': DOCS,
+    }
+    const base = fakeFetch(pages)
+    const hw = await readHomework('https://pp.example/', {
+      allowPrivateNetworks: true,
+      now: NOW,
+      fetch: (async (u: string | URL | Request, init?: RequestInit) => {
+        if (String(u).startsWith('https://docs.')) docsReads++
+        return base(u, init)
+      }) as typeof fetch,
+    })
+    expect(docsReads).toBe(1)
+    expect(hw.docs).toEqual({
+      url: 'https://docs.pp.example/',
+      text: 'The Parcelpine API turns any return into an exchange offer before a refund is issued.',
+    })
+    expect(hw.readAt).toBe(new Date(NOW).toISOString())
+    const docs = homeworkFacts(hw).find((f) => f.source?.kind === 'docs')
+    expect(docs).toMatchObject({
+      kind: 'quote',
+      source: { kind: 'docs', url: 'https://docs.pp.example/' },
+    })
+    expect(docs!.source!.date).toBeUndefined()
+  })
+
+  it('goes through the network guard, so a docs link to a private address is never read', async () => {
+    // a public address literal (no DNS needed), whose docs page redirects into a private network
+    const home = 'https://93.184.215.14/'
+    const asked: string[] = []
+    const hw = await readHomework(home, {
+      now: NOW,
+      fetch: (async (u: string | URL | Request) => {
+        asked.push(String(u))
+        if (String(u) === `${home}docs`)
+          return new Response(null, { status: 302, headers: { location: 'https://10.0.0.7/docs' } })
+        return new Response(String(u) === home ? '<a href="/docs">Docs</a>' : 'nope', {
+          status: String(u) === home ? 200 : 404,
+        })
+      }) as typeof fetch,
+    })
+    expect(asked).toContain(`${home}docs`)
+    expect(asked[0]).toBe(home)
+    expect(asked.some((u) => u.includes('10.0.0.7'))).toBe(false)
+    expect(hw.docs).toBeUndefined()
   })
 })

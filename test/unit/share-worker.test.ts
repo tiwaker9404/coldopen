@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import worker, { type D1, type Env, handle, type KV, media, type R2 } from '../../share/worker.ts'
+import { viewFromRun } from '../../src/share/page.ts'
 
 const ttls = new Map<string, number>()
 /** Workers KV, in memory. */
@@ -122,6 +123,80 @@ describe('share worker', () => {
     ).toBe(416)
     expect((await call(`/f/${ID}/poster.jpg`)).status).toBe(404)
     expect((await call('/f/nothing-here/')).status).toBe(404)
+  })
+
+  it('shows the quoted line with the same caption as the film, linked to where it is from', async () => {
+    const fact = {
+      text: 'When a shopper sends something back for fit, Deel now offers the next size up.',
+      caption: 'From their changelog, Oct 2026',
+      url: 'https://deel.example/changelog/next-size',
+    }
+    await call(`/api/films/${ID}`, {
+      method: 'PUT',
+      headers: auth,
+      body: JSON.stringify({ ...view, fact }),
+    })
+    const html = await (await call(`/f/${ID}`)).text()
+    expect(html).toContain(`<blockquote>${fact.text}</blockquote>`)
+    expect(html).toContain(
+      `<figcaption><a href="${fact.url}" target="_blank" rel="noopener">From their changelog, Oct 2026</a></figcaption>`,
+    )
+  })
+
+  it('shows a caption without a link when the source has no https page, and nothing when there is no fact', async () => {
+    for (const url of [undefined, 'javascript:alert(1)', 'http://deel.example/x']) {
+      await call(`/api/films/${ID}`, {
+        method: 'PUT',
+        headers: auth,
+        body: JSON.stringify({
+          ...view,
+          fact: {
+            text: '61% of returns become exchanges',
+            caption: 'From their homepage',
+            ...(url ? { url } : {}),
+          },
+        }),
+      })
+      const html = await (await call(`/f/${ID}`)).text()
+      expect(html).toContain('<figcaption>From their homepage</figcaption>')
+      expect(html).not.toContain('javascript:')
+    }
+    await call(`/api/films/${ID}`, { method: 'PUT', headers: auth, body: JSON.stringify(view) })
+    expect(await (await call(`/f/${ID}`)).text()).not.toContain('<blockquote>')
+  })
+
+  it("takes the caption and link from the film's highlights when it publishes", () => {
+    const sender = {
+      preset: 'candidate',
+      sender: { name: 'Ashwin Tiwari' },
+      cta: { line: 'Talk soon?', contact: 'a@b.co' },
+    }
+    const quote = (url?: string) => ({
+      text: '61% of returns become exchanges',
+      source: 'deel.example',
+      caption: 'From their homepage',
+      ...(url ? { url } : {}),
+    })
+    const out = (q: ReturnType<typeof quote>) =>
+      ({
+        company: 'Deel',
+        format: 'square',
+        files: { film: 'r1/film-square.mp4' },
+        highlights: { quote: q, proof: [] },
+      }) as never
+    expect(
+      viewFromRun({ profile: sender } as never, out(quote('https://deel.example/'))).fact,
+    ).toEqual({
+      text: '61% of returns become exchanges',
+      caption: 'From their homepage',
+      url: 'https://deel.example/',
+    })
+    expect(
+      viewFromRun({ profile: sender } as never, out(quote('http://localhost:4000/'))).fact,
+    ).toEqual({
+      text: '61% of returns become exchanges',
+      caption: 'From their homepage',
+    })
   })
 
   it('counts plays from people, not bots, and reports them', async () => {

@@ -4,7 +4,7 @@ import { availableParallelism } from 'node:os'
 import { join, relative } from 'node:path'
 import { z } from 'zod'
 import { extractBrand } from './brand/extract.ts'
-import { type Homework, readHomework } from './brand/homework.ts'
+import { type Homework, readHomework, withHomework } from './brand/homework.ts'
 import type { BrandKit } from './brand/types.ts'
 import { withJob } from './job/kit.ts'
 import { isJobPage, JobPostSchema, jobFromText } from './job/post.ts'
@@ -72,6 +72,12 @@ export const FilmInputSchema = z.object({
   editOf: z.string().max(64).optional(),
   /** with a share worker: the share link expires after this many days (hosted app visitors) */
   keepDays: z.number().int().min(1).max(365).optional(),
+  /**
+   * the day the film is made (ms since 1970), for tests and evals: what counts as a recent post
+   * is measured from it, so a fixture film doesn't change as the calendar moves. Defaults to now,
+   * journaled with the homework so a replay picks the same.
+   */
+  now: z.number().int().positive().optional(),
 })
 export type FilmInput = z.infer<typeof FilmInputSchema>
 
@@ -105,8 +111,12 @@ export interface FilmResult {
   profile?: Profile
   /** what the film says, for writing the message that goes with it */
   highlights?: {
-    /** the line quoted from their site or job post, and where it's from */
-    quote: { text: string; source: string }
+    /**
+     * the line quoted from their site or job post, and where it's from: `source` is the host
+     * or "your <title> post", `caption` the words under the quote ("From their changelog,
+     * Oct 2026") and `url` the page, when it's an https link
+     */
+    quote: { text: string; source: string; caption?: string; url?: string }
     proof: { value: string; label: string; where?: string }[]
   }
   /**
@@ -238,7 +248,10 @@ export function createFilmAgent(opts: FilmAgentOptions) {
       ctx.progress({ stage: 'research', label: `Reading what ${kit.name} published lately` })
       const homework = await ctx.step('homework', () =>
         Promise.race([
-          readHomework(site, { allowPrivateNetworks: opts.allowPrivateNetworks ?? false }),
+          readHomework(site, {
+            allowPrivateNetworks: opts.allowPrivateNetworks ?? false,
+            ...(input.now ? { now: input.now } : {}),
+          }),
           new Promise<Homework>((done) =>
             setTimeout(() => done({ items: [], pages: [] }), 20_000).unref(),
           ),
@@ -251,6 +264,11 @@ export function createFilmAgent(opts: FilmAgentOptions) {
         const r = relatedWork(profile, kit)
         return r ? { name: r.name, url: r.url, line: r.line } : null
       })()
+
+      // the fact scene may quote anything they've published, not just the homepage: their
+      // posts, changelog, podcast notes and docs join the facts, each with where it's from.
+      // Pure given the journaled homework (its readAt is the pinned day), so replays match.
+      kit = withHomework(kit, homework)
 
       ctx.progress({ stage: 'script', label: `Writing the script for ${kit.name}` })
       const builtIn = (usedFallback: boolean) =>
@@ -525,6 +543,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
                   company: kit.name,
                   format,
                   files: { film: out.film },
+                  highlights,
                 } as FilmResult),
                 dir,
                 ...(input.keepDays ? { ttlSeconds: input.keepDays * 86_400 } : {}),
@@ -600,6 +619,8 @@ function highlightsOf(board: Storyboard): FilmResult['highlights'] {
         ? {
             text: insight.value ? `${insight.value} ${insight.text}` : insight.text,
             source: insight.source,
+            caption: insight.caption,
+            ...(insight.sourceUrl ? { url: insight.sourceUrl } : {}),
           }
         : { text: '', source: '' },
     proof: proof?.kind === 'proof' ? proof.stats : [],

@@ -19,7 +19,13 @@ import { parseArgs } from 'node:util'
 import { serveFixtures } from '../fixtures/serve.ts'
 import { contrast, distance, parseColor } from '../src/brand/color.ts'
 import { extractBrand } from '../src/brand/extract.ts'
-import { type Homework, parseFeed, pickResearch } from '../src/brand/homework.ts'
+import {
+  decode,
+  type Homework,
+  parseFeed,
+  pickResearch,
+  withHomework,
+} from '../src/brand/homework.ts'
 import type { BrandKit } from '../src/brand/types.ts'
 import { closeBrowser } from '../src/browser.ts'
 import { buildLlm } from '../src/llm/chain.ts'
@@ -47,8 +53,8 @@ import { compose, type Format } from '../src/render/composition.ts'
 import { openComposition, seek } from '../src/render/render.ts'
 import { buildTheme } from '../src/render/theme.ts'
 import { LocalContext } from '../src/runtime/local.ts'
-import { checkScript } from '../src/script/checks.ts'
-import { buildStoryboard } from '../src/script/storyboard.ts'
+import { checkScript, notAlone, quotableFacts } from '../src/script/checks.ts'
+import { buildStoryboard, captionFor, monthOf } from '../src/script/storyboard.ts'
 import { type Profile, ProfileSchema, type Script, ScriptSchema } from '../src/script/types.ts'
 import { deterministicScript, writeScript } from '../src/script/writer.ts'
 
@@ -85,7 +91,12 @@ const DESCRIPTIONS: Record<string, string> = {
   'brand.logo': 'Logo captured from the header',
   'copy.taste-rules': 'Word limits, no banned phrases, no invented numbers, names the company',
   'copy.no-fallback': 'The model wrote every line itself; no built-in line was swapped in',
-  'copy.quote-on-their-site': 'The fact shown on screen appears verbatim on their homepage',
+  'copy.quote-on-their-site':
+    'The fact shown on screen appears verbatim where its caption says: their homepage, or the post it came from',
+  'copy.fact-stands-alone':
+    'The quoted fact reads whole on its own: a full sentence about them, nothing dangling, no link or legal text',
+  'copy.fact-has-source':
+    'Every fact the film may quote says where it is from, with the month only when the source gives a date',
   'copy.uses-a-stat': 'The featured fact is a number, which reads strongest on screen',
   'messages.first-try':
     'Each message draft (note, after accept, InMail, email) passed every check on the first try',
@@ -189,6 +200,34 @@ const homeworkFor = (site: string): Homework => {
   }
 }
 const MESSAGES_NOW = Date.parse('2026-11-03T12:00:00Z')
+
+/**
+ * Everything each fixture site published beyond its homepage, for the fact scene: its feeds, read
+ * directly, as if read on the pinned day (not linked from the fixture sites, so the films don't
+ * change as the calendar moves). Parcelpine also has a podcast, quoted from its episode notes.
+ */
+const PUBLISHED: Record<string, { file: string; kind: 'changelog' | 'blog' | 'podcast' }[]> = {
+  parcelpine: [
+    { file: 'parcelpine/changelog.xml', kind: 'changelog' },
+    { file: 'parcelpine/podcast.xml', kind: 'podcast' },
+  ],
+  northwind: [{ file: 'northwind/changelog.xml', kind: 'changelog' }],
+  lumen: [{ file: 'lumen/blog.xml', kind: 'blog' }],
+}
+const feedText = (site: string) =>
+  (PUBLISHED[site] ?? [])
+    .map((f) => decode(readFileSync(join(ROOT, 'fixtures/sites', f.file), 'utf8')))
+    .join(' ')
+const publishedFor = (site: string): Homework => ({
+  items: (PUBLISHED[site] ?? []).flatMap((f) =>
+    parseFeed(
+      readFileSync(join(ROOT, 'fixtures/sites', f.file), 'utf8'),
+      'https://fixtures.example/',
+    ).map((i) => ({ kind: f.kind, ...i })),
+  ),
+  pages: [],
+  readAt: new Date(MESSAGES_NOW).toISOString(),
+})
 
 /**
  * The sender's own homework for each of the 12 message films (site, preset, with or without
@@ -408,7 +447,9 @@ try {
   for (const site of Object.keys(expected)) {
     const want = expected[site]!
     const dir = join(ROOT, '.scratch', 'evals', site)
-    const kit = await extractBrand(`${url}/${site}/`, { outDir: dir, allowPrivateNetworks: true })
+    const home = await extractBrand(`${url}/${site}/`, { outDir: dir, allowPrivateNetworks: true })
+    // the film's facts, as film.ts gives them: the homepage plus everything they published
+    const kit = withHomework(home, publishedFor(site))
     const html = readFileSync(join(ROOT, 'fixtures/sites', site, 'index.html'), 'utf8')
     const pageText = html
       .replace(/<[^>]+>/g, ' ')
@@ -462,11 +503,44 @@ try {
         })
         const fact = kit.facts.find((f) => f.id === s.script.insight.factId)
         const norm = (x: string) => x.replace(/[“”"]/g, '').replace(/\s+/g, ' ').toLowerCase()
+        const fromHome = !fact?.source || fact.source.kind === 'homepage'
         record({
           ...base,
           eval: 'copy.quote-on-their-site',
-          pass: Boolean(fact) && norm(pageText).includes(norm(fact!.text).slice(0, 60)),
-          detail: fact?.text ?? 'no fact',
+          pass:
+            Boolean(fact) &&
+            norm(fromHome ? pageText : feedText(site)).includes(norm(fact!.text).slice(0, 60)),
+          detail: `${fact?.text ?? 'no fact'} (${fact?.source?.kind ?? 'homepage'})`,
+        })
+        const alone = fact ? notAlone(fact, kit) : 'no fact'
+        record({
+          ...base,
+          eval: 'copy.fact-stands-alone',
+          pass: alone === null,
+          detail: `${fact?.text ?? ''}: ${alone}`,
+        })
+        // the caption under each fact it may quote names where it's from, dated only when dated
+        const board0 = buildStoryboard(kit, profile, s.script)
+        const shown = board0.scenes.find((x) => x.kind === 'insight')
+        const wrong = quotableFacts(kit)
+          .filter((f) => f.kind !== 'requirement')
+          .map((f) => ({ f, c: captionFor(f) }))
+          .filter(({ f, c }) => {
+            const kind = f.source?.kind ?? 'homepage'
+            const word = kind === 'news' ? 'newsroom' : kind
+            const dated = f.source?.date
+              ? c.endsWith(`, ${monthOf(f.source.date)}`)
+              : !/\d{4}$/.test(c)
+            return !c.startsWith(`From their ${word}`) || !dated
+          })
+          .map(({ f, c }) => `${f.id}: "${c}"`)
+        if (shown?.kind === 'insight' && fact && shown.caption !== captionFor(fact))
+          wrong.push(`on screen: "${shown.caption}"`)
+        record({
+          ...base,
+          eval: 'copy.fact-has-source',
+          pass: wrong.length === 0,
+          detail: wrong.join('; '),
         })
         record({
           ...base,

@@ -1,6 +1,6 @@
 # coldopen evals
 
-180/180 checks passed across 16 evals, 3 sites and 2 presets, using the deterministic writer. Ran in 23s.
+192/192 checks passed across 18 evals, 3 sites and 2 presets, using the deterministic writer. Ran in 23s.
 
 | Eval | Passed | What it checks |
 |---|---:|---|
@@ -10,7 +10,9 @@
 | `brand.logo` | 6/6 | Logo captured from the header |
 | `copy.taste-rules` | 6/6 | Word limits, no banned phrases, no invented numbers, names the company |
 | `copy.no-fallback` | 6/6 | The model wrote every line itself; no built-in line was swapped in |
-| `copy.quote-on-their-site` | 6/6 | The fact shown on screen appears verbatim on their homepage |
+| `copy.quote-on-their-site` | 6/6 | The fact shown on screen appears verbatim where its caption says: their homepage, or the post it came from |
+| `copy.fact-stands-alone` | 6/6 | The quoted fact reads whole on its own: a full sentence about them, nothing dangling, no link or legal text |
+| `copy.fact-has-source` | 6/6 | Every fact the film may quote says where it is from, with the month only when the source gives a date |
 | `copy.uses-a-stat` | 6/6 | The featured fact is a number, which reads strongest on screen |
 | `messages.first-try` | 48/48 | Each message draft (note, after accept, InMail, email) passed every check on the first try |
 | `messages.no-fallback` | 48/48 | Each message draft kept the writer's own words; no template swapped in |

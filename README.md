@@ -47,7 +47,7 @@ Each film is six scenes:
 
 1. **Hook:** greets the company by name, on their own colors.
 2. **Their homepage:** a screenshot of their site, zooming in on the promise they lead with and highlighting it.
-3. **A fact from their site:** quoted verbatim (often a number), set in their typeface.
+3. **The best thing they've published:** quoted verbatim (often a number) from their homepage, changelog, blog, engineering posts, podcast notes, news or docs, set in their typeface, with where it's from underneath ("From their changelog, Oct 2026"). Only lines that make sense to a stranger are quoted ([the rule](docs/TASTE.md#grounding)).
 4. **The pitch:** what you offer, tailored to them.
 5. **Your proof:** shown word for word from your profile.
 6. **One clear ask.**
@@ -247,7 +247,7 @@ The counter, "x of 10 this week", is the recruiter's playbook target (10 people 
 ## Quality, measured
 
 ```bash
-pnpm test         # 609 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week
+pnpm test         # 639 tests: runtime, extraction, render QA, résumé drafts, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 180 quality checks across 16 evals on 3 fixture companies x 2 presets
 ```

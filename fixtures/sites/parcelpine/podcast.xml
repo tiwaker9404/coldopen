@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Parcelpine's podcast, as RSS with iTunes tags. Like the changelog, it isn't linked from the
+     homepage, so fixture films stay the same as dates age; tests and evals read it directly. -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Returns, Unboxed</title>
+    <link>https://parcelpine.example/podcast</link>
+    <itunes:author>Parcelpine</itunes:author>
+    <item>
+      <title>Ep. 12: Why size swaps beat refunds</title>
+      <link>https://parcelpine.example/podcast/12-size-swaps</link>
+      <pubDate>Tue, 22 Sep 2026 08:00:00 GMT</pubDate>
+      <description><![CDATA[<p>Our team walks through how 4 in 10 fit returns became exchanges once shoppers saw the next size first.</p><p>Plus: what we got wrong in year one.</p>]]></description>
+      <itunes:duration>00:31:20</itunes:duration>
+    </item>
+    <item>
+      <title>Ep. 11: The returns desk, live from Portland</title>
+      <link>https://parcelpine.example/podcast/11-returns-desk</link>
+      <pubDate>Tue, 25 Aug 2026 08:00:00 GMT</pubDate>
+      <itunes:duration>00:28:05</itunes:duration>
+    </item>
+  </channel>
+</rss>

@@ -11,6 +11,12 @@
     <summary type="html">&lt;p&gt;Route planning now reroutes trucks around live traffic before a delivery runs late, for every lane.&lt;/p&gt;&lt;p&gt;Turn it on in &lt;a href="/settings"&gt;Settings&lt;/a&gt;.&lt;/p&gt;</summary>
   </entry>
   <entry>
+    <title>Exchanges suggest the next size up</title>
+    <link rel="alternate" href="/parcelpine/changelog/next-size"/>
+    <updated>2026-10-06T00:00:00Z</updated>
+    <summary type="html">&lt;p&gt;When a shopper sends something back for fit, Parcelpine now offers the next size up before the refund.&lt;/p&gt;&lt;p&gt;It also works for colors.&lt;/p&gt;</summary>
+  </entry>
+  <entry>
     <title>Proof of delivery photos</title>
     <link rel="alternate" href="/parcelpine/changelog/pod-photos"/>
     <updated>2026-09-15T00:00:00Z</updated>

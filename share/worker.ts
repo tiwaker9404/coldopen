@@ -115,6 +115,17 @@ function relatedOf(r: unknown): ShareView['related'] | null {
   return { name: o.name as string, line: o.line as string, url: o.url as string }
 }
 
+/** the quoted line and its caption: plain text, and a link only to an https page */
+function factFrom(f: unknown): ShareView['fact'] | null {
+  if (!f || typeof f !== 'object') return null
+  const o = f as Record<string, unknown>
+  const ok = (k: string, max: number) =>
+    typeof o[k] === 'string' && (o[k] as string).length > 1 && (o[k] as string).length <= max
+  if (!ok('text', 300) || !ok('caption', 80)) return null
+  const url = typeof o.url === 'string' && /^https:\/\/\S{4,300}$/.test(o.url) ? o.url : null
+  return { text: o.text as string, caption: o.caption as string, ...(url ? { url } : {}) }
+}
+
 function parseView(body: unknown): ShareView | null {
   if (!body || typeof body !== 'object') return null
   const v = body as Record<string, unknown>
@@ -142,6 +153,7 @@ function parseView(body: unknown): ShareView | null {
     ...(typeof v.book === 'string' && /^https:\/\/\S{4,300}$/.test(v.book) ? { book: v.book } : {}),
     ...(str('recipient', 80) ? { recipient: v.recipient as string } : {}),
     ...(relatedOf(v.related) ? { related: relatedOf(v.related)! } : {}),
+    ...(factFrom(v.fact) ? { fact: factFrom(v.fact)! } : {}),
     ...(['candidate', 'recruiter', 'sales', 'hiring'].includes(v.kind as string)
       ? { kind: v.kind as ShareView['kind'] }
       : {}),

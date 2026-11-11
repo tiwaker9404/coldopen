@@ -138,7 +138,8 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
       headline: raw.headline,
       subheads: raw.subheads,
       nav: raw.nav,
-      facts,
+      // every fact here is from their homepage: the film's caption says so
+      facts: facts.map((f) => ({ ...f, source: { kind: 'homepage' as const, url: finalUrl } })),
       colors,
       fonts: {
         display: fontRef(raw.headlineFont, raw.faces, finalUrl),

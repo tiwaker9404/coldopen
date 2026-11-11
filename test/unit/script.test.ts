@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BrandKit } from '../../src/brand/types.ts'
-import { checkScript, clampScript } from '../../src/script/checks.ts'
-import { buildStoryboard, splitStat } from '../../src/script/storyboard.ts'
+import { checkScript, clampScript, notAlone, standsAlone } from '../../src/script/checks.ts'
+import { buildStoryboard, captionFor, splitStat } from '../../src/script/storyboard.ts'
 import type { Script } from '../../src/script/types.ts'
 import { buildMessages, deterministicScript, writeScript } from '../../src/script/writer.ts'
 import { profile } from '../helpers/index.ts'
@@ -282,5 +282,206 @@ describe('the ask on the end card', () => {
     expect(asked('Open to a 15-minute call.')).toBe('Open to a 15-minute call?')
     expect(asked('Could we talk this week?')).toBe('Could we talk this week?')
     expect(asked('Let’s talk this week')).toBe('Let’s talk this week')
+  })
+})
+
+/* ------------------------------------------------ facts a stranger can read */
+
+describe('standsAlone: a fact the film may quote with nothing around it', () => {
+  const parcelpine = {
+    name: 'Parcelpine',
+    headline: 'Returns that keep the customer.',
+    description:
+      'Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.',
+  }
+  const ok = (text: string) => standsAlone({ text }, parcelpine)
+
+  it('quotes a full sentence about what they do, a measured result, or their own "we"', () => {
+    expect(
+      ok(
+        'When a shopper sends something back for fit, Parcelpine now offers the next size up before the refund.',
+      ),
+    ).toBe(true)
+    expect(ok('61% of returns become exchanges or store credit')).toBe(true)
+    expect(
+      ok('Serial returners and wardrobing patterns are flagged before a label is issued.'),
+    ).toBe(true)
+    expect(ok('Our team walks through how 4 in 10 fit returns became exchanges.')).toBe(true)
+    expect(ok('"We stopped losing size swaps to refunds after the first week."')).toBe(true)
+  })
+
+  it('never quotes a line that leans on the one before it', () => {
+    expect(ok('It also works for colors and every other variant in the store.')).toBe(false)
+    expect(ok('This means fewer refunds and happier customers for your store.')).toBe(false)
+    expect(ok('They see the exchange offer before the refund is issued.')).toBe(false)
+    expect(ok('These checks run on every return before a label is printed.')).toBe(false)
+    expect(ok('The above applies to every Parcelpine plan with exchanges on.')).toBe(false)
+    expect(
+      notAlone({ text: 'It also works for colors and every other variant.' }, parcelpine),
+    ).toMatch(/starts with "It"/)
+  })
+
+  it('never quotes links, cookie or legal text, menus, questions or fragments', () => {
+    expect(ok('Learn more about our platform')).toBe(false)
+    expect(ok('Learn more about how Parcelpine turns returns into exchanges.')).toBe(false)
+    expect(ok('Click here to see how exchanges work for Shopify brands.')).toBe(false)
+    expect(ok('We use cookies to make returns and exchanges work better.')).toBe(false)
+    expect(ok('© 2026 Parcelpine Inc. All rights reserved for returns.')).toBe(false)
+    expect(ok('Exchanges Drop-off Fraud Checks Pricing Install On Shopify')).toBe(false)
+    expect(ok('Dana Ruiz, VP Operations at Fieldstone Foods')).toBe(false)
+    expect(ok('Are your returns turning into exchanges or refunds today?')).toBe(false)
+    expect(ok('3,100 Shopify brands use Parcelpine')).toBe(false) // 5 words
+    expect(ok('Parcelpine turns returns into exchanges for Shopify brands, with instant…')).toBe(
+      false,
+    )
+    expect(ok('and turns every return into an exchange for Shopify brands.')).toBe(false)
+  })
+
+  it('never quotes a line that says nothing about them', () => {
+    expect(
+      ok('Route planning now reroutes trucks around live traffic before a delivery runs late.'),
+    ).toBe(false)
+    expect(ok('Dark mode is here, and it looks great on every screen.')).toBe(false)
+  })
+
+  it('keeps between 6 and 25 words', () => {
+    expect(ok(`Parcelpine ${'turns returns into exchanges and '.repeat(5)}more.`)).toBe(false)
+  })
+})
+
+describe('which fact the film features', () => {
+  const sales = profile('sales')
+  const candidate = profile('candidate')
+  const base = {
+    name: 'Parcelpine',
+    host: 'parcelpine.example',
+    headline: 'Returns that keep the customer.',
+    description:
+      'Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.',
+  }
+  const claim = {
+    id: 'f2',
+    text: 'Shoppers see in-stock alternatives and bonus credit first, so a size swap stays an exchange.',
+    kind: 'claim',
+    source: { kind: 'homepage' },
+  }
+  const shipped = {
+    id: 'hx1',
+    text: 'When a shopper sends something back for fit, Parcelpine now offers the next size up.',
+    kind: 'quote',
+    source: {
+      kind: 'changelog',
+      title: 'Next size up',
+      url: 'https://parcelpine.example/c/1',
+      date: '2026-10-06',
+    },
+  }
+  const stat = { id: 'f3', text: '61% of returns become exchanges or store credit', kind: 'stat' }
+  const kitOf = (facts: unknown[]) => ({ ...base, facts }) as unknown as BrandKit
+
+  it('prefers a stat that stands alone, then a recent changelog line, then a homepage claim', () => {
+    for (const p of [sales, candidate]) {
+      expect(deterministicScript(kitOf([claim, shipped, stat]), p).insight.factId).toBe('f3')
+      expect(deterministicScript(kitOf([claim, shipped]), p).insight.factId).toBe('hx1')
+      expect(deterministicScript(kitOf([claim]), p).insight.factId).toBe('f2')
+    }
+  })
+
+  it('skips a stat that does not stand alone', () => {
+    const bare = { id: 'f4', text: '3,100 Shopify brands', kind: 'stat' }
+    expect(deterministicScript(kitOf([bare, shipped]), sales).insight.factId).toBe('hx1')
+  })
+
+  it('offers the model only facts that stand alone, with where each is from', () => {
+    const dangling = {
+      id: 'f5',
+      text: 'It also works for colors and every other variant.',
+      kind: 'claim',
+    }
+    const user = buildMessages(kitOf([claim, shipped, stat, dangling]), sales)[1]!.content
+    expect(user).toContain('hx1 [quote] (changelog, Oct 2026) When a shopper')
+    expect(user).toContain('f3 [stat] 61% of returns')
+    expect(user).not.toContain('f5')
+    expect(user).toMatch(/Pick in this order: a \[stat\], then one of those lines/)
+    // a homepage-only site gets the same prompt as before
+    expect(buildMessages(kitOf([claim, stat]), sales)[1]!.content).not.toContain(
+      'Pick in this order',
+    )
+  })
+
+  it('sends back a model pick that does not stand alone', () => {
+    const dangling = {
+      id: 'f5',
+      text: 'It also works for colors and every other variant.',
+      kind: 'claim',
+    }
+    const k = kitOf([claim, dangling])
+    const s = {
+      ...deterministicScript(k, sales),
+      insight: { factId: 'f5', why: 'Parcelpine helps teams back a promise like this with data' },
+    }
+    expect(checkScript(s, k, sales).join('\n')).toMatch(/"f5" doesn't make sense out of context/)
+  })
+
+  it('still makes a film when nothing on the site stands alone', () => {
+    const k = kitOf([{ id: 'f1', text: 'Returns, sorted.', kind: 'claim' }])
+    expect(deterministicScript(k, sales).insight.factId).toBe('f1')
+    expect(checkScript(deterministicScript(k, sales), k, sales).join('\n')).not.toMatch(
+      /out of context/,
+    )
+  })
+})
+
+describe('the caption under the quote', () => {
+  it('says where the fact is from, with the month only when the source gives a date', () => {
+    expect(captionFor({ kind: 'stat', source: { kind: 'homepage' } })).toBe('From their homepage')
+    expect(captionFor({ kind: 'stat' })).toBe('From their homepage')
+    expect(captionFor({ kind: 'quote', source: { kind: 'changelog', date: '2026-10-06' } })).toBe(
+      'From their changelog, Oct 2026',
+    )
+    expect(captionFor({ kind: 'stat', source: { kind: 'podcast', date: '2026-09-22' } })).toBe(
+      'From their podcast, episode notes, Sep 2026',
+    )
+    expect(captionFor({ kind: 'quote', source: { kind: 'docs' } })).toBe('From their docs')
+    expect(captionFor({ kind: 'quote', source: { kind: 'engineering', date: '2026-01-02' } })).toBe(
+      'From their engineering blog, Jan 2026',
+    )
+    expect(captionFor({ kind: 'requirement' }, { job: 'Operations Analyst' })).toBe(
+      'From your Operations Analyst post',
+    )
+    expect(captionFor({ kind: 'stat' }, { own: true })).toBe('From our homepage')
+  })
+
+  it('goes on the fact scene, with the source link when it is https', () => {
+    const k = {
+      ...kit,
+      facts: [
+        ...kit.facts,
+        {
+          id: 'hx',
+          text: 'Northwind now flags a late pallet before the dock appointment slips.',
+          kind: 'quote',
+          source: {
+            kind: 'changelog',
+            url: 'https://northwind.example/changelog/1',
+            date: '2026-10-30',
+          },
+        },
+      ],
+    } as unknown as BrandKit
+    const board = buildStoryboard(k, profile('sales'), {
+      ...good,
+      insight: { ...good.insight, factId: 'hx' },
+    })
+    const insight = board.scenes.find((s) => s.kind === 'insight')
+    expect(insight).toMatchObject({
+      caption: 'From their changelog, Oct 2026',
+      sourceUrl: 'https://northwind.example/changelog/1',
+    })
+    const home = buildStoryboard(kit, profile('sales'), good).scenes.find(
+      (s) => s.kind === 'insight',
+    )
+    expect(home).toMatchObject({ caption: 'From their homepage' })
+    expect(home).not.toHaveProperty('sourceUrl')
   })
 })

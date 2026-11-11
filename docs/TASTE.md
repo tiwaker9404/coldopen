@@ -6,7 +6,7 @@ Personalized video only works if it doesn't read like a mail merge. These rules 
 
 The model writes six short lines and makes two choices: which fact from the company's site to feature, and which of the sender's proof points to show. It never writes the fact or the proof. Those are rendered from their sources, so:
 
-- the quote on screen is copied from the company's homepage, and an eval checks it appears there verbatim
+- the quote on screen is copied from what the company published: their homepage, or a recent changelog, blog, engineering or news post, their podcast's episode notes, or their docs. A caption under it says where ("From their homepage", "From their changelog, Oct 2026", "From their podcast, episode notes, Sep 2026"), dated only when the source gives a date, and an eval checks the quote appears there verbatim
 - the proof on screen is copied from the sender's profile
 - a statistic the model makes up has nowhere to appear
 
@@ -24,7 +24,8 @@ The model writes six short lines and makes two choices: which fact from the comp
 ## Grounding
 
 - Every number in the model's lines must appear in the company's facts or the sender's profile.
-- The featured fact must be a real fact ID from the extracted list, and a stat whenever the site has one. A number on screen lands harder than a sentence.
+- The featured fact must be a real fact ID from the extracted list, and a stat whenever the site has one. A number on screen lands harder than a sentence. With no stat, a changelog or engineering line about what they built in the last 120 days comes before a homepage claim.
+- **It has to stand alone** (`standsAlone` in [src/script/checks.ts](../src/script/checks.ts)). The fact scene shows one line with nothing around it but its caption, so only facts that read whole to a stranger are offered to the model or the built-in writer: a full sentence of 6 to 25 words that names the company or what it does (a measured result on their own page counts), doesn't start by pointing at something else ("It also…", "This", "They", "These", "The above"), and isn't a question, a cut-off line, a menu, a name and title, "Learn more", "Click here", or cookie or legal text. A job post's requirements are quoted as they are, captioned "From your <role> post". If nothing on a site stands alone, the film still uses what's there.
 - The hook or the observation must name the company.
 
 ## Every line has a job

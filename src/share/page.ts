@@ -28,6 +28,11 @@ export interface ShareView {
   related?: { name: string; url: string; line: string }
   /** who sent it: a job seeker (seen by a recruiter), a recruiter (seen by a candidate), a seller */
   kind?: 'candidate' | 'recruiter' | 'sales' | 'hiring'
+  /**
+   * the line the film quotes and where it's from, the same caption as under it in the film
+   * ("From their changelog, Oct 2026"), linked to the page when there's an https link
+   */
+  fact?: { text: string; caption: string; url?: string }
 }
 
 export const FORMAT_SIZE = {
@@ -54,6 +59,19 @@ export function viewFromRun(input: FilmInput, out: FilmResult): ShareView {
     kind: p.preset,
     ...(p.preset === 'recruiter' && p.recipient ? { recipient: p.recipient.name } : {}),
     ...(out.related ? { related: out.related } : {}),
+    ...(factOf(out.highlights?.quote) ? { fact: factOf(out.highlights?.quote)! } : {}),
+  }
+}
+
+/** the quote and its caption for the page; a link only when it's an https page */
+function factOf(
+  q: { text: string; caption?: string; url?: string } | undefined,
+): ShareView['fact'] | null {
+  if (!q?.text || !q.caption) return null
+  return {
+    text: q.text,
+    caption: q.caption,
+    ...(q.url && /^https:\/\/\S{4,300}$/.test(q.url) ? { url: q.url } : {}),
   }
 }
 
@@ -61,6 +79,15 @@ export function viewFromRun(input: FilmInput, out: FilmResult): ShareView {
 export function viewFromStoryboard(board: Storyboard, film: string): ShareView {
   const cta = board.scenes.find((s) => s.kind === 'cta')
   if (cta?.kind !== 'cta') throw new Error('storyboard has no closing scene')
+  const insight = board.scenes.find((s) => s.kind === 'insight')
+  const fact =
+    insight?.kind === 'insight'
+      ? factOf({
+          text: insight.value ? `${insight.value} ${insight.text}` : insight.text,
+          caption: insight.caption,
+          ...(insight.sourceUrl ? { url: insight.sourceUrl } : {}),
+        })
+      : null
   const format = (film.match(/film-(square|landscape|portrait)\.mp4$/)?.[1] ??
     'square') as ShareView['format']
   // board.sender is "Name, Company" or "Name"
@@ -74,6 +101,7 @@ export function viewFromStoryboard(board: Storyboard, film: string): ShareView {
     contact: cta.contact,
     film,
     ...(board.recipient ? { recipient: board.recipient, kind: 'recruiter' as const } : {}),
+    ...(fact ? { fact } : {}),
   }
 }
 
@@ -176,6 +204,10 @@ footer a{color:inherit}
 .related span{font-size:13px;color:var(--muted)}
 .related a{color:var(--fg);text-decoration:none}
 .related a:hover b{text-decoration:underline}
+.quoted{margin:28px 0 0;padding-left:16px;border-left:3px solid var(--stock)}
+.quoted blockquote{margin:0;font-size:17px;line-height:1.45}
+.quoted figcaption{margin-top:6px;font-size:13px;color:var(--muted)}
+.quoted a{color:inherit}
 .made{display:inline-flex;align-items:center;gap:7px;color:var(--fg);font-weight:650}
 .made::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--tally)}
 </style></head><body><main>
@@ -186,6 +218,7 @@ footer a{color:inherit}
 </figure>
 <div class="row"><div><h1>${esc(v.ctaLine)}</h1><p>${v.kind === 'hiring' ? `${esc(v.company)} is hiring. Posted by ${esc(v.from)}.` : `${esc(v.firstName)} made this film for ${esc(v.recipient ? `you, about a role at ${v.company}` : v.company)}.`}</p></div>
 <div class="do">${v.book ? `<a class="cta" data-track href="${esc(v.book)}" target="_blank" rel="noopener">${v.kind === 'hiring' ? 'See the role and apply' : 'Book 15 minutes'}</a><a class="cta alt" data-track href="${esc(contactHref(v.contact))}">Reply</a>` : `<a class="cta" data-track href="${esc(contactHref(v.contact))}">Reply to ${esc(v.firstName)}</a>`}</div></div>
+${v.fact ? `<figure class="quoted"><blockquote>${esc(v.fact.text)}</blockquote><figcaption>${v.fact.url ? `<a href="${esc(v.fact.url)}" target="_blank" rel="noopener">${esc(v.fact.caption)}</a>` : esc(v.fact.caption)}</figcaption></figure>` : ''}
 ${v.related ? `<aside class="related"><span>Something I built that’s close to what you do</span><a data-track href="${esc(v.related.url)}" target="_blank" rel="noopener"><b>${esc(v.related.name)}</b> ${esc(v.related.line)}</a></aside>` : ''}
 <footer><a class="made" href="${esc(made.toString())}">Made with coldopen</a>. ${esc(other.line)}${privacy ? `<br>Views are counted without storing your IP address. <a href="${esc(privacy)}">Privacy</a>` : ''}</footer>
 </main>${track ? trackingScript(track) : ''}</body></html>`

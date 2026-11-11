@@ -1,5 +1,6 @@
 import { overlap } from '../script/checks.ts'
 import { assertPublicUrl } from './guard.ts'
+import type { Fact } from './types.ts'
 
 /**
  * Homework: what a company has said lately, beyond its homepage. Their blog, changelog, news,
@@ -31,6 +32,10 @@ export interface Homework {
   items: HomeworkItem[]
   /** their pages worth knowing about, found on the homepage (docs, blog, changelog...) */
   pages: { kind: HomeworkKind; url: string }[]
+  /** the first real sentence on the docs page they link, when there is one */
+  docs?: { url: string; text: string }
+  /** when it was read (ISO): what "recent" is measured from, so a replayed film picks the same */
+  readAt?: string
 }
 
 const KINDS: [HomeworkKind, RegExp][] = [
@@ -290,6 +295,7 @@ export async function readHomework(site: string, opts: HomeworkOptions = {}): Pr
 
   const cutoff = now - RECENT_DAYS * 86_400_000
   const items: HomeworkItem[] = []
+  const readAt = new Date(now).toISOString()
   for (const [url, kind] of [...feeds].slice(0, 4)) {
     const feed = fetched.get(url) ?? (await read(url))
     if (!feed) continue
@@ -310,7 +316,121 @@ export async function readHomework(site: string, opts: HomeworkOptions = {}): Pr
     per.set(i.kind, n)
     return n <= 4
   })
-  return { items: kept.slice(0, 8), pages }
+  // their docs: one page, read last so feeds come first when the request budget runs short
+  const docsPage = pages.find((p) => p.kind === 'docs')
+  const page = docsPage ? await read(docsPage.url) : null
+  const text = page ? docsSentence(page.text) : null
+  return {
+    items: kept.slice(0, 8),
+    pages,
+    ...(page && text ? { docs: { url: page.url, text } } : {}),
+    readAt,
+  }
+}
+
+/**
+ * The first real sentence of a docs page: from its first paragraph that reads as prose (not the
+ * nav, header, footer, a code block or a cookie banner), 6 to 30 words, ending in a full stop.
+ */
+export function docsSentence(html: string): string | null {
+  const body = html
+    .replace(
+      /<(script|style|nav|header|footer|aside|pre|code|noscript|svg|form)\b[\s\S]*?<\/\1>/gi,
+      ' ',
+    )
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+  for (const m of body.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)) {
+    const text = decode(m[1]!)
+    const first = text.split(/(?<=[.!])\s+(?=[A-Z0-9"“‘'])/)[0]?.trim() ?? ''
+    const n = first.split(/\s+/).filter(Boolean).length
+    if (n < 6 || n > 30 || !/[.!]$/.test(first) || /cookie|javascript|browser/i.test(first))
+      continue
+    return first
+  }
+  return null
+}
+
+/** a short, stable id from a url, so a fact keeps its id when the feed adds a newer post */
+const idOf = (prefix: string, url: string) => {
+  let h = 0x811c9dc5
+  for (const ch of url) {
+    h ^= ch.codePointAt(0)!
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return `${prefix}${h.toString(36).slice(0, 6)}`
+}
+
+/** a title that's already a sentence ("Refunds now land in two days.") can be quoted as is */
+const isSentence = (t: string) => /[.!]$/.test(t.trim()) && t.trim().split(/\s+/).length >= 6
+
+/** how far back a post may be and still be quoted as what they're doing now */
+export const FACT_DAYS = 120
+const MAX_FACTS = 6
+const PER_KIND = 2
+
+/**
+ * What they've published, as facts the film can quote: each recent post's first sentence (or
+ * its title, when the title is a full sentence), newest first, at most two of each kind so a
+ * busy changelog doesn't crowd out the rest, plus the first sentence of their docs. A number
+ * makes it a stat. Podcast episodes are quoted from their notes only, never their title.
+ * At most 6, each with where it's from. `now` is the day the homework was read (readAt), so
+ * the same homework always gives the same facts. Whether a fact stands alone is checked later.
+ */
+export function homeworkFacts(homework: Homework, now?: number): Fact[] {
+  const at = now ?? (homework.readAt ? Date.parse(homework.readAt) : Number.NaN)
+  const cutoff = Number.isFinite(at) ? at - FACT_DAYS * 86_400_000 : -Infinity
+  const until = Number.isFinite(at) ? at + 86_400_000 : Infinity
+  const per = new Map<HomeworkKind, number>()
+  const out: Fact[] = []
+  const room = homework.docs ? MAX_FACTS - 1 : MAX_FACTS
+  const items = [...homework.items]
+    .filter((i) => i.kind !== 'docs' && i.date)
+    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  for (const i of items) {
+    if (out.length >= room) break
+    const t = Date.parse(i.date!)
+    if (!(t >= cutoff && t <= until)) continue
+    const text = i.summary ?? (i.kind !== 'podcast' && isSentence(i.title) ? i.title : undefined)
+    if (!text || out.some((f) => f.text === text)) continue
+    const n = (per.get(i.kind) ?? 0) + 1
+    if (n > PER_KIND) continue
+    per.set(i.kind, n)
+    out.push({
+      id: idOf('h', i.url),
+      text,
+      kind: /\d/.test(text) ? 'stat' : 'quote',
+      source: {
+        kind: i.kind as Exclude<HomeworkKind, 'docs'>,
+        title: i.title,
+        url: i.url,
+        ...(i.date ? { date: i.date } : {}),
+      },
+    })
+  }
+  if (homework.docs)
+    out.push({
+      id: idOf('d', homework.docs.url),
+      text: homework.docs.text,
+      kind: /\d/.test(homework.docs.text) ? 'stat' : 'quote',
+      source: { kind: 'docs', url: homework.docs.url },
+    })
+  return out
+}
+
+/**
+ * The facts a film's script and storyboard see: everything on their homepage (and the job post),
+ * then what they've published elsewhere. The script only offers the ones that stand alone
+ * (script/checks.ts quotableFacts); the rest stay so the homepage scene can still point at them.
+ */
+export function withHomework<K extends { facts: Fact[] }>(
+  kit: K,
+  homework: Homework,
+  now?: number,
+): K {
+  const extra = homeworkFacts(homework, now).filter(
+    (f) => !kit.facts.some((k) => k.text === f.text),
+  )
+  return extra.length ? { ...kit, facts: [...kit.facts, ...extra] } : kit
 }
 
 /** kinds that say what a company built or learned, so they make a research line about the work */

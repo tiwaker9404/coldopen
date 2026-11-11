@@ -1,4 +1,4 @@
-import type { BrandKit } from '../brand/types.ts'
+import type { BrandKit, Fact } from '../brand/types.ts'
 import type { Profile, Script } from './types.ts'
 
 export type Scene =
@@ -16,7 +16,12 @@ export type Scene =
       dur: number
       value: string | null
       text: string
+      /** the host, or "your <title> post" for a requirement (the messages read this) */
       source: string
+      /** under the quote, where it's from: "From their changelog, Oct 2026" */
+      caption: string
+      /** the page it's from, for the share page to link (https only) */
+      sourceUrl?: string
       why: string
     }
   | { kind: 'pitch'; dur: number; from: string; headline: string; points: string[] }
@@ -86,6 +91,45 @@ export function noticedFact(kit: BrandKit, noticed: string) {
   return best?.fact ?? null
 }
 
+const MONTHS = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')
+/** "2026-10-28" -> "Oct 2026" */
+export const monthOf = (iso: string) => {
+  const m = iso.match(/^(\d{4})-(\d{2})/)
+  return m ? `${MONTHS[Number(m[2]) - 1]} ${m[1]}` : ''
+}
+
+const PLACE: Record<string, string> = {
+  homepage: 'homepage',
+  docs: 'docs',
+  blog: 'blog',
+  changelog: 'changelog',
+  engineering: 'engineering blog',
+  podcast: 'podcast, episode notes',
+  news: 'newsroom',
+}
+
+/**
+ * Where the quoted fact is from, in the words under it: "From their homepage", "From their
+ * changelog, Oct 2026", "From their podcast, episode notes, Sep 2026", "From your Analyst post".
+ * The date shows only when the source gives one. A film made by the company itself (hiring,
+ * recruiter) says "our". Facts saved before sources were kept are from the homepage or the post.
+ */
+export function captionFor(
+  fact: Pick<Fact, 'kind' | 'source'>,
+  opts: { own?: boolean; job?: string } = {},
+): string {
+  const kind = fact.source?.kind ?? (fact.kind === 'requirement' ? 'job' : 'homepage')
+  if (kind === 'job') {
+    const title = fact.source?.title ?? opts.job
+    return title ? `From ${opts.own ? 'our' : 'your'} ${title} post` : 'From the job post'
+  }
+  const when = fact.source?.date ? monthOf(fact.source.date) : ''
+  return `From ${opts.own ? 'our' : 'their'} ${PLACE[kind]}${when ? `, ${when}` : ''}`
+}
+
+/** a source link the share page may show: their own https page, nothing else */
+const httpsUrl = (u: string | undefined) => (u && /^https:\/\/\S{4,300}$/.test(u) ? u : undefined)
+
 /** "Could we talk this week" is a question; the end card shouldn't lose its question mark */
 export function asked(line: string): string {
   const t = line.trim().replace(/[.!]+$/, '')
@@ -147,6 +191,11 @@ export function buildStoryboard(kit: BrandKit, profile: Profile, script: Script)
         fact.kind === 'requirement' && kit.job
           ? `${recruiter ? 'our' : 'your'} ${kit.job.title} post`
           : kit.host,
+      caption: captionFor(fact, {
+        own: recruiter || hiring,
+        ...(kit.job ? { job: kit.job.title } : {}),
+      }),
+      ...(httpsUrl(fact.source?.url) ? { sourceUrl: httpsUrl(fact.source?.url)! } : {}),
       why: script.insight.why.replace(/\.$/, ''),
     },
     {

@@ -18,6 +18,27 @@ export type FontRef = z.infer<typeof FontRefSchema>
 const BoxSchema = z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() })
 export type Box = z.infer<typeof BoxSchema>
 
+/** where a fact was published, so the film can say so under the quote */
+export const FACT_SOURCES = [
+  'homepage',
+  'docs',
+  'blog',
+  'changelog',
+  'engineering',
+  'podcast',
+  'news',
+  'job',
+] as const
+export const FactSourceSchema = z.object({
+  kind: z.enum(FACT_SOURCES),
+  /** the post, episode or page it's from, as they titled it */
+  title: z.string().optional(),
+  url: z.string().optional(),
+  /** ISO date, only when the source gives one */
+  date: z.string().optional(),
+})
+export type FactSource = z.infer<typeof FactSourceSchema>
+
 export const FactSchema = z.object({
   id: z.string(),
   text: z.string(),
@@ -27,6 +48,8 @@ export const FactSchema = z.object({
   box: BoxSchema.optional(),
   /** below the fold: a screenshot of the part of the page it's on, and its box in that image */
   shot: z.object({ file: z.string(), box: BoxSchema }).optional(),
+  /** where it's from; facts saved before sources were kept are from the homepage (or the job post) */
+  source: FactSourceSchema.optional(),
 })
 export type Fact = z.infer<typeof FactSchema>
 

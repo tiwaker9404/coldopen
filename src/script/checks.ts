@@ -1,4 +1,4 @@
-import type { BrandKit } from '../brand/types.ts'
+import type { BrandKit, Fact } from '../brand/types.ts'
 import { BANNED, LIMITS } from './taste.ts'
 import type { Profile, Script } from './types.ts'
 
@@ -39,6 +39,95 @@ export function overlap(line: string, source: string): number {
   let n = 0
   for (const w of a) if (b.has(w)) n++
   return n / a.size
+}
+
+/* --------------------------------------------- a fact a stranger can read */
+
+const DANGLING =
+  /^(this|that|these|those|it|it's|its|they|they're|their|them|he|she|his|her|such|also|and|but|or|so|here|there|the above)\b/i
+const JUNK =
+  /\b(click here|learn more|read more|find out more|see more|see how|cookies?|privacy policy|terms of (service|use)|all rights reserved|sign up|sign in|log ?in|subscribe|unsubscribe|accept all|skip to)\b|©|\bcopyright\b/i
+// words any company says, so sharing one with their homepage doesn't show the line is about them
+const COMMON = new Set([
+  ...GENERIC,
+  ...'customer customers team teams every more time today new now product products platform world first best great easy simple built build'.split(
+    ' ',
+  ),
+])
+/** content words, plural or not ("exchanges" and "exchange" match) */
+const stems = (s: string) =>
+  new Set(
+    (s.toLowerCase().match(/[a-z][a-z'-]{3,}/g) ?? [])
+      .filter((w) => !STOP.has(w) && !COMMON.has(w))
+      .map((w) => w.replace(/'s$/, '').replace(/(?<=[a-z]{3})(es|s)$/, '')),
+  )
+
+/** What the line is about, to tell whether a fact is about them: their name and what they say they do */
+export interface FactContext {
+  name: string
+  headline?: string
+  description?: string
+}
+
+/**
+ * Why a fact can't be quoted on its own, or null when it can. The fact scene shows one line with
+ * nothing around it but a caption ("From their changelog, Oct 2026"), so it has to read whole to
+ * someone who has never seen the page: a full sentence of 6 to 25 words, about what this company
+ * does, not leaning on a line before it ("It also…"), and not a link, a legal line or a question.
+ */
+export function notAlone(fact: Pick<Fact, 'text'>, company: FactContext): string | null {
+  const t = fact.text
+    .trim()
+    .replace(/^["“‘']+|["”’']+$/g, '')
+    .trim()
+  const n = words(t)
+  if (n < 6) return `it has ${n} words; a line needs 6 to make sense on its own`
+  if (n > 25) return `it has ${n} words; at most 25 fit on screen and read at a glance`
+  if (/\?/.test(t)) return "it's a question"
+  if (/(…|\.\.\.)$/.test(t)) return 'it was cut off mid-sentence'
+  if (/[:;,–—-]$/.test(t)) return 'it ends mid-sentence'
+  if (!/^[A-Z0-9$€£]/.test(t)) return "it doesn't start like a sentence"
+  if (DANGLING.test(t))
+    return `it starts with "${t.match(DANGLING)![0]}", which points at something not on screen`
+  if (JUNK.test(t)) return 'it reads like a link, cookie or legal line'
+  // "Dana Ruiz, VP Operations at Fieldstone Foods": names and menus, not a sentence
+  const alpha = t
+    .split(/\s+/)
+    .slice(1)
+    .filter((w) => /^[A-Za-z]/.test(w))
+  const capped = alpha.filter((w) => /^[A-Z]/.test(w)).length
+  if (alpha.length >= 4 && capped / alpha.length >= 0.7) return 'it reads like a heading or a menu'
+  const lower = t.toLowerCase()
+  const first = company.name.trim().split(/\s+/)[0]!.toLowerCase()
+  const named =
+    first.length >= 2 && new RegExp(`\\b${first.replace(/[^a-z0-9]/g, '.')}`).test(lower)
+  const ours = /\b(we|we're|we've|we'll|our|us)\b/i.test(t)
+  const about = stems(`${company.name} ${company.headline ?? ''} ${company.description ?? ''}`)
+  // "returners" is about "returns": one word may start the other, when it's 5 letters or more
+  const kin = (a: string, b: string) =>
+    a === b || (Math.min(a.length, b.length) >= 5 && (a.startsWith(b) || b.startsWith(a)))
+  const shares = [...stems(t)].some((w) => [...about].some((a) => kin(w, a)))
+  // "11 minutes saved per visit on documentation": a measured result on their own page is theirs
+  const measured = /^[$€£]?\d/.test(t)
+  if (!named && !ours && !shares && !measured)
+    return `it doesn't name ${company.name} or what it does`
+  return null
+}
+
+/** A fact the film may quote: it makes sense to someone seeing it with no other context. */
+export const standsAlone = (fact: Pick<Fact, 'text'>, company: FactContext) =>
+  notAlone(fact, company) === null
+
+/**
+ * The facts a script may feature: those that stand alone. A job post's requirements are its own
+ * words, quoted as such ("From your Operations Analyst post"), so they're offered as they are.
+ * When nothing on the site stands alone, everything is offered: a film beats none.
+ */
+export function quotableFacts(
+  kit: Pick<BrandKit, 'name' | 'headline' | 'description' | 'facts'>,
+): Fact[] {
+  const ok = kit.facts.filter((f) => f.kind === 'requirement' || standsAlone(f, kit))
+  return ok.some((f) => f.kind !== 'requirement') ? ok : kit.facts
 }
 
 /**
@@ -125,8 +214,20 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
     v.push(
       `insight.factId "${chosen.id}" is too long to show on screen; pick a shorter requirement`,
     )
+  // the fact is shown with nothing around it but where it's from, so it has to read on its own
+  const offered = quotableFacts(kit)
+  if (chosen && !offered.includes(chosen)) {
+    const why = notAlone(chosen, kit)
+    v.push(
+      `insight.factId "${chosen.id}" doesn't make sense out of context${why ? ` (${why})` : ''}; pick one that reads whole on its own (${offered
+        .filter((f) => f.kind !== 'headline')
+        .slice(0, 6)
+        .map((f) => f.id)
+        .join(', ')})`,
+    )
+  }
   // a number lands harder than a sentence; insist on one when the site offers a readable stat
-  const stats = kit.facts.filter((f) => f.kind === 'stat' && f.text.length <= 160)
+  const stats = offered.filter((f) => f.kind === 'stat' && f.text.length <= 160)
   if ((!kit.job || hiring) && chosen && chosen.kind !== 'stat' && stats.length) {
     v.push(
       `insight.factId "${chosen.id}" is a ${chosen.kind}; pick one of the stats instead (${stats

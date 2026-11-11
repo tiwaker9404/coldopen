@@ -1353,6 +1353,40 @@ describe("messagesFor: a job seeker's drafts are checked in the voice", () => {
 
 /* ------------------------------------------------ other presets keep their voice */
 
+describe("warm drafts are unchanged by where the film's fact comes from", () => {
+  // taken before the fact scene could quote their changelog, docs or podcast (batch 4, step 7):
+  // the facts a film is offered changed, so the candidate drafts must not
+  it('candidate templates are unchanged, for every fixture, homework, creator and research', async () => {
+    const all: Record<string, unknown> = {}
+    // the example job seeker the evals use, so the file stays small enough to read in a diff
+    const candidates = PROFILES.filter(
+      (p) => p.preset === 'candidate' && p.sender.name === PROFILES.at(-2)!.sender.name,
+    )
+    expect(candidates).toHaveLength(1)
+    for (const kit of KITS)
+      for (const p of candidates)
+        for (const [hw, homework] of HOMEWORK)
+          for (const creator of [false, true])
+            for (const research of [null, RESEARCH])
+              for (const opener of ['homework', 'question'] as const) {
+                const sender = creator ? { ...p, creator: CREATOR } : p
+                const key = [kit.name, kit.job ? 'job' : '-', p.sender.name, hw, opener]
+                  .concat(creator ? 'creator' : '-', research ? 'research' : '-')
+                  .join(' | ')
+                const m = draftMessages(filmFor(kit, sender), sender, LINK, {
+                  opener,
+                  research,
+                  ...(homework ? { homework } : {}),
+                })
+                const { email, linkedin, afterAccept, inmail, followUp, checks } = m
+                all[key] = { email, linkedin, afterAccept, inmail, followUp, checks }
+              }
+    await expect(`${JSON.stringify(all, null, 2)}\n`).toMatchFileSnapshot(
+      '__snapshots__/candidate-warm-templates.json',
+    )
+  })
+})
+
 describe('sales, recruiter and hiring templates are unchanged', () => {
   // taken before the candidate voice changed (batch 4, step 2): only candidate drafts move
   it('sales templates are unchanged, for every fixture, opener, research and detail', async () => {

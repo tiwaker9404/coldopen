@@ -10,6 +10,7 @@ export function withJob(kit: BrandKit, job: JobPost): BrandKit {
     id: `j${i + 1}`,
     text,
     kind: 'requirement',
+    source: { kind: 'job', title: job.title, ...(job.url ? { url: job.url } : {}) },
   }))
   return {
     ...kit,
