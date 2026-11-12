@@ -246,6 +246,10 @@ export function ago(iso: string, now = Date.now()): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+import type { Review } from '../../src/script/review.ts'
+
+export type { Fix, Flag, Review, ReviewFact, ReviewScene } from '../../src/script/review.ts'
+
 export interface FilmDetail extends Film {
   script: {
     hook: string
@@ -262,7 +266,8 @@ export interface FilmDetail extends Film {
     usedFallback: boolean
   } | null
   highlights: {
-    quote: { text: string; source: string }
+    /** caption: where the quote is from, as the film shows it ("From their changelog, Oct 2026") */
+    quote: { text: string; source: string; caption?: string }
     proof: { value: string; label: string; where?: string }[]
   } | null
   qa: { issues: { kind: string; text?: string }[]; fonts: string[] } | null
@@ -272,6 +277,10 @@ export interface FilmDetail extends Film {
     pages: { kind: HomeworkKind; url: string }[]
   } | null
   render: { frames: number; ms: number } | null
+  /** each scene with what a founder would find odd and its fix; null until finished */
+  review: Review | null
+  /** one still per scene, for the review's filmstrip (films made since the review) */
+  scenes: string[] | null
   steps: {
     key: string
     kind: string

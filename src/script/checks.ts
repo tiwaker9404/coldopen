@@ -90,6 +90,8 @@ export function notAlone(fact: Pick<Fact, 'text'>, company: FactContext): string
   if (!/^[A-Z0-9$€£]/.test(t)) return "it doesn't start like a sentence"
   if (DANGLING.test(t))
     return `it starts with "${t.match(DANGLING)![0]}", which points at something not on screen`
+  const loose = loosePronoun(t)
+  if (loose) return `"${loose}" points at something that isn't in the line`
   if (JUNK.test(t)) return 'it reads like a link, cookie or legal line'
   // "Dana Ruiz, VP Operations at Fieldstone Foods": names and menus, not a sentence
   const alpha = t
@@ -112,6 +114,68 @@ export function notAlone(fact: Pick<Fact, 'text'>, company: FactContext): string
   const measured = /^[$€£]?\d/.test(t)
   if (!named && !ours && !shares && !measured)
     return `it doesn't name ${company.name} or what it does`
+  return null
+}
+
+const POINTERS = new Set([
+  'it',
+  "it's",
+  'its',
+  'this',
+  'that',
+  "that's",
+  'these',
+  'those',
+  'they',
+  "they're",
+  'them',
+])
+// "this week", "that tool": a determiner with its own noun, not a pointer
+const DETERMINERS = new Set(['this', 'that', 'these', 'those'])
+// words before a pronoun that it can't be pointing back to
+const NOT_THINGS = new Set(
+  "we we'll we're we've we'd our ours us i i'm i've i'll you you'll you're your yours he she him her his and but or nor so yet the a an with for to of in on at by from into onto up out off over about than then now just also very really still even only all any some each every can can't could will won't would should shall may might must do does did don't doesn't didn't is isn't are aren't was wasn't were be been being has have had not no yes here there when while where how why what which who whom whose if because as".split(
+    ' ',
+  ),
+)
+// verbs, whose object a pronoun usually is ("We'll show it live")
+const VERBS = new Set(
+  'show see try build make ship run use get give take watch check love like need want find launch join demo share send start keep help let put bring turn open read write learn test fix set grow scale sell buy book call meet ask tell hear say know think feel'.split(
+    ' ',
+  ),
+)
+const baseVerb = (w: string) =>
+  [w, w.replace(/s$/, ''), w.replace(/ed$/, ''), w.replace(/ing$/, ''), w.replace(/es$/, '')].some(
+    (x) => VERBS.has(x),
+  )
+const isNoun = (w: string) => /^[a-z]+$/.test(w) && !NOT_THINGS.has(w) && !baseVerb(w)
+
+/**
+ * A pronoun in the middle of a line that has nothing before it in the same line to point at:
+ * "We'll show it live in 20 minutes" (show what?). The line is quoted alone, so "it" has to be
+ * something on screen. Returns the pronoun, or null. "this week" and "that tool" are fine, and
+ * so is "Our dashboard makes it easy" (it is the dashboard).
+ */
+export function loosePronoun(text: string): string | null {
+  const raw = text.split(/\s+/).filter(Boolean)
+  const toks = raw.map((w) =>
+    w
+      .toLowerCase()
+      .replace(/[’‘]/g, "'")
+      .replace(/^[^a-z0-9']+|[^a-z0-9']+$/g, ''),
+  )
+  for (let i = 1; i < toks.length; i++) {
+    const w = toks[i]!
+    if (!POINTERS.has(w)) continue
+    const next = toks[i + 1]
+    if (DETERMINERS.has(w) && next && isNoun(next)) continue
+    const before = toks.slice(0, i)
+    const named =
+      before.some((b) => b.length >= 3 && isNoun(b)) ||
+      raw.slice(1, i).some((r) => /^[A-Z][a-zA-Z]/.test(r)) ||
+      before.some((b) => /\d/.test(b))
+    if (!named) return raw[i]!.replace(/^[^A-Za-z']+|[^A-Za-z']+$/g, '')
+  }
   return null
 }
 

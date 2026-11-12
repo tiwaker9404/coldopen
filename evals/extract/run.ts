@@ -14,7 +14,7 @@ import { spawn } from 'node:child_process'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { extractBrand } from '../../src/brand/extract.ts'
+import { extractBrand, READ_TIMEOUT_MS } from '../../src/brand/extract.ts'
 import { closeBrowser } from '../../src/browser.ts'
 import { buildTheme } from '../../src/render/theme.ts'
 import { type Profile, ProfileSchema } from '../../src/script/types.ts'
@@ -36,7 +36,8 @@ import {
 
 const HERE = import.meta.dirname
 const ROOT = join(HERE, '../..')
-const SITE_TIMEOUT_MS = 60_000
+// two 90-second tries at a slow homepage (READ_TIMEOUT_MS), then fonts and the screenshot check
+const SITE_TIMEOUT_MS = 2 * READ_TIMEOUT_MS + 30_000
 
 const WHAT: Record<FieldName, string> = {
   colors: 'A primary color that isn’t a grey default, and film text that meets WCAG AA',
@@ -85,6 +86,10 @@ function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
   return Promise.race([work, late]).finally(() => clearTimeout(timer))
 }
 
+/** a miss, with what the film does instead (the score itself stays about extraction) */
+const standIn = (c: { pass: boolean; reason: string }, instead: string | false | undefined) =>
+  c.pass || !instead ? c : { ...c, reason: `${c.reason}; ${instead}` }
+
 async function measure(
   site: Site,
   dir: string,
@@ -92,8 +97,8 @@ async function measure(
 ): Promise<Omit<SiteResult, 'seconds'>> {
   const kit = await extractBrand(site.url, {
     outDir: dir,
-    // leave the last stretch of the minute for fonts and the screenshot check
-    timeoutMs: 40_000,
+    // as a film reads it: 90 seconds, and one more try for a slow site
+    timeoutMs: READ_TIMEOUT_MS,
     allowPrivateNetworks: opts.allowPrivate,
   })
   // the film's own theme: its fields are what gets painted, and it is what embeds the fonts
@@ -111,8 +116,11 @@ async function measure(
     tags: site.tags,
     fields: {
       colors: scoreColors(kit, site.tags, [theme.dark, theme.light, theme.brand]),
-      fonts: scoreFonts(kit, theme.fontsEmbedded.display),
-      logo: scoreLogo(kit.logo),
+      fonts: standIn(
+        scoreFonts(kit, theme.fontsEmbedded.display),
+        theme.fallbacks.display && `the film uses ${theme.fallbacks.display}`,
+      ),
+      logo: standIn(scoreLogo(kit.logo), 'the film shows their name as a wordmark'),
       hero: scoreHero(pixels),
       headline: scoreHeadlineBox(kit),
     },

@@ -3969,6 +3969,140 @@ a.tag {
   font-weight: 600;
 }
 
+/* the Review tab: a still of each scene, its flags, and the fix for each */
+.review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.ready-badge,
+.review-count {
+  margin: 0;
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.ready-badge {
+  background: var(--go-soft);
+  color: var(--go);
+}
+
+.review-count {
+  background: color-mix(in oklab, var(--rec) 12%, transparent);
+  color: var(--rec-text);
+}
+
+.filmstrip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.filmstrip > li {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+}
+
+.filmstrip > li.flagged {
+  border-color: color-mix(in oklab, var(--rec) 45%, var(--rule));
+}
+
+.still {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: calc(var(--r) - 2px);
+  background: var(--soft);
+}
+
+.still.none {
+  border: 1px dashed var(--rule);
+}
+
+.scene-body {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.scene-name {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.scene-name small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.flags,
+.fix-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.flags > li {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.flags p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fix-options {
+  width: 100%;
+  padding-left: 12px;
+  border-left: 2px solid var(--rule);
+}
+
+.fix-options li {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+
+.fix-options q,
+.fix-options span {
+  overflow-wrap: anywhere;
+}
+
+.fix-options small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.small.ok {
+  margin: 0;
+  color: var(--go);
+}
+
+@media (max-width: 560px) {
+  .filmstrip > li {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+}
+
 /* under a draft: why it's the template version, what code changed. Closed and small, since most
    drafts have neither and show nothing */
 .draft-note {

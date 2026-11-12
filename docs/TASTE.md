@@ -25,8 +25,21 @@ The model writes six short lines and makes two choices: which fact from the comp
 
 - Every number in the model's lines must appear in the company's facts or the sender's profile.
 - The featured fact must be a real fact ID from the extracted list, and a stat whenever the site has one. A number on screen lands harder than a sentence. With no stat, a changelog or engineering line about what they built in the last 120 days comes before a homepage claim.
-- **It has to stand alone** (`standsAlone` in [src/script/checks.ts](../src/script/checks.ts)). The fact scene shows one line with nothing around it but its caption, so only facts that read whole to a stranger are offered to the model or the built-in writer: a full sentence of 6 to 25 words that names the company or what it does (a measured result on their own page counts), doesn't start by pointing at something else ("It also…", "This", "They", "These", "The above"), and isn't a question, a cut-off line, a menu, a name and title, "Learn more", "Click here", or cookie or legal text. A job post's requirements are quoted as they are, captioned "From your <role> post". If nothing on a site stands alone, the film still uses what's there.
+- **It has to stand alone** (`standsAlone` in [src/script/checks.ts](../src/script/checks.ts)). The fact scene shows one line with nothing around it but its caption, so only facts that read whole to a stranger are offered to the model or the built-in writer: a full sentence of 6 to 25 words that names the company or what it does (a measured result on their own page counts), doesn't start by pointing at something else ("It also…", "This", "They", "These", "The above") or use "it", "this", "that" or "they" mid-line with nothing in the line for it to mean ("We'll show it live in 20 minutes": show what?), and isn't a question, a cut-off line, a menu, a name and title, "Learn more", "Click here", or cookie or legal text. A job post's requirements are quoted as they are, captioned "From your <role> post". If nothing on a site stands alone, the film still uses what's there.
 - The hook or the observation must name the company.
+
+## Review before sending
+
+Checks catch what code can measure while the film is made. The review (`reviewFilm` in [src/script/review.ts](../src/script/review.ts), the film panel's Review tab and `GET /v1/films/:id/review`) reads the finished film the way a founder would, scene by scene, and flags in plain words:
+
+- **The quote doesn't stand alone**, by the rule above. Fix: quote another fact, from the next 3 that do, each with its caption.
+- **Proof a stranger can't read:** a result that doesn't say what you did, what changed or where. Fix: show another result from your profile that does.
+- **No logo**, or one that came out favicon-sized. The film never leaves the chip blank: it sets their name in their own font and color. Fix: keep their name as the logo.
+- **A font stand-in:** their font couldn't be embedded (Apple's system font, say), so the film uses the closest free one of the same class (Inter, Fraunces or JetBrains Mono).
+- **A line cut off**, or the headline zoomed out of frame; **low contrast**, should no brand color reach WCAG AA.
+- **A template line:** a built-in line that 2 or more of your last 10 films share. **Job words** in a job seeker's lines, as the safety net for the voice rules.
+
+The film says "Ready to send" only when nothing is flagged. Every fix makes a new take through the edit route, without reading their site again.
 
 ## Every line has a job
 

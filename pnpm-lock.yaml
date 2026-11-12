@@ -29,6 +29,12 @@ importers:
       '@fontsource-variable/instrument-sans':
         specifier: ^5.3.0
         version: 5.3.0
+      '@fontsource-variable/inter':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource-variable/jetbrains-mono':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@huggingface/transformers':
         specifier: ^4.3.2
         version: 4.3.2(@types/node@26.6.6)
@@ -257,6 +263,12 @@ packages:
 
   '@fontsource-variable/instrument-sans@5.3.0':
     resolution: {integrity: sha512-u4gKbDBTNFGkg997tfQn3eHOhHuquWUFTRT/rwzuKtrxX5P2ekfs2x+LgBPP4P32+cC+vUwF1Cr+IdRoPQbrGw==}
+
+  '@fontsource-variable/inter@5.3.0':
+    resolution: {integrity: sha512-OupL48va4JNofb97w6NYeF9S7W/kHNKM0Er8Dem5nqi4jeOLrVJDoE8tZEpnMJmtkvNbB1EIPPwHcdkF6b1oUA==}
+
+  '@fontsource-variable/jetbrains-mono@5.3.0':
+    resolution: {integrity: sha512-F32xpS2NsGYoQi2ADSkKTgpJj7ozajsGgDJ8woTnqjmIB+dxDIqImjl4pXZVEExu8UFZ2ndhmX18EBS/hdz3Lw==}
 
   '@fontsource-variable/manrope@5.3.0':
     resolution: {integrity: sha512-6D5dgokHsWDDMtmXHznKa0hK229NN+1a4BLPmUCLqcO1Pw5EEhWY5RFt0AcXnVRAljFFPfRtLkJePQj6LSsV6g==}
@@ -2074,6 +2086,10 @@ snapshots:
   '@fontsource-variable/fraunces@5.3.0': {}
 
   '@fontsource-variable/instrument-sans@5.3.0': {}
+
+  '@fontsource-variable/inter@5.3.0': {}
+
+  '@fontsource-variable/jetbrains-mono@5.3.0': {}
 
   '@fontsource-variable/manrope@5.3.0': {}
 

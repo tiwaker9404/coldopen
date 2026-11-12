@@ -21,6 +21,8 @@ import type { Box, BrandKit, Fact, FontRef } from './types.ts'
  */
 
 const VIEWPORT = { width: 1440, height: 900 }
+/** how long a homepage may take to load, per try; a slow one gets one more try */
+export const READ_TIMEOUT_MS = 90_000
 
 export interface ExtractOptions {
   outDir: string
@@ -66,7 +68,7 @@ export async function extractBrand(url: string, opts: ExtractOptions): Promise<B
     await page.setUserAgent(
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36 coldopen/1.0',
     )
-    const res = await navigate(page, url, opts.timeoutMs ?? 30_000)
+    const res = await navigate(page, url, opts.timeoutMs ?? READ_TIMEOUT_MS)
     if (res.status >= 400) {
       throw new Error(
         res.status === 403 || res.status === 429
@@ -223,16 +225,22 @@ async function captureCloseUps(
  * Go to a URL like a patient visitor: wait for the network to settle, but if a site never
  * goes quiet (analytics, websockets, video), settle for whatever has loaded by the deadline.
  */
-async function navigate(page: Page, url: string, timeoutMs: number): Promise<{ status: number }> {
+export async function navigate(
+  page: Pick<Page, 'goto' | 'evaluate'>,
+  url: string,
+  timeoutMs: number,
+  retries = 1,
+): Promise<{ status: number }> {
   try {
     const res = await page.goto(url, { waitUntil: 'networkidle2', timeout: timeoutMs })
     return { status: res?.status() ?? 200 }
   } catch (err) {
     if (!(err instanceof Error) || !/timeout/i.test(err.message)) throw err
     const loaded = await page.evaluate(() => document.readyState).catch(() => 'loading')
-    if (loaded === 'loading')
-      throw new Error(`${url} did not load within ${Math.round(timeoutMs / 1000)}s`)
-    return { status: 200 }
+    if (loaded !== 'loading') return { status: 200 }
+    // a slow site (retellai.com took over a minute) often loads on a second, warmer try
+    if (retries > 0) return navigate(page, url, timeoutMs, retries - 1)
+    throw new Error(`${url} did not load within ${Math.round(timeoutMs / 1000)}s`)
   }
 }
 
@@ -317,12 +325,42 @@ function fontRef(
   const latin = mine.filter(
     (x) => !x.unicodeRange || /U\+0000-00FF|U\+0-FF|U\+0020/i.test(x.unicodeRange),
   )
+  const kept = (latin.length ? latin : mine).slice(0, 6).map(({ family: _f, ...rest }) => rest)
+  const fallback = fallbackFont(family, category, kept.length)
   return {
     family,
     category,
     weight: f.weight,
-    faces: (latin.length ? latin : mine).slice(0, 6).map(({ family: _f, ...rest }) => rest),
+    faces: kept,
+    ...(fallback ? { fallback } : {}),
   }
+}
+
+/**
+ * Fonts a page can use but a film can't embed: the operating system's own (Apple's San
+ * Francisco, Segoe UI). apple.com names SF Pro with @font-face files the film can't load.
+ */
+const SYSTEM_FONT =
+  /^(-apple-system|blinkmacsystemfont|system-ui|ui-sans-serif|ui-serif|ui-monospace|sf pro( display| text| rounded)?|sf mono|\.sfns.*|san francisco|segoe ui|sans-serif|serif|monospace)$/i
+
+/** The free font the film uses in place of one of each class it can't embed. */
+export const FALLBACK_FONTS = {
+  sans: 'Inter',
+  serif: 'Fraunces',
+  mono: 'JetBrains Mono',
+} as const satisfies Record<FontRef['category'], string>
+
+/**
+ * The closest free font, when the film won't be able to embed this one: a system font, or a
+ * family with no font files on the page. Null when its own files are there to embed.
+ */
+export function fallbackFont(
+  family: string,
+  category: FontRef['category'],
+  faces: number,
+): string | null {
+  if (faces > 0 && !SYSTEM_FONT.test(family.trim())) return null
+  return FALLBACK_FONTS[category]
 }
 
 function absolutize(src: string, base: string): string {

@@ -316,6 +316,94 @@ const hostedMe = {
   stats: false,
 }
 
+/** a finished film with a script and its review (see src/script/review.ts) */
+const SCENES_CLEAN = [
+  ['hook', 'The greeting'],
+  ['site', 'Their homepage'],
+  ['insight', 'What they published'],
+  ['pitch', 'What you’d try'],
+  ['proof', 'Your results'],
+  ['cta', 'The ask'],
+].map(([kind, name], index) => ({
+  index,
+  kind,
+  name,
+  ...(kind === 'insight' ? { caption: 'From their homepage' } : {}),
+  flags: [] as unknown[],
+}))
+const REVIEW_FLAGGED = {
+  ready: false,
+  count: 2,
+  proof: [0, 1],
+  scenes: SCENES_CLEAN.map((s) =>
+    s.kind === 'insight'
+      ? {
+          ...s,
+          flags: [
+            {
+              code: 'fact_out_of_context',
+              text: 'The quote says “it” without saying what it is, so it won’t make sense on its own.',
+              fix: {
+                kind: 'fact',
+                label: 'Use another fact',
+                options: [
+                  {
+                    id: 'f4',
+                    text: 'Parcelpine cut late deliveries by 38% in the first quarter.',
+                    kind: 'stat',
+                    caption: 'From their homepage',
+                  },
+                  {
+                    id: 'h1',
+                    text: 'Parcelpine now returns per-zone surcharges in the rate API.',
+                    kind: 'quote',
+                    caption: 'From their changelog, Oct 2026',
+                  },
+                ],
+              },
+            },
+          ],
+        }
+      : s.kind === 'cta'
+        ? {
+            ...s,
+            flags: [
+              {
+                code: 'templated_line',
+                text: 'The ask is the same in 3 of your recent films, so it can read like a template.',
+                fix: { kind: 'edit', label: 'Edit this line', line: 'cta' },
+              },
+            ],
+          }
+        : s,
+  ),
+}
+const reviewed = (review: unknown) => ({
+  ...filmDetail,
+  script: {
+    hook: 'Hi Parcelpine team',
+    noticed: 'Your rate table compares carriers per zone',
+    insight: { factId: 'f17', why: 'I would wire your rate API into returns' },
+    pitch: {
+      headline: 'What I would build with your rate API',
+      points: ['A returns agent on your rate API', 'Carrier invoices as a clean feed'],
+    },
+    proof: [0, 1],
+    cta: 'Trade notes on carrier rates?',
+  },
+  scriptMeta: { model: 'deterministic', rounds: 1, violations: [[]], usedFallback: false },
+  highlights: {
+    quote: {
+      text: "We'll show it live in 20 minutes.",
+      source: 'parcelpine.example',
+      caption: 'From their homepage',
+    },
+    proof: [{ value: '6', label: 'open-source AI projects shipped' }],
+  },
+  review,
+  scenes: [0, 1, 2, 3, 4, 5].map((i) => `/f/${FILM}/scene-${i}.jpg`),
+})
+
 type Stubs = Record<string, unknown>
 const withFilm: Stubs = {
   '/v1/profiles': profiles,
@@ -579,6 +667,71 @@ const states: State[] = [
       await shows('Recruiting', /Ask: A short note.*Talent acquisition.*Head of people/)
       if ((await texts(page, '.people-group .who-list b')).includes('Recruiters') === false)
         out.push('the Recruiting tab has no Recruiters search')
+      return out
+    },
+  },
+  {
+    name: 'Film panel review, with flags',
+    url: `${base}/#films`,
+    stubs: {
+      ...withFilm,
+      [`/v1/films/${FILM}`]: reviewed(REVIEW_FLAGGED),
+    },
+    async run(page) {
+      await page.click('button.card')
+      await page.waitForSelector('.drawer [role=tablist]', { timeout: 5000 })
+      const out: string[] = []
+      const tabs = await texts(page, '.drawer [role=tablist] button')
+      if (tabs.join('|') !== 'Send 2 things to check first|Review|Views|How it was made')
+        out.push(`the film tabs read “${tabs.join(', ')}”`)
+      await click(page, '.drawer [role=tablist] button', 'Review')
+      const strip = await page.evaluate(() => ({
+        scenes: document.querySelectorAll('.filmstrip > li').length,
+        flagged: document.querySelectorAll('.filmstrip > li.flagged').length,
+        badge: document.querySelector('.ready-badge')?.textContent ?? null,
+        count: document.querySelector('.review-count')?.textContent ?? '',
+        caption: document.querySelector('.filmstrip > li:nth-child(3) .scene-name small')
+          ?.textContent,
+      }))
+      if (strip.scenes !== 6) out.push(`the strip has ${strip.scenes} scenes, not 6`)
+      if (strip.flagged !== 2) out.push(`${strip.flagged} scenes are marked flagged, not 2`)
+      if (strip.badge) out.push('a film with flags says “Ready to send”')
+      if (strip.count !== '2 things to check before you send')
+        out.push(`the review head reads “${strip.count}”`)
+      if (strip.caption !== 'From their homepage')
+        out.push('the fact scene does not show its caption')
+      await click(page, '.flags button', 'Use another fact')
+      const options = await texts(page, '.fix-options li button')
+      if (options.length !== 2 || options[0] !== 'Quote this instead')
+        out.push(`“Use another fact” lists ${options.length} facts`)
+      await click(page, '.flags button', 'Edit this line')
+      const focused = await page.evaluate(() => document.activeElement?.id)
+      if (focused !== 'line-cta') out.push(`“Edit this line” focused ${focused}, not the ask`)
+      return out
+    },
+  },
+  {
+    name: 'Film panel review, ready to send',
+    url: `${base}/#films`,
+    stubs: {
+      ...withFilm,
+      [`/v1/films/${FILM}`]: reviewed({
+        ...REVIEW_FLAGGED,
+        ready: true,
+        count: 0,
+        scenes: SCENES_CLEAN,
+      }),
+    },
+    async run(page) {
+      await page.click('button.card')
+      await page.waitForSelector('.drawer [role=tablist]', { timeout: 5000 })
+      const out: string[] = []
+      const tabs = await texts(page, '.drawer [role=tablist] button')
+      if (tabs[0] !== 'Send') out.push(`the Send tab reads “${tabs[0]}” with nothing flagged`)
+      await click(page, '.drawer [role=tablist] button', 'Review')
+      if ((await texts(page, '.ready-badge'))[0] !== 'Ready to send')
+        out.push('a clean film does not say “Ready to send”')
+      if ((await texts(page, '.flags')).length) out.push('a clean film lists flags')
       return out
     },
   },

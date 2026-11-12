@@ -218,6 +218,21 @@ export async function renderExtras(
   return { poster, gif, sheet }
 }
 
+/** A still of each scene at the given times, `scene-<i>.jpg`, for the review's filmstrip. */
+export async function renderStills(
+  page: Page,
+  opts: { outDir: string; at: number[] },
+): Promise<string[]> {
+  const out: string[] = []
+  for (const [i, t] of opts.at.entries()) {
+    const file = join(opts.outDir, `scene-${i}.jpg`)
+    await seek(page, t)
+    await page.screenshot({ path: file, type: 'jpeg', quality: 80 })
+    out.push(file)
+  }
+  return out
+}
+
 export async function fileSize(path: string): Promise<number> {
   return (await stat(path)).size
 }

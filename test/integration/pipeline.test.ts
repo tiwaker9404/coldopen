@@ -41,7 +41,10 @@ describe('film pipeline (no database)', () => {
     expect(r.qa.issues).toEqual([])
     // no model: no messages stored, so the API uses the templates
     expect(r.messages).toBeUndefined()
-    for (const f of Object.values(r.files)) expect(existsSync(join(filmsDir, f)), f).toBe(true)
+    for (const f of Object.values(r.files).flat())
+      expect(existsSync(join(filmsDir, f)), f).toBe(true)
+    // one still per scene, for the review's filmstrip
+    expect(r.files.scenes).toHaveLength(6)
     expect(new Set(progress)).toEqual(new Set(['research', 'script', 'design', 'render', 'encode']))
 
     const probe = JSON.parse(

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import {
   ago,
   api,
@@ -34,6 +34,7 @@ import {
   openingTab,
 } from './messageTabs.ts'
 import { openGroup, peopleGroups } from './peopleTabs.ts'
+import { ReviewPane } from './Review.tsx'
 import { safeUrl } from './safe.ts'
 import { canNotify, ErrorNote, Out, useToast } from './ui.tsx'
 
@@ -102,7 +103,7 @@ export function Copy({
   )
 }
 
-type Tab = 'send' | 'script' | 'views' | 'details'
+type Tab = 'send' | 'review' | 'views' | 'details'
 
 export function FilmPanel({
   id,
@@ -143,10 +144,24 @@ export function FilmPanel({
   const f = q.data
   const live = f && (f.status === 'queued' || f.status === 'running')
   const done = f?.status === 'succeeded'
-  const tabs: [Tab, string][] = done
+  // until the review is clear, the Send tab says how many things are left to check
+  const flagged = f?.review && !f.review.ready ? f.review.count : 0
+  const tabs: [Tab, ReactNode][] = done
     ? [
-        ['send', 'Send'],
-        ['script', 'Script'],
+        [
+          'send',
+          flagged ? (
+            <>
+              Send <span className="count due">{flagged}</span>
+              <span className="sr-only">
+                {flagged === 1 ? ' thing to check first' : ' things to check first'}
+              </span>
+            </>
+          ) : (
+            'Send'
+          ),
+        ],
+        ['review', 'Review'],
         ['views', 'Views'],
         ['details', 'How it was made'],
       ]
@@ -261,7 +276,13 @@ export function FilmPanel({
         {done && (
           <div className="pane" role="tabpanel" id={`pane-${tab}`} aria-labelledby={`tab-${tab}`}>
             {tab === 'send' && <SendSteps film={f} />}
-            {tab === 'script' && <ScriptEditor film={f} onMade={onOpen} />}
+            {tab === 'review' && (
+              <ReviewPane
+                film={f}
+                onMade={onOpen}
+                editor={<ScriptEditor film={f} onMade={onOpen} />}
+              />
+            )}
             {tab === 'views' && <Views id={f.id} />}
             {tab === 'details' && <Details film={f} />}
           </div>
@@ -1429,7 +1450,15 @@ function ScriptEditor({ film, onMade }: { film: FilmDetail; onMade: (id: string)
     key: 'hook' | 'noticed' | 'why' | 'headline' | 'cta',
     label: string,
     max: number,
-  ) => <Line label={label} max={max} value={e[key]} onChange={(v) => setE({ ...e, [key]: v })} />
+  ) => (
+    <Line
+      id={`line-${key}`}
+      label={label}
+      max={max}
+      value={e[key]}
+      onChange={(v) => setE({ ...e, [key]: v })}
+    />
+  )
   return (
     <form
       className="block script"
@@ -1446,8 +1475,10 @@ function ScriptEditor({ film, onMade }: { film: FilmDetail; onMade: (id: string)
       {field('noticed', 'What you noticed', LIMITS.noticed)}
       {film.highlights?.quote && (
         <p className="quote">
-          <span>Shown from their {film.job ? 'job post' : 'site'}</span>“
-          {film.highlights.quote.text}”
+          <span>
+            {film.highlights.quote.caption ?? `Shown from their ${film.job ? 'job post' : 'site'}`}
+          </span>
+          “{film.highlights.quote.text}”
         </p>
       )}
       {field('why', 'Why it matters', LIMITS.why)}
@@ -1456,6 +1487,7 @@ function ScriptEditor({ film, onMade }: { film: FilmDetail; onMade: (id: string)
         <Line
           // biome-ignore lint/suspicious/noArrayIndexKey: points are positional
           key={i}
+          id={`line-points-${i}`}
           label={`Point ${i + 1}`}
           max={LIMITS.point}
           value={p}
@@ -1473,7 +1505,9 @@ function ScriptEditor({ film, onMade }: { film: FilmDetail; onMade: (id: string)
               </li>
             ))}
           </ul>
-          <small>To show different ones, choose them under Options when you make a film.</small>
+          <small>
+            From your profile. When one doesn’t read on its own, the review above offers others.
+          </small>
         </div>
       ) : null}
       {field('cta', 'The ask', LIMITS.cta)}
@@ -1502,11 +1536,13 @@ function ScriptEditor({ film, onMade }: { film: FilmDetail; onMade: (id: string)
 }
 
 function Line({
+  id,
   label,
   max,
   value,
   onChange,
 }: {
+  id: string
   label: string
   max: number
   value: string
@@ -1521,7 +1557,7 @@ function Line({
           {n}/{max} words
         </small>
       </span>
-      <input value={value} onChange={(ev) => onChange(ev.target.value)} />
+      <input id={id} value={value} onChange={(ev) => onChange(ev.target.value)} />
     </label>
   )
 }

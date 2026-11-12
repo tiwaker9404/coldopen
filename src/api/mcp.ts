@@ -201,7 +201,7 @@ export function buildMcp(call: Call): McpServer {
     {
       title: 'Get a film',
       description:
-        'A film’s status (queued, running, succeeded, failed), its share link once ready, who it’s for and how far views got.',
+        'A film’s status (queued, running, succeeded, failed), its share link once ready, who it’s for and how far views got. Once it’s finished, `review` has each scene with plain flags for anything a founder would find odd (a quote that doesn’t stand alone, unclear proof, no logo, a font stand-in, a cut-off line, low contrast, a template line, job words) and the fix for each; `review.ready` is true when nothing is flagged.',
       inputSchema: { id: z.string() },
       annotations: { readOnlyHint: true },
     },

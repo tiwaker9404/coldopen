@@ -33,6 +33,10 @@ export interface FilmTheme {
   /** @font-face rules with fonts embedded as data URLs, so rendering never depends on CORS */
   fontCss: string
   fontsEmbedded: { display: boolean; body: boolean }
+  /** the free font used in place of a brand font that couldn't be embedded, by role */
+  fallbacks: { display?: string; body?: string }
+  /** each field's text and accent contrast against its background, for the film's review */
+  contrast: { field: string; part: 'text' | 'accent'; ratio: number; min: number }[]
 }
 
 const rgb = (hex: string): Rgb => parseColor(hex) ?? { r: 0, g: 0, b: 0 }
@@ -136,6 +140,20 @@ const FALLBACK = {
   },
 }
 
+/**
+ * The free font a brand font is swapped for when the film can't embed it: the closest of the
+ * same class (FALLBACK_FONTS in brand/extract.ts names them). Apple's system font becomes Inter.
+ */
+const STAND_IN: Record<FontRef['category'], { family: string; pkg: string; file: string }> = {
+  sans: { family: 'Inter', pkg: 'inter', file: 'inter-latin-wght-normal.woff2' },
+  serif: { family: 'Fraunces', pkg: 'fraunces', file: 'fraunces-latin-wght-normal.woff2' },
+  mono: {
+    family: 'JetBrains Mono',
+    pkg: 'jetbrains-mono',
+    file: 'jetbrains-mono-latin-wght-normal.woff2',
+  },
+}
+
 /** a font already inlined by the site, and only that: nothing that could close the CSS rule */
 export const DATA_FONT = /^data:[a-z]+\/[a-z0-9.+-]+(;charset=[a-z0-9-]+)?;base64,[A-Za-z0-9+/=]+$/i
 
@@ -200,24 +218,43 @@ export async function buildTheme(
   const timeout = opts.fontTimeoutMs ?? 8000
   const fields = deriveFields(kit, profile)
   const displayFallback = FALLBACK[kit.fonts.display.category === 'serif' ? 'serif' : 'sans']
+  const sameFamily = kit.fonts.body.family === kit.fonts.display.family
   const [display, body, fbDisplay, fbSans] = await Promise.all([
     embedFont(kit.fonts.display, 'Brand Display', timeout, priv),
-    kit.fonts.body.family === kit.fonts.display.family
+    sameFamily
       ? Promise.resolve({ css: '', ok: false, same: true })
       : embedFont(kit.fonts.body, 'Brand Body', timeout, priv),
     bundled(displayFallback.pkg, displayFallback.file),
     bundled(FALLBACK.sans.pkg, FALLBACK.sans.file),
   ])
-  const sameFamily = kit.fonts.body.family === kit.fonts.display.family
+  const bodyOk = sameFamily ? display.ok : body.ok
+  // a brand font the film can't embed is swapped for the closest free one of its class
+  const standIn = (ref: FontRef) => STAND_IN[ref.category]
+  const swaps = [
+    ...(display.ok ? [] : [{ alias: 'Brand Display', font: standIn(kit.fonts.display) }]),
+    ...(bodyOk || sameFamily ? [] : [{ alias: 'Brand Body', font: standIn(kit.fonts.body) }]),
+  ]
+  const swapCss = await Promise.all(
+    swaps.map(
+      async (w) =>
+        `@font-face{font-family:'${w.alias}';src:url(${await bundled(w.font.pkg, w.font.file)});font-weight:100 900;font-display:block;}`,
+    ),
+  )
   const fontCss = [
     display.css,
     body.css,
+    ...swapCss,
     `@font-face{font-family:'${displayFallback.family}';src:url(${fbDisplay});font-weight:100 900;font-display:block;}`,
     `@font-face{font-family:'${FALLBACK.sans.family}';src:url(${fbSans});font-weight:100 900;font-display:block;}`,
   ].join('\n')
 
-  const displayStack = `${display.ok ? "'Brand Display', " : ''}'${displayFallback.family}', ${kit.fonts.display.category === 'serif' ? 'serif' : 'sans-serif'}`
-  const bodyStack = `${sameFamily && display.ok ? "'Brand Display', " : body.ok ? "'Brand Body', " : ''}'${FALLBACK.sans.family}', sans-serif`
+  // the stand-in takes the brand font's alias, so the stacks stay the same either way
+  const displayStack = `'Brand Display', '${displayFallback.family}', ${kit.fonts.display.category === 'serif' ? 'serif' : 'sans-serif'}`
+  const bodyStack = `${sameFamily ? "'Brand Display', " : "'Brand Body', "}'${FALLBACK.sans.family}', sans-serif`
+  const fallbacks = {
+    ...(display.ok ? {} : { display: standIn(kit.fonts.display).family }),
+    ...(bodyOk ? {} : { body: standIn(sameFamily ? kit.fonts.display : kit.fonts.body).family }),
+  }
   return {
     ...fields,
     display: {
@@ -227,6 +264,26 @@ export async function buildTheme(
     },
     body: { family: bodyStack, weight: 450 },
     fontCss,
-    fontsEmbedded: { display: display.ok, body: sameFamily ? display.ok : body.ok },
+    fallbacks,
+    contrast: contrastOf(fields),
+    fontsEmbedded: { display: display.ok, body: bodyOk },
   }
+}
+
+/**
+ * Each field's text and accent contrast on its background. The fields are solved to pass
+ * (text 4.5:1, accents 3:1), so a shortfall here means no brand color could: the review says so.
+ */
+export function contrastOf(
+  fields: Pick<FilmTheme, 'dark' | 'light' | 'brand'>,
+): FilmTheme['contrast'] {
+  return (['dark', 'light', 'brand'] as const).flatMap((name) => {
+    const f = fields[name]
+    const bg = rgb(f.bg)
+    const r = (hex: string) => Math.round(contrast(rgb(hex), bg) * 100) / 100
+    return [
+      { field: name, part: 'text' as const, ratio: r(f.fg), min: 4.5 },
+      { field: name, part: 'accent' as const, ratio: r(f.accent), min: 3 },
+    ]
+  })
 }

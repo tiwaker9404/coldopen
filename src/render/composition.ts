@@ -42,13 +42,25 @@ interface SceneCtx {
   logo: string | null
 }
 
+/**
+ * Their logo in its chip, or, when the site had none the film could capture (resend.com,
+ * framer.com) or the sender chose it, their name set as a wordmark in their own display font
+ * and brand color, sized like a logo. The chip is never left empty.
+ */
+function chipHtml(c: SceneCtx, delay: number): string {
+  const inner = c.logo
+    ? `<img src="${c.logo}" alt="">`
+    : `<span class="wordmark display" data-fit data-lines="1" data-min="0.6">${esc(c.kit.name)}</span>`
+  return `<div class="chip in${c.logo ? '' : ' named'}" style="animation-delay:${delay}ms">${inner}</div>`
+}
+
 function sceneHtml(s: Scene, i: number, start: number, c: SceneCtx): string {
   const open = (field: Field, extra = '') =>
     `<section class="scene ${s.kind}" data-i="${i}" data-start="${start}" data-dur="${s.dur}" style="${vars(field)}${extra}">`
   switch (s.kind) {
     case 'hook':
       return `${open(c.theme.dark)}
-        ${c.logo ? `<div class="chip in" style="animation-delay:150ms"><img src="${c.logo}" alt=""></div>` : ''}
+        ${chipHtml(c, 150)}
         <div class="hook-wrap">
           <h1 class="display hook-text" data-fit data-lines="3">${wordsHtml(s.text, 250, 110)}</h1>
           <div class="rule grow" style="animation-delay:900ms"></div>
@@ -115,7 +127,7 @@ function sceneHtml(s: Scene, i: number, start: number, c: SceneCtx): string {
       </section>`
     case 'cta':
       return `${open(c.theme.brand)}
-        ${c.logo ? `<div class="chip in" style="animation-delay:200ms"><img src="${c.logo}" alt=""></div>` : ''}
+        ${chipHtml(c, 200)}
         <div class="cta-wrap">
           <h2 class="display cta-line" data-fit data-lines="3">${wordsHtml(s.line, 250, 110)}</h2>
           <p class="contact in" style="animation-delay:1200ms">${esc(s.contact)}</p>
@@ -155,6 +167,8 @@ export function compose(opts: {
   screenshotDataUrl: string | null
   /** what to point at in it; the headline when omitted */
   shotBox?: BrandKit['screenshot']['headlineBox']
+  /** show their name as the logo even when a logo image was found (the sender chose it) */
+  wordmark?: boolean
 }): string {
   const { board, kit, theme, format } = opts
   const { width, height } = FORMATS[format]
@@ -162,7 +176,7 @@ export function compose(opts: {
     kit,
     theme,
     shot: opts.screenshotDataUrl,
-    logo: kit.logo?.dataUrl ?? null,
+    logo: opts.wordmark ? null : (kit.logo?.dataUrl ?? null),
   }
   let t = 0
   const scenes = board.scenes.map((s, i) => {
@@ -208,6 +222,7 @@ html,body{width:${width}px;height:${height}px;overflow:hidden;background:#000}
 
 .chip{position:absolute;top:calc(var(--u)*8.5);left:calc(var(--u)*7.5);background:${theme.light.bg};border-radius:calc(var(--u)*1.2);padding:calc(var(--u)*1.2) calc(var(--u)*1.6);display:flex;align-items:center;max-width:calc(var(--u)*34)}
 .chip img{display:block;max-height:calc(var(--u)*4.2);max-width:calc(var(--u)*30)}
+.chip .wordmark{display:block;font-size:calc(var(--u)*3.6);line-height:1.15;color:${theme.light.accent};white-space:nowrap;max-width:calc(var(--u)*30);letter-spacing:-0.02em}
 
 /* hook */
 .hook-wrap{margin-top:auto;margin-bottom:auto;padding-top:calc(var(--u)*8)}

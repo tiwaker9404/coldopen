@@ -12,6 +12,11 @@ export const FontRefSchema = z.object({
   category: z.enum(['serif', 'sans', 'mono']),
   weight: z.number(),
   faces: z.array(FontFaceSchema),
+  /**
+   * the free font the film uses when this one can't be embedded (a system font like Apple's,
+   * or a site with no font files): the closest of the same class. Set when the kit is read.
+   */
+  fallback: z.string().optional(),
 })
 export type FontRef = z.infer<typeof FontRefSchema>
 

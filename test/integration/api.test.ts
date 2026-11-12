@@ -641,6 +641,146 @@ describe('films', () => {
     expect((await edit(a, { cta: 'One more?' })).statusCode).toBe(429)
   })
 
+  it('reviews a finished film scene by scene, and swaps the fact or proof to re-render', async () => {
+    const make = async (url: string) =>
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/v1/films',
+          headers: auth,
+          payload: { url, profileId: 'maya' },
+        })
+      ).json().id as string
+    const id = await make('reviewco.example')
+    const review = () => app.inject({ method: 'GET', url: `/v1/films/${id}/review`, headers: auth })
+    expect((await review()).statusCode).toBe(409)
+
+    // a film that quotes a line leaning on nothing, with two facts that read on their own
+    await finish(id, 'Reviewco')
+    const facts = [
+      {
+        id: 'f17',
+        text: "We'll show it live in 20 minutes.",
+        kind: 'stat',
+        caption: 'From their homepage',
+      },
+      {
+        id: 'f4',
+        text: 'Reviewco cut late deliveries by 38% for its shippers in the first quarter.',
+        kind: 'stat',
+        caption: 'From their homepage',
+      },
+      {
+        id: 'h1',
+        text: 'Reviewco now flags every late carrier before the shopper notices it.',
+        kind: 'quote',
+        caption: 'From their changelog, Oct 2026',
+      },
+    ]
+    await sql`
+      update runs set output = output
+        || ${sql.json({
+          script: {
+            hook: 'Hi Reviewco team',
+            noticed: 'Your homepage leads with live pallet tracking',
+            insight: { factId: 'f17', why: 'Tessellate shows which features keep shippers' },
+            pitch: {
+              headline: 'Retention analytics for freight teams',
+              points: ['a b c', 'd e f'],
+            },
+            proof: [0],
+            cta: 'Worth a 15-minute look?',
+          },
+          scriptMeta: {
+            model: 'openai/gpt-oss-120b',
+            rounds: 1,
+            violations: [[]],
+            usedFallback: false,
+            replaced: [],
+          },
+          highlights: {
+            quote: {
+              text: facts[0]!.text,
+              source: 'reviewco.example',
+              caption: 'From their homepage',
+            },
+            proof: [],
+          },
+          facts,
+          brand: {
+            logo: 'wordmark',
+            fallbacks: {},
+            fonts: { display: 'Inter', body: 'Inter' },
+            contrast: [],
+          },
+        } as never)}
+      where id = ${id}`
+
+    const r = await review()
+    expect(r.statusCode).toBe(200)
+    const body = r.json()
+    expect(body.ready).toBe(false)
+    expect(body.scenes.map((s: { kind: string }) => s.kind)).toEqual([
+      'hook',
+      'site',
+      'insight',
+      'pitch',
+      'proof',
+      'cta',
+    ])
+    const flag = body.scenes[2].flags[0]
+    expect(flag).toMatchObject({ code: 'fact_out_of_context', fix: { kind: 'fact' } })
+    expect(flag.fix.options.map((o: { id: string }) => o.id)).toEqual(['f4', 'h1'])
+    expect(body.scenes[0].flags[0]).toMatchObject({ code: 'no_logo', fix: { kind: 'wordmark' } })
+    // the film itself carries the review, so MCP get_film has the flags too
+    const film = (await app.inject({ method: 'GET', url: `/v1/films/${id}`, headers: auth })).json()
+    expect(film.review).toEqual(body)
+
+    const edit = (b: object) =>
+      app.inject({ method: 'POST', url: `/v1/films/${id}/edit`, headers: auth, payload: b })
+    // only facts this film could quote, and only results that are in the profile
+    expect((await edit({ factId: 'f99' })).json().error.code).toBe('fact_unknown')
+    expect((await edit({ proof: [0, 0] })).json().error.code).toBe('proof_unknown')
+    expect((await edit({ proof: [7] })).json().error.code).toBe('proof_unknown')
+
+    // "Use another fact" re-queues the render with that fact, matched by its words
+    const swapped = await edit({ factId: 'f4' })
+    expect(swapped.statusCode).toBe(202)
+    expect(swapped.json()).toMatchObject({ status: 'queued', editOf: id })
+    const [a] = await sql<{ input: { script: { insight: { factId: string } }; fact: object } }[]>`
+      select input from runs where id = ${swapped.json().id}`
+    expect(a!.input.script.insight.factId).toBe('f4')
+    expect(a!.input.fact).toEqual({ id: 'f4', text: facts[1]!.text })
+
+    // "Use another proof" and "Use their name as the logo" go the same way
+    const proof = await edit({ proof: [2, 1], wordmark: true })
+    expect(proof.statusCode).toBe(202)
+    const [b] = await sql<{ input: { script: { proof: number[] }; wordmark: boolean } }[]>`
+      select input from runs where id = ${proof.json().id}`
+    expect(b!.input.script.proof).toEqual([2, 1])
+    expect(b!.input.wordmark).toBe(true)
+
+    // the same swap twice makes the same film to render
+    const again = await edit({ factId: 'f4' })
+    const [c] = await sql<{ input: object }[]>`select input from runs where id = ${again.json().id}`
+    expect(c!.input).toEqual(a!.input)
+
+    // someone else's film is not found, for the review and the swaps alike
+    const other = await make('notyours.example')
+    await finish(other, 'Notyours')
+    await sql`update runs set owner = 'u:someone-else' where id = ${other}`
+    for (const res of [
+      await app.inject({ method: 'GET', url: `/v1/films/${other}/review`, headers: auth }),
+      await app.inject({
+        method: 'POST',
+        url: `/v1/films/${other}/edit`,
+        headers: auth,
+        payload: { factId: 'f1' },
+      }),
+    ])
+      expect(res.statusCode).toBe(404)
+  })
+
   it('saves downloads under the name asked for', async () => {
     const id = (
       await app.inject({

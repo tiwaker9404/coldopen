@@ -23,12 +23,14 @@ import {
   type QaReport,
   renderExtras,
   renderSegment,
+  renderStills,
 } from './render/render.ts'
 import { buildTheme } from './render/theme.ts'
 import { NonRetryableError } from './runtime/errors.ts'
 import { defineAgent } from './runtime/types.ts'
-import { editViolations } from './script/checks.ts'
-import { buildStoryboard, type Storyboard } from './script/storyboard.ts'
+import { editViolations, quotableFacts } from './script/checks.ts'
+import type { FilmBrand, ReviewFact } from './script/review.ts'
+import { buildStoryboard, captionFor, type Storyboard } from './script/storyboard.ts'
 import {
   type Profile,
   ProfileSchema,
@@ -70,6 +72,13 @@ export const FilmInputSchema = z.object({
   script: ScriptSchema.optional(),
   /** the film this one re-renders with an edited script */
   editOf: z.string().max(64).optional(),
+  /**
+   * the fact the sender swapped in from the review: matched by its text first, then its id,
+   * since a re-read of their site may number the facts differently
+   */
+  fact: z.object({ id: z.string().max(40), text: z.string().max(400) }).optional(),
+  /** show the company's name as the logo (the sender chose it in the review) */
+  wordmark: z.boolean().optional(),
   /** with a share worker: the share link expires after this many days (hosted app visitors) */
   keepDays: z.number().int().min(1).max(365).optional(),
   /**
@@ -94,6 +103,8 @@ export interface FilmResult {
     sheet: string
     kit: string
     storyboard: string
+    /** one still per scene, from its midpoint, for the review (films made since step 10) */
+    scenes?: string[]
   }
   script: Script
   scriptMeta: ScriptMeta
@@ -109,6 +120,10 @@ export interface FilmResult {
   homework?: Homework
   /** the profile as the film used it, when the film filled it in (hiring films) */
   profile?: Profile
+  /** what the review reads about the brand: the logo or wordmark, font stand-ins, contrast */
+  brand?: FilmBrand
+  /** the facts the film could quote (the featured one too), for "Use another fact" */
+  facts?: ReviewFact[]
   /** what the film says, for writing the message that goes with it */
   highlights?: {
     /**
@@ -287,6 +302,14 @@ export function createFilmAgent(opts: FilmAgentOptions) {
         // the person's own words. The site may have changed since the first film: if the fact it
         // featured is gone, feature the one the built-in writer would pick.
         let s = input.script
+        // a fact swapped in from the review: the same words, wherever the re-read numbered it
+        const swap = input.fact
+        if (swap) {
+          const same = (a: string) => a.trim().toLowerCase() === swap.text.trim().toLowerCase()
+          const found =
+            kit.facts.find((f) => same(f.text)) ?? kit.facts.find((f) => f.id === swap.id)
+          if (found) s = { ...s, insight: { ...s.insight, factId: found.id } }
+        }
         if (!kit.facts.some((f) => f.id === s.insight.factId))
           s = {
             ...s,
@@ -397,11 +420,20 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           format,
           screenshotDataUrl: `data:image/jpeg;base64,${shot.toString('base64')}`,
           shotBox: existsSync(join(dir, site.file)) ? site.box : kit.screenshot.headlineBox,
+          ...(input.wordmark ? { wordmark: true } : {}),
         })
         const file = join(dir, `composition-${format}.html`)
         await writeFile(file, html)
         await writeFile(storyboardFile, JSON.stringify({ board, script, meta }, null, 2))
-        return { file: rel(file), fontsEmbedded: theme.fontsEmbedded }
+        const brand: FilmBrand = {
+          logo: kit.logo && !input.wordmark ? 'image' : 'wordmark',
+          ...(kit.logo ? { logoSize: { width: kit.logo.width, height: kit.logo.height } } : {}),
+          fallbacks: theme.fallbacks,
+          fonts: { display: kit.fonts.display.family, body: kit.fonts.body.family },
+          contrast: theme.contrast,
+          about: { headline: kit.headline, description: kit.description },
+        }
+        return { file: rel(file), fontsEmbedded: theme.fontsEmbedded, brand }
       })
 
       // Chromium pages, opened only if something still needs rendering. Scenes render in
@@ -513,11 +545,17 @@ export function createFilmAgent(opts: FilmAgentOptions) {
             gifFrom: sceneStarts[1]! + 0.6,
             sheetAt: board.scenes.map((s, i) => sceneStarts[i]! + s.dur * 0.72),
           })
+          // one still per scene, at its midpoint, for the review's strip of frames
+          const stills = await renderStills(c.page, {
+            outDir: dir,
+            at: board.scenes.map((s, i) => sceneStarts[i]! + s.dur / 2),
+          })
           return {
             film: rel(film),
             poster: rel(extras.poster),
             gif: rel(extras.gif),
             sheet: rel(extras.sheet),
+            scenes: stills.map(rel),
             qa: c.report,
           }
         })
@@ -587,6 +625,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
             sheet: out.sheet,
             kit: rel(join(dir, 'kit.json')),
             storyboard: rel(storyboardFile),
+            scenes: out.scenes,
           },
           script,
           scriptMeta: meta,
@@ -600,6 +639,8 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           ...(related ? { related } : {}),
           // a hiring film's profile was filled in from the post and the site
           ...(profile !== input.profile ? { profile } : {}),
+          brand: composed.brand,
+          facts: factsFor(kit, profile, script.insight.factId),
         }
       } finally {
         await Promise.all(pool.map((c) => c.close()))
@@ -609,6 +650,26 @@ export function createFilmAgent(opts: FilmAgentOptions) {
 }
 
 export const FORMAT_SIZES = FORMATS
+
+/**
+ * The facts a review may offer in place of the featured one: those that read on their own,
+ * featured first, then in the order the writers prefer them (the kit's), with their captions.
+ */
+export function factsFor(kit: BrandKit, profile: Profile, featured: string): ReviewFact[] {
+  const own = profile.preset === 'recruiter' || profile.preset === 'hiring'
+  const ok = quotableFacts(kit)
+  const list = [
+    ...kit.facts.filter((f) => f.id === featured),
+    ...ok.filter((f) => f.id !== featured),
+  ]
+  return list.slice(0, 12).map((f) => ({
+    id: f.id,
+    text: f.text,
+    kind: f.kind,
+    caption: captionFor(f, { own, ...(kit.job ? { job: kit.job.title } : {}) }),
+    ...(f.source?.url && /^https:\/\/\S{4,300}$/.test(f.source.url) ? { url: f.source.url } : {}),
+  }))
+}
 
 function highlightsOf(board: Storyboard): FilmResult['highlights'] {
   const insight = board.scenes.find((s) => s.kind === 'insight')

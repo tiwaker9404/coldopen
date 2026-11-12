@@ -97,6 +97,7 @@ import {
   retryRun,
 } from '../runtime/store.ts'
 import { applyEdit, precheckEdit } from '../script/checks.ts'
+import { type Review, reviewFilm } from '../script/review.ts'
 import { ProfileSchema } from '../script/types.ts'
 import { oneFilmViews, shareViews, unshare } from '../share/client.ts'
 import { attachment } from '../share/download.ts'
@@ -131,9 +132,10 @@ import { registerSecurity } from './security.ts'
 import { deleteToken, listTokens, makeToken, TOKEN_PREFIX, tokenOwner } from './tokens.ts'
 
 const FILE_NAMES =
-  /^(film-(square|landscape|portrait)\.mp4|poster\.jpg|preview\.gif|contact-sheet\.jpg|site\.jpg|kit\.json|storyboard\.json)$/
+  /^(film-(square|landscape|portrait)\.mp4|poster\.jpg|preview\.gif|contact-sheet\.jpg|site\.jpg|kit\.json|storyboard\.json|scene-[0-5]\.jpg)$/
+// scene stills are frames of a film anyone with the link can already watch
 const PUBLIC_FILES =
-  /^(film-(square|landscape|portrait)\.mp4|poster\.jpg|preview\.gif|contact-sheet\.jpg)$/
+  /^(film-(square|landscape|portrait)\.mp4|poster\.jpg|preview\.gif|contact-sheet\.jpg|scene-[0-5]\.jpg)$/
 const RunId = z.string().regex(/^run_[0-9A-Z]{26}$/, 'not a film id')
 
 export { OUTREACH, type OutreachStatus } from '../outreach/followup.ts'
@@ -468,6 +470,46 @@ export async function buildApi({
   }
   const limited = (reply: FastifyReply, message: string) =>
     reply.status(429).send({ error: { code: 'daily_limit', message } })
+
+  /**
+   * A finished film's review: every scene with what a founder would find odd and its fix.
+   * Reads the sender's 10 films before it, to spot built-in lines they all share.
+   */
+  const reviewOf = async (run: FilmRow): Promise<Review | null> => {
+    const o = run.output
+    if (run.status !== 'succeeded' || !o?.script) return null
+    const recent = await sql<
+      {
+        company: string | null
+        script: FilmResult['script'] | null
+        scriptMeta: FilmResult['scriptMeta'] | null
+      }[]
+    >`
+      select output->>'company' as company, output->'script' as script,
+        output->'scriptMeta' as script_meta
+      from runs
+      where agent = 'film' and coalesce(owner, 'team') = ${run.owner ?? 'team'}
+        and status = 'succeeded'
+        and id < ${run.id} and output ? 'script'
+      order by id desc limit 10`
+    return reviewFilm(
+      {
+        company: o.company,
+        profile: o.profile ?? run.input.profile,
+        script: o.script,
+        scriptMeta: o.scriptMeta,
+        qa: o.qa,
+        highlights: o.highlights ?? null,
+        ...(run.input.proof ? { proof: run.input.proof } : {}),
+        brand: o.brand ?? null,
+        facts: o.facts ?? null,
+        ...(run.input.wordmark ? { wordmark: true } : {}),
+      },
+      recent
+        .filter((r) => r.script && r.company)
+        .map((r) => ({ company: r.company!, script: r.script!, scriptMeta: r.scriptMeta })),
+    )
+  }
 
   /**
    * Takes n films from today's allowances: the person's, their network's (so clearing cookies
@@ -1486,10 +1528,11 @@ export async function buildApi({
     async (req, reply) => {
       const run = await ownFilm(req.params.id, req.owner)
       if (!run) return notFound(reply)
-      const [steps, timeline, views] = await Promise.all([
+      const [steps, timeline, views, review] = await Promise.all([
         getSteps(sql, run.id),
         getLog(sql, run.id),
         summariesFor([run]),
+        reviewOf(run),
       ])
       return {
         ...filmDto(run, publicUrl, views.get(run.id)),
@@ -1499,6 +1542,10 @@ export async function buildApi({
         highlights: run.output?.highlights ?? null,
         homework: run.output?.homework ?? null,
         qa: run.output?.qa ?? null,
+        /** each scene with what a founder would find odd and its fix; null until it's finished */
+        review,
+        /** one still per scene, for the review's filmstrip (films made since the review) */
+        scenes: run.output?.files.scenes?.map((f) => `/f/${run.id}/${f.split('/').pop()}`) ?? null,
         render: run.output?.render ?? null,
         steps: steps.map((s) => ({
           key: s.key,
@@ -1543,6 +1590,29 @@ export async function buildApi({
     },
   )
 
+  app.get(
+    '/v1/films/:id/review',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Review a finished film scene by scene before sending it',
+        description:
+          'Each of the six scenes, with plain flags for anything a founder would find odd and the fix for each: `fact_out_of_context` (the quote leans on something not on screen; fix: another fact), `proof_unclear` (a result that doesn’t say what you did, what changed or where; fix: another proof), `no_logo` (fix: their name as the logo), `font_fallback`, `headline_cut`, `low_contrast`, `templated_line` (a built-in line 2 or more of your last 10 films share) and `job_words`. `ready` is true when nothing is flagged. Apply a fix with POST /v1/films/:id/edit.',
+        params: z.object({ id: RunId }),
+      },
+    },
+    async (req, reply) => {
+      const run = await ownFilm(req.params.id, req.owner)
+      if (!run) return notFound(reply)
+      const review = await reviewOf(run)
+      if (!review)
+        return reply.status(409).send({
+          error: { code: 'not_finished', message: 'only a finished film can be reviewed' },
+        })
+      return review
+    },
+  )
+
   app.post(
     '/v1/films/:id/retry',
     {
@@ -1574,7 +1644,7 @@ export async function buildApi({
         tags: ['films'],
         summary: 'Re-render a film with lines you rewrote',
         description:
-          "Makes a new film from the same company and profile with your wording. Lines you leave out stay as they were. Every number must still come from your profile or the company, and each line must fit on screen. Doesn't count against the daily limit; up to 5 edits per film.",
+          "Makes a new film from the same company and profile with your wording. Lines you leave out stay as they were. Every number must still come from your profile or the company, and each line must fit on screen. The review's fixes come here too: `factId` quotes another of the film's facts (from GET /v1/films/:id/review), `proof` shows these results (indices into your profile's proof), and `wordmark` shows their name as the logo. Doesn't count against the daily limit; up to 5 edits per film.",
         params: z.object({ id: RunId }),
         body: z
           .object({
@@ -1584,6 +1654,9 @@ export async function buildApi({
             headline: z.string().max(200),
             points: z.array(z.string().max(200)).max(3),
             cta: z.string().max(200),
+            factId: z.string().min(1).max(40),
+            proof: z.array(z.number().int().min(0)).min(1).max(3),
+            wordmark: z.literal(true),
           })
           .partial(),
       },
@@ -1595,8 +1668,31 @@ export async function buildApi({
         return reply
           .status(409)
           .send({ error: { code: 'not_finished', message: 'only a finished film can be edited' } })
-      const script = applyEdit(run.output.script, req.body)
       const o = run.output
+      const { factId, proof, wordmark, ...lines } = req.body
+      const fact = factId ? o.facts?.find((f) => f.id === factId) : undefined
+      if (factId && !fact)
+        return reply.status(422).send({
+          error: { code: 'fact_unknown', message: "that fact isn't one this film can quote" },
+        })
+      const profileProof = (o.profile ?? run.input.profile).proof
+      if (
+        proof &&
+        (new Set(proof).size !== proof.length || proof.some((i) => i >= profileProof.length))
+      )
+        return reply.status(422).send({
+          error: {
+            code: 'proof_unknown',
+            message: `pick up to 3 different results from your profile (0 to ${profileProof.length - 1})`,
+          },
+        })
+      const edited = applyEdit(o.script, lines)
+      // the results stay the ones the film showed, unless the review swapped them
+      const script = {
+        ...edited,
+        insight: { ...edited.insight, factId: fact?.id ?? edited.insight.factId },
+        proof: proof ?? run.input.proof ?? edited.proof,
+      }
       const known = [
         o.script.hook,
         o.script.noticed,
@@ -1618,7 +1714,13 @@ export async function buildApi({
       if ((edits?.n ?? 0) >= 5)
         return limited(reply, 'That film has been edited 5 times. Make a new film to keep going.')
       const { proof: _picked, ...rest } = run.input
-      const input = FilmInputSchema.parse({ ...rest, script, editOf: root })
+      const input = FilmInputSchema.parse({
+        ...rest,
+        script,
+        editOf: root,
+        ...(fact ? { fact: { id: fact.id, text: fact.text } } : {}),
+        ...(wordmark ? { wordmark: true } : {}),
+      })
       const r = await createRun(sql, { agent: 'film', input, owner: req.owner })
       kick()
       return reply.status(202).send(filmDto(r.run as FilmRow, publicUrl))

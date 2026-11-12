@@ -22,7 +22,7 @@ concurrency:
 jobs:
   eval:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
