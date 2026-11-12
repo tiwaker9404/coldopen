@@ -56,8 +56,14 @@ export const executionDuration = new client.Histogram({
   registers: [registry],
 })
 
-/** Read from Postgres at scrape time so every replica reports the same truth. */
+/**
+ * Read from Postgres at scrape time so every replica reports the same truth. A second API in the
+ * same process (a test that builds a hosted one beside the self-hosted one) takes the gauges over
+ * rather than failing to register them twice.
+ */
 export function registerQueueGauges(sql: Sql): void {
+  for (const name of ['coldopen_runs', 'coldopen_queue_lag_seconds'])
+    registry.removeSingleMetric(name)
   new client.Gauge({
     name: 'coldopen_runs',
     help: 'Runs by status',

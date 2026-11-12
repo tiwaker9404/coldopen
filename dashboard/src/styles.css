@@ -1561,6 +1561,11 @@ span.error {
   outline: none;
 }
 
+/* a form inside a drawer lays its rows out as the drawer's own, so the sticky footer still sticks */
+.drawer-form {
+  display: contents;
+}
+
 @keyframes in {
   from {
     transform: translateX(24px);
@@ -1730,6 +1735,31 @@ span.error {
   font-family: var(--font);
   font-size: 14.5px;
   line-height: 1.6;
+}
+
+/* where the GIF goes in a LinkedIn message: you attach it there, with the downloads beside it */
+.attach {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+  vertical-align: middle;
+  white-space: normal;
+}
+
+.attach-slot {
+  background: var(--stock);
+  color: var(--stock-ink);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-weight: 650;
+}
+
+.attach .button.small {
+  min-height: 30px;
+  padding: 3px 10px;
+  font-size: 13px;
 }
 
 .people {

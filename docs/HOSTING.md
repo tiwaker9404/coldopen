@@ -150,7 +150,7 @@ The first build takes about 10 minutes (it installs Chromium). Then open the add
 
 ## Limits
 
-Defaults you can change (in Render's **Environment**, or the server's `.env`): `ANON_DAILY_FILMS` (1), `USER_DAILY_FILMS` (5), `IP_DAILY_FILMS` (8), `GLOBAL_DAILY_FILMS` (80), `DAILY_DRAFTS` (6). The global cap keeps the app inside Groq's free daily tokens and Cloudflare's 1,000 free writes a day.
+Defaults you can change (in Render's **Environment**, or the server's `.env`): `ANON_DAILY_FILMS` (1), `USER_DAILY_FILMS` (5), `IP_DAILY_FILMS` (8), `GLOBAL_DAILY_FILMS` (80), `DAILY_DRAFTS` (6, résumé drafts), `DAILY_REWRITES` (10, "Write it again" on a job seeker's messages). The global cap keeps the app inside Groq's free daily tokens and Cloudflare's 1,000 free writes a day.
 
 **No limits for you.** Set `UNLIMITED_GITHUB_USERS` to your GitHub username, or the Gmail address you sign in to Google with (several, comma-separated). Signed in as that account, you skip every daily limit, can make batches of any size, and your films are kept until you delete them. Groq's own rate limits still apply; when they're hit, films are written by the built-in writer.
 

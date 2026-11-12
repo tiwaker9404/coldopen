@@ -2418,7 +2418,7 @@ export async function buildApi({
         tags: ['films'],
         summary: "Have the model write a film's messages again, from your homework",
         description:
-          "For a job seeker's film whose drafts were written before today's checks or before the homework you saved (the messages come back with `rewrite: true`). One model call writes the connection note, the message once they accept, InMail and the email again, checked as always; any draft that still fails is its template. Nothing is sent. Returns the messages, as GET /v1/films/:id/messages does.",
+          "For a job seeker's film whose drafts were written before today's checks or before the homework you saved (the messages come back with `rewrite: true`). One model call writes the connection note, the message once they accept, InMail and the email again, checked as always; any draft that still fails is its template. Job seekers only. On the hosted app it has its own daily limit (10 by default, `DAILY_REWRITES`), apart from résumé drafts, and an attempt the model couldn't finish isn't counted. Nothing is sent. Returns the messages, as GET /v1/films/:id/messages does.",
         params: z.object({ id: RunId }),
       },
     },
@@ -2427,11 +2427,12 @@ export async function buildApi({
       if (!run?.output || run.status !== 'succeeded') return notFound(reply)
       const row = run as FilmRow
       const profile = run.output.profile ?? run.input.profile
-      if (profile.preset !== 'candidate' && profile.preset !== 'sales')
+      // only a job seeker's drafts are ever offered again (messagesFor's `rewrite`)
+      if (profile.preset !== 'candidate')
         return reply.status(409).send({
           error: {
             code: 'no_model_drafts',
-            message: 'only job seekers and sellers get model-written messages',
+            message: "only a job seeker's messages can be written again",
           },
         })
       if (!llm)
@@ -2441,10 +2442,12 @@ export async function buildApi({
             message: 'writing the messages again needs a model, so the templates are shown instead',
           },
         })
-      if (!unlimited(req) && !(await consume(sql, `rewrites:${req.owner}`, cfg.DAILY_DRAFTS)))
+      // its own daily count, apart from résumé drafts: rewriting is a smaller, more frequent ask
+      const counted = !unlimited(req)
+      if (counted && !(await consume(sql, `rewrites:${req.owner}`, cfg.DAILY_REWRITES)))
         return limited(
           reply,
-          `That's ${cfg.DAILY_DRAFTS} rewrites today. The template drafts are still here, or come back tomorrow.`,
+          `That's ${cfg.DAILY_REWRITES} rewrites today. The template drafts are still here, or come back tomorrow.`,
         )
       const [research] = await sql<
         { output: { facts?: { text: string; kind: string }[] } | null }[]
@@ -2493,6 +2496,8 @@ export async function buildApi({
         )
       } catch (err) {
         req.log.warn({ err }, 'messages rewrite failed')
+        // nothing was written, so it doesn't count against today's rewrites
+        if (counted) await refund(sql, `rewrites:${req.owner}`)
         return reply.status(503).send({
           error: {
             code: 'model_busy',

@@ -144,473 +144,477 @@ export function ProfileEditor({
     // biome-ignore lint/a11y/noStaticElementInteractions: clicking the backdrop closes; Escape and the Close button do the same
     // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users close with Escape or the Close button
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && close.current()}>
-      <form
-        ref={form}
-        className="drawer editor"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Your profile"
-        noValidate
-        onSubmit={(e) => {
-          e.preventDefault()
-          submit()
-        }}
-      >
-        <header className="drawer-head">
-          <div>
-            <h2>{profile ? 'Your profile' : draft ? 'Check your profile' : 'Your profile'}</h2>
-            <p>What every film says about you, in your own words.</p>
-          </div>
-          <button type="button" className="x" onClick={() => close.current()} aria-label="Close">
-            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-              <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.6" />
-            </svg>
-          </button>
-        </header>
-
-        {!profile && !draft && (
-          <details className="redraft">
-            <summary>Start from a résumé instead</summary>
-            <ResumeDraft
-              hosted={false}
-              onDraft={(p, n) => {
-                setD(p)
-                setNote(n)
-                setErrors({})
-              }}
-            />
-          </details>
-        )}
-        {note && <p className="note">{note}</p>}
-
-        <div className="switch" role="radiogroup" aria-label="What the films are for">
-          {(
-            [
-              ['candidate', 'Applying for jobs'],
-              ['sales', 'Selling a product'],
-            ] as const
-          ).map(([k, label]) => (
-            // biome-ignore lint/a11y/useSemanticElements: radio-styled buttons are the WAI-ARIA pattern for this control
-            <button
-              key={k}
-              type="button"
-              role="radio"
-              aria-checked={d.preset === k}
-              onClick={() => set({ preset: k })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <fieldset>
-          <legend>You</legend>
-          <div className="pair">
-            <label htmlFor={fid('sender.name')}>
-              Name
-              <Text
-                path="sender.name"
-                error={err('sender.name')}
-                value={d.sender.name}
-                onValue={(v) => set({ sender: { ...d.sender, name: v } }, 'sender.name')}
-              />
-            </label>
-            <label htmlFor={fid(job ? 'sender.role' : 'sender.company')}>
-              {job ? 'Role you want' : 'Company'}
-              <Text
-                path={job ? 'sender.role' : 'sender.company'}
-                error={err(job ? 'sender.role' : 'sender.company')}
-                value={(job ? d.sender.role : d.sender.company) ?? ''}
-                onValue={(v) =>
-                  set(
-                    { sender: { ...d.sender, ...(job ? { role: v } : { company: v }) } },
-                    job ? 'sender.role' : 'sender.company',
-                  )
-                }
-              />
-            </label>
-          </div>
-          <label htmlFor={fid('offer')}>
-            {job ? 'What you bring, in one line' : 'What you offer, in one line'}
-            <Text
-              path="offer"
-              max={MAX.offer}
-              error={err('offer')}
-              value={d.offer}
-              placeholder={
-                job
-                  ? 'An analyst who turns messy data into dashboards leaders use'
-                  : 'Product analytics that shows which features keep customers'
-              }
-              onValue={(v) => set({ offer: v }, 'offer')}
-            />
-          </label>
-        </fieldset>
-
-        <fieldset>
-          <legend>What the film can say about you</legend>
-          <p className="hint">
-            2 to 6 short lines. The script rewords these for each company and adds nothing new.
-          </p>
-          {listError('points')}
-          {d.points.map((p, i) => (
-            <div className="listrow" key={`p${i.toString()}`}>
-              <Text
-                path={`points.${i}`}
-                max={MAX.point}
-                error={err(`points.${i}`)}
-                aria-label={`Point ${i + 1}`}
-                value={p}
-                placeholder={i === 0 ? 'Built dashboards a leadership team used weekly' : ''}
-                onValue={(v) =>
-                  set({ points: d.points.map((x, j) => (j === i ? v : x)) }, `points.${i}`)
-                }
-              />
-              {d.points.length > 2 && (
-                <button
-                  type="button"
-                  className="link"
-                  aria-label={`Remove point ${i + 1}`}
-                  onClick={() => set({ points: d.points.filter((_, j) => j !== i) }, 'points')}
-                >
-                  Remove
-                </button>
-              )}
+      {/* the dialog is a div, as the film panel's drawer is: a form can't take role=dialog */}
+      <div className="drawer editor" role="dialog" aria-modal="true" aria-label="Your profile">
+        <form
+          ref={form}
+          className="drawer-form"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault()
+            submit()
+          }}
+        >
+          <header className="drawer-head">
+            <div>
+              <h2>{profile ? 'Your profile' : draft ? 'Check your profile' : 'Your profile'}</h2>
+              <p>What every film says about you, in your own words.</p>
             </div>
-          ))}
-          {d.points.length < 6 && (
-            <button
-              type="button"
-              className="link"
-              onClick={() => set({ points: [...d.points, ''] })}
-            >
-              Add a line
+            <button type="button" className="x" onClick={() => close.current()} aria-label="Close">
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.6" />
+              </svg>
             </button>
+          </header>
+
+          {!profile && !draft && (
+            <details className="redraft">
+              <summary>Start from a résumé instead</summary>
+              <ResumeDraft
+                hosted={false}
+                onDraft={(p, n) => {
+                  setD(p)
+                  setNote(n)
+                  setErrors({})
+                }}
+              />
+            </details>
           )}
-        </fieldset>
+          {note && <p className="note">{note}</p>}
 
-        <fieldset>
-          <legend>Skills and tools</legend>
-          <p className="hint">
-            Comma-separated, like SQL, Salesforce, Kubernetes. Fit check counts a job’s requirement
-            as answered when it names one of these.
-          </p>
-          <Text
-            path="skills"
-            error={err('skills')}
-            aria-label="Skills and tools"
-            value={(d.skills ?? []).join(', ')}
-            onValue={(v) =>
-              set(
-                {
-                  skills: v
-                    .split(',')
-                    .map((x) => x.trimStart())
-                    .slice(0, 40),
-                },
-                'skills',
-              )
-            }
-            placeholder="SQL, Python, Salesforce"
-          />
-        </fieldset>
-
-        {job && (
-          <fieldset>
-            <legend>Schools</legend>
-            <p className="hint">
-              Comma-separated, like Duke University. Who to reach adds alumni at each company you
-              film: they answer each other far more often than strangers.
-            </p>
-            <Text
-              path="schools"
-              error={err('schools')}
-              aria-label="Schools"
-              value={(d.schools ?? []).join(', ')}
-              onValue={(v) =>
-                set(
-                  {
-                    schools: v
-                      .split(',')
-                      .map((x) => x.trimStart())
-                      .slice(0, 4),
-                  },
-                  'schools',
-                )
-              }
-              placeholder="Duke University, Vellore Institute of Technology"
-            />
-          </fieldset>
-        )}
-
-        <fieldset>
-          <legend>Results with numbers</legend>
-          <p className="hint">
-            Shown word for word. Each film shows the 3 that fit the company best. Say what you did
-            under each, so someone who never saw your résumé knows what you built.
-          </p>
-          {listError('proof')}
-          <div className="proof proof-head" aria-hidden="true">
-            <span>Number</span>
-            <span>What it measures</span>
-            <span>Where</span>
+          <div className="switch" role="radiogroup" aria-label="What the films are for">
+            {(
+              [
+                ['candidate', 'Applying for jobs'],
+                ['sales', 'Selling a product'],
+              ] as const
+            ).map(([k, label]) => (
+              // biome-ignore lint/a11y/useSemanticElements: radio-styled buttons are the WAI-ARIA pattern for this control
+              <button
+                key={k}
+                type="button"
+                role="radio"
+                aria-checked={d.preset === k}
+                onClick={() => set({ preset: k })}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-          {d.proof.map((p, i) => (
-            <div className="proof" key={`r${i.toString()}`}>
-              <Text
-                path={`proof.${i}.value`}
-                max={MAX.proofValue}
-                error={err(`proof.${i}.value`)}
-                aria-label={`Result ${i + 1}: number`}
-                placeholder="31%"
-                value={p.value}
-                onValue={(v) => setProof(i, 'value', v)}
-              />
-              <Text
-                path={`proof.${i}.label`}
-                max={MAX.proofLabel}
-                error={err(`proof.${i}.label`)}
-                aria-label={`Result ${i + 1}: what it measures`}
-                placeholder="faster month-end close"
-                value={p.label}
-                onValue={(v) => setProof(i, 'label', v)}
-              />
-              <Text
-                path={`proof.${i}.where`}
-                max={MAX.proofWhere}
-                error={err(`proof.${i}.where`)}
-                aria-label={`Result ${i + 1}: where`}
-                placeholder="Acme Corp"
-                value={p.where ?? ''}
-                onValue={(v) => setProof(i, 'where', v)}
-              />
-              <label className="proof-did" htmlFor={fid(`proof.${i}.did`)}>
-                What you did
+
+          <fieldset>
+            <legend>You</legend>
+            <div className="pair">
+              <label htmlFor={fid('sender.name')}>
+                Name
                 <Text
-                  path={`proof.${i}.did`}
-                  aria-label={`Result ${i + 1}: what you did`}
-                  max={MAX.proofDid}
-                  error={err(`proof.${i}.did`)}
-                  placeholder="Built containerized ETL with Docker and PostgreSQL"
-                  value={p.did ?? ''}
-                  onValue={(v) => setProof(i, 'did', v)}
+                  path="sender.name"
+                  error={err('sender.name')}
+                  value={d.sender.name}
+                  onValue={(v) => set({ sender: { ...d.sender, name: v } }, 'sender.name')}
+                />
+              </label>
+              <label htmlFor={fid(job ? 'sender.role' : 'sender.company')}>
+                {job ? 'Role you want' : 'Company'}
+                <Text
+                  path={job ? 'sender.role' : 'sender.company'}
+                  error={err(job ? 'sender.role' : 'sender.company')}
+                  value={(job ? d.sender.role : d.sender.company) ?? ''}
+                  onValue={(v) =>
+                    set(
+                      { sender: { ...d.sender, ...(job ? { role: v } : { company: v }) } },
+                      job ? 'sender.role' : 'sender.company',
+                    )
+                  }
                 />
               </label>
             </div>
-          ))}
-          {d.proof.length < MAX_PROOF && (
-            <button
-              type="button"
-              className="link"
-              onClick={() => set({ proof: [...d.proof, { value: '', label: '', where: '' }] })}
-            >
-              Add a result
-            </button>
-          )}
-        </fieldset>
+            <label htmlFor={fid('offer')}>
+              {job ? 'What you bring, in one line' : 'What you offer, in one line'}
+              <Text
+                path="offer"
+                max={MAX.offer}
+                error={err('offer')}
+                value={d.offer}
+                placeholder={
+                  job
+                    ? 'An analyst who turns messy data into dashboards leaders use'
+                    : 'Product analytics that shows which features keep customers'
+                }
+                onValue={(v) => set({ offer: v }, 'offer')}
+              />
+            </label>
+          </fieldset>
 
-        <fieldset>
-          <legend>Things you built</legend>
-          <p className="hint">
-            Projects with a link. Each film puts the one closest to the company on its share page
-            and in the email, so they can open real work in one click.
-          </p>
-          {listError('projects')}
-          {projects.map((x, i) => {
-            const ask = needsLine(x) && !err(`projects.${i}.line`)
-            return (
-              <div className="project" key={`j${i.toString()}`}>
+          <fieldset>
+            <legend>What the film can say about you</legend>
+            <p className="hint">
+              2 to 6 short lines. The script rewords these for each company and adds nothing new.
+            </p>
+            {listError('points')}
+            {d.points.map((p, i) => (
+              <div className="listrow" key={`p${i.toString()}`}>
                 <Text
-                  path={`projects.${i}.name`}
-                  max={MAX.projectName}
-                  error={err(`projects.${i}.name`)}
-                  aria-label={`Project ${i + 1}: name`}
-                  placeholder="integration-triage"
-                  value={x.name}
-                  onValue={(v) => setProject(i, 'name', v)}
-                />
-                <Text
-                  path={`projects.${i}.url`}
-                  error={err(`projects.${i}.url`)}
-                  aria-label={`Project ${i + 1}: link`}
-                  placeholder="https://github.com/you/project"
-                  inputMode="url"
-                  value={x.url}
-                  onValue={(v) => setProject(i, 'url', v)}
-                />
-                <Text
-                  wrap="wide"
-                  className={ask ? 'needs' : undefined}
-                  path={`projects.${i}.line`}
-                  max={MAX.projectLine}
-                  error={err(`projects.${i}.line`)}
-                  hint={ask ? 'No description on GitHub. Add one line on what it does.' : undefined}
-                  aria-label={`Project ${i + 1}: what it does`}
-                  placeholder={
-                    ask
-                      ? 'Add one line: what it does'
-                      : 'Diagnoses failing API calls from logs and drafts the reply'
+                  path={`points.${i}`}
+                  max={MAX.point}
+                  error={err(`points.${i}`)}
+                  aria-label={`Point ${i + 1}`}
+                  value={p}
+                  placeholder={i === 0 ? 'Built dashboards a leadership team used weekly' : ''}
+                  onValue={(v) =>
+                    set({ points: d.points.map((x, j) => (j === i ? v : x)) }, `points.${i}`)
                   }
-                  value={x.line}
-                  onValue={(v) => setProject(i, 'line', v)}
                 />
-                <button
-                  type="button"
-                  className="link wide"
-                  aria-label={`Remove project ${i + 1}`}
-                  onClick={() => set({ projects: projects.filter((_, j) => j !== i) }, 'projects')}
-                >
-                  Remove
-                </button>
+                {d.points.length > 2 && (
+                  <button
+                    type="button"
+                    className="link"
+                    aria-label={`Remove point ${i + 1}`}
+                    onClick={() => set({ points: d.points.filter((_, j) => j !== i) }, 'points')}
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
-            )
-          })}
-          <div className="project-add">
-            <GitHubRepos
-              projects={projects}
-              onChange={(next) => set({ projects: next }, 'projects')}
-            />
-            {projects.length < MAX_PROJECTS && (
+            ))}
+            {d.points.length < 6 && (
               <button
                 type="button"
                 className="link"
-                onClick={() => set({ projects: [...projects, { name: '', url: '', line: '' }] })}
+                onClick={() => set({ points: [...d.points, ''] })}
               >
-                Add one by hand
+                Add a line
               </button>
             )}
-          </div>
-        </fieldset>
+          </fieldset>
 
-        <fieldset>
-          <legend>Something you built</legend>
-          <p className="hint">
-            If you built the tool that made this film, say so. Messages and the end card can mention
-            it.
-          </p>
-          <div className="project">
+          <fieldset>
+            <legend>Skills and tools</legend>
+            <p className="hint">
+              Comma-separated, like SQL, Salesforce, Kubernetes. Fit check counts a job’s
+              requirement as answered when it names one of these.
+            </p>
             <Text
-              path="creator.name"
-              max={MAX.creatorName}
-              error={err('creator.name')}
-              aria-label="What you built: name"
-              placeholder="coldopen"
-              value={creator.name}
-              onValue={(v) => setCreator('name', v)}
+              path="skills"
+              error={err('skills')}
+              aria-label="Skills and tools"
+              value={(d.skills ?? []).join(', ')}
+              onValue={(v) =>
+                set(
+                  {
+                    skills: v
+                      .split(',')
+                      .map((x) => x.trimStart())
+                      .slice(0, 40),
+                  },
+                  'skills',
+                )
+              }
+              placeholder="SQL, Python, Salesforce"
             />
-            <Text
-              path="creator.url"
-              error={err('creator.url')}
-              aria-label="What you built: link"
-              placeholder="https://github.com/you/tool"
-              inputMode="url"
-              value={creator.url}
-              onValue={(v) => setCreator('url', v)}
-            />
-            <Text
-              wrap="wide"
-              path="creator.line"
-              max={MAX.creatorLine}
-              error={err('creator.line')}
-              aria-label="What you built: one line on what it is"
-              placeholder="I built the tool that made this film"
-              value={creator.line}
-              onValue={(v) => setCreator('line', v)}
-            />
-          </div>
-        </fieldset>
+          </fieldset>
 
-        <fieldset>
-          <legend>How the film ends</legend>
-          <div className="pair">
-            <label htmlFor={fid('cta.line')}>
-              The ask
+          {job && (
+            <fieldset>
+              <legend>Schools</legend>
+              <p className="hint">
+                Comma-separated, like Duke University. Who to reach adds alumni at each company you
+                film: they answer each other far more often than strangers.
+              </p>
               <Text
-                path="cta.line"
-                max={MAX.ctaLine}
-                error={err('cta.line')}
-                value={d.cta.line}
-                onValue={(v) => set({ cta: { ...d.cta, line: v } }, 'cta.line')}
+                path="schools"
+                error={err('schools')}
+                aria-label="Schools"
+                value={(d.schools ?? []).join(', ')}
+                onValue={(v) =>
+                  set(
+                    {
+                      schools: v
+                        .split(',')
+                        .map((x) => x.trimStart())
+                        .slice(0, 4),
+                    },
+                    'schools',
+                  )
+                }
+                placeholder="Duke University, Vellore Institute of Technology"
               />
-            </label>
-            <label htmlFor={fid('cta.contact')}>
-              Email or link
-              <Text
-                path="cta.contact"
-                max={MAX.ctaContact}
-                error={err('cta.contact')}
-                value={d.cta.contact}
-                placeholder="you@example.com"
-                onValue={(v) => set({ cta: { ...d.cta, contact: v } }, 'cta.contact')}
-              />
-            </label>
-          </div>
-          <label htmlFor={fid('cta.book')}>
-            <span>
-              Booking link{' '}
-              <small>optional: Calendly or Cal.com, the main button on your film’s page</small>
-            </span>
-            <Text
-              path="cta.book"
-              error={err('cta.book')}
-              inputMode="url"
-              value={d.cta.book ?? ''}
-              placeholder="https://cal.com/you/15min"
-              onValue={(v) => {
-                const { book: _old, ...rest } = d.cta
-                set({ cta: v ? { ...rest, book: v } : rest }, 'cta.book')
-              }}
-            />
-          </label>
-          <label htmlFor={fid('name')}>
-            <span>
-              Profile name <small>shown when you have more than one</small>
-            </span>
-            <Text
-              path="name"
-              max={MAX.name}
-              error={err('name')}
-              value={name}
-              placeholder={[d.sender.name, job ? d.sender.role : d.sender.company]
-                .filter(Boolean)
-                .join(', ')}
-              onValue={(v) => {
-                setName(v)
-                setErrors((e) => clearField(e, 'name'))
-              }}
-            />
-          </label>
-        </fieldset>
-
-        {summary && Object.keys(errors).length > 0 && (
-          <p className="error" role="alert">
-            {summary}
-          </p>
-        )}
-        <ErrorNote error={save.error} />
-        <div className="drawer-foot">
-          {leaving ? (
-            <div className="leave">
-              <b>Discard your changes?</b>
-              <button type="button" className="danger" onClick={onClose}>
-                Discard
-              </button>
-              <button type="button" className="link" ref={keep} onClick={() => setLeaving(false)}>
-                Keep editing
-              </button>
-            </div>
-          ) : (
-            <>
-              <button type="submit" className="primary" disabled={save.isPending}>
-                {save.isPending ? 'Saving…' : 'Save profile'}
-              </button>
-              <button type="button" className="link" onClick={() => close.current()}>
-                Cancel
-              </button>
-            </>
+            </fieldset>
           )}
-        </div>
-      </form>
+
+          <fieldset>
+            <legend>Results with numbers</legend>
+            <p className="hint">
+              Shown word for word. Each film shows the 3 that fit the company best. Say what you did
+              under each, so someone who never saw your résumé knows what you built.
+            </p>
+            {listError('proof')}
+            <div className="proof proof-head" aria-hidden="true">
+              <span>Number</span>
+              <span>What it measures</span>
+              <span>Where</span>
+            </div>
+            {d.proof.map((p, i) => (
+              <div className="proof" key={`r${i.toString()}`}>
+                <Text
+                  path={`proof.${i}.value`}
+                  max={MAX.proofValue}
+                  error={err(`proof.${i}.value`)}
+                  aria-label={`Result ${i + 1}: number`}
+                  placeholder="31%"
+                  value={p.value}
+                  onValue={(v) => setProof(i, 'value', v)}
+                />
+                <Text
+                  path={`proof.${i}.label`}
+                  max={MAX.proofLabel}
+                  error={err(`proof.${i}.label`)}
+                  aria-label={`Result ${i + 1}: what it measures`}
+                  placeholder="faster month-end close"
+                  value={p.label}
+                  onValue={(v) => setProof(i, 'label', v)}
+                />
+                <Text
+                  path={`proof.${i}.where`}
+                  max={MAX.proofWhere}
+                  error={err(`proof.${i}.where`)}
+                  aria-label={`Result ${i + 1}: where`}
+                  placeholder="Acme Corp"
+                  value={p.where ?? ''}
+                  onValue={(v) => setProof(i, 'where', v)}
+                />
+                <label className="proof-did" htmlFor={fid(`proof.${i}.did`)}>
+                  What you did
+                  <Text
+                    path={`proof.${i}.did`}
+                    aria-label={`Result ${i + 1}: what you did`}
+                    max={MAX.proofDid}
+                    error={err(`proof.${i}.did`)}
+                    placeholder="Built containerized ETL with Docker and PostgreSQL"
+                    value={p.did ?? ''}
+                    onValue={(v) => setProof(i, 'did', v)}
+                  />
+                </label>
+              </div>
+            ))}
+            {d.proof.length < MAX_PROOF && (
+              <button
+                type="button"
+                className="link"
+                onClick={() => set({ proof: [...d.proof, { value: '', label: '', where: '' }] })}
+              >
+                Add a result
+              </button>
+            )}
+          </fieldset>
+
+          <fieldset>
+            <legend>Things you built</legend>
+            <p className="hint">
+              Projects with a link. Each film puts the one closest to the company on its share page
+              and in the email, so they can open real work in one click.
+            </p>
+            {listError('projects')}
+            {projects.map((x, i) => {
+              const ask = needsLine(x) && !err(`projects.${i}.line`)
+              return (
+                <div className="project" key={`j${i.toString()}`}>
+                  <Text
+                    path={`projects.${i}.name`}
+                    max={MAX.projectName}
+                    error={err(`projects.${i}.name`)}
+                    aria-label={`Project ${i + 1}: name`}
+                    placeholder="integration-triage"
+                    value={x.name}
+                    onValue={(v) => setProject(i, 'name', v)}
+                  />
+                  <Text
+                    path={`projects.${i}.url`}
+                    error={err(`projects.${i}.url`)}
+                    aria-label={`Project ${i + 1}: link`}
+                    placeholder="https://github.com/you/project"
+                    inputMode="url"
+                    value={x.url}
+                    onValue={(v) => setProject(i, 'url', v)}
+                  />
+                  <Text
+                    wrap="wide"
+                    className={ask ? 'needs' : undefined}
+                    path={`projects.${i}.line`}
+                    max={MAX.projectLine}
+                    error={err(`projects.${i}.line`)}
+                    hint={
+                      ask ? 'No description on GitHub. Add one line on what it does.' : undefined
+                    }
+                    aria-label={`Project ${i + 1}: what it does`}
+                    placeholder={
+                      ask
+                        ? 'Add one line: what it does'
+                        : 'Diagnoses failing API calls from logs and drafts the reply'
+                    }
+                    value={x.line}
+                    onValue={(v) => setProject(i, 'line', v)}
+                  />
+                  <button
+                    type="button"
+                    className="link wide"
+                    aria-label={`Remove project ${i + 1}`}
+                    onClick={() =>
+                      set({ projects: projects.filter((_, j) => j !== i) }, 'projects')
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+              )
+            })}
+            <div className="project-add">
+              <GitHubRepos
+                projects={projects}
+                onChange={(next) => set({ projects: next }, 'projects')}
+              />
+              {projects.length < MAX_PROJECTS && (
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => set({ projects: [...projects, { name: '', url: '', line: '' }] })}
+                >
+                  Add one by hand
+                </button>
+              )}
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Something you built</legend>
+            <p className="hint">
+              If you built the tool that made this film, say so. Messages and the end card can
+              mention it.
+            </p>
+            <div className="project">
+              <Text
+                path="creator.name"
+                max={MAX.creatorName}
+                error={err('creator.name')}
+                aria-label="What you built: name"
+                placeholder="coldopen"
+                value={creator.name}
+                onValue={(v) => setCreator('name', v)}
+              />
+              <Text
+                path="creator.url"
+                error={err('creator.url')}
+                aria-label="What you built: link"
+                placeholder="https://github.com/you/tool"
+                inputMode="url"
+                value={creator.url}
+                onValue={(v) => setCreator('url', v)}
+              />
+              <Text
+                wrap="wide"
+                path="creator.line"
+                max={MAX.creatorLine}
+                error={err('creator.line')}
+                aria-label="What you built: one line on what it is"
+                placeholder="I built the tool that made this film"
+                value={creator.line}
+                onValue={(v) => setCreator('line', v)}
+              />
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>How the film ends</legend>
+            <div className="pair">
+              <label htmlFor={fid('cta.line')}>
+                The ask
+                <Text
+                  path="cta.line"
+                  max={MAX.ctaLine}
+                  error={err('cta.line')}
+                  value={d.cta.line}
+                  onValue={(v) => set({ cta: { ...d.cta, line: v } }, 'cta.line')}
+                />
+              </label>
+              <label htmlFor={fid('cta.contact')}>
+                Email or link
+                <Text
+                  path="cta.contact"
+                  max={MAX.ctaContact}
+                  error={err('cta.contact')}
+                  value={d.cta.contact}
+                  placeholder="you@example.com"
+                  onValue={(v) => set({ cta: { ...d.cta, contact: v } }, 'cta.contact')}
+                />
+              </label>
+            </div>
+            <label htmlFor={fid('cta.book')}>
+              <span>
+                Booking link{' '}
+                <small>optional: Calendly or Cal.com, the main button on your film’s page</small>
+              </span>
+              <Text
+                path="cta.book"
+                error={err('cta.book')}
+                inputMode="url"
+                value={d.cta.book ?? ''}
+                placeholder="https://cal.com/you/15min"
+                onValue={(v) => {
+                  const { book: _old, ...rest } = d.cta
+                  set({ cta: v ? { ...rest, book: v } : rest }, 'cta.book')
+                }}
+              />
+            </label>
+            <label htmlFor={fid('name')}>
+              <span>
+                Profile name <small>shown when you have more than one</small>
+              </span>
+              <Text
+                path="name"
+                max={MAX.name}
+                error={err('name')}
+                value={name}
+                placeholder={[d.sender.name, job ? d.sender.role : d.sender.company]
+                  .filter(Boolean)
+                  .join(', ')}
+                onValue={(v) => {
+                  setName(v)
+                  setErrors((e) => clearField(e, 'name'))
+                }}
+              />
+            </label>
+          </fieldset>
+
+          {summary && Object.keys(errors).length > 0 && (
+            <p className="error" role="alert">
+              {summary}
+            </p>
+          )}
+          <ErrorNote error={save.error} />
+          <div className="drawer-foot">
+            {leaving ? (
+              <div className="leave">
+                <b>Discard your changes?</b>
+                <button type="button" className="danger" onClick={onClose}>
+                  Discard
+                </button>
+                <button type="button" className="link" ref={keep} onClick={() => setLeaving(false)}>
+                  Keep editing
+                </button>
+              </div>
+            ) : (
+              <>
+                <button type="submit" className="primary" disabled={save.isPending}>
+                  {save.isPending ? 'Saving…' : 'Save profile'}
+                </button>
+                <button type="button" className="link" onClick={() => close.current()}>
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

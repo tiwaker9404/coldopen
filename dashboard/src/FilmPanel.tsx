@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import {
+  ATTACH_SLOT,
+  emailWithFilm,
+  filmPlace,
+  watchHere,
+  withBackupLink,
+} from '../../src/share/embed.ts'
+import {
   ago,
   api,
   type Brief,
@@ -443,6 +450,7 @@ function SendSteps({ film }: { film: FilmDetail }) {
         <li>
           <Message
             id={film.id}
+            film={film}
             to={film.recipient?.email}
             followUp={status === 'sent' && days >= 4}
             last={(film.outreach?.followUps ?? 0) >= 1}
@@ -512,7 +520,8 @@ function Homework({ film }: { film: FilmDetail }) {
   const toast = useToast()
   const hw = film.homework!
   const use = useMutation({
-    mutationFn: (detail: string) => send('PUT', `/v1/films/${film.id}/detail`, { detail }),
+    // the homework route, as Your homework saves it (a field left out keeps what was saved)
+    mutationFn: (detail: string) => send('PUT', `/v1/films/${film.id}/homework`, { detail }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['film', film.id] })
       void qc.invalidateQueries({ queryKey: ['messages', film.id] })
@@ -1212,11 +1221,14 @@ function Checks({ c }: { c: Messages['checks'] }) {
 
 function Message({
   id,
+  film,
   to,
   followUp,
   last = false,
 }: {
   id: string
+  /** for the film's link, the GIF and the downloads beside the LinkedIn attach slot */
+  film: FilmDetail
   to?: string | undefined
   followUp: boolean
   /** one follow-up already went out: the next is the short last note */
@@ -1254,7 +1266,10 @@ function Message({
                 : m.followUp
   const subject = kind === 'followUp' ? `Re: ${m.email.subject}` : m.email.subject
   const told = disclosures(m, draftOf(kind, last))
-  const enc = encodeURIComponent
+  // the film's link, as the drafts carry it where the film goes
+  const link = film.share ?? ''
+  // LinkedIn can't show a picture from a link: these two get a slot to attach the GIF instead
+  const slot = kind === 'afterAccept' || kind === 'inmail' ? filmPlace(body, link) : null
   return (
     <section className="block">
       <div className="block-head">
@@ -1299,7 +1314,16 @@ function Message({
             <span>Subject</span> {m.inmail.subject}
           </p>
         )}
-        <pre>{body}</pre>
+        {slot ? (
+          <pre>
+            {slot.before}
+            <AttachSlot film={film} />
+            {` ${watchHere(link)}`}
+            {slot.after}
+          </pre>
+        ) : (
+          <pre>{body}</pre>
+        )}
       </div>
       <p className="small">
         {body.includes('[First name]') ? (
@@ -1318,7 +1342,7 @@ function Message({
         <div className="actions">
           <Copy
             className="primary"
-            text={body}
+            text={kind === 'afterAccept' ? withBackupLink(body, link) : body}
             label={kind === 'note' ? 'Copy note' : kind === 'post' ? 'Copy post' : 'Copy message'}
             done={
               kind === 'note' ? 'Note copied' : kind === 'post' ? 'Post copied' : 'Message copied'
@@ -1330,39 +1354,148 @@ function Message({
           <Copy text={m.inmail.subject} label="Copy subject" done="Subject copied" />
           <Copy
             className="primary"
-            text={m.inmail.body}
+            text={withBackupLink(m.inmail.body, link)}
             label="Copy message"
             done="InMail copied"
           />
         </div>
       ) : (
-        <div className="actions">
-          <a
-            className="button primary-link"
-            href={`https://mail.google.com/mail/?view=cm&fs=1${to ? `&to=${enc(to)}` : ''}&su=${enc(subject)}&body=${enc(body)}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open in Gmail <Out />
-          </a>
-          <a
-            className="button"
-            href={`https://outlook.office.com/mail/deeplink/compose?${to ? `to=${enc(to)}&` : ''}subject=${enc(subject)}&body=${enc(body)}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Outlook <Out />
-          </a>
-          <a
-            className="button"
-            href={`mailto:${to ? enc(to) : ''}?subject=${enc(subject)}&body=${enc(body)}`}
-          >
-            Mail app
-          </a>
-          <Copy text={`${subject}\n\n${body}`} label="Copy" done="Message copied" />
-        </div>
+        <MailButtons
+          to={to}
+          subject={subject}
+          body={body}
+          // the film goes in the first email; a follow-up is a reply in the same thread
+          rich={kind === 'email' ? emailWithFilm(body, link, film.company) : null}
+        />
       )}
     </section>
+  )
+}
+
+/**
+ * Where the film goes in a LinkedIn message: LinkedIn can't show a picture from a link, so you
+ * attach the GIF there yourself. The downloads sit right beside it, so it's one click.
+ */
+function AttachSlot({ film }: { film: FilmDetail }) {
+  return (
+    <span className="attach">
+      <mark className="attach-slot">
+        {ATTACH_SLOT}
+        <span className="sr-only">, then download it with the button beside it</span>
+      </mark>
+      {film.files && (
+        <>
+          <a
+            className="button small"
+            href={downloadUrl(film, 'preview.gif')}
+            download={`${fileName(film)}.gif`}
+          >
+            Download GIF
+          </a>
+          <a
+            className="button small"
+            href={downloadUrl(film, 'film')}
+            download={`${fileName(film)}.mp4`}
+          >
+            Download MP4
+          </a>
+        </>
+      )}
+    </span>
+  )
+}
+
+/**
+ * The email and where to send it from. With a link mail clients can show (https), the email
+ * copies as rich text with the film playing where it points to it, and Gmail, Outlook and the mail
+ * app open an addressed draft with the subject only, ready to paste it into: a draft link can
+ * only carry plain text. Without one, the draft link carries the whole message, as plain text.
+ */
+function MailButtons({
+  to,
+  subject,
+  body,
+  rich,
+}: {
+  to?: string | undefined
+  subject: string
+  body: string
+  rich: { html: string; plain: string } | null
+}) {
+  const toast = useToast()
+  const enc = encodeURIComponent
+  // the addressed draft with the subject only (the rich email is pasted in), or with the text too
+  const draft = (where: 'gmail' | 'outlook' | 'mail', withText: boolean) => {
+    const text = withText ? enc(body) : ''
+    if (where === 'gmail')
+      return `https://mail.google.com/mail/?view=cm&fs=1${to ? `&to=${enc(to)}` : ''}&su=${enc(subject)}${withText ? `&body=${text}` : ''}`
+    if (where === 'outlook')
+      return `https://outlook.office.com/mail/deeplink/compose?${to ? `to=${enc(to)}&` : ''}subject=${enc(subject)}${withText ? `&body=${text}` : ''}`
+    return `mailto:${to ? enc(to) : ''}?subject=${enc(subject)}${withText ? `&body=${text}` : ''}`
+  }
+  const drafts = {
+    gmail: draft('gmail', !rich),
+    outlook: draft('outlook', !rich),
+    mail: draft('mail', !rich),
+  }
+  /** copy the email with the film, then open the draft; if copying fails, open it with the text */
+  const open = (where: keyof typeof drafts) => async (e: { preventDefault: () => void }) => {
+    if (!rich) return
+    e.preventDefault()
+    let copied = false
+    try {
+      copied = await copyRich(rich.html, rich.plain)
+    } catch {
+      copied = false
+    }
+    const url = draft(where, !copied)
+    if (where === 'mail') window.location.href = url
+    else window.open(url, '_blank', 'noreferrer')
+    toast({
+      text: copied
+        ? 'Email copied. Paste it into the draft.'
+        : 'Your browser can only copy text, so the draft has the link where the film goes.',
+    })
+  }
+  return (
+    <div className="actions">
+      {rich ? (
+        <Copy
+          className="primary"
+          html={rich.html}
+          text={rich.plain}
+          label="Copy email with the film"
+          done="Email copied with the film. Paste it into your email"
+          fallback="Your browser can only copy text, so the link is where the film goes"
+        />
+      ) : null}
+      <a
+        className={rich ? 'button' : 'button primary-link'}
+        href={drafts.gmail}
+        target="_blank"
+        rel="noreferrer"
+        onClick={open('gmail')}
+      >
+        Open in Gmail <Out />
+      </a>
+      <a
+        className="button"
+        href={drafts.outlook}
+        target="_blank"
+        rel="noreferrer"
+        onClick={open('outlook')}
+      >
+        Outlook <Out />
+      </a>
+      <a className="button" href={drafts.mail} onClick={open('mail')}>
+        Mail app
+      </a>
+      <Copy
+        text={rich ? body : `${subject}\n\n${body}`}
+        label={rich ? 'Copy as plain text' : 'Copy'}
+        done="Message copied"
+      />
+    </div>
   )
 }
 

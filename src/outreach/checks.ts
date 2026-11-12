@@ -129,6 +129,16 @@ export const FILM_KNOWN = `Every film is ${FILM_LENGTH}, ${FILM_SECONDS} seconds
 const isFilmLine = (line: string) => line.includes(`${FILM_LENGTH} film`)
 const FILM_WORDS = /\b(film|video)s?\b/i
 
+/** Where a stored draft keeps the film until the real link goes in (writer.ts FILM) */
+const FILM_SLOT = '[film]'
+/**
+ * How many places a draft carries the film: its link, or the [film] slot it's stored with. The
+ * panel shows that one place as a GIF in the email, an "Attach the GIF here" slot on LinkedIn
+ * with the link kept as a backup, or the link itself, and each is the film once.
+ */
+const filmPlaces = (text: string, link: string) =>
+  text.split(link).length - 1 + (link === FILM_SLOT ? 0 : text.split(FILM_SLOT).length - 1)
+
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 /** curly apostrophes count as straight ones, so "I’d be grateful for" still matches */
 const straight = (s: string) => s.replace(/[‘’]/g, "'")
@@ -311,7 +321,7 @@ export function checkMessage(
     )
   }
   if (HAS_LINK.includes(kind) && ctx.link) {
-    const n = all.split(ctx.link).length - 1
+    const n = filmPlaces(all, ctx.link)
     checks.push(
       n === 1
         ? { rule: 'has_link', ok: true }

@@ -239,6 +239,19 @@ export function buildMcp(call: Call): McpServer {
   )
 
   mcp.registerTool(
+    'rewrite_messages',
+    {
+      title: 'Write the messages again',
+      description:
+        'For a job seeker’s finished film whose drafts came back with `rewrite: true` from draft_messages (written before today’s checks or before the homework they saved): the model writes the connection note, the message once they accept, InMail and the email again from their homework, checked as always, and any draft that still fails stays its template. Counts against its own daily limit (10 a day on the hosted app). Returns the messages, as draft_messages does. Nothing is sent.',
+      inputSchema: { id: z.string().describe('the film’s id') },
+    },
+    async ({ id }) =>
+      // an empty JSON body, as find_founders sends: Fastify refuses JSON with no body
+      answer(call, 'POST', `/v1/films/${encodeURIComponent(id)}/messages/rewrite`, {}),
+  )
+
+  mcp.registerTool(
     'find_founders',
     {
       title: 'Who to reach, and founders’ emails',

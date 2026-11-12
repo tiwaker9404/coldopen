@@ -29,6 +29,7 @@ describe('coldopen as an MCP server', () => {
       'get_film',
       'list_films',
       'make_film',
+      'rewrite_messages',
       'search_jobs',
       'set_recipient',
     ])
@@ -46,6 +47,35 @@ describe('coldopen as an MCP server', () => {
     const r = await client.callTool({ name: 'find_targets', arguments: { limit: 5 } })
     expect(calls).toEqual([{ method: 'GET', url: '/v1/targets?limit=5' }])
     expect(JSON.parse((r.content as { text: string }[])[0]!.text)).toEqual(week)
+  })
+
+  it('rewrite_messages is a thin call to "Write it again", limits and errors included', async () => {
+    const messages = { email: { subject: 's', body: 'b' }, rewrite: false }
+    const ok = await connect({
+      'POST /v1/films/run_1/messages/rewrite': { status: 200, json: messages },
+    })
+    const r = await ok.client.callTool({ name: 'rewrite_messages', arguments: { id: 'run_1' } })
+    expect(ok.calls).toEqual([
+      { method: 'POST', url: '/v1/films/run_1/messages/rewrite', body: {} },
+    ])
+    expect(JSON.parse((r.content as { text: string }[])[0]!.text)).toEqual(messages)
+    const { tools } = await ok.client.listTools()
+    expect(
+      tools.find((t) => t.name === 'rewrite_messages')?.annotations?.readOnlyHint,
+    ).toBeUndefined()
+
+    // the route's own daily limit comes back as the tool's error, in its words
+    const limit =
+      "That's 10 rewrites today. The template drafts are still here, or come back tomorrow."
+    const out = await connect({
+      'POST /v1/films/run_1/messages/rewrite': {
+        status: 429,
+        json: { error: { code: 'daily_limit', message: limit } },
+      },
+    })
+    const e = await out.client.callTool({ name: 'rewrite_messages', arguments: { id: 'run_1' } })
+    expect(e.isError).toBe(true)
+    expect((e.content as { text: string }[])[0]!.text).toBe(limit)
   })
 
   it('calls the REST API with what the agent asked, and passes its errors on', async () => {

@@ -36,7 +36,8 @@ export const HINT: Record<MessageTab, string> = {
   afterAccept: 'Send this once they accept your request.',
   inmail:
     'InMail is free only if they have an Open Profile or you’re in a group together. Otherwise, use the connection note.',
-  email: 'Your first message, with the film’s link in it.',
+  email:
+    'Your first message. Copy it with the film and the GIF plays where the email points to it, with its link underneath.',
   followUp:
     'One more note if you haven’t heard back, with something new: a week on, or 4 days for a sales film.',
 }

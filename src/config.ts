@@ -112,6 +112,8 @@ const schema = z.object({
   IP_DAILY_FILMS: z.coerce.number().int().min(0).default(8),
   GLOBAL_DAILY_FILMS: z.coerce.number().int().min(0).default(80),
   DAILY_DRAFTS: z.coerce.number().int().min(0).default(6),
+  /** "Write it again" on a job seeker's messages: one model call each, counted on its own */
+  DAILY_REWRITES: z.coerce.number().int().min(0).default(10),
 })
 
 export type Config = z.infer<typeof schema>

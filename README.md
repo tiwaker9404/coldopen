@@ -142,7 +142,7 @@ coldopen serves the [Model Context Protocol](https://modelcontextprotocol.io) at
 claude mcp add --transport http coldopen https://coldopen-nk8o.onrender.com/mcp --header "Authorization: Bearer co_…"
 ```
 
-Ten tools, each a thin call to the REST API as you (so limits, ownership and checks are the app's own): `search_jobs`, `find_startups`, `make_film`, `get_film`, `list_films`, `draft_messages`, `find_founders`, `set_recipient`, `follow_ups_due` and `call_brief`. Read-only tools are marked as such. `make_film` takes `jobText` with the description pasted in, for LinkedIn and other job links behind a sign-in. Nothing is ever sent for you. Then ask: _"Find Forward Deployed Engineer roles at YC startups that sponsor visas, make films for the top three, and draft the emails."_
+Twelve tools, each a thin call to the REST API as you (so limits, ownership and checks are the app's own): `search_jobs`, `find_startups`, `find_targets`, `make_film`, `get_film`, `list_films`, `draft_messages`, `rewrite_messages`, `find_founders`, `set_recipient`, `follow_ups_due` and `call_brief`. Read-only tools are marked as such. `make_film` takes `jobText` with the description pasted in, for LinkedIn and other job links behind a sign-in. Nothing is ever sent for you. Then ask: _"Find Forward Deployed Engineer roles at YC startups that sponsor visas, make films for the top three, and draft the emails."_
 
 ## Writing scripts with a model (free)
 
@@ -189,6 +189,7 @@ Applying to different kinds of roles? Keep one profile per résumé in a folder 
 
 - **The messages, in the order you send them:** a LinkedIn connection note (200 characters, no link), the message once they accept, InMail when they have an Open Profile, a warm email and the follow-up. Each is written from what the film shows, so it can't claim more than it does, and each copies in one click. A draft that fell back to its template says why, and one that code adjusted says what changed.
 - **A GIF that pastes as a picture.** Copy GIF for email puts a playing preview on the clipboard, linked to the share page, so it lands in Gmail or Outlook as the film itself, not a line of HTML. Download GIF saves it for a LinkedIn message.
+- **The film goes in the message.** The email tab's main button, "Copy email with the film", copies the whole email as rich text with the linked GIF exactly where the tease points to it and a plain "Watch it here" link under it (the text/plain copy has the link there instead). Open in Gmail, Outlook or the mail app copies it first and opens the addressed draft with the subject only, ready to paste; "Copy as plain text" is still there. LinkedIn can't show a picture from a link, so the after-accept and InMail drafts show a highlighted "Attach the GIF here" slot with Download GIF and Download MP4 beside it, and copy with the link kept as "(or watch it here: …)". The connection note stays link-free.
 - **Who to reach:** LinkedIn searches you run yourself, in five groups: Founders, Warm paths, People doing the job, Hiring manager and Recruiting, each with when to write to them and what to ask. They're ordered by company size (team size from YC's list when known), and the first group opens by default:
 
   | Company size        | Order                                                                     |
@@ -230,7 +231,7 @@ A job seeker's drafts are written in the voice ([docs/TASTE.md](docs/TASTE.md#ne
 
 **Some lines are added in code, not by the model:** the detail you saved about the company, then the funding line when they raised in the last month. If the email runs long, the funding line goes first. If the saved detail still breaks a check, the template email comes back with the detail in it.
 
-**Write it again.** A job seeker's drafts written before today's checks, or before homework you saved later, aren't rewritten on their own: the templates stand in, and "Write it again" in the film panel (`POST /v1/films/:id/messages/rewrite`) has the model write them from your homework. It's one model call, checked like any other draft.
+**Write it again.** A job seeker's drafts written before today's checks, or before homework you saved later, aren't rewritten on their own: the templates stand in, and "Write it again" in the film panel (`POST /v1/films/:id/messages/rewrite`) has the model write them from your homework. It's one model call, checked like any other draft, for job seekers only, with its own limit on the hosted app: 10 a day (`DAILY_REWRITES`), apart from résumé drafts, and an attempt the model couldn't finish isn't counted. The MCP `rewrite_messages` tool is the same call.
 
 ## Network this week
 
@@ -248,7 +249,7 @@ The counter, "x of 10 this week", is the recruiter's playbook target (10 people 
 ## Quality, measured
 
 ```bash
-pnpm test         # 714 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish, the review before sending
+pnpm test         # 723 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish, the review before sending
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 180 quality checks across 16 evals on 3 fixture companies x 2 presets
 ```

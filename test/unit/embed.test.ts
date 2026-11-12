@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { emailLink, gifEmbed } from '../../src/share/embed.ts'
+import {
+  ATTACH_SLOT,
+  emailLink,
+  emailWithFilm,
+  filmPlace,
+  gifEmbed,
+  watchHere,
+  withBackupLink,
+} from '../../src/share/embed.ts'
 
 const link = 'https://films.example.com/f/run_01JTESTTESTTESTTESTTESTTEST'
 
@@ -46,5 +54,92 @@ describe('emailLink', () => {
   it('escapes nothing itself but normalises the URL', () => {
     expect(emailLink('https://films.example.com/f/a"b')).toBe('https://films.example.com/f/a%22b')
     expect(emailLink('not a url')).toBeNull()
+  })
+})
+
+describe('the email with the film in it', () => {
+  const body = [
+    'Hi [First name],',
+    '',
+    "I tried Acme's rate API this weekend, and the per-zone view saved me a spreadsheet.",
+    '',
+    "I put what I'd try next with Acme into a 30-second film:",
+    link,
+    '',
+    'Thanks for reading,',
+    'Alex Rivera',
+    'alex@example.com',
+  ].join('\n')
+  const count = (s: string, part: string) => s.split(part).length - 1
+
+  it("the email copies with the GIF at the film's place and a backup link", () => {
+    const { html, plain } = emailWithFilm(body, link, 'Acme')!
+    // the GIF exactly once, linked to the share page
+    expect(count(html, '<img ')).toBe(1)
+    expect(html).toContain(gifEmbed(link, 'Acme')!)
+    // and the plain link once, under it
+    expect(count(html, `>${link}</a>`)).toBe(1)
+    expect(html).toContain(`Watch it here: <a href="${link}"`)
+    // where the tease points to it: right after the tease line, before the thanks
+    const tease = html.indexOf('into a 30-second film:')
+    const gif = html.indexOf('<img ')
+    const watch = html.indexOf('Watch it here')
+    expect(tease).toBeGreaterThan(-1)
+    expect(tease).toBeLessThan(gif)
+    expect(gif).toBeLessThan(watch)
+    expect(watch).toBeLessThan(html.indexOf('Thanks for reading,'))
+    // paragraphs as the draft has them, the signature's lines kept together
+    expect(html).toContain('<p style="margin:0 0 14px">Hi [First name],</p>')
+    expect(html).toContain('Thanks for reading,<br>Alex Rivera<br>alex@example.com</p>')
+    // the plain twin is the draft as written: the link once, no image markup
+    expect(plain).toBe(body)
+    expect(count(plain, link)).toBe(1)
+    expect(plain).not.toMatch(/<img|<a |preview\.gif/)
+  })
+
+  it('keeps the subject out, and escapes what the draft says', () => {
+    const { html } = emailWithFilm(
+      body.replace('Hi [First name],', 'Hi <Dana> & team,'),
+      link,
+      'Acme',
+    )!
+    expect(html).toContain('Hi &lt;Dana&gt; &amp; team,')
+    expect(html).not.toContain('Subject')
+  })
+
+  it('puts the GIF mid-line when the link is inside a sentence', () => {
+    const inline = `Hi [First name],\n\nHere's what I'd try: ${link} Curious what you think.\n\nAlex`
+    const { html } = emailWithFilm(inline, link, 'Acme')!
+    expect(html).toContain(`<p style="margin:0 0 14px">Here&#39;s what I&#39;d try:</p><p`)
+    expect(html).toContain('<p style="margin:0 0 14px">Curious what you think.</p>')
+    expect(count(html, '<img ')).toBe(1)
+  })
+
+  it("copies plain text instead when the link can't be emailed or isn't there once", () => {
+    expect(
+      emailWithFilm(body.replace(link, 'http://x.example/f/1'), 'http://x.example/f/1', 'Acme'),
+    ).toBeNull()
+    expect(emailWithFilm(body.replace(link, ''), link, 'Acme')).toBeNull()
+    expect(emailWithFilm(`${body}\n${link}`, link, 'Acme')).toBeNull()
+  })
+})
+
+describe('the LinkedIn messages, with a place to attach the GIF', () => {
+  const msg = `Hi [First name], thanks for connecting.\n\nI put what I'd try next with Acme into a 30-second film: ${link}\n\nThank you for your time,\nAlex`
+
+  it('splits the draft where the film goes', () => {
+    const at = filmPlace(msg, link)!
+    expect(at.before.endsWith('30-second film: ')).toBe(true)
+    expect(at.after.startsWith('\n\nThank you')).toBe(true)
+    expect(filmPlace(msg.replace(link, ''), link)).toBeNull()
+    expect(filmPlace(msg, '')).toBeNull()
+  })
+
+  it('copies with the link kept as a backup', () => {
+    const copied = withBackupLink(msg, link)
+    expect(copied).toContain(`30-second film: ${watchHere(link)}\n\n`)
+    expect(watchHere(link)).toBe(`(or watch it here: ${link})`)
+    expect(copied.split(link).length - 1).toBe(1)
+    expect(ATTACH_SLOT).toBe('Attach the GIF here')
   })
 })

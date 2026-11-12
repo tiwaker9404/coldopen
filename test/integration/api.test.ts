@@ -7,6 +7,8 @@ import { buildApi } from '../../src/api/server.ts'
 import { makeToken } from '../../src/api/tokens.ts'
 import type { Sql } from '../../src/db/index.ts'
 import { searchStartups } from '../../src/jobs/startups.ts'
+import { ScriptedProvider } from '../../src/llm/scripted.ts'
+import { FILM } from '../../src/outreach/writer.ts'
 import { SlackClient } from '../../src/slack.ts'
 import { freshDb, log, profile, testConfig, tmp } from '../helpers/index.ts'
 
@@ -1053,5 +1055,133 @@ describe('network this week', () => {
       payload: { site: second.site },
     })
     expect(sites((await week()).data)).toContain(second.site)
+  })
+})
+
+describe('"Write it again" on the hosted app', () => {
+  // the hosted app, where daily limits hold; a stand-in model that can be down
+  let hosted: Awaited<ReturnType<typeof buildApi>>
+  let down = false
+  let calls = 0
+  const llm = new ScriptedProvider(() => {
+    calls++
+    if (down) throw new Error('HTTP 503 from the model')
+    return JSON.stringify({
+      note: "I've been using Parcelpine, and the per-zone view saved me a spreadsheet. Curious how most Parcelpine customers use it.",
+      afterAccept: `Thanks for connecting. I put what I'd try next with Parcelpine into a 30-second film: ${FILM} What's the hardest part of what Parcelpine is building right now?`,
+      inmail: {
+        subject: 'Notes from using Parcelpine',
+        body: `I put what I'd try next with Parcelpine into a 30-second film: ${FILM} What's the hardest part of what Parcelpine is building right now?`,
+      },
+      email: {
+        subject: 'Notes from using Parcelpine',
+        opening: "I've been reading about what Parcelpine is building.",
+        tease: `I put what I'd try next with Parcelpine into a 30-second film: ${FILM}`,
+        creator: null,
+        question: "What's the hardest part of what Parcelpine is building right now?",
+        offer: "If you ever have 15 minutes, I'd love to hear how you think about it.",
+      },
+    })
+  }, [0, 1])
+  let n = 0
+  /** a finished film owned by `owner`, from the given profile */
+  const finished = async (owner: string, preset: 'candidate' | 'sales') => {
+    const id = `run_01REWR1TE${String(n++).padStart(17, '0')}`
+    const output = {
+      company: 'Parcelpine',
+      host: 'parcelpine.example',
+      format: 'square',
+      durationSec: 29.2,
+      files: {
+        film: `${id}/film-square.mp4`,
+        poster: `${id}/poster.jpg`,
+        gif: `${id}/preview.gif`,
+        sheet: `${id}/contact-sheet.jpg`,
+        kit: `${id}/kit.json`,
+        storyboard: `${id}/storyboard.json`,
+      },
+      highlights: {
+        quote: { text: 'Returns that keep the customer', source: 'their homepage' },
+        proof: [{ value: '6', label: 'open-source AI projects shipped' }],
+      },
+      script: {
+        hook: 'Hi Parcelpine team',
+        noticed: 'x',
+        insight: { factId: 'f1', why: 'y' },
+        pitch: { headline: 'h', points: ['a', 'b'] },
+        proof: [0],
+        cta: 'Talk soon?',
+      },
+      scriptMeta: { model: 'deterministic', rounds: 1, violations: [[]], usedFallback: false },
+      qa: { duration: 29.2, issues: [], fonts: [] },
+      render: { frames: 876, ms: 50000 },
+      profile: profile(preset),
+    }
+    await sql`
+      insert into runs (id, agent, input, owner, status, output, completed_at)
+      values (${id}, 'film', ${sql.json({ url: 'https://parcelpine.example', profile: profile(preset) } as never)},
+        ${owner}, 'succeeded', ${sql.json(output as never)}, now())`
+    return id
+  }
+
+  beforeAll(async () => {
+    hosted = await buildApi({
+      sql,
+      cfg: testConfig({
+        HOSTED: 'true',
+        SESSION_SECRET: 'x'.repeat(40),
+        PUBLIC_URL: 'https://coldopen.example',
+        FILMS_DIR: tmp('rewrite-films-'),
+        // résumé drafts have their own, smaller limit: rewrites don't touch it
+        DAILY_DRAFTS: '1',
+      }),
+      log,
+      slack: null,
+      llm,
+    })
+  })
+  afterAll(async () => {
+    await hosted?.close()
+  })
+
+  it('has its own limit, 10 a day per owner, for job seekers only', async () => {
+    const { token } = await makeToken(sql, 'u:rewriter', 'test')
+    const me = { authorization: `Bearer ${token}` }
+    const id = await finished('u:rewriter', 'candidate')
+    const rewrite = (film = id, headers = me) =>
+      hosted.inject({ method: 'POST', url: `/v1/films/${film}/messages/rewrite`, headers })
+
+    // an attempt the model couldn't finish isn't counted
+    down = true
+    expect((await rewrite()).statusCode).toBe(503)
+    down = false
+
+    for (let i = 0; i < 10; i++) {
+      const r = await rewrite()
+      expect(r.statusCode, r.body).toBe(200)
+      expect(r.json().writer.email).toBe('model')
+    }
+    const eleventh = await rewrite()
+    expect(eleventh.statusCode).toBe(429)
+    expect(eleventh.json().error).toEqual({
+      code: 'daily_limit',
+      message:
+        "That's 10 rewrites today. The template drafts are still here, or come back tomorrow.",
+    })
+    expect(calls).toBe(11)
+
+    // its own key: résumé drafts are untouched, and another owner has all 10
+    const usage = await sql<{ key: string; n: number }[]>`
+      select key, n from usage where key in ('rewrites:u:rewriter', 'drafts:u:rewriter')`
+    expect(usage).toEqual([{ key: 'rewrites:u:rewriter', n: 11 }])
+    const other = await makeToken(sql, 'u:rewriter-two', 'test')
+    const theirs = await finished('u:rewriter-two', 'candidate')
+    expect((await rewrite(theirs, { authorization: `Bearer ${other.token}` })).statusCode).toBe(200)
+
+    // a seller's drafts are never offered again, and it costs them nothing
+    const sales = await finished('u:rewriter-two', 'sales')
+    const no = await rewrite(sales, { authorization: `Bearer ${other.token}` })
+    expect(no.statusCode).toBe(409)
+    expect(no.json().error.code).toBe('no_model_drafts')
   })
 })

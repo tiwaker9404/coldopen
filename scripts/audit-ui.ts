@@ -232,7 +232,8 @@ for (const [width, dark] of [
  */
 const FILM = 'run_01AUDIT0000000000000000000'
 const now = new Date().toISOString()
-const share = `${base}/f/audit`
+// https, as a real share link is: the email copies with the GIF only for a link mail clients load
+const share = 'https://share.example/f/audit'
 const film = {
   id: FILM,
   status: 'succeeded',
@@ -275,21 +276,21 @@ const filmDetail = {
 }
 const messages = {
   email: {
-    subject: "A 30-second film for Parcelpine's Operations Analyst team",
-    body: `Hi [First name],\n\nI made Parcelpine a 30-second film about your Operations Analyst role: ${share}\n\nWorth a 15-minute call this week?\n\nAlex`,
+    subject: 'A question about Parcelpine',
+    body: `Hi [First name],\n\nI tried Parcelpine's rate API this weekend, and the per-zone view saved me a spreadsheet.\n\nI put what I'd try next with Parcelpine into a 30-second film:\n${share}\n\nOne thing I wondered: are most of your customers calling the API directly? If you ever have 15 minutes, I'd love to hear how you think about it.\n\nThanks for reading,\nAlex`,
   },
   linkedin:
-    'Hi [First name], I made Parcelpine a short film about your Operations Analyst role and would like to connect. – Alex',
-  afterAccept: `Hi [First name], thanks for connecting. Here's the 30-second film: ${share} Worth a 15-minute call? – Alex`,
+    'Hi [First name], tried Parcelpine’s rate API this weekend for a side project. The per-zone view is clever. – Alex',
+  afterAccept: `Hi [First name], thanks for connecting.\n\nI tried Parcelpine's rate API this weekend.\n\nI put what I'd try next with Parcelpine into a 30-second film: ${share}\n\nAre most of your customers calling the API directly?\n\nThank you for your time,\nAlex`,
   inmail: {
-    subject: 'A film for your Operations Analyst role',
-    body: `Hi [First name], I made Parcelpine a 30-second film about the Operations Analyst role: ${share} Worth a 15-minute call? – Alex`,
+    subject: 'Notes from using Parcelpine',
+    body: `Hi [First name],\n\nI tried Parcelpine's rate API this weekend.\n\nI put what I'd try next with Parcelpine into a 30-second film: ${share}\n\nAre most of your customers calling the API directly?\n\nThank you for your time,\nAlex`,
   },
   followUp: `Hi [First name],\n\nFollowing up on the film: ${share}\n\nAlex`,
   lastNote: `Hi [First name], one last note on the film: ${share}\n\nAlex`,
   linkedinFollowUp: `Hi [First name], following up on the film I made you: ${share} – Alex`,
   intro: 'Hi [First name], could you pass this on?',
-  checks: { words: 40, short: true, aboutThem: true, detail: false, oneAsk: true },
+  checks: { words: 70, short: true, aboutThem: true, detail: true, oneAsk: true },
   writer: { note: 'model', afterAccept: 'model', inmail: 'model', email: 'template' },
   flags: {
     email: [
@@ -528,6 +529,64 @@ const states: State[] = [
       await page.evaluate(() => {
         for (const d of document.querySelectorAll('.draft-note')) d.setAttribute('open', '')
       })
+      return out
+    },
+  },
+  {
+    name: 'Film panel messages, the film in the email and a place to attach it',
+    url: `${base}/#films`,
+    stubs: {
+      ...withFilm,
+      [`/v1/films/${FILM}`]: {
+        ...filmDetail,
+        files: {
+          film: `${FILM}/film-landscape.mp4`,
+          poster: `${FILM}/poster.jpg`,
+          gif: `${FILM}/preview.gif`,
+        },
+      },
+    },
+    async run(page) {
+      await page.click('button.card')
+      await page.waitForSelector('.drawer [aria-label="Which message"]', { timeout: 5000 })
+      const out: string[] = []
+      const buttons = () =>
+        page.$$eval('.steps .actions', (els) => {
+          const a = els.find((e) => e.closest('.block')?.querySelector('.letter'))
+          return [...(a?.querySelectorAll('a, button') ?? [])].map((e) => ({
+            text: e.textContent?.trim() ?? '',
+            href: e.getAttribute('href') ?? '',
+            primary: e.classList.contains('primary') || e.classList.contains('primary-link'),
+          }))
+        })
+      await click(page, '[aria-label="Which message"] button', 'Email')
+      const email = await buttons()
+      const label = email.map((b) => b.text).join('|')
+      if (label !== 'Copy email with the film|Open in Gmail|Outlook|Mail app|Copy as plain text')
+        out.push(`the email's buttons read “${label}”`)
+      if (!email[0]?.primary) out.push('“Copy email with the film” is not the main button')
+      for (const b of email.filter((b) => b.href))
+        if (/[?&]body=/.test(b.href)) out.push(`“${b.text}” still puts the text in the draft link`)
+      for (const tab of ['After they accept', 'InMail']) {
+        await click(page, '[aria-label="Which message"] button', tab)
+        const slot = await page.evaluate(() => {
+          const pre = document.querySelector('.letter pre')
+          const mark = pre?.querySelector('.attach-slot')
+          return {
+            said: mark?.textContent?.trim() ?? '',
+            downloads: [...(pre?.querySelectorAll('.attach a[download]') ?? [])].map((a) =>
+              a.textContent?.trim(),
+            ),
+            text: pre?.textContent ?? '',
+          }
+        })
+        if (slot.said !== 'Attach the GIF here, then download it with the button beside it')
+          out.push(`${tab}: the attach slot says “${slot.said}”`)
+        if (slot.downloads.join('|') !== 'Download GIF|Download MP4')
+          out.push(`${tab}: beside the slot: “${slot.downloads.join(', ')}”`)
+        if (!slot.text.includes(`(or watch it here: ${share})`))
+          out.push(`${tab}: the link isn't kept as “(or watch it here: …)”`)
+      }
       return out
     },
   },

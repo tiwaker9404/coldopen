@@ -33,6 +33,7 @@ import { buildStoryboard } from '../../src/script/storyboard.ts'
 import { BEGGING } from '../../src/script/taste.ts'
 import { type Profile, ProfileSchema } from '../../src/script/types.ts'
 import { deterministicScript } from '../../src/script/writer.ts'
+import { emailWithFilm, withBackupLink } from '../../src/share/embed.ts'
 import { profile } from '../helpers/index.ts'
 
 const out = {
@@ -592,6 +593,67 @@ describe('every template passes the checks', () => {
               }
       }
     })
+})
+
+/** What a reader sees of the copied email: its text, the GIF being a picture with no words */
+const shown = (html: string) =>
+  html
+    .replace(/<br>/g, '\n')
+    .replace(/<\/p>/g, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .trim()
+
+describe('the film counts once, as a link, a GIF or a place to attach it', () => {
+  it('film_once and has_link pass in every form, for every job seeker template', () => {
+    const rules = (checks: Check[]) =>
+      checks.filter((c) => c.rule === 'has_link' || c.rule === 'film_once')
+    let cases = 0
+    for (const kit of KITS)
+      for (const base of PROFILES.filter((p) => p.preset === 'candidate'))
+        for (const p of [base, ProfileSchema.parse({ ...base, creator: CREATOR })])
+          for (const [what, hw] of HOMEWORK) {
+            const film = filmFor(kit, p)
+            const m = messagesFor(film, p, LINK, { now: NOW, ...(hw ? { homework: hw } : {}) })
+            const ctx = contextFor(film, p, LINK, hw)
+            const rich = emailWithFilm(m.email.body, LINK, kit.name)!
+            expect(rich.html.split('<img ').length - 1).toBe(1)
+            const forms: [string, MessageKind, string | { subject: string; body: string }][] = [
+              // the link, as the drafts are served
+              ['link', 'email', m.email],
+              ['link', 'afterAccept', m.afterAccept!],
+              ['link', 'inmail', m.inmail!],
+              // the [film] slot a stored draft keeps it in
+              ['slot', 'email', { ...m.email, body: m.email.body.replace(LINK, '[film]') }],
+              ['slot', 'afterAccept', m.afterAccept!.replace(LINK, '[film]')],
+              // the GIF in the copied email, with its "Watch it here" line, and its plain twin
+              ['gif', 'email', { ...m.email, body: shown(rich.html) }],
+              ['gif', 'email', { ...m.email, body: rich.plain }],
+              // a place to attach the GIF on LinkedIn, with the link kept as a backup
+              ['attach', 'afterAccept', withBackupLink(m.afterAccept!, LINK)],
+              ['attach', 'inmail', { ...m.inmail!, body: withBackupLink(m.inmail!.body, LINK) }],
+            ]
+            for (const [form, kind, text] of forms) {
+              const got = rules(checkMessage(kind, text, ctx))
+              const who = `${kit.name}, ${p.creator ? 'creator' : '-'}, ${what}, ${kind} as ${form}`
+              expect(got.map((c) => c.rule).sort(), who).toEqual(
+                kind === 'email' ? ['film_once', 'has_link'] : ['has_link'],
+              )
+              expect(failures(got), `${who}\n${JSON.stringify(text)}`).toBe('')
+              cases++
+            }
+            // and twice is still twice, however it's written
+            const twice = `${m.afterAccept!}\n${withBackupLink(m.afterAccept!, LINK)}`
+            expect(passed(rules(checkMessage('afterAccept', twice, ctx)))).toBe(false)
+            const both = m.afterAccept!.replace(LINK, `[film] ${LINK}`)
+            expect(passed(rules(checkMessage('afterAccept', both, ctx)))).toBe(false)
+          }
+    expect(cases).toBeGreaterThan(100)
+  })
 })
 
 describe('the connection note has no link and no ask', () => {
