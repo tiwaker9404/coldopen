@@ -126,13 +126,9 @@ if (values.jobs) {
 const PAGES = 'https://tiwaker9404.github.io/coldopen'
 const profile = JSON.parse(await readFile(join(ROOT, 'profiles/candidate.example.json'), 'utf8'))
 // the demo shows what a job seeker's film page says about them: a photo (an illustration served
-// with the demo, since the person is made up, so no LinkedIn) and what they built
+// with the demo, since the person is made up, so no LinkedIn). No creator line: only coldopen's
+// maker can say he built it, and this person is made up.
 profile.sender.photo = `${PAGES}/media/demo/alex.jpg`
-profile.creator = {
-  name: 'coldopen',
-  url: `${PAGES}/`,
-  line: "Paste a company's website, get a 30-second film made for them",
-}
 const saved = await call<{ id: string }>('PUT', '/v1/profiles/me', {
   name: profile.sender.name,
   data: profile,

@@ -78,7 +78,9 @@ if (siteDir) {
   // the demo's share pages, published with the site: what a founder opens from a film
   const demoMedia = resolve(siteDir, 'media/demo')
   if (existsSync(demoMedia))
-    for (const id of readdirSync(demoMedia).filter((f) => f.startsWith('run_')).slice(0, 1))
+    for (const id of readdirSync(demoMedia)
+      .filter((f) => f.startsWith('run_'))
+      .slice(0, 1))
       pages.push({ name: 'Share page', url: `http://127.0.0.1:8099/media/demo/${id}/` })
 }
 

@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-11-12T06:40:47.843Z",
+  "recordedAt": "2026-11-12T15:35:05.633Z",
   "answers": {
     "/v1/me": {
       "hosted": false,
@@ -46,21 +46,16 @@
               "name": "Alex Rivera",
               "role": "Forward deployed engineer",
               "photo": "https://tiwaker9404.github.io/coldopen/media/demo/alex.jpg"
-            },
-            "creator": {
-              "url": "https://tiwaker9404.github.io/coldopen/",
-              "line": "Paste a company's website, get a 30-second film made for them",
-              "name": "coldopen"
             }
           },
-          "updatedAt": "2026-11-12T06:38:10.265Z"
+          "updatedAt": "2026-11-12T15:32:38.032Z"
         }
       ]
     },
     "/v1/films?limit=120": {
       "data": [
         {
-          "id": "run_01M777MSD7Y39HZZ0C5BK042Y1",
+          "id": "run_01M7867DJCJYJ15ZF1DH5662E9",
           "status": "succeeded",
           "url": "https://parcelpine.example/",
           "format": "square",
@@ -72,18 +67,18 @@
           "attempts": 1,
           "error": null,
           "errorCode": null,
-          "createdAt": "2026-11-12T06:38:10.343Z",
-          "completedAt": "2026-11-12T06:40:42.500Z",
+          "createdAt": "2026-11-12T15:32:38.091Z",
+          "completedAt": "2026-11-12T15:35:02.969Z",
           "company": "Parcelpine",
           "host": "parcelpine.example",
           "durationSec": 29.2,
           "files": {
-            "film": "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1/files/film-square.mp4",
-            "poster": "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1/files/poster.jpg",
-            "gif": "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1/files/preview.gif",
-            "sheet": "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1/files/contact-sheet.jpg"
+            "film": "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9/files/film-square.mp4",
+            "poster": "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9/files/poster.jpg",
+            "gif": "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9/files/preview.gif",
+            "sheet": "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9/files/contact-sheet.jpg"
           },
-          "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1",
+          "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DJCJYJ15ZF1DH5662E9",
           "job": null,
           "views": {
             "opens": 1,
@@ -92,21 +87,21 @@
             "finishes": 0,
             "clicks": 0,
             "bestSeconds": 14,
-            "firstPlayAt": "2026-11-12T06:40:45.937Z",
-            "lastSeen": "2026-11-12T06:40:45.943Z"
+            "firstPlayAt": "2026-11-12T15:35:03.562Z",
+            "lastSeen": "2026-11-12T15:35:03.570Z"
           },
           "outreach": {
-            "at": "2026-11-12T06:40:45.875Z",
+            "at": "2026-11-12T15:35:03.508Z",
             "opener": "homework",
-            "sentAt": "2026-11-12T06:40:45.875Z",
+            "sentAt": "2026-11-12T15:35:03.508Z",
             "status": "sent",
             "next": {
               "kind": "follow_up",
               "step": 1,
-              "dueAt": "2026-11-14T06:40:45.943Z",
+              "dueAt": "2026-11-14T15:35:03.570Z",
               "due": false,
               "watched": {
-                "at": "2026-11-12T06:40:45.943Z",
+                "at": "2026-11-12T15:35:03.570Z",
                 "finished": false
               }
             }
@@ -121,7 +116,7 @@
           "editOf": null
         },
         {
-          "id": "run_01M777MSCJYZVQA46M676T9F6P",
+          "id": "run_01M7867DHYC6VB3T48FC96D79Z",
           "status": "succeeded",
           "url": "https://lumenhealth.example/",
           "format": "square",
@@ -133,18 +128,18 @@
           "attempts": 1,
           "error": null,
           "errorCode": null,
-          "createdAt": "2026-11-12T06:38:10.321Z",
-          "completedAt": "2026-11-12T06:39:42.317Z",
+          "createdAt": "2026-11-12T15:32:38.078Z",
+          "completedAt": "2026-11-12T15:34:06.092Z",
           "company": "Lumen Health",
           "host": "lumenhealth.example",
           "durationSec": 29.2,
           "files": {
-            "film": "/v1/films/run_01M777MSCJYZVQA46M676T9F6P/files/film-square.mp4",
-            "poster": "/v1/films/run_01M777MSCJYZVQA46M676T9F6P/files/poster.jpg",
-            "gif": "/v1/films/run_01M777MSCJYZVQA46M676T9F6P/files/preview.gif",
-            "sheet": "/v1/films/run_01M777MSCJYZVQA46M676T9F6P/files/contact-sheet.jpg"
+            "film": "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/files/film-square.mp4",
+            "poster": "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/files/poster.jpg",
+            "gif": "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/files/preview.gif",
+            "sheet": "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/files/contact-sheet.jpg"
           },
-          "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSCJYZVQA46M676T9F6P",
+          "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHYC6VB3T48FC96D79Z",
           "job": null,
           "views": {
             "opens": 1,
@@ -153,13 +148,13 @@
             "finishes": 1,
             "clicks": 1,
             "bestSeconds": 29.2,
-            "firstPlayAt": "2026-11-12T06:40:45.921Z",
-            "lastSeen": "2026-11-12T06:40:45.934Z"
+            "firstPlayAt": "2026-11-12T15:35:03.546Z",
+            "lastSeen": "2026-11-12T15:35:03.559Z"
           },
           "outreach": {
-            "at": "2026-11-12T06:40:45.864Z",
-            "opener": "homework",
-            "sentAt": "2026-11-12T06:40:45.859Z",
+            "at": "2026-11-12T15:35:03.495Z",
+            "opener": "question",
+            "sentAt": "2026-11-12T15:35:03.492Z",
             "status": "replied",
             "next": null
           },
@@ -173,7 +168,7 @@
           "editOf": null
         },
         {
-          "id": "run_01M777MSC0BK58MZ22QNCYFXAK",
+          "id": "run_01M7867DHFJ9S1TEV99GXH8KSQ",
           "status": "succeeded",
           "url": "https://northwindfreight.example/",
           "format": "square",
@@ -185,18 +180,18 @@
           "attempts": 1,
           "error": null,
           "errorCode": null,
-          "createdAt": "2026-11-12T06:38:10.303Z",
-          "completedAt": "2026-11-12T06:39:41.365Z",
+          "createdAt": "2026-11-12T15:32:38.062Z",
+          "completedAt": "2026-11-12T15:34:05.564Z",
           "company": "Northwind Freight",
           "host": "northwindfreight.example",
           "durationSec": 29.2,
           "files": {
-            "film": "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK/files/film-square.mp4",
-            "poster": "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK/files/poster.jpg",
-            "gif": "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK/files/preview.gif",
-            "sheet": "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK/files/contact-sheet.jpg"
+            "film": "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/files/film-square.mp4",
+            "poster": "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/files/poster.jpg",
+            "gif": "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/files/preview.gif",
+            "sheet": "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/files/contact-sheet.jpg"
           },
-          "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSC0BK58MZ22QNCYFXAK",
+          "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ",
           "job": null,
           "views": {
             "opens": 2,
@@ -205,13 +200,13 @@
             "finishes": 2,
             "clicks": 1,
             "bestSeconds": 29.2,
-            "firstPlayAt": "2026-11-12T06:40:45.880Z",
-            "lastSeen": "2026-11-12T06:40:45.918Z"
+            "firstPlayAt": "2026-11-12T15:35:03.512Z",
+            "lastSeen": "2026-11-12T15:35:03.543Z"
           },
           "outreach": {
-            "at": "2026-11-12T06:40:45.851Z",
+            "at": "2026-11-12T15:35:03.484Z",
             "opener": "homework",
-            "sentAt": "2026-11-12T06:40:45.844Z",
+            "sentAt": "2026-11-12T15:35:03.477Z",
             "status": "interview",
             "next": null
           },
@@ -230,7 +225,7 @@
     "/v1/followups": {
       "data": [],
       "waiting": 1,
-      "nextDueAt": "2026-11-14T06:40:45.943Z"
+      "nextDueAt": "2026-11-14T15:35:03.570Z"
     },
     "/v1/outreach": {
       "sent": 3,
@@ -242,14 +237,14 @@
     },
     "/v1/me/openers": {
       "homework": {
-        "sent": 3,
-        "watched": 3,
-        "replied": 2
+        "sent": 2,
+        "watched": 2,
+        "replied": 1
       },
       "question": {
-        "sent": 0,
-        "watched": 0,
-        "replied": 0
+        "sent": 1,
+        "watched": 1,
+        "replied": 1
       },
       "film": {
         "sent": 0,
@@ -299,7 +294,7 @@
           },
           "hiring": {
             "open": 906,
-            "recent": 192
+            "recent": 190
           },
           "visa": {
             "approvals": 78,
@@ -333,7 +328,7 @@
           "ycPage": "https://www.ycombinator.com/companies/legora",
           "hiring": {
             "open": 328,
-            "recent": 91
+            "recent": 90
           },
           "raised": {
             "date": "2026-11-04",
@@ -363,7 +358,7 @@
           "ycPage": "https://www.ycombinator.com/companies/vanta",
           "hiring": {
             "open": 82,
-            "recent": 29
+            "recent": 28
           },
           "visa": {
             "approvals": 2,
@@ -526,7 +521,7 @@
           "why": ["Solutions Engineer", "New this week"],
           "hiring": {
             "open": 830,
-            "recent": 246
+            "recent": 244
           }
         },
         {
@@ -615,7 +610,7 @@
           "ycPage": "https://www.ycombinator.com/companies/trm-labs",
           "hiring": {
             "open": 115,
-            "recent": 39
+            "recent": 37
           }
         },
         {
@@ -664,7 +659,7 @@
           "why": ["Forward Deployed Engineer", "New this week"],
           "hiring": {
             "open": 830,
-            "recent": 246
+            "recent": 244
           }
         },
         {
@@ -687,7 +682,7 @@
           "why": ["Forward Deployed Engineer", "Remote", "New this week"],
           "hiring": {
             "open": 830,
-            "recent": 246
+            "recent": 244
           }
         },
         {
@@ -711,26 +706,6 @@
           "hiring": {
             "open": 6,
             "recent": 3
-          }
-        },
-        {
-          "id": "ashby:deepgram:7ac1a5bc-f305-4f2a-a547-394566a549b2",
-          "url": "https://jobs.ashbyhq.com/deepgram/7ac1a5bc-f305-4f2a-a547-394566a549b2",
-          "team": "Applied Engineering",
-          "type": "full_time",
-          "title": "Senior Pre-Sales Solutions Engineer - Europe",
-          "posted": "2026-11-05T14:57:31.461Z",
-          "remote": true,
-          "company": "Deepgram",
-          "location": "EU - Remote",
-          "workplace": "remote",
-          "site": "https://deepgram.com/",
-          "why": ["Solutions Engineer", "Remote", "New this week"],
-          "yc": "W16",
-          "ycPage": "https://www.ycombinator.com/companies/deepgram",
-          "hiring": {
-            "open": 66,
-            "recent": 18
           }
         },
         {
@@ -808,7 +783,7 @@
           },
           "hiring": {
             "open": 906,
-            "recent": 192
+            "recent": 190
           },
           "visa": {
             "approvals": 78,
@@ -839,7 +814,7 @@
           },
           "hiring": {
             "open": 906,
-            "recent": 192
+            "recent": 190
           },
           "visa": {
             "approvals": 78,
@@ -874,8 +849,37 @@
           },
           "hiring": {
             "open": 421,
-            "recent": 152
+            "recent": 146
           }
+        },
+        {
+          "id": "greenhouse:stripe:8368260",
+          "url": "https://job-boards.greenhouse.io/stripe/jobs/8368260",
+          "title": "Solutions Architect, Metronome (AI Native)",
+          "posted": "2026-11-09T22:53:24.000Z",
+          "remote": true,
+          "company": "Stripe",
+          "location": "San Francisco, Seattle, US-Remote",
+          "workplace": "remote",
+          "site": "https://stripe.com/",
+          "why": ["Solutions Architect", "Remote", "New this week"],
+          "fit": {
+            "level": "stretch",
+            "answered": 0,
+            "of": 10,
+            "best": null
+          },
+          "yc": "S09",
+          "ycPage": "https://www.ycombinator.com/companies/stripe",
+          "hiring": {
+            "open": 768,
+            "recent": 231
+          },
+          "visa": {
+            "approvals": 64,
+            "year": 2023
+          },
+          "years": 10
         }
       ],
       "alerts": {
@@ -925,7 +929,7 @@
       "ycCompanies": 413,
       "raisedCompanies": 10,
       "failed": [],
-      "updatedAt": "2026-11-12T06:38:10.217Z",
+      "updatedAt": "2026-11-12T15:32:37.981Z",
       "search": {
         "roles": ["Forward Deployed Engineer", "Solutions Engineer", "Solutions Architect"],
         "country": "us",
@@ -1635,8 +1639,8 @@
         }
       ]
     },
-    "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK": {
-      "id": "run_01M777MSC0BK58MZ22QNCYFXAK",
+    "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ": {
+      "id": "run_01M7867DHFJ9S1TEV99GXH8KSQ",
       "status": "succeeded",
       "url": "https://northwindfreight.example/",
       "format": "square",
@@ -1648,18 +1652,18 @@
       "attempts": 1,
       "error": null,
       "errorCode": null,
-      "createdAt": "2026-11-12T06:38:10.303Z",
-      "completedAt": "2026-11-12T06:39:41.365Z",
+      "createdAt": "2026-11-12T15:32:38.062Z",
+      "completedAt": "2026-11-12T15:34:05.564Z",
       "company": "Northwind Freight",
       "host": "northwindfreight.example",
       "durationSec": 29.2,
       "files": {
-        "film": "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK/files/film-square.mp4",
-        "poster": "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK/files/poster.jpg",
-        "gif": "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK/files/preview.gif",
-        "sheet": "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK/files/contact-sheet.jpg"
+        "film": "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/files/film-square.mp4",
+        "poster": "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/files/poster.jpg",
+        "gif": "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/files/preview.gif",
+        "sheet": "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/files/contact-sheet.jpg"
       },
-      "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSC0BK58MZ22QNCYFXAK",
+      "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ",
       "job": null,
       "views": {
         "opens": 2,
@@ -1668,13 +1672,13 @@
         "finishes": 2,
         "clicks": 1,
         "bestSeconds": 29.2,
-        "firstPlayAt": "2026-11-12T06:40:45.880Z",
-        "lastSeen": "2026-11-12T06:40:45.918Z"
+        "firstPlayAt": "2026-11-12T15:35:03.512Z",
+        "lastSeen": "2026-11-12T15:35:03.543Z"
       },
       "outreach": {
-        "at": "2026-11-12T06:40:45.851Z",
+        "at": "2026-11-12T15:35:03.484Z",
         "opener": "homework",
-        "sentAt": "2026-11-12T06:40:45.844Z",
+        "sentAt": "2026-11-12T15:35:03.477Z",
         "status": "interview",
         "next": null
       },
@@ -1812,23 +1816,23 @@
         "proof": [0, 1, 2]
       },
       "scenes": [
-        "../media/demo/run_01M777MSC0BK58MZ22QNCYFXAK/scene-0.jpg",
-        "../media/demo/run_01M777MSC0BK58MZ22QNCYFXAK/scene-1.jpg",
-        "../media/demo/run_01M777MSC0BK58MZ22QNCYFXAK/scene-2.jpg",
-        "../media/demo/run_01M777MSC0BK58MZ22QNCYFXAK/scene-3.jpg",
-        "../media/demo/run_01M777MSC0BK58MZ22QNCYFXAK/scene-4.jpg",
-        "../media/demo/run_01M777MSC0BK58MZ22QNCYFXAK/scene-5.jpg"
+        "../media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ/scene-0.jpg",
+        "../media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ/scene-1.jpg",
+        "../media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ/scene-2.jpg",
+        "../media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ/scene-3.jpg",
+        "../media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ/scene-4.jpg",
+        "../media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ/scene-5.jpg"
       ],
       "scenesOnDisk": [
-        "../media/demo/run_01M777MSC0BK58MZ22QNCYFXAK/scene-0.jpg",
-        "../media/demo/run_01M777MSC0BK58MZ22QNCYFXAK/scene-1.jpg",
-        "../media/demo/run_01M777MSC0BK58MZ22QNCYFXAK/scene-2.jpg",
-        "../media/demo/run_01M777MSC0BK58MZ22QNCYFXAK/scene-3.jpg",
-        "../media/demo/run_01M777MSC0BK58MZ22QNCYFXAK/scene-4.jpg",
-        "../media/demo/run_01M777MSC0BK58MZ22QNCYFXAK/scene-5.jpg"
+        "../media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ/scene-0.jpg",
+        "../media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ/scene-1.jpg",
+        "../media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ/scene-2.jpg",
+        "../media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ/scene-3.jpg",
+        "../media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ/scene-4.jpg",
+        "../media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ/scene-5.jpg"
       ],
       "render": {
-        "ms": 82577,
+        "ms": 78846,
         "frames": 876
       },
       "steps": [
@@ -1836,7 +1840,7 @@
           "key": "research",
           "kind": "step",
           "status": "completed",
-          "durationMs": 5505,
+          "durationMs": 6145,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -1845,7 +1849,7 @@
           "key": "homework",
           "kind": "step",
           "status": "completed",
-          "durationMs": 44,
+          "durationMs": 40,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -1854,7 +1858,7 @@
           "key": "script",
           "kind": "step",
           "status": "completed",
-          "durationMs": 15,
+          "durationMs": 13,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -1872,7 +1876,7 @@
           "key": "render:0",
           "kind": "step",
           "status": "completed",
-          "durationMs": 9010,
+          "durationMs": 8739,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -1881,7 +1885,7 @@
           "key": "render:1",
           "kind": "step",
           "status": "completed",
-          "durationMs": 27521,
+          "durationMs": 25891,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -1890,7 +1894,7 @@
           "key": "render:2",
           "kind": "step",
           "status": "completed",
-          "durationMs": 42133,
+          "durationMs": 39690,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -1899,7 +1903,7 @@
           "key": "render:3",
           "kind": "step",
           "status": "completed",
-          "durationMs": 58215,
+          "durationMs": 55258,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -1908,7 +1912,7 @@
           "key": "render:4",
           "kind": "step",
           "status": "completed",
-          "durationMs": 70541,
+          "durationMs": 67015,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -1917,7 +1921,7 @@
           "key": "render:5",
           "kind": "step",
           "status": "completed",
-          "durationMs": 82786,
+          "durationMs": 79043,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -1926,7 +1930,7 @@
           "key": "encode",
           "kind": "step",
           "status": "completed",
-          "durationMs": 2609,
+          "durationMs": 2175,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -1935,49 +1939,49 @@
       "timeline": [
         {
           "id": "1",
-          "runId": "run_01M777MSC0BK58MZ22QNCYFXAK",
-          "at": "2026-11-12T06:38:10.303Z",
+          "runId": "run_01M7867DHFJ9S1TEV99GXH8KSQ",
+          "at": "2026-11-12T15:32:38.062Z",
           "kind": "queued",
           "message": "run created",
           "workerId": null
         },
         {
           "id": "2",
-          "runId": "run_01M777MSC0BK58MZ22QNCYFXAK",
-          "at": "2026-11-12T06:38:10.316Z",
+          "runId": "run_01M7867DHFJ9S1TEV99GXH8KSQ",
+          "at": "2026-11-12T15:32:38.071Z",
           "kind": "claimed",
           "message": "execution #1 started",
-          "workerId": "vm:9130:nkbf"
+          "workerId": "vm:1419:jha8"
         },
         {
           "id": "6",
-          "runId": "run_01M777MSC0BK58MZ22QNCYFXAK",
-          "at": "2026-11-12T06:39:41.365Z",
+          "runId": "run_01M7867DHFJ9S1TEV99GXH8KSQ",
+          "at": "2026-11-12T15:34:05.564Z",
           "kind": "succeeded",
           "message": "succeeded on execution #1",
-          "workerId": "vm:9130:nkbf"
+          "workerId": "vm:1419:jha8"
         }
       ],
       "embed": null
     },
-    "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK/messages": {
+    "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/messages": {
       "email": {
         "subject": "Notes from using Northwind Freight",
-        "body": "Hi Priya,\n\nI tracked a test pallet through Northwind and the late-risk flag showed up a day early.\n\nI put what I'd build on \"Every pallet, visible before it's late\" into a 30-second film:\nhttps://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSC0BK58MZ22QNCYFXAK\n\nI built the tool that made it, coldopen.\n\nOne thing I wondered: how do most shippers act on a late-risk flag today? If you ever have 15 minutes, I'd love to hear how you think about it.\n\nThanks for reading,\nAlex Rivera\nalex@example.com"
+        "body": "Hi Priya,\n\nI tracked a test pallet through Northwind and the late-risk flag showed up a day early.\n\nI put what I'd build on \"Every pallet, visible before it's late\" into a 30-second film:\nhttps://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ\n\nOne thing I wondered: how do most shippers act on a late-risk flag today? If you ever have 15 minutes, I'd love to hear how you think about it.\n\nThanks for reading,\nAlex Rivera\nalex@example.com"
       },
       "linkedin": "Hi Priya, I tracked a test pallet through Northwind and the late-risk flag showed up a day early. Curious how most Northwind Freight customers use it. – Alex",
-      "afterAccept": "Hi Priya, thanks for connecting.\n\nI tracked a test pallet through Northwind and the late-risk flag showed up a day early.\n\nI put what I'd try next with Northwind Freight into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSC0BK58MZ22QNCYFXAK\n\nHow do most shippers act on a late-risk flag today?\n\nThank you for your time,\nAlex",
+      "afterAccept": "Hi Priya, thanks for connecting.\n\nI tracked a test pallet through Northwind and the late-risk flag showed up a day early.\n\nI put what I'd try next with Northwind Freight into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ\n\nHow do most shippers act on a late-risk flag today?\n\nThank you for your time,\nAlex",
       "inmail": {
         "subject": "Notes from using Northwind Freight",
-        "body": "Hi Priya,\n\nI tracked a test pallet through Northwind and the late-risk flag showed up a day early.\n\nI put what I'd build on \"Every pallet, visible before it's late\" into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSC0BK58MZ22QNCYFXAK\n\nHow do most shippers act on a late-risk flag today?\n\nThank you for your time,\nAlex"
+        "body": "Hi Priya,\n\nI tracked a test pallet through Northwind and the late-risk flag showed up a day early.\n\nI put what I'd build on \"Every pallet, visible before it's late\" into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ\n\nHow do most shippers act on a late-risk flag today?\n\nThank you for your time,\nAlex"
       },
-      "followUp": "Hi Priya,\n\nOne more thing I noticed since I wrote: Northwind Freight's site says \"38% fewer late deliveries in the first quarter\".\n\nThe film is here if it helps: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSC0BK58MZ22QNCYFXAK\n\nThanks either way,\nAlex",
-      "lastNote": "Hi Priya,\n\nOne last note on the film I made for Northwind Freight: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSC0BK58MZ22QNCYFXAK\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nAlex",
-      "linkedinFollowUp": "Hi Priya, One more thing I noticed since I wrote: Northwind Freight's site says \"38% fewer late deliveries in the first quarter\". The film is here if it helps: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSC0BK58MZ22QNCYFXAK – Alex",
-      "intro": "Hi [First name],\n\nHope you're doing well. I've been curious about what Northwind Freight is building, and I put what I'd try next with it into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSC0BK58MZ22QNCYFXAK\n\nWould you be open to passing it to whoever leads that work, or pointing me to the right person? Here's a short note you can forward as is:\n\nAlex Rivera has been digging into what we're building and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSC0BK58MZ22QNCYFXAK\nReach Alex at alex@example.com.\n\nThank you,\nAlex",
-      "forward": "Alex Rivera has been digging into what we're building and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSC0BK58MZ22QNCYFXAK\nReach Alex at alex@example.com.",
+      "followUp": "Hi Priya,\n\nOne more thing I noticed since I wrote: Northwind Freight's site says \"38% fewer late deliveries in the first quarter\".\n\nThe film is here if it helps: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ\n\nThanks either way,\nAlex",
+      "lastNote": "Hi Priya,\n\nOne last note on the film I made for Northwind Freight: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nAlex",
+      "linkedinFollowUp": "Hi Priya, One more thing I noticed since I wrote: Northwind Freight's site says \"38% fewer late deliveries in the first quarter\". The film is here if it helps: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ – Alex",
+      "intro": "Hi [First name],\n\nHope you're doing well. I've been curious about what Northwind Freight is building, and I put what I'd try next with it into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ\n\nWould you be open to passing it to whoever leads that work, or pointing me to the right person? Here's a short note you can forward as is:\n\nAlex Rivera has been digging into what we're building and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ\nReach Alex at alex@example.com.\n\nThank you,\nAlex",
+      "forward": "Alex Rivera has been digging into what we're building and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ\nReach Alex at alex@example.com.",
       "checks": {
-        "words": 78,
+        "words": 70,
         "short": true,
         "aboutThem": true,
         "detail": true,
@@ -1997,7 +2001,7 @@
       "flags": {},
       "notes": {}
     },
-    "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK/views": {
+    "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/views": {
       "summary": {
         "opens": 2,
         "viewers": 2,
@@ -2005,16 +2009,16 @@
         "finishes": 2,
         "clicks": 1,
         "bestSeconds": 29.2,
-        "firstPlayAt": "2026-11-12T06:40:45.880Z",
-        "lastSeen": "2026-11-12T06:40:45.918Z"
+        "firstPlayAt": "2026-11-12T15:35:03.512Z",
+        "lastSeen": "2026-11-12T15:35:03.543Z"
       },
       "sessions": [
         {
-          "filmId": "run_01M777MSC0BK58MZ22QNCYFXAK",
-          "session": "demo-QNCYFXAK-1",
+          "filmId": "run_01M7867DHFJ9S1TEV99GXH8KSQ",
+          "session": "demo-9GXH8KSQ-1",
           "viewer": "fbfc4b0ad60ff318",
-          "firstSeen": "2026-11-12T06:40:45.908Z",
-          "lastSeen": "2026-11-12T06:40:45.918Z",
+          "firstSeen": "2026-11-12T15:35:03.533Z",
+          "lastSeen": "2026-11-12T15:35:03.543Z",
           "played": true,
           "seconds": 29.2,
           "finished": true,
@@ -2024,11 +2028,11 @@
           "clicked": false
         },
         {
-          "filmId": "run_01M777MSC0BK58MZ22QNCYFXAK",
-          "session": "demo-QNCYFXAK-0",
+          "filmId": "run_01M7867DHFJ9S1TEV99GXH8KSQ",
+          "session": "demo-9GXH8KSQ-0",
           "viewer": "0faecf7338e7cc38",
-          "firstSeen": "2026-11-12T06:40:45.880Z",
-          "lastSeen": "2026-11-12T06:40:45.903Z",
+          "firstSeen": "2026-11-12T15:35:03.512Z",
+          "lastSeen": "2026-11-12T15:35:03.530Z",
           "played": true,
           "seconds": 29.2,
           "finished": true,
@@ -2039,7 +2043,7 @@
         }
       ]
     },
-    "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK/people": {
+    "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/people": {
       "company": "Northwind Freight",
       "team": null,
       "groups": [
@@ -2183,7 +2187,7 @@
         }
       ]
     },
-    "/v1/films/run_01M777MSC0BK58MZ22QNCYFXAK/brief": {
+    "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/brief": {
       "company": "Northwind Freight",
       "what": "Northwind Freight gives mid-size shippers live visibility into every pallet, carrier and dock appointment, with exceptions flagged before customers notice.",
       "facts": [
@@ -2224,8 +2228,8 @@
         }
       ]
     },
-    "/v1/films/run_01M777MSCJYZVQA46M676T9F6P": {
-      "id": "run_01M777MSCJYZVQA46M676T9F6P",
+    "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z": {
+      "id": "run_01M7867DHYC6VB3T48FC96D79Z",
       "status": "succeeded",
       "url": "https://lumenhealth.example/",
       "format": "square",
@@ -2237,18 +2241,18 @@
       "attempts": 1,
       "error": null,
       "errorCode": null,
-      "createdAt": "2026-11-12T06:38:10.321Z",
-      "completedAt": "2026-11-12T06:39:42.317Z",
+      "createdAt": "2026-11-12T15:32:38.078Z",
+      "completedAt": "2026-11-12T15:34:06.092Z",
       "company": "Lumen Health",
       "host": "lumenhealth.example",
       "durationSec": 29.2,
       "files": {
-        "film": "/v1/films/run_01M777MSCJYZVQA46M676T9F6P/files/film-square.mp4",
-        "poster": "/v1/films/run_01M777MSCJYZVQA46M676T9F6P/files/poster.jpg",
-        "gif": "/v1/films/run_01M777MSCJYZVQA46M676T9F6P/files/preview.gif",
-        "sheet": "/v1/films/run_01M777MSCJYZVQA46M676T9F6P/files/contact-sheet.jpg"
+        "film": "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/files/film-square.mp4",
+        "poster": "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/files/poster.jpg",
+        "gif": "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/files/preview.gif",
+        "sheet": "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/files/contact-sheet.jpg"
       },
-      "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSCJYZVQA46M676T9F6P",
+      "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHYC6VB3T48FC96D79Z",
       "job": null,
       "views": {
         "opens": 1,
@@ -2257,13 +2261,13 @@
         "finishes": 1,
         "clicks": 1,
         "bestSeconds": 29.2,
-        "firstPlayAt": "2026-11-12T06:40:45.921Z",
-        "lastSeen": "2026-11-12T06:40:45.934Z"
+        "firstPlayAt": "2026-11-12T15:35:03.546Z",
+        "lastSeen": "2026-11-12T15:35:03.559Z"
       },
       "outreach": {
-        "at": "2026-11-12T06:40:45.864Z",
-        "opener": "homework",
-        "sentAt": "2026-11-12T06:40:45.859Z",
+        "at": "2026-11-12T15:35:03.495Z",
+        "opener": "question",
+        "sentAt": "2026-11-12T15:35:03.492Z",
         "status": "replied",
         "next": null
       },
@@ -2401,23 +2405,23 @@
         "proof": [0, 1, 2]
       },
       "scenes": [
-        "../media/demo/run_01M777MSCJYZVQA46M676T9F6P/scene-0.jpg",
-        "../media/demo/run_01M777MSCJYZVQA46M676T9F6P/scene-1.jpg",
-        "../media/demo/run_01M777MSCJYZVQA46M676T9F6P/scene-2.jpg",
-        "../media/demo/run_01M777MSCJYZVQA46M676T9F6P/scene-3.jpg",
-        "../media/demo/run_01M777MSCJYZVQA46M676T9F6P/scene-4.jpg",
-        "../media/demo/run_01M777MSCJYZVQA46M676T9F6P/scene-5.jpg"
+        "../media/demo/run_01M7867DHYC6VB3T48FC96D79Z/scene-0.jpg",
+        "../media/demo/run_01M7867DHYC6VB3T48FC96D79Z/scene-1.jpg",
+        "../media/demo/run_01M7867DHYC6VB3T48FC96D79Z/scene-2.jpg",
+        "../media/demo/run_01M7867DHYC6VB3T48FC96D79Z/scene-3.jpg",
+        "../media/demo/run_01M7867DHYC6VB3T48FC96D79Z/scene-4.jpg",
+        "../media/demo/run_01M7867DHYC6VB3T48FC96D79Z/scene-5.jpg"
       ],
       "scenesOnDisk": [
-        "../media/demo/run_01M777MSCJYZVQA46M676T9F6P/scene-0.jpg",
-        "../media/demo/run_01M777MSCJYZVQA46M676T9F6P/scene-1.jpg",
-        "../media/demo/run_01M777MSCJYZVQA46M676T9F6P/scene-2.jpg",
-        "../media/demo/run_01M777MSCJYZVQA46M676T9F6P/scene-3.jpg",
-        "../media/demo/run_01M777MSCJYZVQA46M676T9F6P/scene-4.jpg",
-        "../media/demo/run_01M777MSCJYZVQA46M676T9F6P/scene-5.jpg"
+        "../media/demo/run_01M7867DHYC6VB3T48FC96D79Z/scene-0.jpg",
+        "../media/demo/run_01M7867DHYC6VB3T48FC96D79Z/scene-1.jpg",
+        "../media/demo/run_01M7867DHYC6VB3T48FC96D79Z/scene-2.jpg",
+        "../media/demo/run_01M7867DHYC6VB3T48FC96D79Z/scene-3.jpg",
+        "../media/demo/run_01M7867DHYC6VB3T48FC96D79Z/scene-4.jpg",
+        "../media/demo/run_01M7867DHYC6VB3T48FC96D79Z/scene-5.jpg"
       ],
       "render": {
-        "ms": 82963,
+        "ms": 78882,
         "frames": 876
       },
       "steps": [
@@ -2425,7 +2429,7 @@
           "key": "research",
           "kind": "step",
           "status": "completed",
-          "durationMs": 6443,
+          "durationMs": 6817,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -2434,7 +2438,7 @@
           "key": "homework",
           "kind": "step",
           "status": "completed",
-          "durationMs": 23,
+          "durationMs": 14,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -2443,7 +2447,7 @@
           "key": "script",
           "kind": "step",
           "status": "completed",
-          "durationMs": 1,
+          "durationMs": 3,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -2452,7 +2456,7 @@
           "key": "compose",
           "kind": "step",
           "status": "completed",
-          "durationMs": 9,
+          "durationMs": 10,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -2461,7 +2465,7 @@
           "key": "render:0",
           "kind": "step",
           "status": "completed",
-          "durationMs": 9032,
+          "durationMs": 8453,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -2470,7 +2474,7 @@
           "key": "render:1",
           "kind": "step",
           "status": "completed",
-          "durationMs": 27162,
+          "durationMs": 25605,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -2479,7 +2483,7 @@
           "key": "render:2",
           "kind": "step",
           "status": "completed",
-          "durationMs": 41658,
+          "durationMs": 39676,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -2488,7 +2492,7 @@
           "key": "render:3",
           "kind": "step",
           "status": "completed",
-          "durationMs": 57969,
+          "durationMs": 55315,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -2497,7 +2501,7 @@
           "key": "render:4",
           "kind": "step",
           "status": "completed",
-          "durationMs": 70557,
+          "durationMs": 66799,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -2506,7 +2510,7 @@
           "key": "render:5",
           "kind": "step",
           "status": "completed",
-          "durationMs": 83159,
+          "durationMs": 79075,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -2515,7 +2519,7 @@
           "key": "encode",
           "kind": "step",
           "status": "completed",
-          "durationMs": 2313,
+          "durationMs": 2057,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -2524,55 +2528,55 @@
       "timeline": [
         {
           "id": "3",
-          "runId": "run_01M777MSCJYZVQA46M676T9F6P",
-          "at": "2026-11-12T06:38:10.321Z",
+          "runId": "run_01M7867DHYC6VB3T48FC96D79Z",
+          "at": "2026-11-12T15:32:38.078Z",
           "kind": "queued",
           "message": "run created",
           "workerId": null
         },
         {
           "id": "4",
-          "runId": "run_01M777MSCJYZVQA46M676T9F6P",
-          "at": "2026-11-12T06:38:10.332Z",
+          "runId": "run_01M7867DHYC6VB3T48FC96D79Z",
+          "at": "2026-11-12T15:32:38.087Z",
           "kind": "claimed",
           "message": "execution #1 started",
-          "workerId": "vm:9130:nkbf"
+          "workerId": "vm:1419:jha8"
         },
         {
           "id": "8",
-          "runId": "run_01M777MSCJYZVQA46M676T9F6P",
-          "at": "2026-11-12T06:39:42.317Z",
+          "runId": "run_01M7867DHYC6VB3T48FC96D79Z",
+          "at": "2026-11-12T15:34:06.092Z",
           "kind": "succeeded",
           "message": "succeeded on execution #1",
-          "workerId": "vm:9130:nkbf"
+          "workerId": "vm:1419:jha8"
         }
       ],
       "embed": null
     },
-    "/v1/films/run_01M777MSCJYZVQA46M676T9F6P/messages": {
+    "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/messages": {
       "email": {
         "subject": "Lumen Health's \"Patient intake that writes itself\"",
-        "body": "Hi Marcus,\n\nLumen Health's homepage leads with \"Patient intake that writes itself\".\n\nI put what I'd try next with Lumen Health into a 30-second film:\nhttps://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSCJYZVQA46M676T9F6P\n\nI built the tool that made it, coldopen.\n\nOne thing I wondered: what's the hardest part of what Lumen Health is building right now? If you ever have 15 minutes, I'd love to hear how you think about it.\n\nThanks for reading,\nAlex Rivera\nalex@example.com"
+        "body": "Hi Marcus,\n\nI've had one question about Lumen Health in mind: what's the hardest part of what Lumen Health is building right now?\n\nLumen Health's homepage leads with \"Patient intake that writes itself\".\n\nI put what I'd try next with Lumen Health into a 30-second film:\nhttps://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHYC6VB3T48FC96D79Z\n\nIf you ever have 15 minutes, I'd love to hear how you think about it.\n\nThanks for reading,\nAlex Rivera\nalex@example.com"
       },
       "linkedin": "Hi Marcus, Lumen Health's homepage leads with \"Patient intake that writes itself\". Curious how you landed on it. – Alex",
-      "afterAccept": "Hi Marcus, thanks for connecting.\n\nLumen Health's homepage leads with \"Patient intake that writes itself\".\n\nI put what I'd try next with Lumen Health into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSCJYZVQA46M676T9F6P\n\nWhat's the hardest part of what Lumen Health is building right now?\n\nThank you for your time,\nAlex",
+      "afterAccept": "Hi Marcus, thanks for connecting.\n\nLumen Health's homepage leads with \"Patient intake that writes itself\".\n\nI put what I'd try next with Lumen Health into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHYC6VB3T48FC96D79Z\n\nWhat's the hardest part of what Lumen Health is building right now?\n\nThank you for your time,\nAlex",
       "inmail": {
         "subject": "Lumen Health's \"Patient intake that writes itself\"",
-        "body": "Hi Marcus,\n\nLumen Health's homepage leads with \"Patient intake that writes itself\".\n\nI put what I'd try next with Lumen Health into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSCJYZVQA46M676T9F6P\n\nWhat's the hardest part of what Lumen Health is building right now?\n\nThank you for your time,\nAlex"
+        "body": "Hi Marcus,\n\nLumen Health's homepage leads with \"Patient intake that writes itself\".\n\nI put what I'd try next with Lumen Health into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHYC6VB3T48FC96D79Z\n\nWhat's the hardest part of what Lumen Health is building right now?\n\nThank you for your time,\nAlex"
       },
-      "followUp": "Hi Marcus,\n\nOne more thing I noticed since I wrote: Lumen Health's site says \"212 clinics run intake on Lumen\".\n\nThe film is here if it helps: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSCJYZVQA46M676T9F6P\n\nThanks either way,\nAlex",
-      "lastNote": "Hi Marcus,\n\nOne last note on the film I made for Lumen Health: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSCJYZVQA46M676T9F6P\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nAlex",
-      "linkedinFollowUp": "Hi Marcus, One more thing I noticed since I wrote: Lumen Health's site says \"212 clinics run intake on Lumen\". The film is here if it helps: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSCJYZVQA46M676T9F6P – Alex",
-      "intro": "Hi [First name],\n\nHope you're doing well. I've been curious about what Lumen Health is building, and I put what I'd try next with it into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSCJYZVQA46M676T9F6P\n\nWould you be open to passing it to whoever leads that work, or pointing me to the right person? Here's a short note you can forward as is:\n\nAlex Rivera has been digging into what we're building and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSCJYZVQA46M676T9F6P\nReach Alex at alex@example.com.\n\nThank you,\nAlex",
-      "forward": "Alex Rivera has been digging into what we're building and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSCJYZVQA46M676T9F6P\nReach Alex at alex@example.com.",
+      "followUp": "Hi Marcus,\n\nOne more thing I noticed since I wrote: Lumen Health's site says \"212 clinics run intake on Lumen\".\n\nThe film is here if it helps: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHYC6VB3T48FC96D79Z\n\nThanks either way,\nAlex",
+      "lastNote": "Hi Marcus,\n\nOne last note on the film I made for Lumen Health: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHYC6VB3T48FC96D79Z\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nAlex",
+      "linkedinFollowUp": "Hi Marcus, One more thing I noticed since I wrote: Lumen Health's site says \"212 clinics run intake on Lumen\". The film is here if it helps: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHYC6VB3T48FC96D79Z – Alex",
+      "intro": "Hi [First name],\n\nHope you're doing well. I've been curious about what Lumen Health is building, and I put what I'd try next with it into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHYC6VB3T48FC96D79Z\n\nWould you be open to passing it to whoever leads that work, or pointing me to the right person? Here's a short note you can forward as is:\n\nAlex Rivera has been digging into what we're building and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHYC6VB3T48FC96D79Z\nReach Alex at alex@example.com.\n\nThank you,\nAlex",
+      "forward": "Alex Rivera has been digging into what we're building and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHYC6VB3T48FC96D79Z\nReach Alex at alex@example.com.",
       "checks": {
-        "words": 71,
+        "words": 68,
         "short": true,
         "aboutThem": true,
         "detail": false,
         "oneAsk": true
       },
-      "opener": "homework",
+      "opener": "question",
       "whyNow": false,
       "writer": {
         "note": "template",
@@ -2586,7 +2590,7 @@
       "flags": {},
       "notes": {}
     },
-    "/v1/films/run_01M777MSCJYZVQA46M676T9F6P/views": {
+    "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/views": {
       "summary": {
         "opens": 1,
         "viewers": 1,
@@ -2594,16 +2598,16 @@
         "finishes": 1,
         "clicks": 1,
         "bestSeconds": 29.2,
-        "firstPlayAt": "2026-11-12T06:40:45.921Z",
-        "lastSeen": "2026-11-12T06:40:45.934Z"
+        "firstPlayAt": "2026-11-12T15:35:03.546Z",
+        "lastSeen": "2026-11-12T15:35:03.559Z"
       },
       "sessions": [
         {
-          "filmId": "run_01M777MSCJYZVQA46M676T9F6P",
-          "session": "demo-676T9F6P-0",
+          "filmId": "run_01M7867DHYC6VB3T48FC96D79Z",
+          "session": "demo-FC96D79Z-0",
           "viewer": "0faecf7338e7cc38",
-          "firstSeen": "2026-11-12T06:40:45.921Z",
-          "lastSeen": "2026-11-12T06:40:45.934Z",
+          "firstSeen": "2026-11-12T15:35:03.546Z",
+          "lastSeen": "2026-11-12T15:35:03.559Z",
           "played": true,
           "seconds": 29.2,
           "finished": true,
@@ -2614,7 +2618,7 @@
         }
       ]
     },
-    "/v1/films/run_01M777MSCJYZVQA46M676T9F6P/people": {
+    "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/people": {
       "company": "Lumen Health",
       "team": null,
       "groups": [
@@ -2758,7 +2762,7 @@
         }
       ]
     },
-    "/v1/films/run_01M777MSCJYZVQA46M676T9F6P/brief": {
+    "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/brief": {
       "company": "Lumen Health",
       "what": "Lumen turns a patient's own words into a structured intake note before they reach the exam room, so clinicians start the visit already informed.",
       "facts": [
@@ -2799,8 +2803,8 @@
         }
       ]
     },
-    "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1": {
-      "id": "run_01M777MSD7Y39HZZ0C5BK042Y1",
+    "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9": {
+      "id": "run_01M7867DJCJYJ15ZF1DH5662E9",
       "status": "succeeded",
       "url": "https://parcelpine.example/",
       "format": "square",
@@ -2812,18 +2816,18 @@
       "attempts": 1,
       "error": null,
       "errorCode": null,
-      "createdAt": "2026-11-12T06:38:10.343Z",
-      "completedAt": "2026-11-12T06:40:42.500Z",
+      "createdAt": "2026-11-12T15:32:38.091Z",
+      "completedAt": "2026-11-12T15:35:02.969Z",
       "company": "Parcelpine",
       "host": "parcelpine.example",
       "durationSec": 29.2,
       "files": {
-        "film": "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1/files/film-square.mp4",
-        "poster": "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1/files/poster.jpg",
-        "gif": "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1/files/preview.gif",
-        "sheet": "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1/files/contact-sheet.jpg"
+        "film": "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9/files/film-square.mp4",
+        "poster": "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9/files/poster.jpg",
+        "gif": "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9/files/preview.gif",
+        "sheet": "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9/files/contact-sheet.jpg"
       },
-      "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1",
+      "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DJCJYJ15ZF1DH5662E9",
       "job": null,
       "views": {
         "opens": 1,
@@ -2832,21 +2836,21 @@
         "finishes": 0,
         "clicks": 0,
         "bestSeconds": 14,
-        "firstPlayAt": "2026-11-12T06:40:45.937Z",
-        "lastSeen": "2026-11-12T06:40:45.943Z"
+        "firstPlayAt": "2026-11-12T15:35:03.562Z",
+        "lastSeen": "2026-11-12T15:35:03.570Z"
       },
       "outreach": {
-        "at": "2026-11-12T06:40:45.875Z",
+        "at": "2026-11-12T15:35:03.508Z",
         "opener": "homework",
-        "sentAt": "2026-11-12T06:40:45.875Z",
+        "sentAt": "2026-11-12T15:35:03.508Z",
         "status": "sent",
         "next": {
           "kind": "follow_up",
           "step": 1,
-          "dueAt": "2026-11-14T06:40:45.943Z",
+          "dueAt": "2026-11-14T15:35:03.570Z",
           "due": false,
           "watched": {
-            "at": "2026-11-12T06:40:45.943Z",
+            "at": "2026-11-12T15:35:03.570Z",
             "finished": false
           }
         }
@@ -2907,7 +2911,12 @@
       },
       "homework": null,
       "qa": {
-        "fonts": ["Brand Display", "Brand Body"],
+        "fonts": [
+          "Brand Display",
+          "Brand Body",
+          "Instrument Sans Fallback",
+          "Instrument Sans Fallback"
+        ],
         "frame": {
           "top": 0,
           "margin": 0.08209626137484925
@@ -3013,23 +3022,23 @@
         "proof": [0, 1, 2]
       },
       "scenes": [
-        "../media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1/scene-0.jpg",
-        "../media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1/scene-1.jpg",
-        "../media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1/scene-2.jpg",
-        "../media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1/scene-3.jpg",
-        "../media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1/scene-4.jpg",
-        "../media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1/scene-5.jpg"
+        "../media/demo/run_01M7867DJCJYJ15ZF1DH5662E9/scene-0.jpg",
+        "../media/demo/run_01M7867DJCJYJ15ZF1DH5662E9/scene-1.jpg",
+        "../media/demo/run_01M7867DJCJYJ15ZF1DH5662E9/scene-2.jpg",
+        "../media/demo/run_01M7867DJCJYJ15ZF1DH5662E9/scene-3.jpg",
+        "../media/demo/run_01M7867DJCJYJ15ZF1DH5662E9/scene-4.jpg",
+        "../media/demo/run_01M7867DJCJYJ15ZF1DH5662E9/scene-5.jpg"
       ],
       "scenesOnDisk": [
-        "../media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1/scene-0.jpg",
-        "../media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1/scene-1.jpg",
-        "../media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1/scene-2.jpg",
-        "../media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1/scene-3.jpg",
-        "../media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1/scene-4.jpg",
-        "../media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1/scene-5.jpg"
+        "../media/demo/run_01M7867DJCJYJ15ZF1DH5662E9/scene-0.jpg",
+        "../media/demo/run_01M7867DJCJYJ15ZF1DH5662E9/scene-1.jpg",
+        "../media/demo/run_01M7867DJCJYJ15ZF1DH5662E9/scene-2.jpg",
+        "../media/demo/run_01M7867DJCJYJ15ZF1DH5662E9/scene-3.jpg",
+        "../media/demo/run_01M7867DJCJYJ15ZF1DH5662E9/scene-4.jpg",
+        "../media/demo/run_01M7867DJCJYJ15ZF1DH5662E9/scene-5.jpg"
       ],
       "render": {
-        "ms": 53220,
+        "ms": 49705,
         "frames": 876
       },
       "steps": [
@@ -3037,7 +3046,7 @@
           "key": "research",
           "kind": "step",
           "status": "completed",
-          "durationMs": 5828,
+          "durationMs": 5765,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -3046,7 +3055,7 @@
           "key": "homework",
           "kind": "step",
           "status": "completed",
-          "durationMs": 26,
+          "durationMs": 16,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -3055,7 +3064,7 @@
           "key": "script",
           "kind": "step",
           "status": "completed",
-          "durationMs": 2,
+          "durationMs": 1,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -3064,7 +3073,7 @@
           "key": "compose",
           "kind": "step",
           "status": "completed",
-          "durationMs": 8,
+          "durationMs": 9,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -3073,7 +3082,7 @@
           "key": "render:0",
           "kind": "step",
           "status": "completed",
-          "durationMs": 5780,
+          "durationMs": 5571,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -3082,7 +3091,7 @@
           "key": "render:1",
           "kind": "step",
           "status": "completed",
-          "durationMs": 16807,
+          "durationMs": 15809,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -3091,7 +3100,7 @@
           "key": "render:2",
           "kind": "step",
           "status": "completed",
-          "durationMs": 26341,
+          "durationMs": 24756,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -3100,7 +3109,7 @@
           "key": "render:3",
           "kind": "step",
           "status": "completed",
-          "durationMs": 36741,
+          "durationMs": 34492,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -3109,7 +3118,7 @@
           "key": "render:4",
           "kind": "step",
           "status": "completed",
-          "durationMs": 45085,
+          "durationMs": 42264,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -3118,7 +3127,7 @@
           "key": "render:5",
           "kind": "step",
           "status": "completed",
-          "durationMs": 53419,
+          "durationMs": 49885,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -3127,7 +3136,7 @@
           "key": "encode",
           "kind": "step",
           "status": "completed",
-          "durationMs": 1807,
+          "durationMs": 1655,
           "replays": 0,
           "attempts": 1,
           "error": null
@@ -3136,49 +3145,49 @@
       "timeline": [
         {
           "id": "5",
-          "runId": "run_01M777MSD7Y39HZZ0C5BK042Y1",
-          "at": "2026-11-12T06:38:10.343Z",
+          "runId": "run_01M7867DJCJYJ15ZF1DH5662E9",
+          "at": "2026-11-12T15:32:38.091Z",
           "kind": "queued",
           "message": "run created",
           "workerId": null
         },
         {
           "id": "7",
-          "runId": "run_01M777MSD7Y39HZZ0C5BK042Y1",
-          "at": "2026-11-12T06:39:41.377Z",
+          "runId": "run_01M7867DJCJYJ15ZF1DH5662E9",
+          "at": "2026-11-12T15:34:05.569Z",
           "kind": "claimed",
           "message": "execution #1 started",
-          "workerId": "vm:9130:nkbf"
+          "workerId": "vm:1419:jha8"
         },
         {
           "id": "9",
-          "runId": "run_01M777MSD7Y39HZZ0C5BK042Y1",
-          "at": "2026-11-12T06:40:42.500Z",
+          "runId": "run_01M7867DJCJYJ15ZF1DH5662E9",
+          "at": "2026-11-12T15:35:02.969Z",
           "kind": "succeeded",
           "message": "succeeded on execution #1",
-          "workerId": "vm:9130:nkbf"
+          "workerId": "vm:1419:jha8"
         }
       ],
       "embed": null
     },
-    "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1/messages": {
+    "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9/messages": {
       "email": {
         "subject": "Notes from using Parcelpine",
-        "body": "Hi Dana,\n\nI tried a size swap in the Parcelpine demo store and the bonus credit showed up first.\n\nI put what I'd build on \"Returns that keep the customer\" into a 30-second film:\nhttps://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1\n\nI built the tool that made it, coldopen.\n\nOne thing I wondered: do most brands turn on bonus credit for every exchange, or only some products? If you ever have 15 minutes, I'd love to hear how you think about it.\n\nThanks for reading,\nAlex Rivera\nalex@example.com"
+        "body": "Hi Dana,\n\nI tried a size swap in the Parcelpine demo store and the bonus credit showed up first.\n\nI put what I'd build on \"Returns that keep the customer\" into a 30-second film:\nhttps://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DJCJYJ15ZF1DH5662E9\n\nOne thing I wondered: do most brands turn on bonus credit for every exchange, or only some products? If you ever have 15 minutes, I'd love to hear how you think about it.\n\nThanks for reading,\nAlex Rivera\nalex@example.com"
       },
       "linkedin": "Hi Dana, I tried a size swap in the Parcelpine demo store and the bonus credit showed up first. Curious how most Parcelpine customers use it. – Alex",
-      "afterAccept": "Hi Dana, thanks for connecting.\n\nI tried a size swap in the Parcelpine demo store and the bonus credit showed up first.\n\nI put what I'd build on \"Returns that keep the customer\" into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1\n\nDo most brands turn on bonus credit for every exchange, or only some products?\n\nThank you for your time,\nAlex",
+      "afterAccept": "Hi Dana, thanks for connecting.\n\nI tried a size swap in the Parcelpine demo store and the bonus credit showed up first.\n\nI put what I'd build on \"Returns that keep the customer\" into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DJCJYJ15ZF1DH5662E9\n\nDo most brands turn on bonus credit for every exchange, or only some products?\n\nThank you for your time,\nAlex",
       "inmail": {
         "subject": "Notes from using Parcelpine",
-        "body": "Hi Dana,\n\nI tried a size swap in the Parcelpine demo store and the bonus credit showed up first.\n\nI put what I'd build on \"Returns that keep the customer\" into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1\n\nDo most brands turn on bonus credit for every exchange, or only some products?\n\nThank you for your time,\nAlex"
+        "body": "Hi Dana,\n\nI tried a size swap in the Parcelpine demo store and the bonus credit showed up first.\n\nI put what I'd build on \"Returns that keep the customer\" into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DJCJYJ15ZF1DH5662E9\n\nDo most brands turn on bonus credit for every exchange, or only some products?\n\nThank you for your time,\nAlex"
       },
-      "followUp": "Hi Dana,\n\nOne more thing I noticed since I wrote: Parcelpine's site says \"3,100 Shopify brands use Parcelpine\".\n\nThe film is here if it helps: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1\n\nThanks either way,\nAlex",
-      "lastNote": "Hi Dana,\n\nOne last note on the film I made for Parcelpine: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nAlex",
-      "linkedinFollowUp": "Hi Dana, One more thing I noticed since I wrote: Parcelpine's site says \"3,100 Shopify brands use Parcelpine\". The film is here if it helps: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1 – Alex",
-      "intro": "Hi [First name],\n\nHope you're doing well. I've been curious about what Parcelpine is building, and I put what I'd try next with it into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1\n\nWould you be open to passing it to whoever leads that work, or pointing me to the right person? Here's a short note you can forward as is:\n\nAlex Rivera has been digging into what we're building and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1\nReach Alex at alex@example.com.\n\nThank you,\nAlex",
-      "forward": "Alex Rivera has been digging into what we're building and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M777MSD7Y39HZZ0C5BK042Y1\nReach Alex at alex@example.com.",
+      "followUp": "Hi Dana,\n\nOne more thing I noticed since I wrote: Parcelpine's site says \"3,100 Shopify brands use Parcelpine\".\n\nThe film is here if it helps: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DJCJYJ15ZF1DH5662E9\n\nThanks either way,\nAlex",
+      "lastNote": "Hi Dana,\n\nOne last note on the film I made for Parcelpine: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DJCJYJ15ZF1DH5662E9\n\nIf the timing isn't right, no problem at all. Thanks for taking a look.\n\nAlex",
+      "linkedinFollowUp": "Hi Dana, One more thing I noticed since I wrote: Parcelpine's site says \"3,100 Shopify brands use Parcelpine\". The film is here if it helps: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DJCJYJ15ZF1DH5662E9 – Alex",
+      "intro": "Hi [First name],\n\nHope you're doing well. I've been curious about what Parcelpine is building, and I put what I'd try next with it into a 30-second film: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DJCJYJ15ZF1DH5662E9\n\nWould you be open to passing it to whoever leads that work, or pointing me to the right person? Here's a short note you can forward as is:\n\nAlex Rivera has been digging into what we're building and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DJCJYJ15ZF1DH5662E9\nReach Alex at alex@example.com.\n\nThank you,\nAlex",
+      "forward": "Alex Rivera has been digging into what we're building and made a 30-second film for the team: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DJCJYJ15ZF1DH5662E9\nReach Alex at alex@example.com.",
       "checks": {
-        "words": 82,
+        "words": 74,
         "short": true,
         "aboutThem": true,
         "detail": true,
@@ -3198,7 +3207,7 @@
       "flags": {},
       "notes": {}
     },
-    "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1/views": {
+    "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9/views": {
       "summary": {
         "opens": 1,
         "viewers": 1,
@@ -3206,16 +3215,16 @@
         "finishes": 0,
         "clicks": 0,
         "bestSeconds": 14,
-        "firstPlayAt": "2026-11-12T06:40:45.937Z",
-        "lastSeen": "2026-11-12T06:40:45.943Z"
+        "firstPlayAt": "2026-11-12T15:35:03.562Z",
+        "lastSeen": "2026-11-12T15:35:03.570Z"
       },
       "sessions": [
         {
-          "filmId": "run_01M777MSD7Y39HZZ0C5BK042Y1",
-          "session": "demo-5BK042Y1-0",
+          "filmId": "run_01M7867DJCJYJ15ZF1DH5662E9",
+          "session": "demo-DH5662E9-0",
           "viewer": "0faecf7338e7cc38",
-          "firstSeen": "2026-11-12T06:40:45.937Z",
-          "lastSeen": "2026-11-12T06:40:45.943Z",
+          "firstSeen": "2026-11-12T15:35:03.562Z",
+          "lastSeen": "2026-11-12T15:35:03.570Z",
           "played": true,
           "seconds": 14,
           "finished": false,
@@ -3226,7 +3235,7 @@
         }
       ]
     },
-    "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1/people": {
+    "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9/people": {
       "company": "Parcelpine",
       "team": null,
       "groups": [
@@ -3370,7 +3379,7 @@
         }
       ]
     },
-    "/v1/films/run_01M777MSD7Y39HZZ0C5BK042Y1/brief": {
+    "/v1/films/run_01M7867DJCJYJ15ZF1DH5662E9/brief": {
       "company": "Parcelpine",
       "what": "Parcelpine turns returns into exchanges for Shopify brands, with instant store credit, QR drop-offs and fraud checks built in.",
       "facts": [

@@ -83,6 +83,7 @@ import {
 } from '../outreach/people.ts'
 import { type ModelMessages, messagesSchemaFor, writeMessages } from '../outreach/writer.ts'
 import { draftProfile } from '../profile/draft.ts'
+import { forSender, makerClaims, NOT_THE_MAKER } from '../profile/maker.ts'
 import { parseResume } from '../profile/parse.ts'
 import { hiringProfile, PitchError, recruiterProfile } from '../profile/pitch.ts'
 import { resumeText } from '../profile/read.ts'
@@ -532,6 +533,13 @@ export async function buildApi({
     return !!login && cfg.UNLIMITED_GITHUB_USERS.includes(login)
   }
 
+  /**
+   * coldopen's maker: whoever runs this install (a private install or its API key) or, on the
+   * hosted app, an account in UNLIMITED_GITHUB_USERS. Only they can say on a film that they
+   * built coldopen.
+   */
+  const maker = unlimited
+
   async function takeFilms(req: FastifyRequest, n: number): Promise<string | null> {
     const checks: [string, number, string][] = [
       [
@@ -797,7 +805,17 @@ export async function buildApi({
         body: z.object({ name: z.string().min(1).max(80), data: ProfileSchema }),
       },
     },
-    async (req) => {
+    async (req, reply) => {
+      // only coldopen's maker can save a profile that says he built it
+      const claims = maker(req) ? [] : makerClaims(req.body.data)
+      if (claims.length)
+        return reply.status(422).send({
+          error: {
+            code: 'not_the_maker',
+            message: NOT_THE_MAKER,
+            fields: claims.map((path) => ({ path, message: NOT_THE_MAKER })),
+          },
+        })
       const [row] = await sql`
         insert into profiles (owner, id, name, data) values (${req.owner}, ${req.params.id}, ${req.body.name}, ${sql.json(req.body.data as never)})
         on conflict (owner, id) do update set name = excluded.name, data = excluded.data, updated_at = now()
@@ -908,7 +926,19 @@ export async function buildApi({
     },
   )
 
+  /**
+   * The profile a film is made with. Anyone but coldopen's maker gets it without a claim to
+   * coldopen, so no film, share page or message of theirs says they built it.
+   */
   async function resolveProfile(
+    body: { profile?: unknown; profileId?: string | undefined },
+    owner: Owner,
+    isMaker: boolean,
+  ) {
+    return forSender(await savedProfile(body, owner), isMaker)
+  }
+
+  async function savedProfile(
     body: { profile?: unknown; profileId?: string | undefined },
     owner: Owner,
   ) {
@@ -1379,7 +1409,7 @@ export async function buildApi({
       // a LinkedIn (or other login-walled) post would only fail in the worker: ask now
       const walled = pastedTextProblem(req.body)
       if (walled) return reply.status(422).send({ error: walled })
-      const profile = await resolveProfile(req.body, req.owner)
+      const profile = await resolveProfile(req.body, req.owner, maker(req))
       const input = FilmInputSchema.parse({
         ...req.body,
         url: normalizeUrl(req.body.url),
@@ -1455,7 +1485,7 @@ export async function buildApi({
         const walled = pastedTextProblem(p)
         if (walled) return reply.status(422).send({ error: walled })
       }
-      const profile = await resolveProfile(req.body, req.owner)
+      const profile = await resolveProfile(req.body, req.owner, maker(req))
       const batch = newId('bat')
       // one film per company website, or per job post (a job without a known site is filmed from
       // its link, which names the company)
@@ -2816,7 +2846,7 @@ export async function buildApi({
       return { ok: true }
     }
     try {
-      const profile = await resolveProfile({}, 'team')
+      const profile = await resolveProfile({}, 'team', true)
       const input = FilmInputSchema.parse({ url, profile, format: 'square', slack: thread })
       // Slack retries deliveries; the event id makes the run idempotent
       const r = await createRun(sql, {

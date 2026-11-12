@@ -107,9 +107,11 @@ describe('the demo account', () => {
       films.data.map((f) => demoApi<{ email: { body: string } }>(`/v1/films/${f.id}/messages`)),
     )
     const withHomework = msgs.find((m) => m.email.body.includes('I tried a size swap'))
-    expect(withHomework?.email.body).toContain('I built the tool that made it, coldopen.')
+    expect(withHomework).toBeDefined()
     for (const m of msgs) {
       expect(m.email.body).toContain('Thanks for reading,')
+      // the demo person is made up: only coldopen's maker says he built it
+      expect(m.email.body).not.toMatch(/I built[^.]*coldopen/i)
       expect(m.email.body).not.toMatch(/\b(role|position|hiring|apply|résumé|job)\b/i)
     }
   })
@@ -120,7 +122,7 @@ describe('the demo account', () => {
       const page = readFileSync(join(SITE, 'media/demo', f.id, 'index.html'), 'utf8')
       expect(page).toContain('<section class="sender" aria-label="Who sent it">')
       expect(page).toContain('<img src="../alex.jpg"')
-      expect(page).toContain(', which I built</p>')
+      expect(page).not.toContain('which I built')
       expect(page).toMatch(
         /<meta property="og:title" content="A 30-second film for [^"]+, from Alex Rivera">/,
       )

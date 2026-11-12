@@ -366,3 +366,77 @@ describe('the owner', () => {
     expect(r.body).toContain('Groq')
   })
 })
+
+describe('only coldopen’s maker can say he built it', () => {
+  const claim = {
+    ...profile('candidate'),
+    creator: {
+      name: 'coldopen',
+      url: 'https://tiwaker9404.github.io/coldopen/',
+      line: 'Open-source outreach films',
+    },
+  }
+  const signIn = async (id: number, login: string) => {
+    const b = browser()
+    const start = await b.req('GET', '/auth/github')
+    const state = new URL(start.headers.location as string).searchParams.get('state')!
+    vi.stubGlobal('fetch', async (url: string) =>
+      Response.json(
+        String(url).includes('access_token')
+          ? { access_token: `gho_${login}` }
+          : { id, login, name: login, avatar_url: null },
+      ),
+    )
+    await b.req('GET', `/auth/github/callback?code=c&state=${state}`)
+    vi.unstubAllGlobals()
+    return b
+  }
+
+  it('refuses a profile from anyone else that claims coldopen, pointing at the field', async () => {
+    for (const b of [browser(), await signIn(41, 'mallory')]) {
+      const r = await b.req('PUT', '/v1/profiles/me', { name: 'Me', data: claim })
+      expect(r.statusCode).toBe(422)
+      expect(r.json().error).toMatchObject({
+        code: 'not_the_maker',
+        fields: [{ path: 'creator.name' }],
+      })
+      // a project that is coldopen counts too, by name or link
+      const project = {
+        ...profile('candidate'),
+        projects: [
+          { name: 'My agent', url: 'https://github.com/tiwaker9404/coldopen', line: 'Films' },
+        ],
+      }
+      const p = await b.req('PUT', '/v1/profiles/me', { name: 'Me', data: project })
+      expect(p.json().error.fields).toEqual([expect.objectContaining({ path: 'projects.0.name' })])
+      // something they built themselves is fine
+      const own = {
+        ...profile('candidate'),
+        creator: { name: 'shipkit', url: 'https://shipkit.example', line: 'A kit I wrote' },
+      }
+      expect((await b.req('PUT', '/v1/profiles/me', { name: 'Me', data: own })).statusCode).toBe(
+        200,
+      )
+    }
+  })
+
+  it('makes their film without the claim when it comes with the film or was saved before', async () => {
+    const mallory = await signIn(42, 'mallory2')
+    const r = await mallory.req('POST', '/v1/films', { url: 'claims.example', profile: claim })
+    expect(r.statusCode).toBe(202)
+    const [run] = await sql<{ input: { profile: { creator?: unknown } } }[]>`
+      select input from runs where id = ${r.json().id}`
+    expect(run!.input.profile.creator).toBeUndefined()
+  })
+
+  it('lets the maker save it, and keeps it on his films', async () => {
+    const boss = await signIn(7, 'boss')
+    expect((await boss.req('PUT', '/v1/profiles/me', { name: 'Me', data: claim })).statusCode).toBe(
+      200,
+    )
+    const r = await boss.req('POST', '/v1/films', { url: 'mine.example', profileId: 'me' })
+    const [run] = await sql<{ input: { profile: { creator?: { name: string } } } }[]>`
+      select input from runs where id = ${r.json().id}`
+    expect(run!.input.profile.creator?.name).toBe('coldopen')
+  })
+})
