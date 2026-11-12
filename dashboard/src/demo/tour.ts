@@ -16,7 +16,7 @@ export const STOPS: readonly Stop[] = [
   {
     place: 'today',
     title: 'Today: what to do next',
-    body: 'One list of what’s due: follow-ups, films being made, the best new fits and what’s working. This account sent three films.',
+    body: 'Follow-ups that are due, then Network this week: ten companies worth a film and a warm message right now, each with why. This account sent three films.',
   },
   {
     place: 'jobs',
@@ -27,26 +27,30 @@ export const STOPS: readonly Stop[] = [
     place: 'films',
     film: true,
     title: 'A 30-second film made for one company',
-    body: 'Their colors, their font, their headline and a fact from their own site, then your proof. Press play.',
+    body: 'Their colors, their font, and a line from what they published, with where it’s from. Press play, then open Review: every scene, with anything a founder would find odd flagged.',
   },
   {
     place: 'films',
     film: true,
     title: 'The messages that go with it',
-    body: 'Scroll to the messages: a connection note under 200 characters, the note after they accept, InMail and a warm email, each checked in code.',
+    body: 'Scroll to the messages: a short note, the note after they accept, InMail and an email that opens on their work and asks one real question. Each is checked in code.',
   },
   {
     place: 'films',
     film: true,
-    title: 'Who watched, and what worked',
-    body: 'Open the Views tab: who pressed play and how far they got, from the share page. The board tracks each film from sent to interview.',
+    title: 'Who to reach, and who watched',
+    body: 'Who to write to at this company, in the order that gets replies, then the Views tab: who pressed play and how far they got on the share page, which says who sent it.',
   },
 ]
 
 export const SEEN_KEY = 'coldopen.demo.tour'
 
-/** Whether to start the tour on load. Storage that throws (private mode) means show it. */
-export function shouldStart(storage: Pick<Storage, 'getItem'> | null): boolean {
+/**
+ * Whether to start the tour on load: always when the link asks for it (?tour, the landing page's
+ * button), else once per browser. Storage that throws (private mode) means show it.
+ */
+export function shouldStart(storage: Pick<Storage, 'getItem'> | null, search = ''): boolean {
+  if (/[?&]tour\b/.test(search)) return true
   try {
     return storage?.getItem(SEEN_KEY) !== 'done'
   } catch {

@@ -15,7 +15,9 @@ const storage = (): Storage | null => {
 }
 
 export default function DemoChrome({ onOpenFilm }: { onOpenFilm: (open: boolean) => void }) {
-  const [stop, setStop] = useState<number | null>(() => (shouldStart(storage()) ? 0 : null))
+  const [stop, setStop] = useState<number | null>(() =>
+    shouldStart(storage(), window.location.search) ? 0 : null,
+  )
   const card = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

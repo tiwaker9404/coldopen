@@ -2,10 +2,10 @@
  * coldopen share links on Cloudflare's free plan: no server to run, and nothing to pay.
  *
  *   GET  /f/:id          the share page (the film, one ask, view tracking)
- *   GET  /f/:id/:file    film, poster and GIF, with byte ranges so Safari can play the video
+ *   GET  /f/:id/:file    film, poster, GIF and scene stills, with byte ranges so Safari can play the video
  *   POST /f/:id/v        reports from the page: open, play, progress, end
  *   PUT  /api/films/:id            the page's details (JSON)       } Bearer SHARE_TOKEN
- *   PUT  /api/films/:id/:file      a film, poster or GIF            }
+ *   PUT  /api/films/:id/:file      a film, poster, GIF or still     }
  *   DELETE /api/films/:id          take a link down                 }
  *   GET  /api/views                every film with its views        }
  *   GET  /api/films/:id/views      one film's sessions              }
@@ -14,7 +14,7 @@
  * the API server uses (src/share), so a film looks and counts the same wherever it's hosted.
  */
 import { attachment } from '../src/share/download.ts'
-import { creatorOf, type ShareView, sharePage } from '../src/share/page.ts'
+import { cardOf, creatorOf, type ShareView, sharePage } from '../src/share/page.ts'
 import { recordBeacon, type ViewRow, type ViewStore, type ViewSummary } from '../src/share/views.ts'
 
 /* ------------------------------------------------- the slice of Workers types we use */
@@ -79,6 +79,8 @@ const FILES: Record<string, string> = {
   'film-portrait.mp4': 'video/mp4',
   'poster.jpg': 'image/jpeg',
   'preview.gif': 'image/gif',
+  // the review's stills: frames of a film anyone with the link can already watch
+  ...Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`scene-${i}.jpg`, 'image/jpeg'])),
 }
 const MAX_FILE = 24 * 1024 * 1024 // Workers KV's value limit is 25 MiB
 
@@ -155,6 +157,10 @@ function parseView(body: unknown): ShareView | null {
     ...(relatedOf(v.related) ? { related: relatedOf(v.related)! } : {}),
     ...(factFrom(v.fact) ? { fact: factFrom(v.fact)! } : {}),
     ...(creatorOf(v.creator) ? { creator: creatorOf(v.creator)! } : {}),
+    ...(str('name', 120) ? { name: v.name as string } : {}),
+    ...(str('tease', 240) ? { tease: v.tease as string } : {}),
+    // only a job seeker's page has the card; a seller's page stays as it was
+    ...(v.kind === 'candidate' && cardOf(v.card) ? { card: cardOf(v.card)! } : {}),
     ...(['candidate', 'recruiter', 'sales', 'hiring'].includes(v.kind as string)
       ? { kind: v.kind as ShareView['kind'] }
       : {}),

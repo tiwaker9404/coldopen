@@ -244,6 +244,37 @@ export function ProfileEditor({
                 onValue={(v) => set({ offer: v }, 'offer')}
               />
             </label>
+            {job && (
+              <>
+                <p className="hint">Shown on your film's page, so they know who sent it.</p>
+                <div className="pair">
+                  <label htmlFor={fid('sender.linkedin')}>
+                    Your LinkedIn
+                    <Text
+                      path="sender.linkedin"
+                      error={err('sender.linkedin')}
+                      value={d.sender.linkedin ?? ''}
+                      placeholder="https://www.linkedin.com/in/your-name"
+                      inputMode="url"
+                      onValue={(v) =>
+                        set({ sender: { ...d.sender, linkedin: v } }, 'sender.linkedin')
+                      }
+                    />
+                  </label>
+                  <label htmlFor={fid('sender.photo')}>
+                    A photo of you (a link)
+                    <Text
+                      path="sender.photo"
+                      error={err('sender.photo')}
+                      value={d.sender.photo ?? ''}
+                      placeholder="https://avatars.githubusercontent.com/u/…"
+                      inputMode="url"
+                      onValue={(v) => set({ sender: { ...d.sender, photo: v } }, 'sender.photo')}
+                    />
+                  </label>
+                </div>
+              </>
+            )}
           </fieldset>
 
           <fieldset>

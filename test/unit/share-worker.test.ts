@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import worker, { type D1, type Env, handle, type KV, media, type R2 } from '../../share/worker.ts'
-import { viewFromRun } from '../../src/share/page.ts'
+import { sharePage, teaseOf, viewFromRun } from '../../src/share/page.ts'
 
 const ttls = new Map<string, number>()
 /** Workers KV, in memory. */
@@ -454,3 +454,225 @@ describe('share worker with R2 for the videos', () => {
 })
 
 afterEach(() => vi.unstubAllGlobals())
+
+describe('the page says who sent it', () => {
+  const LINK = 'https://share.example.dev/f/deel-7q2k9xgm'
+  const me = {
+    preset: 'candidate',
+    sender: {
+      name: 'Ashwin Tiwari',
+      company: 'Changing The Present',
+      role: 'Forward deployed engineer',
+      linkedin: 'https://www.linkedin.com/in/ashwin-tiwari',
+      photo: 'https://avatars.githubusercontent.com/u/345417092',
+    },
+    offer: 'An engineer who ships data tools teams use',
+    points: ['Built a film agent', 'Shipped dashboards'],
+    proof: [{ value: '60%', label: 'replies on my first films' }],
+    cta: { line: 'Worth a 15-minute call?', contact: 'ashwin@example.com' },
+    creator: {
+      name: 'coldopen',
+      url: 'https://tiwaker9404.github.io/coldopen/',
+      line: 'Open-source outreach films',
+    },
+    skills: ['TypeScript'],
+    schools: ['Duke University'],
+  }
+  const film = (more = {}) =>
+    ({
+      company: 'Parcelpine',
+      format: 'square',
+      files: { film: 'r1/film-square.mp4' },
+      script: {
+        noticed: 'Your homepage leads with per-zone carrier rates',
+        cta: 'Trade notes on carrier rates?',
+      },
+      highlights: { quote: { text: '', source: '' }, proof: [] },
+      ...more,
+    }) as never
+  const page = (v: ReturnType<typeof viewFromRun>) => sharePage(v, LINK, `${LINK}/v`)
+
+  it('shows a card under the film: their name, one line, LinkedIn, photo and what they built', async () => {
+    const v = viewFromRun({ profile: me } as never, film())
+    expect(v.card).toEqual({
+      line: 'An engineer who ships data tools teams use',
+      linkedin: 'https://www.linkedin.com/in/ashwin-tiwari',
+      photo: 'https://avatars.githubusercontent.com/u/345417092',
+    })
+    // through the worker, as the hosted app publishes it
+    await call(`/api/films/${ID}`, { method: 'PUT', headers: auth, body: JSON.stringify(v) })
+    const html = await (await call(`/f/${ID}`)).text()
+    const card = html.match(/<section class="sender"[\s\S]*?<\/section>/)?.[0] ?? ''
+    expect(card).toContain(
+      '<img src="https://avatars.githubusercontent.com/u/345417092" alt="" width="56" height="56" loading="lazy" referrerpolicy="no-referrer">',
+    )
+    expect(card).toContain('<b>Ashwin Tiwari</b>')
+    expect(card).toContain('href="https://www.linkedin.com/in/ashwin-tiwari"')
+    expect(card).toContain('<p class="line">An engineer who ships data tools teams use</p>')
+    expect(card).toContain(
+      '<p class="creator">Made with <a data-track href="https://tiwaker9404.github.io/coldopen/" target="_blank" rel="noopener">coldopen</a>, which I built</p>',
+    )
+    // the creator line is in the card, once
+    expect(html.match(/class="creator"/g)).toHaveLength(1)
+  })
+
+  it('uploads only the listed sender fields, never the rest of the profile', () => {
+    const v = viewFromRun({ profile: me } as never, film())
+    const sent = JSON.stringify(v)
+    for (const kept of ['TypeScript', 'Duke University', 'replies on my first films', 'Shipped'])
+      expect(sent).not.toContain(kept)
+    // nor the current employer, in the card or the link preview
+    expect(JSON.stringify(v.card)).not.toContain('Changing The Present')
+    const html = page(v)
+    const og = html.match(/<meta (property|name)="(og|twitter):[^>]*>/g)!.join('\n')
+    expect(og).not.toContain('Changing The Present')
+    expect(html).not.toMatch(/\b\d{1,3}(\.\d{1,3}){3}\b/) // no IPs
+  })
+
+  it('leaves out the photo and LinkedIn when there are none, with no empty boxes', async () => {
+    const { linkedin: _l, photo: _p, ...plain } = me.sender
+    const v = viewFromRun({ profile: { ...me, sender: plain } } as never, film())
+    expect(v.card).toEqual({ line: me.offer })
+    const html = page(v)
+    const card = html.match(/<section class="sender"[\s\S]*?<\/section>/)![0]
+    expect(card).not.toContain('<img')
+    expect(card).not.toContain('LinkedIn')
+    expect(card).not.toContain('href=""')
+    expect(card).not.toMatch(/<(p|div|span)[^>]*><\/\1>/)
+    // unsafe links are dropped, not shown
+    const bad = viewFromRun(
+      {
+        profile: {
+          ...me,
+          sender: { ...plain, linkedin: 'javascript:alert(1)', photo: 'http://x.example/a.jpg' },
+        },
+      } as never,
+      film(),
+    )
+    expect(bad.card).toEqual({ line: me.offer })
+    await call(`/api/films/${ID}`, {
+      method: 'PUT',
+      headers: auth,
+      body: JSON.stringify({
+        ...view,
+        kind: 'candidate',
+        card: { line: 'Hi', photo: 'javascript:x' },
+      }),
+    })
+    const stored = await (await call(`/f/${ID}`)).text()
+    expect(stored).not.toContain('class="sender"') // a line under 3 characters is no card
+    expect(stored).not.toContain('javascript:')
+  })
+
+  it("uses the film's own ask over the button, falling back to the profile's", () => {
+    expect(viewFromRun({ profile: me } as never, film()).ctaLine).toBe(
+      'Trade notes on carrier rates?',
+    )
+    const plain = viewFromRun({ profile: me } as never, film({ script: undefined }))
+    expect(plain.ctaLine).toBe('Worth a 15-minute call?')
+    const html = page(viewFromRun({ profile: me } as never, film()))
+    expect(html).toContain('<h1>Trade notes on carrier rates?</h1>')
+  })
+
+  it("previews the link with who it is for and from, and the film's tease", () => {
+    const email = [
+      'Hi [First name],',
+      '',
+      'I tried the rate API this weekend.',
+      "I put what I'd try next with Parcelpine into a 30-second film:",
+      '[film]',
+      '',
+      'Thanks for reading,',
+    ].join('\n')
+    const withDrafts = film({
+      messages: { drafts: { email: { subject: 's', body: email } } },
+    })
+    const v = viewFromRun({ profile: me } as never, withDrafts)
+    expect(v.tease).toBe("I put what I'd try next with Parcelpine into a 30-second film.")
+    const html = page(v)
+    expect(html).toContain(
+      '<meta property="og:title" content="A 30-second film for Parcelpine, from Ashwin Tiwari">',
+    )
+    expect(html).toContain(
+      `<meta property="og:description" content="I put what I'd try next with Parcelpine into a 30-second film.">`,
+    )
+    expect(html).toContain(`<meta property="og:image" content="${LINK}/poster.jpg">`)
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image">')
+    // no stored email: what the film noticed on their homepage
+    expect(teaseOf(film() as never, 'candidate')).toBe(
+      'Your homepage leads with per-zone carrier rates',
+    )
+    expect(teaseOf({} as never, 'candidate')).toBeUndefined()
+  })
+
+  it("keeps a seller's page as it was, apart from the link preview", () => {
+    const seller = {
+      preset: 'sales',
+      sender: {
+        name: 'Maya Chen',
+        company: 'Tessellate',
+        linkedin: 'https://www.linkedin.com/in/maya-chen',
+        photo: 'https://example.com/maya.jpg',
+      },
+      offer: 'Product analytics that shows which features keep customers',
+      cta: {
+        line: 'Worth a 15-minute look?',
+        contact: 'maya@tessellate.io',
+        book: 'https://cal.com/maya/15',
+      },
+    }
+    const out = {
+      company: 'Deel',
+      format: 'square',
+      files: { film: 'r1/film-square.mp4' },
+      script: {
+        noticed: 'Your homepage leads with payroll in 150 countries',
+        cta: 'Trade notes on payroll?',
+      },
+      highlights: {
+        quote: {
+          text: 'Deel pays 35,000 companies in 150 countries every month.',
+          source: 'deel.com',
+          caption: 'From their homepage',
+          url: 'https://www.deel.com/',
+        },
+        proof: [],
+      },
+      related: {
+        name: 'payroll-lint',
+        url: 'https://github.com/maya/payroll-lint',
+        line: 'Checks payroll files before they go out',
+      },
+    } as never
+    const v = viewFromRun({ profile: seller } as never, out)
+    expect(v.card).toBeUndefined()
+    expect(v.ctaLine).toBe('Worth a 15-minute look?')
+    // the page this step started from, rendered by the code before it
+    const before = readFileSync(
+      join(import.meta.dirname, '../../fixtures/share/seller-page-before.txt'),
+      'utf8',
+    )
+    const html = sharePage(
+      v,
+      'https://share.example.dev/f/deel-7q2k9xgm',
+      'https://share.example.dev/f/deel-7q2k9xgm/v',
+    )
+    const noOg = (h: string) => h.replace(/<meta property="og:(title|description)"[^>]*>/g, '')
+    expect(noOg(html)).toBe(noOg(before))
+    expect(html).toContain(
+      '<meta property="og:title" content="A 30-second film for Deel, from Maya Chen">',
+    )
+    expect(html).toContain(
+      '<meta property="og:description" content="Your homepage leads with payroll in 150 countries">',
+    )
+  })
+
+  it("the worker drops a card from a page that is not a job seeker's", async () => {
+    await call(`/api/films/${ID}`, {
+      method: 'PUT',
+      headers: auth,
+      body: JSON.stringify({ ...view, kind: 'sales', card: { line: 'An engineer who ships' } }),
+    })
+    expect(await (await call(`/f/${ID}`)).text()).not.toContain('class="sender"')
+  })
+})

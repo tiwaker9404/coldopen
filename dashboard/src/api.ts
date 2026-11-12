@@ -281,6 +281,8 @@ export interface FilmDetail extends Film {
   review: Review | null
   /** one still per scene, for the review's filmstrip (films made since the review) */
   scenes: string[] | null
+  /** the same stills from the app's own disk, tried when the first copy won't load */
+  scenesOnDisk?: string[] | null
   steps: {
     key: string
     kind: string
@@ -296,7 +298,8 @@ export interface FilmDetail extends Film {
 
 export interface ProfileData {
   preset: 'sales' | 'candidate' | 'recruiter'
-  sender: { name: string; company?: string; role?: string }
+  /** linkedin and photo: shown on a job seeker's film page, so they know who sent it */
+  sender: { name: string; company?: string; role?: string; linkedin?: string; photo?: string }
   /** recruiter films: the candidate it's made for */
   recipient?: { name: string; role?: string }
   offer: string

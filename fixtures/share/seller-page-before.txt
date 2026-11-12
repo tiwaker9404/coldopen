@@ -1,0 +1,70 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A 30-second film for Deel</title>
+<meta name="description" content="Maya Chen at Tessellate made this for Deel.">
+<meta property="og:title" content="A 30-second film for Deel">
+<meta property="og:description" content="From Maya Chen at Tessellate">
+<meta property="og:image" content="https://share.example.dev/f/deel-7q2k9xgm/poster.jpg">
+<meta property="og:video" content="https://share.example.dev/f/deel-7q2k9xgm/film-square.mp4">
+<meta property="og:video:type" content="video/mp4">
+<meta property="og:video:width" content="1080"><meta property="og:video:height" content="1080">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="robots" content="noindex">
+<style>
+:root{color-scheme:light dark;--bg:#F6F6F3;--fg:#141414;--muted:#5E6168;--rule:#D9DAD6;--stock:#FFC21A;--tally:#E5291F}
+@media (prefers-color-scheme:dark){:root{--bg:#17181B;--fg:#F2F2EE;--muted:#A8AAAE;--rule:#2E3035}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px 16px}
+main{width:min(100%,640px)}
+.slate{background:#000;border-radius:14px;overflow:hidden;box-shadow:0 24px 56px -28px rgb(0 0 0/.5)}
+.clap{height:18px;background:repeating-linear-gradient(-55deg,#fff 0 16px,#000 16px 32px)}
+video{width:100%;height:auto;display:block;background:#000}
+.fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) auto;color:#fff;border-top:1px solid #333}
+.fields div{padding:9px 14px 11px;border-right:1px solid #333;min-width:0}
+.fields div:last-child{border-right:0}
+.fields span{display:block;font-size:12px;color:#A8AAAE}
+.fields b{display:block;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+h1{font-size:22px;line-height:1.25;font-weight:700;margin:22px 0 4px;letter-spacing:-.01em}
+p{margin:0;color:var(--muted)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:16px 24px;flex-wrap:wrap}
+.do{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+a.cta{display:inline-block;background:var(--stock);color:#000;text-decoration:none;font-weight:650;padding:13px 22px;border-radius:999px}
+a.cta.alt{background:none;color:var(--fg);box-shadow:inset 0 0 0 1.5px var(--fg)}
+a.cta:focus-visible{outline:3px solid #1F5BD8;outline-offset:3px}
+footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);font-size:13px;color:var(--muted)}
+footer a{color:inherit}
+.related{margin-top:28px;padding:16px 18px;border:1px solid var(--rule);border-radius:12px;display:grid;gap:4px}
+.related span{font-size:13px;color:var(--muted)}
+.related a{color:var(--fg);text-decoration:none}
+.related a:hover b{text-decoration:underline}
+.creator{margin:14px 0 0;font-size:15px;color:var(--fg)}
+.creator a{color:inherit;font-weight:650}
+.quoted{margin:28px 0 0;padding-left:16px;border-left:3px solid var(--stock)}
+.quoted blockquote{margin:0;font-size:17px;line-height:1.45}
+.quoted figcaption{margin-top:6px;font-size:13px;color:var(--muted)}
+.quoted a{color:inherit}
+.made{display:inline-flex;align-items:center;gap:7px;color:var(--fg);font-weight:650}
+.made::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--tally)}
+</style></head><body><main>
+<figure class="slate" style="margin:0">
+<div class="clap" aria-hidden="true"></div>
+<video src="https://share.example.dev/f/deel-7q2k9xgm/film-square.mp4" poster="https://share.example.dev/f/deel-7q2k9xgm/poster.jpg" controls playsinline preload="metadata" width="1080" height="1080"></video>
+<figcaption class="fields"><div><span>Made for</span><b>Deel</b></div><div><span>From</span><b>Maya Chen at Tessellate</b></div><div><span>Runs</span><b>0:30</b></div></figcaption>
+</figure>
+<div class="row"><div><h1>Worth a 15-minute look?</h1><p>Maya made this film for Deel.</p></div>
+<div class="do"><a class="cta" data-track href="https://cal.com/maya/15" target="_blank" rel="noopener">Book 15 minutes</a><a class="cta alt" data-track href="mailto:maya@tessellate.io">Reply</a></div></div>
+<figure class="quoted"><blockquote>Deel pays 35,000 companies in 150 countries every month.</blockquote><figcaption><a href="https://www.deel.com/" target="_blank" rel="noopener">From their homepage</a></figcaption></figure>
+
+<aside class="related"><span>Something I built that’s close to what you do</span><a data-track href="https://github.com/maya/payroll-lint" target="_blank" rel="noopener"><b>payroll-lint</b> Checks payroll files before they go out</a></aside>
+<footer><a class="made" href="https://github.com/tiwaker9404/coldopen?ref=share">Made with coldopen</a>. Make one for a company you'd like to work with.</footer>
+</main><script>(()=>{const v=document.querySelector('video');if(!v||/[?&]preview\b/.test(location.search))return;
+const s=(crypto.randomUUID?crypto.randomUUID():String(Math.random()).slice(2)+Date.now()).replace(/[^a-zA-Z0-9-]/g,'').slice(0,40);
+let max=0,played=false,last=0;
+const send=e=>{const b=JSON.stringify({s,e,t:Math.round(max*10)/10,d:Math.round(v.duration||0),...(e==='open'&&document.referrer?{r:document.referrer.slice(0,300)}:{})});
+try{if(!navigator.sendBeacon||!navigator.sendBeacon("https://share.example.dev/f/deel-7q2k9xgm/v",new Blob([b],{type:'text/plain'})))fetch("https://share.example.dev/f/deel-7q2k9xgm/v",{method:'POST',body:b,keepalive:true,headers:{'content-type':'text/plain'}})}catch{}};
+send('open');
+v.addEventListener('play',()=>{if(!played){played=true;send('play')}});
+v.addEventListener('timeupdate',()=>{max=Math.max(max,v.currentTime);if(played&&Date.now()-last>5000){last=Date.now();send('progress')}});
+v.addEventListener('ended',()=>{max=v.duration||max;send('end')});
+addEventListener('pagehide',()=>{if(played)send('progress')});
+document.querySelectorAll('a[data-track]').forEach(a=>a.addEventListener('click',()=>send('click')));})()</script></body></html>

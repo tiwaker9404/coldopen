@@ -35,6 +35,8 @@ const NAMES: Record<string, string> = {
   'sender.name': 'your name',
   'sender.company': 'your company',
   'sender.role': 'your role',
+  'sender.linkedin': 'your LinkedIn link',
+  'sender.photo': 'the link to your photo',
   'recipient.name': "the candidate's name",
   'recipient.role': "the candidate's role",
   offer: 'what you offer',

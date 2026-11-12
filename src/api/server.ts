@@ -253,6 +253,15 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
   }
 }
 
+/** a film's scene stills: where its media lives, and this server's copy to fall back on */
+function stillsOf(r: FilmRow): { scenes: string[] | null; scenesOnDisk: string[] | null } {
+  const names = r.output?.files.scenes?.map((f) => f.split('/').pop()!)
+  if (!names) return { scenes: null, scenesOnDisk: null }
+  const disk = names.map((n) => `/f/${r.id}/${n}`)
+  const shared = r.output?.shared?.link
+  return { scenes: shared ? names.map((n) => `${shared}/${n}`) : disk, scenesOnDisk: disk }
+}
+
 function digest(s: string) {
   return createHash('sha256').update(s).digest()
 }
@@ -1544,8 +1553,12 @@ export async function buildApi({
         qa: run.output?.qa ?? null,
         /** each scene with what a founder would find odd and its fix; null until it's finished */
         review,
-        /** one still per scene, for the review's filmstrip (films made since the review) */
-        scenes: run.output?.files.scenes?.map((f) => `/f/${run.id}/${f.split('/').pop()}`) ?? null,
+        /**
+         * one still per scene, for the review's filmstrip (films made since the review): from
+         * wherever the film's media lives (the share worker, on the hosted app), with this
+         * server's disk as the fallback for films published before stills went with them
+         */
+        ...stillsOf(run),
         render: run.output?.render ?? null,
         steps: steps.map((s) => ({
           key: s.key,

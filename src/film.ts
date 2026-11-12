@@ -582,6 +582,9 @@ export function createFilmAgent(opts: FilmAgentOptions) {
                   format,
                   files: { film: out.film },
                   highlights,
+                  // the page's ask and its link preview come from what the film says
+                  script,
+                  ...(messages ? { messages } : {}),
                 } as FilmResult),
                 dir,
                 ...(input.keepDays ? { ttlSeconds: input.keepDays * 86_400 } : {}),

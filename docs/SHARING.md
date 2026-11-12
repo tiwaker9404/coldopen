@@ -2,6 +2,12 @@
 
 Every film gets a share page: the film, your one ask, and a reply button. coldopen tells you who opened it, who pressed play, how far they got, and whether they finished, so you follow up with the people who watched first.
 
+A job seeker's page also says who sent it: a card under the film with your name, your one line (the profile's offer), your LinkedIn and photo when you add them in the profile editor, and what you built when the profile has it. Nothing else from your profile is uploaded. The photo is a link to an image already online, loaded without telling its host which page asked. A seller's page has no card.
+
+The link preview (Slack, LinkedIn, iMessage) reads "A 30-second film for <Company>, from <your name>", with the film's tease line (else what it noticed on their homepage) and the poster. It never names your current employer.
+
+The six scene stills the Review tab shows are uploaded with the film, to R2 when it's set up or Workers KV otherwise, so they outlast the hosted app's disk. Films published before that still read them from the app's disk.
+
 You can host share pages two ways:
 
 |           | Free share links on Cloudflare             | The coldopen server                               |

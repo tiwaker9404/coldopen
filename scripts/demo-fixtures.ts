@@ -7,15 +7,18 @@
  *
  * It saves a profile, makes one film per fixture site with the built-in writer (no model key,
  * so the run is the same every time), marks what happened after sending, then calls every
- * route the web app reads and saves the answers. The films' poster, GIF and MP4 are copied to
- * site/media/demo/ for GitHub Pages. Job boards need the network, so the job cache is seeded
+ * route the web app reads and saves the answers. The films' poster, GIF, MP4 and scene stills are
+ * copied to site/media/demo/ for GitHub Pages, with each film's share page (as the API serves
+ * it, without view tracking), and one film is copied as the landing page's hero
+ * (site/media/demo/hero.mp4 and hero.jpg). Job boards need the network, so the job cache is seeded
  * from a Hiring Index snapshot (real listings on the day it was taken) and the Jobs tab ranks
  * those with the real fit code:
  *
  *   git fetch origin data && git show FETCH_HEAD:snapshots/2026-11-10.csv.gz > /tmp/jobs.csv.gz
  *   node scripts/demo-fixtures.ts --jobs /tmp/jobs.csv.gz
  */
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { execFileSync } from 'node:child_process'
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { gunzipSync } from 'node:zlib'
@@ -120,7 +123,16 @@ if (values.jobs) {
   console.log(`seeded ${byBoard.size} job boards`)
 }
 
+const PAGES = 'https://tiwaker9404.github.io/coldopen'
 const profile = JSON.parse(await readFile(join(ROOT, 'profiles/candidate.example.json'), 'utf8'))
+// the demo shows what a job seeker's film page says about them: a photo (an illustration served
+// with the demo, since the person is made up, so no LinkedIn) and what they built
+profile.sender.photo = `${PAGES}/media/demo/alex.jpg`
+profile.creator = {
+  name: 'coldopen',
+  url: `${PAGES}/`,
+  line: "Paste a company's website, get a 30-second film made for them",
+}
 const saved = await call<{ id: string }>('PUT', '/v1/profiles/me', {
   name: profile.sender.name,
   data: profile,
@@ -133,11 +145,32 @@ await call('PUT', '/v1/jobs/search', {
 })
 
 // one film per fixture site, and what happened after each was sent
+// homework is the sender's own words: what they noticed using it, and their own question
 const plan = [
-  { site: 'northwind', outreach: 'interview', recipient: { name: 'Priya Shah' } },
-  { site: 'lumen', outreach: 'replied', recipient: { name: 'Marcus Lee' } },
-  { site: 'parcelpine', outreach: 'sent', recipient: { name: 'Dana Okafor' } },
+  {
+    site: 'northwind',
+    outreach: 'interview',
+    recipient: { name: 'Priya Shah' },
+    homework: {
+      detail:
+        'I tracked a test pallet through Northwind and the late-risk flag showed up a day early',
+      question: 'How do most shippers act on a late-risk flag today?',
+    },
+  },
+  { site: 'lumen', outreach: 'replied', recipient: { name: 'Marcus Lee' }, homework: null },
+  {
+    site: 'parcelpine',
+    outreach: 'sent',
+    recipient: { name: 'Dana Okafor' },
+    homework: {
+      detail:
+        'I tried a size swap in the Parcelpine demo store and the bonus credit showed up first',
+      question: 'Do most brands turn on bonus credit for every exchange, or only some products?',
+    },
+  },
 ] as const
+/** the film that plays in the landing page's hero */
+const HERO = 'parcelpine'
 const ids: string[] = []
 for (const p of plan) {
   const { id } = await call<{ id: string }>('POST', '/v1/films', {
@@ -156,6 +189,7 @@ for (const id of ids) {
 }
 for (const [i, p] of plan.entries()) {
   await call('PUT', `/v1/films/${ids[i]}/recipient`, p.recipient)
+  if (p.homework) await call('PUT', `/v1/films/${ids[i]}/homework`, p.homework)
   // the board moves through its stages in order: sent first, then what came back
   await call('PUT', `/v1/films/${ids[i]}/outreach`, { status: 'sent' })
   if (p.outreach !== 'sent')
@@ -222,16 +256,52 @@ for (const id of ids) {
   await mkdir(dir, { recursive: true })
   const film = answers[`/v1/films/${id}`] as { files: { film: string } }
   const mp4 = film.files.film.split('/').pop()!
-  for (const [from, to] of [
-    ['poster.jpg', 'poster.jpg'],
-    ['preview.gif', 'preview.gif'],
-    ['contact-sheet.jpg', 'contact-sheet.jpg'],
-    [mp4, mp4],
-  ] as const) {
-    const res = await fetch(`${BASE}/f/${id}/${from}`)
-    if (!res.ok) throw new Error(`media ${id}/${from}: ${res.status}`)
-    await writeFile(join(dir, to), Buffer.from(await res.arrayBuffer()))
+  const stills = Array.from({ length: 6 }, (_, i) => `scene-${i}.jpg`)
+  for (const name of ['poster.jpg', 'preview.gif', 'contact-sheet.jpg', mp4, ...stills]) {
+    const res = await fetch(`${BASE}/f/${id}/${name}`)
+    if (!res.ok) throw new Error(`media ${id}/${name}: ${res.status}`)
+    await writeFile(join(dir, name), Buffer.from(await res.arrayBuffer()))
   }
+  // its share page, as a founder would see it, minus the view reports (nothing to count here)
+  const res = await fetch(`${BASE}/f/${id}`)
+  if (!res.ok) throw new Error(`share page ${id}: ${res.status}`)
+  const page = (await res.text())
+    .replace(/<script[^>]*>\(\(\)=>\{const v=document[\s\S]*?<\/script>/, '')
+    // link previews need whole URLs; the page itself plays the files beside it
+    .replace(
+      /(<meta property="og:(?:image|video)" content=")http:\/\/localhost:8080\/f\/[^/]+\//g,
+      `$1${PAGES}/media/demo/${id}/`,
+    )
+    .replaceAll(`http://localhost:8080/f/${id}/`, '')
+    .replaceAll(`${PAGES}/media/demo/alex.jpg`, '../alex.jpg')
+  if (page.includes('sendBeacon')) throw new Error(`share page ${id} still reports views`)
+  await writeFile(join(dir, 'index.html'), page)
+}
+// films from earlier recordings go, so Pages only carries what the demo shows
+for (const old of await readdir(join(ROOT, 'site/media/demo')))
+  if (old.startsWith('run_') && !ids.includes(old))
+    await rm(join(ROOT, 'site/media/demo', old), { recursive: true })
+// the landing page's hero plays one of the demo's films, under a name that outlives recordings
+{
+  const id = ids[plan.findIndex((p) => p.site === HERO)]!
+  const mp4 = (answers[`/v1/films/${id}`] as { files: { film: string } }).files.film
+    .split('/')
+    .pop()!
+  const demo = join(ROOT, 'site/media/demo')
+  await writeFile(join(demo, 'hero.mp4'), await readFile(join(demo, id, mp4)))
+  // the hero's poster is the first thing a phone paints: half size is plenty for its frame
+  execFileSync('ffmpeg', [
+    '-y',
+    '-loglevel',
+    'error',
+    '-i',
+    join(demo, id, 'poster.jpg'),
+    '-vf',
+    'scale=540:-2',
+    '-q:v',
+    '5',
+    join(demo, 'hero.jpg'),
+  ])
 }
 
 // the sites and people were made up for the fixtures; show their .example hosts, not a local address
@@ -240,15 +310,11 @@ for (const [i, p] of plan.entries()) {
   const host = (answers[`/v1/films/${ids[i]}`] as { host: string }).host
   text = text.replaceAll(`${values.sites}/${p.site}/`, `https://${host}/`)
 }
-// the demo has no share pages; a share link opens the film itself
+// a share link opens the film's page as published with the demo; stills come from beside it
 for (const id of ids) {
-  const mp4 = (answers[`/v1/films/${id}`] as { files: { film: string } }).files.film
-    .split('/')
-    .pop()
-  text = text.replaceAll(
-    `http://localhost:8080/f/${id}`,
-    `https://tiwaker9404.github.io/coldopen/media/demo/${id}/${mp4}`,
-  )
+  text = text
+    .replaceAll(`http://localhost:8080/f/${id}`, `${PAGES}/media/demo/${id}`)
+    .replaceAll(`"/f/${id}/`, `"../media/demo/${id}/`)
 }
 text = text
   .replaceAll('127.0.0.1:4100', 'example.com')

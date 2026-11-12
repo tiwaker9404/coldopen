@@ -26,6 +26,9 @@ export function shareConfig(env: NodeJS.ProcessEnv = process.env): ShareConfig {
   return { url, token }
 }
 
+/** one still per scene (scene-0.jpg to scene-5.jpg), as the film writes them for the review */
+export const SCENE_STILLS = Array.from({ length: 6 }, (_, i) => `scene-${i}.jpg`)
+
 /** What a shared folder remembers, so sharing it again updates the same link. */
 export interface ShareRecord {
   id: string
@@ -119,6 +122,8 @@ export async function publish(
     [opts.view.film, 'video/mp4'],
     ['poster.jpg', 'image/jpeg'],
     ['preview.gif', 'image/gif'],
+    // the review's six stills, so they outlast the hosted app's disk with the film
+    ...SCENE_STILLS.map((f) => [f, 'image/jpeg'] as const),
   ] as const) {
     const file = join(opts.dir, name)
     if (!existsSync(file)) continue

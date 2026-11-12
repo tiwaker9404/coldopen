@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../../dashboard/src/api.ts'
 import { answerFor, demoApi, READ_ONLY } from '../../dashboard/src/demo/api.ts'
@@ -11,6 +13,7 @@ import {
   shouldStart,
 } from '../../dashboard/src/demo/tour.ts'
 
+const SITE = join(import.meta.dirname, '../../site')
 type FilmList = { data: { id: string; files: { film: string } | null; company: string }[] }
 
 describe('the demo account', () => {
@@ -59,6 +62,78 @@ describe('the demo account', () => {
     expect(b.data[0]!.company).not.toBe('changed')
   })
 
+  it("shows today's product: a review with real flags, people groups, warm drafts and the share page", async () => {
+    type Detail = {
+      company: string
+      share: string
+      scenes: string[] | null
+      highlights: { quote: { caption?: string } }
+      review: { ready: boolean; scenes: { kind: string; flags: { code: string }[] }[] } | null
+    }
+    const films = await demoApi<FilmList>('/v1/films?limit=120')
+    let flagged = 0
+    for (const f of films.data) {
+      const d = await demoApi<Detail>(`/v1/films/${f.id}`)
+      // recorded since reviews: six scenes, with stills published beside the film
+      expect(d.review?.scenes.map((s) => s.kind)).toEqual([
+        'hook',
+        'site',
+        'insight',
+        'pitch',
+        'proof',
+        'cta',
+      ])
+      flagged += d.review!.scenes.flatMap((s) => s.flags).length
+      expect(d.scenes).toEqual(
+        Array.from({ length: 6 }, (_, i) => `../media/demo/${f.id}/scene-${i}.jpg`),
+      )
+      expect(d.highlights.quote.caption).toMatch(/^From their /)
+      // a share link opens the film's page, published with the demo
+      expect(d.share).toBe(`https://tiwaker9404.github.io/coldopen/media/demo/${f.id}`)
+      // who to reach, in groups, each saying what to ask
+      const people = await demoApi<{
+        groups: { label: string; ask: string; searches: unknown[] }[]
+      }>(`/v1/films/${f.id}/people`)
+      expect(people.groups.length).toBeGreaterThanOrEqual(3)
+      for (const g of people.groups) {
+        expect(g.ask.length).toBeGreaterThan(10)
+        expect(g.searches.length).toBeGreaterThan(0)
+      }
+      expect(people.groups.map((g) => g.label)).toContain('Founders')
+    }
+    expect(flagged).toBeGreaterThan(0)
+    // the warm email: their work first, the creator line, one question and thanks, no job words
+    const msgs = await Promise.all(
+      films.data.map((f) => demoApi<{ email: { body: string } }>(`/v1/films/${f.id}/messages`)),
+    )
+    const withHomework = msgs.find((m) => m.email.body.includes('I tried a size swap'))
+    expect(withHomework?.email.body).toContain('I built the tool that made it, coldopen.')
+    for (const m of msgs) {
+      expect(m.email.body).toContain('Thanks for reading,')
+      expect(m.email.body).not.toMatch(/\b(role|position|hiring|apply|résumé|job)\b/i)
+    }
+  })
+
+  it('publishes each film with its share page, which says who sent it and counts nothing', () => {
+    const films = (recorded.answers['/v1/films?limit=120'] as FilmList).data
+    for (const f of films) {
+      const page = readFileSync(join(SITE, 'media/demo', f.id, 'index.html'), 'utf8')
+      expect(page).toContain('<section class="sender" aria-label="Who sent it">')
+      expect(page).toContain('<img src="../alex.jpg"')
+      expect(page).toContain(', which I built</p>')
+      expect(page).toMatch(
+        /<meta property="og:title" content="A 30-second film for [^"]+, from Alex Rivera">/,
+      )
+      expect(page).not.toContain('sendBeacon')
+      expect(page).not.toMatch(/localhost|127\.0\.0\.1/)
+      for (const file of ['poster.jpg', 'film-square.mp4', 'scene-0.jpg', 'scene-5.jpg'])
+        expect(existsSync(join(SITE, 'media/demo', f.id, file)), file).toBe(true)
+    }
+    // the landing page's hero plays one of them
+    for (const file of ['hero.mp4', 'hero.jpg', 'alex.jpg'])
+      expect(existsSync(join(SITE, 'media/demo', file)), file).toBe(true)
+  })
+
   it('carries no local addresses or paths from the machine that recorded it', () => {
     const text = JSON.stringify(recorded)
     expect(text).not.toMatch(/127\.0\.0\.1|localhost|\/tmp\//)
@@ -101,5 +176,13 @@ describe('the demo tour', () => {
     expect(shouldStart(blocked)).toBe(true)
     expect(() => markDone(blocked)).not.toThrow()
     expect(shouldStart(null)).toBe(true)
+  })
+
+  it("starts whenever the link asks for it, as the landing page's button does", () => {
+    const seen = { getItem: () => 'done' }
+    expect(shouldStart(seen)).toBe(false)
+    expect(shouldStart(seen, '?tour&ref=site')).toBe(true)
+    expect(shouldStart(seen, '?ref=site&tour=1')).toBe(true)
+    expect(shouldStart(seen, '?tourist=1')).toBe(false)
   })
 })

@@ -63,6 +63,7 @@ export function ReviewPane({
             <li key={s.kind} className={s.flags.length ? 'flagged' : ''}>
               <Still
                 src={film.scenes?.[s.index]}
+                fallback={film.scenesOnDisk?.[s.index]}
                 name={s.name}
                 n={s.index + 1}
                 ratio={RATIO[film.format] ?? '1'}
@@ -101,29 +102,36 @@ export function ReviewPane({
 
 const RATIO: Record<string, string> = { square: '1', landscape: '16 / 9', portrait: '9 / 16' }
 
-/** A scene's still, or a plain frame when the film was made before stills were kept. */
+/**
+ * A scene's still: from where the film's media lives, then from the app's own disk (films
+ * published before stills went with them), else a plain frame.
+ */
 function Still({
   src,
+  fallback,
   name,
   n,
   ratio,
 }: {
   src: string | undefined
+  fallback?: string | undefined
   name: string
   n: number
   ratio: string
 }) {
-  const [broken, setBroken] = useState(false)
-  if (!src || broken)
-    return <div className="still none" style={{ aspectRatio: ratio }} aria-hidden="true" />
+  const tries = [src, fallback].filter((u, i, all): u is string => !!u && all.indexOf(u) === i)
+  const [at, setAt] = useState(0)
+  const url = tries[at]
+  if (!url) return <div className="still none" style={{ aspectRatio: ratio }} aria-hidden="true" />
   return (
     <img
+      key={url}
       className="still"
       style={{ aspectRatio: ratio }}
-      src={src}
+      src={url}
       alt={`Scene ${n}, ${name.toLowerCase()}`}
       loading="lazy"
-      onError={() => setBroken(true)}
+      onError={() => setAt((i) => i + 1)}
     />
   )
 }

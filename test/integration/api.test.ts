@@ -3,12 +3,14 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:http'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { type KV, handle as shareWorker } from '../../share/worker.ts'
 import { buildApi } from '../../src/api/server.ts'
 import { makeToken } from '../../src/api/tokens.ts'
 import type { Sql } from '../../src/db/index.ts'
 import { searchStartups } from '../../src/jobs/startups.ts'
 import { ScriptedProvider } from '../../src/llm/scripted.ts'
 import { FILM } from '../../src/outreach/writer.ts'
+import { publish, SCENE_STILLS } from '../../src/share/client.ts'
 import { SlackClient } from '../../src/slack.ts'
 import { freshDb, log, profile, testConfig, tmp } from '../helpers/index.ts'
 
@@ -1183,5 +1185,136 @@ describe('"Write it again" on the hosted app', () => {
     const no = await rewrite(sales, { authorization: `Bearer ${other.token}` })
     expect(no.statusCode).toBe(409)
     expect(no.json().error.code).toBe('no_model_drafts')
+  })
+})
+
+describe('scene stills go with the film', () => {
+  beforeAll(async () => {
+    await putProfile()
+  })
+
+  /** the share worker on a real port, with Workers KV in memory: no R2, its existing store */
+  async function shareServer() {
+    const kv = new Map<string, ArrayBuffer | string>()
+    const FILMS: KV = {
+      get: (async (key: string, type: string) => {
+        const v = kv.get(key)
+        if (v === undefined) return null
+        if (type === 'json') return JSON.parse(String(v))
+        if (type === 'text') return String(v)
+        return v
+      }) as KV['get'],
+      put: async (key, value) => void kv.set(key, value),
+      delete: async (key) => void kv.delete(key),
+      list: async ({ prefix }) => ({
+        keys: [...kv.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })),
+        list_complete: true,
+      }),
+    }
+    const env = { FILMS, VIEWS: {} as never, SHARE_TOKEN: 'share-tok' }
+    const server = createServer(async (req, res) => {
+      const chunks: Buffer[] = []
+      for await (const c of req) chunks.push(c as Buffer)
+      const body = chunks.length ? Buffer.concat(chunks) : undefined
+      const r = await shareWorker(
+        new Request(`http://${req.headers.host}${req.url}`, {
+          method: req.method!,
+          headers: req.headers as Record<string, string>,
+          ...(body && req.method !== 'GET' ? { body } : {}),
+        }),
+        env,
+        { waitUntil: () => {} },
+      )
+      res.writeHead(r.status, Object.fromEntries(r.headers))
+      res.end(Buffer.from(await r.arrayBuffer()))
+    })
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
+    const url = `http://127.0.0.1:${(server.address() as { port: number }).port}`
+    return { server, url, kv }
+  }
+
+  it('uploads the six stills with the film, and the Review tab reads them from there', async () => {
+    const { server, url, kv } = await shareServer()
+    try {
+      const id = (
+        await app.inject({
+          method: 'POST',
+          url: '/v1/films',
+          headers: auth,
+          payload: { url: 'stillsco.example', profileId: 'maya' },
+        })
+      ).json().id as string
+      await finish(id, 'Stillsco')
+      const dir = join(filmsDir, id)
+      for (const [i, f] of SCENE_STILLS.entries()) writeFileSync(join(dir, f), `still ${i}`)
+      const shareId = `stillsco-${id.slice(-10).toLowerCase()}`
+      const shared = await publish(
+        { url, token: 'share-tok' },
+        {
+          id: shareId,
+          view: {
+            company: 'Stillsco',
+            format: 'square',
+            from: 'Maya',
+            firstName: 'Maya',
+            ctaLine: 'Talk soon?',
+            contact: 'maya@example.com',
+            film: 'film-square.mp4',
+          },
+          dir,
+        },
+      )
+      // every still sits next to the film in the worker's store
+      for (const f of SCENE_STILLS) expect(kv.has(`file:${shareId}:${f}`), f).toBe(true)
+      expect(kv.has(`file:${shareId}:film-square.mp4`)).toBe(true)
+
+      await sql`
+        update runs set output = output || ${sql.json({
+          shared,
+          files: {
+            film: `${id}/film-square.mp4`,
+            poster: `${id}/poster.jpg`,
+            gif: `${id}/preview.gif`,
+            sheet: `${id}/contact-sheet.jpg`,
+            kit: `${id}/kit.json`,
+            storyboard: `${id}/storyboard.json`,
+            scenes: SCENE_STILLS.map((f) => `${id}/${f}`),
+          },
+        } as never)}
+        where id = ${id}`
+      const detail = (await app.inject({ url: `/v1/films/${id}`, headers: auth })).json()
+      expect(detail.scenes).toEqual(SCENE_STILLS.map((f) => `${shared.link}/${f}`))
+      // the server's own copy is the fallback, for films published before stills went with them
+      expect(detail.scenesOnDisk).toEqual(SCENE_STILLS.map((f) => `/f/${id}/${f}`))
+      const got = await fetch(detail.scenes[3])
+      expect(got.status).toBe(200)
+      expect(got.headers.get('content-type')).toBe('image/jpeg')
+      expect(await got.text()).toBe('still 3')
+      const disk = await app.inject({ url: detail.scenesOnDisk[3] })
+      expect(disk.statusCode).toBe(200)
+      expect(disk.body).toBe('still 3')
+    } finally {
+      server.close()
+    }
+  })
+
+  it('reads stills from its own disk when the film is not published anywhere', async () => {
+    const id = (
+      await app.inject({
+        method: 'POST',
+        url: '/v1/films',
+        headers: auth,
+        payload: { url: 'localstills.example', profileId: 'maya' },
+      })
+    ).json().id as string
+    await finish(id, 'Localstills')
+    await sql`
+      update runs set output = jsonb_set(output, '{files,scenes}', ${sql.json(
+        SCENE_STILLS.map((f) => `${id}/${f}`) as never,
+      )})
+      where id = ${id}`
+    const detail = (await app.inject({ url: `/v1/films/${id}`, headers: auth })).json()
+    expect(detail.scenes).toEqual(SCENE_STILLS.map((f) => `/f/${id}/${f}`))
+    expect(detail.scenesOnDisk).toEqual(detail.scenes)
   })
 })

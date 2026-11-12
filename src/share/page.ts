@@ -38,6 +38,18 @@ export interface ShareView {
    * line as under the ask in the film, linked to it (https only)
    */
   creator?: { name: string; url: string }
+  /** the sender's full name, for link previews ("…, from Ashwin Tiwari"); never their company */
+  name?: string
+  /**
+   * what the link preview says under the title: the film's tease about their work, else what
+   * the film noticed on their homepage
+   */
+  tease?: string
+  /**
+   * a job seeker's card under the film: one line (their offer), and, when they gave them, their
+   * LinkedIn and a photo. Nothing else from the profile is uploaded.
+   */
+  card?: { line: string; linkedin?: string; photo?: string }
 }
 
 export const FORMAT_SIZE = {
@@ -49,15 +61,64 @@ export const FORMAT_SIZE = {
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
+const HTTPS = /^https:\/\/\S{4,300}$/
+const LINKEDIN = /^https:\/\/(www\.)?linkedin\.com\/in\/[A-Za-z0-9\-_%]{2,100}\/?$/
+
+/** One line, trimmed to fit: link previews cut long descriptions anyway. */
+const oneLine = (s: string, max: number) => {
+  const t = s.replace(/\s+/g, ' ').trim()
+  return t.length <= max ? t : `${t.slice(0, max - 1).replace(/\s+\S*$/, '')}…`
+}
+
+/**
+ * The film's tease about their work, as the job seeker's email has it ("I put what I'd try next
+ * with Parcelpine into a 30-second film:"), read from the stored email: it's the line right before
+ * the film. Else what the film noticed on their homepage. Else nothing.
+ */
+export function teaseOf(
+  out: Pick<FilmResult, 'messages' | 'script'>,
+  kind: ShareView['kind'],
+): string | undefined {
+  if (kind === 'candidate') {
+    const lines = (out.messages?.drafts.email.body ?? '').split('\n').map((l) => l.trim())
+    const at = lines.indexOf('[film]')
+    const line = at > 0 ? lines[at - 1]! : ''
+    if (line && !line.includes('[film]')) return oneLine(line.replace(/[:\s]+$/, '.'), 200)
+  }
+  const noticed = out.script?.noticed?.trim()
+  return noticed ? oneLine(noticed, 200) : undefined
+}
+
+/** a job seeker's card: their one line, and their LinkedIn and photo only when they're safe links */
+export function cardOf(c: unknown): ShareView['card'] | null {
+  if (!c || typeof c !== 'object') return null
+  const o = c as Record<string, unknown>
+  if (typeof o.line !== 'string' || o.line.trim().length < 3 || o.line.length > 160) return null
+  return {
+    line: o.line.trim(),
+    ...(typeof o.linkedin === 'string' && LINKEDIN.test(o.linkedin)
+      ? { linkedin: o.linkedin }
+      : {}),
+    ...(typeof o.photo === 'string' && HTTPS.test(o.photo) ? { photo: o.photo } : {}),
+  }
+}
+
 /** A film run from the API server. */
 export function viewFromRun(input: FilmInput, out: FilmResult): ShareView {
   const p = input.profile
+  const job = p.preset === 'candidate'
+  const tease = teaseOf(out, p.preset)
+  const card = job
+    ? cardOf({ line: p.offer, linkedin: p.sender.linkedin, photo: p.sender.photo })
+    : null
   return {
     company: out.company,
     format: out.format,
     from: p.sender.company ? `${p.sender.name} at ${p.sender.company}` : p.sender.name,
     firstName: p.sender.name.split(' ')[0]!,
-    ctaLine: p.cta.line,
+    name: p.sender.name,
+    // a job seeker's film ends on its own warm ask; the profile's is the fallback
+    ctaLine: (job && out.script?.cta?.trim()) || p.cta.line,
     contact: p.cta.contact,
     ...(p.cta.book ? { book: p.cta.book } : {}),
     film: out.files.film.split('/').pop()!,
@@ -66,6 +127,8 @@ export function viewFromRun(input: FilmInput, out: FilmResult): ShareView {
     ...(out.related ? { related: out.related } : {}),
     ...(factOf(out.highlights?.quote) ? { fact: factOf(out.highlights?.quote)! } : {}),
     ...(p.preset === 'candidate' && creatorOf(p.creator) ? { creator: creatorOf(p.creator)! } : {}),
+    ...(tease ? { tease } : {}),
+    ...(card ? { card } : {}),
   }
 }
 
@@ -103,6 +166,8 @@ export function viewFromStoryboard(board: Storyboard, film: string): ShareView {
           ...(insight.sourceUrl ? { url: insight.sourceUrl } : {}),
         })
       : null
+  const site = board.scenes.find((s) => s.kind === 'site')
+  const noticed = site?.kind === 'site' ? site.caption?.trim() : ''
   const format = (film.match(/film-(square|landscape|portrait)\.mp4$/)?.[1] ??
     'square') as ShareView['format']
   // board.sender is "Name, Company" or "Name"
@@ -112,9 +177,11 @@ export function viewFromStoryboard(board: Storyboard, film: string): ShareView {
     format,
     from: company ? `${name} at ${company}` : name!,
     firstName: name!.split(' ')[0]!,
+    name: name!,
     ctaLine: cta.line,
     contact: cta.contact,
     film,
+    ...(noticed ? { tease: oneLine(noticed, 200) } : {}),
     ...(board.recipient ? { recipient: board.recipient, kind: 'recruiter' as const } : {}),
     ...(fact ? { fact } : {}),
     ...(creatorOf(cta.made) ? { creator: creatorOf(cta.made)! } : {}),
@@ -143,6 +210,33 @@ v.addEventListener('timeupdate',()=>{max=Math.max(max,v.currentTime);if(played&&
 v.addEventListener('ended',()=>{max=v.duration||max;send('end')});
 addEventListener('pagehide',()=>{if(played)send('progress')});
 document.querySelectorAll('a[data-track]').forEach(a=>a.addEventListener('click',()=>send('click')));})()</script>`
+}
+
+/** the sender card's styles, only on pages that have one (a seller's page is as it was) */
+const CARD_CSS = `.sender{margin-top:28px;padding:16px 18px;border:1px solid var(--rule);border-radius:12px;display:flex;gap:14px;align-items:flex-start}
+.sender img{width:56px;height:56px;border-radius:50%;object-fit:cover;flex:none;background:var(--rule)}
+.sender .who{margin:0;color:var(--fg)}
+.sender .who a{color:inherit;font-size:14px}
+.sender .line{margin:2px 0 0}
+.sender .creator{margin:8px 0 0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+`
+
+/**
+ * Who sent it, under the ask: a photo when they gave one, their name and LinkedIn, the one line
+ * from their profile, and what they built. Missing pieces leave no gap.
+ */
+function senderCard(v: ShareView, creator: string): string {
+  const c = v.card!
+  const name = v.name ?? v.firstName
+  // the photo is someone else's server: don't tell it which film page asked
+  const photo = c.photo
+    ? `<img src="${esc(c.photo)}" alt="" width="56" height="56" loading="lazy" referrerpolicy="no-referrer">`
+    : ''
+  const linkedin = c.linkedin
+    ? ` · <a href="${esc(c.linkedin)}" target="_blank" rel="noopener">LinkedIn<span class="sr"> profile of ${esc(name)}</span></a>`
+    : ''
+  return `<section class="sender" aria-label="Who sent it">${photo}<div><p class="who"><b>${esc(name)}</b>${linkedin}</p><p class="line">${esc(c.line)}</p>${creator}</div></section>`
 }
 
 /**
@@ -181,12 +275,17 @@ export function sharePage(
   // the project's GitHub page has no #pitch; the hosted app does
   if (other.hash && made.hostname !== 'github.com') made.hash = other.hash
   const [w, h] = FORMAT_SIZE[v.format]
+  // link previews name the person, never their company: "A 30-second film for Deel, from Ashwin Tiwari"
+  const preview = `${title}, from ${v.name ?? v.firstName}`
+  const creatorLine = v.creator
+    ? `<p class="creator">Made with <a data-track href="${esc(v.creator.url)}" target="_blank" rel="noopener">${esc(v.creator.name)}</a>, which I built</p>`
+    : ''
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(`${v.from} made this for ${v.company}.`)}">
-<meta property="og:title" content="${esc(title)}">
-<meta property="og:description" content="${esc(`From ${v.from}`)}">
+<meta property="og:title" content="${esc(preview)}">
+<meta property="og:description" content="${esc(v.tease ?? `From ${v.from}`)}">
 <meta property="og:image" content="${url}/poster.jpg">
 <meta property="og:video" content="${url}/${v.film}">
 <meta property="og:video:type" content="video/mp4">
@@ -226,7 +325,7 @@ footer a{color:inherit}
 .quoted blockquote{margin:0;font-size:17px;line-height:1.45}
 .quoted figcaption{margin-top:6px;font-size:13px;color:var(--muted)}
 .quoted a{color:inherit}
-.made{display:inline-flex;align-items:center;gap:7px;color:var(--fg);font-weight:650}
+${v.card ? CARD_CSS : ''}.made{display:inline-flex;align-items:center;gap:7px;color:var(--fg);font-weight:650}
 .made::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--tally)}
 </style></head><body><main>
 <figure class="slate" style="margin:0">
@@ -236,8 +335,8 @@ footer a{color:inherit}
 </figure>
 <div class="row"><div><h1>${esc(v.ctaLine)}</h1><p>${v.kind === 'hiring' ? `${esc(v.company)} is hiring. Posted by ${esc(v.from)}.` : `${esc(v.firstName)} made this film for ${esc(v.recipient ? `you, about a role at ${v.company}` : v.company)}.`}</p></div>
 <div class="do">${v.book ? `<a class="cta" data-track href="${esc(v.book)}" target="_blank" rel="noopener">${v.kind === 'hiring' ? 'See the role and apply' : 'Book 15 minutes'}</a><a class="cta alt" data-track href="${esc(contactHref(v.contact))}">Reply</a>` : `<a class="cta" data-track href="${esc(contactHref(v.contact))}">Reply to ${esc(v.firstName)}</a>`}</div></div>
-${v.fact ? `<figure class="quoted"><blockquote>${esc(v.fact.text)}</blockquote><figcaption>${v.fact.url ? `<a href="${esc(v.fact.url)}" target="_blank" rel="noopener">${esc(v.fact.caption)}</a>` : esc(v.fact.caption)}</figcaption></figure>` : ''}
-${v.creator ? `<p class="creator">Made with <a data-track href="${esc(v.creator.url)}" target="_blank" rel="noopener">${esc(v.creator.name)}</a>, which I built</p>` : ''}
+${v.card ? `${senderCard(v, creatorLine)}\n` : ''}${v.fact ? `<figure class="quoted"><blockquote>${esc(v.fact.text)}</blockquote><figcaption>${v.fact.url ? `<a href="${esc(v.fact.url)}" target="_blank" rel="noopener">${esc(v.fact.caption)}</a>` : esc(v.fact.caption)}</figcaption></figure>` : ''}
+${v.card ? '' : creatorLine}
 ${v.related ? `<aside class="related"><span>Something I built that’s close to what you do</span><a data-track href="${esc(v.related.url)}" target="_blank" rel="noopener"><b>${esc(v.related.name)}</b> ${esc(v.related.line)}</a></aside>` : ''}
 <footer><a class="made" href="${esc(made.toString())}">Made with coldopen</a>. ${esc(other.line)}${privacy ? `<br>Views are counted without storing your IP address. <a href="${esc(privacy)}">Privacy</a>` : ''}</footer>
 </main>${track ? trackingScript(track) : ''}</body></html>`

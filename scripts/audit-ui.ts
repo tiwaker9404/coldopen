@@ -6,7 +6,7 @@
  *   node scripts/audit-ui.ts http://localhost:8080 [site-dir]     (CHROME_PATH to use another Chrome)
  *   DEMO_DIR=dashboard/dist-demo node scripts/audit-ui.ts ... site  also checks the demo build, tour open
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { createRequire } from 'node:module'
 import { extname, resolve, sep } from 'node:path'
@@ -38,6 +38,10 @@ const pages: { name: string; url: string }[] = [
   { name: 'Privacy', url: `${base}/privacy` },
 ]
 
+// share pages served by the API (SHARE_PAGES=<url>,<url>): a film's page as the app serves it
+for (const url of (process.env.SHARE_PAGES ?? '').split(',').filter(Boolean))
+  pages.push({ name: `Share page ${new URL(url).pathname}`, url })
+
 // the landing site and the Hiring Index, served as GitHub Pages serves them
 let close = () => {}
 if (siteDir) {
@@ -48,6 +52,9 @@ if (siteDir) {
     '.json': 'application/json',
     '.svg': 'image/svg+xml',
     '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.woff2': 'font/woff2',
     '.mp4': 'video/mp4',
   }
   const srv = createServer((req, res) => {
@@ -68,6 +75,11 @@ if (siteDir) {
     { name: 'Hiring Index', url: 'http://127.0.0.1:8099/hiring-index/' },
     { name: 'Developers', url: 'http://127.0.0.1:8099/developers/' },
   )
+  // the demo's share pages, published with the site: what a founder opens from a film
+  const demoMedia = resolve(siteDir, 'media/demo')
+  if (existsSync(demoMedia))
+    for (const id of readdirSync(demoMedia).filter((f) => f.startsWith('run_')).slice(0, 1))
+      pages.push({ name: 'Share page', url: `http://127.0.0.1:8099/media/demo/${id}/` })
 }
 
 // the demo build, served as GitHub Pages serves it: /coldopen/demo/ beside the landing site

@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+/** a LinkedIn profile page: https://www.linkedin.com/in/<name>, with or without www */
+export const LINKEDIN = /^https:\/\/(www\.)?linkedin\.com\/in\/[A-Za-z0-9\-_%]{2,100}\/?$/
+
 /** Who is sending the film, and what they offer. Lives in a JSON file per team or person. */
 export const ProfileSchema = z.object({
   /**
@@ -14,6 +17,18 @@ export const ProfileSchema = z.object({
     name: z.string().min(1),
     company: z.string().optional(),
     role: z.string().optional(),
+    /**
+     * a job seeker's LinkedIn profile and photo, shown on their film's page so whoever opens it
+     * knows who sent it. The photo is a link to an image already online (no uploads).
+     */
+    linkedin: z
+      .string()
+      .regex(LINKEDIN, 'a LinkedIn link looks like https://www.linkedin.com/in/your-name')
+      .optional(),
+    photo: z
+      .string()
+      .regex(/^https:\/\/\S{4,300}$/, 'a photo link starts with https://')
+      .optional(),
   }),
   /** recruiter films: the candidate the film is made for */
   recipient: z

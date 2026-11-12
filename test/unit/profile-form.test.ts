@@ -251,3 +251,50 @@ describe('what you did, under each result', () => {
     expect(body.data.proof).toEqual([{ value: '', label: '', did }])
   })
 })
+
+describe('who sent it: your LinkedIn and photo, for your film page', () => {
+  const linkedin = 'https://www.linkedin.com/in/ashwin-tiwari'
+  const photo = 'https://avatars.githubusercontent.com/u/345417092'
+
+  it('round-trips both through the editor, trimmed, and through ProfileSchema', () => {
+    const data = { ...good, sender: { ...good.sender, linkedin, photo } }
+    const r = validate(
+      { ...data, sender: { ...data.sender, linkedin: ` ${linkedin} `, photo: `${photo}\n` } },
+      '',
+    )
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(JSON.parse(JSON.stringify(r.body.data))).toEqual(data)
+    expect(ProfileSchema.parse(data).sender).toEqual(data.sender)
+    // without www, and with a trailing slash, is still a profile link
+    expect(
+      fieldsOf({ ...good, sender: { ...good.sender, linkedin: 'https://linkedin.com/in/a-b/' } }),
+    ).toEqual({})
+  })
+
+  it('leaves both out when blank, so an older profile saves exactly as it was', () => {
+    const r = validate({ ...good, sender: { ...good.sender, linkedin: ' ', photo: '' } }, '')
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(JSON.parse(JSON.stringify(r.body.data)).sender).toEqual(good.sender)
+    expect(ProfileSchema.safeParse(good).success).toBe(true)
+  })
+
+  it('says what a LinkedIn or photo link should look like, on its own field', () => {
+    const bad = (sender: Partial<ProfileData['sender']>) =>
+      fieldsOf({ ...good, sender: { ...good.sender, ...sender } })
+    for (const l of [
+      'linkedin.com/in/ashwin',
+      'https://www.linkedin.com/company/coldopen',
+      'https://evil.example/in/ashwin',
+      'javascript:alert(1)',
+    ])
+      expect(bad({ linkedin: l })['sender.linkedin'], l).toBe(
+        'A LinkedIn link looks like https://www.linkedin.com/in/your-name',
+      )
+    for (const p of ['http://example.com/me.jpg', 'data:image/png;base64,AAAA', 'me.jpg'])
+      expect(bad({ photo: p })['sender.photo'], p).toBe('A photo link starts with https://')
+    // the server says the same
+    expect(
+      ProfileSchema.safeParse({ ...good, sender: { ...good.sender, photo: 'me.jpg' } }).success,
+    ).toBe(false)
+  })
+})

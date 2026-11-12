@@ -245,6 +245,8 @@ describe('the share page', () => {
       format: 'square',
       from: 'Ashwin Tiwari at Coldopen',
       firstName: 'Ashwin',
+      // the link preview names the person, not their company
+      name: 'Ashwin Tiwari',
       ctaLine: 'Could we talk this week?',
       contact: 'me@example.com',
       film: 'film-square.mp4',

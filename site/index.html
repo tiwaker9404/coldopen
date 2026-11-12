@@ -55,6 +55,7 @@ h1,h2,h3{font-family:var(--display);font-weight:800;line-height:.92;letter-spaci
 .quiet{font-weight:600}
 .fine{font-size:14.5px;margin-top:20px;max-width:46ch}
 .count{margin-top:6px;font-size:14.5px;font-weight:650}
+.by{margin-top:6px;font-size:14.5px}
 
 /* the slate: a clapper over the frame, the fields under it */
 .slate{background:var(--slate);color:#fff;border-radius:14px;overflow:hidden;box-shadow:0 30px 60px -28px rgb(60 40 0/.55)}
@@ -184,28 +185,28 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
       </nav>
     </header>
 
-    <section class="hero" aria-label="A film for every company you apply to">
+    <section class="hero" aria-label="What coldopen does">
       <div>
-        <h1>A 30‑second film for every company you apply to.</h1>
-        <p class="lede">Paste a job link. coldopen reads the company’s site, picks the results from your résumé that answer the role, and makes a short film in their brand. You send the link, and see when they watch.</p>
+        <h1>A 30‑second film, made for one company.</h1>
+        <p class="lede">Paste a company’s website. coldopen reads it and makes a short film in their brand, with a line from what they publish and why you’re writing to them.</p>
         <div class="ctas">
-          <a class="btn" href="https://coldopen-nk8o.onrender.com/?ref=site"><i aria-hidden="true"></i>Make your first film</a>
-          <a class="quiet" href="demo/?ref=site">Take the 90-second tour</a>
-          <a class="quiet" href="#films">Watch four films</a>
+          <a class="btn" href="demo/?tour&amp;ref=site"><i aria-hidden="true"></i>See a film made for a company like yours</a>
+          <a class="quiet" href="https://coldopen-nk8o.onrender.com/?ref=site">Make your own</a>
         </div>
-        <p class="fine">Free, no account needed to try it. About a minute and a half per film. Open source.</p>
+        <p class="fine">Free and open source. About a minute and a half per film.</p>
+        <p class="by">Built by Ashwin Tiwari: <a href="https://github.com/tiwaker9404">GitHub</a><!-- LINKEDIN: add " · <a href="https://www.linkedin.com/in/…">LinkedIn</a>" here once the URL is known --></p>
         <p class="count" id="count" hidden></p>
       </div>
 
-      <figure class="slate" aria-label="Now playing: four real films, one after another">
+      <figure class="slate" aria-label="Now playing: the demo’s film for Parcelpine, a made-up company">
         <div class="clap open" id="clap" aria-hidden="true"></div>
         <div class="bar" aria-hidden="true"></div>
         <div class="frame">
-          <video id="reel" muted playsinline preload="metadata" poster="media/linear.jpg" aria-label="A coldopen film"></video>
+          <video id="reel" src="media/demo/hero.mp4" muted loop playsinline preload="none" poster="media/demo/hero.jpg" width="540" height="540" aria-label="The demo’s film for Parcelpine"></video>
         </div>
         <figcaption class="fields">
-          <div><span>Company</span><b id="f-co">Linear</b></div>
-          <div><span>Opens on</span><b id="f-on">Their headline</b></div>
+          <div><span>Made for</span><b>Parcelpine</b></div>
+          <div><span>From</span><b>A demo</b></div>
           <div><span>Take</span><b class="num">1</b></div>
           <div><span>Runs</span><b class="num rec" id="f-tc">00:00</b></div>
         </figcaption>
@@ -357,44 +358,24 @@ Promise.all([
   el.hidden = false
 })
 
-// the slate: four real films, one after another; the clapper closes once as the first starts
-const REEL = [
-  { src: 'media/linear.mp4', poster: 'media/linear.jpg', co: 'Linear', on: 'Their headline' },
-  { src: 'media/langchain.mp4', poster: 'media/langchain.jpg', co: 'LangChain', on: 'LangSmith Engine' },
-  { src: 'media/deel.mp4', poster: 'media/deel.jpg', co: 'Deel', on: '150+ currencies' },
-  { src: 'media/retell.mp4', poster: 'media/retell.jpg', co: 'Retell AI', on: 'Their own serif' },
-]
+// the slate: the demo's film, on a loop; the clapper closes once as it starts
 const reel = document.getElementById('reel')
 const clap = document.getElementById('clap')
 const tc = document.getElementById('f-tc')
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches
-let at = 0
-const show = (i) => {
-  const f = REEL[i]
-  reel.src = f.src
-  reel.poster = f.poster
-  reel.setAttribute('aria-label', `The film for ${f.co}`)
-  document.getElementById('f-co').textContent = f.co
-  document.getElementById('f-on').textContent = f.on
-}
 const two = (s) => String(Math.floor(s)).padStart(2, '0')
 reel.addEventListener('timeupdate', () => {
   tc.textContent = `00:${two(reel.currentTime)}`
 })
-reel.addEventListener('ended', () => {
-  at = (at + 1) % REEL.length
-  show(at)
-  reel.play().catch(() => {})
-})
-show(0)
 if (still) {
-  // no clap, no autoplay: the first frame waits for a press on the films below
+  // no clap, no autoplay: the poster waits, and the controls appear to play it
   clap.classList.remove('open')
+  reel.controls = true
 } else {
   setTimeout(() => {
     clap.classList.remove('open')
     clap.classList.add('shut')
-    setTimeout(() => reel.play().catch(() => {}), 300)
+    setTimeout(() => reel.play().catch(() => (reel.controls = true)), 300)
   }, 700)
 }
 

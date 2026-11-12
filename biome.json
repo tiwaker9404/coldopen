@@ -18,6 +18,7 @@
       "!src/jobs/visa.json",
       "!src/jobs/raised.json",
       "!src/jobs/startups.json",
+      "!site/media/demo/*/index.html",
       "!test/unit/__snapshots__/sales-recruiter-hiring-films.json"
     ]
   },
