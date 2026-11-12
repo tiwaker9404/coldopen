@@ -888,9 +888,22 @@ function WhoToSend({ film }: { film: FilmDetail }) {
                     <b>{s.label}</b>
                     <small>{s.hint}</small>
                   </span>
-                  <a className="button" href={safeUrl(s.url)} target="_blank" rel="noreferrer">
-                    {isYc(s.url) ? 'Open YC page' : 'Search LinkedIn'} <Out />
-                  </a>
+                  <span className="who-do">
+                    <a className="button" href={safeUrl(s.url)} target="_blank" rel="noreferrer">
+                      {isYc(s.url) ? 'Open YC page' : 'Search LinkedIn'} <Out />
+                    </a>
+                    {s.firstDegree && (
+                      <a
+                        className="small"
+                        href={safeUrl(s.firstDegree)}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`${s.label}: 1st-degree connections only`}
+                      >
+                        1st-degree
+                      </a>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>

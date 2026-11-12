@@ -8,9 +8,11 @@ import {
   type Check,
   checkMessage,
   knownFor,
+  MESSAGE_LIMITS,
   type MessageKind,
   passed,
   repeatedNumbers,
+  touchContext,
 } from '../../src/outreach/checks.ts'
 import {
   addressed,
@@ -25,6 +27,7 @@ import {
   wholeClause,
 } from '../../src/outreach/messages.ts'
 import { jobWordsIn } from '../../src/outreach/voice.ts'
+import { draftTouch, TOUCH_KINDS } from '../../src/outreach/warm.ts'
 import type { FilmMessages } from '../../src/outreach/writer.ts'
 import { hiringProfile, recruiterProfile, withRole } from '../../src/profile/pitch.ts'
 import { proofPhrase } from '../../src/profile/proof.ts'
@@ -593,6 +596,111 @@ describe('every template passes the checks', () => {
               }
       }
     })
+})
+
+/** What a warm lead said, every way the sender can save it (or not yet) */
+const SAID = [
+  null,
+  'carriers still send rate sheets as PDFs',
+  // their own words, job words included: quoted, so they're theirs
+  'the hardest role to hire for is the first solutions engineer.',
+]
+const BUILD = [null, 'A tiny script that turns a rate-sheet PDF into a table']
+const ROLES = [
+  {
+    title: 'Forward Deployed Engineer',
+    url: 'https://jobs.ashbyhq.com/acme/fde-1',
+    why: null,
+  },
+  {
+    title: 'Solutions Engineer',
+    url: 'https://boards.greenhouse.io/acme/jobs/2',
+    why: 'Explains technical trade-offs to non-engineers',
+  },
+]
+const POST = { title: 'Route planning, now with live traffic', url: 'https://example.com/p' }
+
+describe('every warm-lead template passes the checks', () => {
+  // every job seeker, with and without a creator line, on every fixture film, with and without
+  // what they said, a build note, a fresh post and each role
+  const seekers = PROFILES.filter((p) => p.preset === 'candidate').flatMap((p) => [
+    p,
+    ProfileSchema.parse({ ...p, creator: CREATOR }),
+    ProfileSchema.parse({
+      ...p,
+      projects: [
+        {
+          name: 'rate-sheet',
+          url: 'https://github.com/alex/rate-sheet',
+          line: 'Reads carrier PDFs',
+        },
+      ],
+    }),
+  ])
+  for (const kit of KITS)
+    it(`${kit.name}${kit.job ? ', with its job' : ''}: all five touches, for every job seeker`, () => {
+      for (const p of seekers)
+        for (const said of SAID)
+          for (const buildNote of BUILD)
+            for (const role of ROLES)
+              for (const post of [null, POST])
+                for (const kind of TOUCH_KINDS) {
+                  const film = filmFor(kit, p)
+                  const input = {
+                    kind,
+                    company: kit.name,
+                    profile: p,
+                    said,
+                    buildNote,
+                    buildLink: buildNote ? 'https://github.com/alex/rate-sheet' : null,
+                    role,
+                    share: LINK,
+                    post,
+                  }
+                  const d = draftTouch(input)
+                  const ctx = touchContext(film, p, { ...input, link: LINK })
+                  const who = `${p.sender.name}${p.creator ? ' (creator)' : ''}${p.projects?.length ? ' (project)' : ''}, ${kind}, said ${said}, build ${buildNote}, ${role.title}, post ${!!post}`
+                  const checks = checkMessage(kind, d, ctx)
+                  expect(passed(checks), `${who}: ${failures(checks)}\n${JSON.stringify(d)}`).toBe(
+                    true,
+                  )
+                  if (kind !== 'referralAsk' && kind !== 'referralBump') {
+                    const all = `${d.subject}\n${d.body}`
+                    expect(jobWordsIn(all), `${who}: ${all}`).toEqual([])
+                    expect(all, who).not.toMatch(/\brefer|hiring manager/i)
+                    expect(all.replace(/"[^"]*"/g, ''), who).not.toContain(role.title)
+                  }
+                  if (kind === 'referralAsk') {
+                    const blurb = checkMessage('referralBlurb', d.blurb!, ctx)
+                    expect(passed(blurb), `${who}, blurb: ${failures(blurb)}\n${d.blurb}`).toBe(
+                      true,
+                    )
+                    expect(d.blurb!.split(/\s+/).length).toBeLessThanOrEqual(
+                      MESSAGE_LIMITS.blurbWords,
+                    )
+                    expect(d.body).toContain(role.url)
+                  } else expect(d.blurb).toBeUndefined()
+                }
+    })
+
+  it('the blurb names one result, in the third person, and never says a number twice', () => {
+    const p = profile('candidate')
+    const d = draftTouch({
+      kind: 'referralAsk',
+      company: 'Parcelpine',
+      profile: p,
+      said: 'carriers still send rate sheets as PDFs',
+      role: ROLES[0],
+      share: LINK,
+    })
+    const blurb = d.blurb!
+    expect(blurb).toContain('One result that fits: 6 open-source AI projects shipped.')
+    // one result only: the other proof stays out
+    expect(blurb).not.toContain('double refunds')
+    expect(blurb).not.toMatch(/\b(I|my)\b/)
+    expect(repeatedNumbers(blurb)).toEqual([])
+    expect(blurb.split('6').length - 1).toBe(1)
+  })
 })
 
 /** What a reader sees of the copied email: its text, the GIF being a picture with no words */

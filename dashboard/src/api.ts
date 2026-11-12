@@ -125,7 +125,10 @@ export interface Connection {
 export interface PeopleSearch {
   label: string
   hint: string
+  /** LinkedIn searches open on 2nd-degree connections */
   url: string
+  /** the same search on 1st-degree connections */
+  firstDegree?: string
 }
 
 export type PeopleGroupId = 'founders' | 'warm' | 'doing' | 'manager' | 'recruiting'
@@ -657,6 +660,32 @@ export interface FollowUps {
   /** sent films not due yet */
   waiting: number
   nextDueAt: string | null
+}
+
+export type TouchKind = 'thankYou' | 'proofOfWork' | 'stayInTouch' | 'referralAsk' | 'referralBump'
+
+/** Warm leads: the touch due for each film that got a reply, drafted (GET /v1/warm) */
+export interface WarmLeads {
+  data: {
+    film: Film
+    next: {
+      kind: TouchKind
+      dueAt: string
+      due: boolean
+      role?: { id: string; title: string; url: string; why?: string | null }
+    }
+    /** the sender's profile, as much as the drafts use */
+    profile: Parameters<typeof import('../../src/outreach/warm.ts').draftTouch>[0]['profile']
+    /** saved with the thank-you */
+    said: string | null
+    buildNote: string | null
+    draft: { subject: string; body: string; blurb?: string; to: string | null }
+    /** checks the draft fails, with why (a saved line that breaks a rule) */
+    flags: { rule: string; ok: boolean; why?: string }[]
+  }[]
+  waiting: number
+  nextDueAt: string | null
+  month: { conversations: number }
 }
 
 /** round sizes, from the dollars a Form D says were sold (it never names the round) */

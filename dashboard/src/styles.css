@@ -4235,6 +4235,54 @@ a.tag {
   margin: 0;
 }
 
+/* -------------------------------------------------------------- warm leads */
+
+.warm {
+  display: grid;
+  gap: 10px;
+}
+
+.warm-who {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.warm-who .muted {
+  font-weight: 400;
+}
+
+.warm-boxes {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.warm-boxes label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.warm-boxes input {
+  width: 100%;
+  min-width: 0;
+}
+
+.warm-flags {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+/* the 1st-degree link sits beside its people search */
+.who-list .who-do {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
 /* ------------------------------------------------------- network this week */
 
 .targets {

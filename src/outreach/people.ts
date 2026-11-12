@@ -12,7 +12,10 @@ export interface PeopleSearch {
   label: string
   /** why this one, in a few words */
   hint: string
+  /** the search, on 2nd-degree connections for a LinkedIn search */
   url: string
+  /** the same LinkedIn search on 1st-degree connections, shown as a small link beside it */
+  firstDegree?: string
 }
 
 /** a group of people to reach, with when to write to them and what to ask */
@@ -39,8 +42,16 @@ export interface Connection {
   connectedOn: string | null
 }
 
-const linkedin = (keywords: string) =>
-  `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(keywords)}&origin=GLOBAL_SEARCH_HEADER`
+/**
+ * A LinkedIn people search. It opens on 2nd-degree connections: moderately weak ties (someone
+ * you share about ten connections with) help job moves most, especially in software (Science,
+ * 2022), and LinkedIn shows how you're connected so you can ask for an intro.
+ */
+export const linkedinSearch = (keywords: string, degree: 'F' | 'S' = 'S') =>
+  `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(keywords)}&network=${encodeURIComponent(`["${degree}"]`)}&origin=FACETED_SEARCH`
+
+/** The search's fields: the 2nd-degree URL, and the 1st-degree one beside it */
+const linkedin = (keywords: string) => linkedinSearch(keywords, 'S')
 
 /** "Forward Deployed Engineer" → "engineering manager"; the person a role likely reports to */
 export function managerFor(title: string | undefined): string | null {
@@ -333,8 +344,18 @@ export function peopleSearches(
     return true
   }
   return ORDER[size]
-    .map((id) => ({ ...groups[id], searches: groups[id].searches.filter(keep) }))
+    .map((id) => ({
+      ...groups[id],
+      searches: groups[id].searches.filter(keep).map(withFirstDegree),
+    }))
     .filter((g) => g.searches.length > 0 || (g.known?.length ?? 0) > 0)
+}
+
+/** A LinkedIn search gets its 1st-degree twin; the YC page and other links don't */
+function withFirstDegree(s: PeopleSearch): PeopleSearch {
+  const u = new URL(s.url)
+  if (u.hostname !== 'www.linkedin.com' || u.searchParams.get('network') !== '["S"]') return s
+  return { ...s, firstDegree: linkedinSearch(u.searchParams.get('keywords') ?? '', 'F') }
 }
 
 /** Every search the groups hold, in order: the old flat list, kept for one release */

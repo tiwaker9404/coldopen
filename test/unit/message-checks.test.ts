@@ -27,6 +27,7 @@ const ctx = {
 }
 const rule = (checks: Check[], r: CheckRule) => checks.find((c) => c.rule === r)
 const fails = (checks: Check[], r: CheckRule) => rule(checks, r)?.ok === false
+const failsOf = (checks: Check[]) => checks.filter((c) => !c.ok).map((c) => `${c.rule}: ${c.why}`)
 
 const note =
   "Hi [First name], I'm applying for the Operations Analyst role at Parcelpine and made something for the team. Would like to connect. – Ashwin"
@@ -719,5 +720,101 @@ describe('knownFor', () => {
       { company: 'Parcelpine', known, link: 'https://x.example/f/1' },
     )
     expect(checks.find((c) => c.rule === 'grounded')).toEqual({ rule: 'grounded', ok: true })
+  })
+})
+
+describe('warm-lead checks', () => {
+  const warm = {
+    company: 'Parcelpine',
+    known: 'Parcelpine Forward Deployed Engineer',
+    link,
+    role: 'Forward Deployed Engineer',
+  }
+  const ask = [
+    'Hi [First name],',
+    '',
+    'When we talked about rate sheets, I came away wanting to work on it. Parcelpine just posted the Forward Deployed Engineer role.',
+    '',
+    'Would you be open to a referral, passing my name to the hiring manager? No problem at all if the timing isn’t right.',
+    '',
+    'Thank you,',
+    'Alex',
+  ].join('\n')
+
+  it('lets the referral kinds say "referral", "refer", "hiring manager" and the role', () => {
+    // the bump asks nothing new, so it says the same as a statement
+    const bump = ask
+      .replace('Would you be open to a referral, passing', 'A short bump on a referral: passing')
+      .replace('?', '.')
+    for (const [kind, text] of [
+      ['referralAsk', ask],
+      ['referralBump', bump],
+    ] as const) {
+      const checks = checkMessage(kind, text, warm)
+      expect(failsOf(checks), kind).toEqual([])
+      expect(rule(checks, 'not_job_pitch')).toBeUndefined()
+    }
+    const blurb =
+      'Alex Rivera is interested in the Forward Deployed Engineer role at Parcelpine and would like a referral to the hiring manager.'
+    expect(failsOf(checkMessage('referralBlurb', blurb, warm))).toEqual([])
+  })
+
+  it('keeps the role, the referral and the hiring manager out of every other touch', () => {
+    const say = (line: string) =>
+      ['Hi [First name],', '', line, '', 'Thank you,', 'Alex'].join('\n')
+    for (const kind of ['thankYou', 'proofOfWork', 'stayInTouch'] as const)
+      for (const line of [
+        'I saw the Forward Deployed Engineer post.',
+        'Is there an opening on the team?',
+        'I would love to be referred.',
+        'Could you introduce me to the hiring manager?',
+      ]) {
+        const checks = checkMessage(kind, say(line), warm)
+        expect(fails(checks, 'not_job_pitch'), `${kind}: ${line}`).toBe(true)
+      }
+    // "referral" is a favor asked anywhere but a referral ask
+    expect(
+      fails(checkMessage('thankYou', say('Any chance of a referral?'), warm), 'no_begging'),
+    ).toBe(true)
+    // what they said, quoted, is their words
+    const quoted = say('I keep coming back to what you said about "the first hire on the team".')
+    expect(failsOf(checkMessage('thankYou', quoted, warm))).toEqual([])
+  })
+
+  it('keeps a touch under 120 words and the blurb under 70', () => {
+    const long = (n: number) => Array.from({ length: n }, () => 'word').join(' ')
+    const wrap = (b: string) => `Hi [First name],\n\n${b}.\n\nThank you,\nAlex`
+    expect(fails(checkMessage('stayInTouch', wrap(long(112)), warm), 'length')).toBe(false)
+    expect(fails(checkMessage('stayInTouch', wrap(long(125)), warm), 'length')).toBe(true)
+    expect(fails(checkMessage('referralBlurb', `${long(69)}.`, warm), 'length')).toBe(false)
+    expect(rule(checkMessage('referralBlurb', `${long(71)}.`, warm), 'length')?.why).toBe(
+      `71 of ${MESSAGE_LIMITS.blurbWords} words`,
+    )
+  })
+
+  it('ends every touch but the blurb with thanks, and asks at most what each one may', () => {
+    const noThanks = 'Hi [First name],\n\nA quick update since we talked.\n\nAlex'
+    expect(fails(checkMessage('stayInTouch', noThanks, warm), 'thanks')).toBe(true)
+    expect(rule(checkMessage('referralBlurb', 'Alex Rivera is an engineer.', warm), 'thanks')).toBe(
+      undefined,
+    )
+    const q = (b: string) => `Hi [First name],\n\n${b}\n\nThank you,\nAlex`
+    // the proof-of-work note only gives them something
+    expect(
+      fails(checkMessage('proofOfWork', q('Here it is: x. What do you think?'), warm), 'one_ask'),
+    ).toBe(true)
+    expect(fails(checkMessage('stayInTouch', q('How is the launch going?'), warm), 'one_ask')).toBe(
+      false,
+    )
+    expect(
+      fails(
+        checkMessage('stayInTouch', q('How is it going? Did the launch ship?'), warm),
+        'one_ask',
+      ),
+    ).toBe(true)
+    // they already had a call
+    expect(
+      fails(checkMessage('thankYou', q('Could we talk for 15 minutes again?'), warm), 'one_ask'),
+    ).toBe(true)
   })
 })

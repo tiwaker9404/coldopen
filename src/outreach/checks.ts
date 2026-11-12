@@ -20,6 +20,10 @@ export const MESSAGE_LIMITS = {
   /** short InMails get more replies than long ones */
   inmailBody: 400,
   emailWords: 125,
+  /** a warm-lead touch: shorter than the first email, since they know you now */
+  warmWords: 120,
+  /** the blurb they forward to the hiring manager */
+  blurbWords: 70,
 } as const
 
 export type MessageKind =
@@ -30,6 +34,14 @@ export type MessageKind =
   | 'followUp'
   | 'lastNote'
   | 'linkedinFollowUp'
+  // warm leads (warm.ts): after they replied
+  | 'thankYou'
+  | 'proofOfWork'
+  | 'stayInTouch'
+  | 'referralAsk'
+  | 'referralBump'
+  /** the referral ask's forwardable blurb, third person */
+  | 'referralBlurb'
 
 export type CheckRule =
   | 'length'
@@ -75,6 +87,8 @@ export interface CheckContext {
   theirs?: string
   /** the sender's own saved question for them, which is always curious */
   question?: string | null
+  /** a warm lead's role title: only the referral kinds may name it */
+  role?: string | null
   /** the values of the proof the film shows: the film says them, so the messages don't */
   proof?: string[]
   /**
@@ -103,6 +117,23 @@ const VOICE: MessageKind[] = ['note', 'afterAccept', 'inmail', 'email']
 const THANKED: MessageKind[] = ['afterAccept', 'inmail', 'email']
 /** The ones that ask one real question about their work */
 const CURIOUS: MessageKind[] = ['afterAccept', 'email']
+/** Touches with a warm lead (warm.ts) */
+const WARM: MessageKind[] = [
+  'thankYou',
+  'proofOfWork',
+  'stayInTouch',
+  'referralAsk',
+  'referralBump',
+  'referralBlurb',
+]
+/**
+ * The referral kinds: the only messages that may say "referral", "refer", "hiring manager" and
+ * the role's title. Asking for one is the point of them; anywhere else it turns a conversation
+ * back into a job pitch.
+ */
+const REFERRAL: MessageKind[] = ['referralAsk', 'referralBump', 'referralBlurb']
+/** Begging words a referral ask has to say to be one */
+const REFERRAL_WORDS = new Set(['refer me', 'referral'])
 
 const URL = /\bhttps?:\/\/\S+|\bwww\.\S+/gi
 const PLACEHOLDER = /\[[^\]]*\]/g
@@ -163,6 +194,15 @@ function lengthChecks(kind: MessageKind, subject: string, body: string): Check[]
       chars(subject.length, MESSAGE_LIMITS.inmailSubject, 'The subject is '),
       chars(body.length, MESSAGE_LIMITS.inmailBody, 'The message is '),
     ]
+  if (WARM.includes(kind)) {
+    const max = kind === 'referralBlurb' ? MESSAGE_LIMITS.blurbWords : MESSAGE_LIMITS.warmWords
+    const n = emailWords(body)
+    return [
+      n <= max
+        ? { rule: 'length', ok: true }
+        : { rule: 'length', ok: false, why: `${n} of ${max} words` },
+    ]
+  }
   if (EMAILS.includes(kind)) {
     const n = emailWords(body)
     return [
@@ -251,8 +291,9 @@ export function checkMessage(
       : { rule: 'no_repeated_numbers', ok: true },
   )
 
-  const begs = BEGGING.filter((b) =>
-    new RegExp(`(^|[^a-z0-9'])${escapeRe(straight(b).toLowerCase())}($|[^a-z0-9'])`).test(lower),
+  const begs = BEGGING.filter((b) => !(REFERRAL.includes(kind) && REFERRAL_WORDS.has(b))).filter(
+    (b) =>
+      new RegExp(`(^|[^a-z0-9'])${escapeRe(straight(b).toLowerCase())}($|[^a-z0-9'])`).test(lower),
   )
   checks.push(
     begs.length
@@ -267,6 +308,7 @@ export function checkMessage(
   // questions are counted in the body: a subject that asks is still a subject
   const asks = count(body, /\?/g)
   if (ctx.candidate && VOICE.includes(kind)) checks.push(voiceAsk(kind, body))
+  else if (WARM.includes(kind)) checks.push(warmAsk(kind, body))
   else if (kind === 'note')
     checks.push(
       asks === 0
@@ -388,7 +430,67 @@ export function checkMessage(
     )
   }
   if (ctx.candidate && VOICE.includes(kind)) checks.push(...voiceChecks(kind, subject, body, ctx))
+  if (WARM.includes(kind)) checks.push(...warmChecks(kind, subject, body, ctx))
   return checks
+}
+
+/* ------------------------------------------------------------ warm leads (warm.ts) */
+
+/** "refer", "referral", "referring me", "hiring manager", outside quotation marks */
+const REFER = /\b(refer|refers|referred|referring|referral|referrals|hiring manager)\b/i
+const QUOTED = /"[^"\n]*"|“[^”\n]*”/g
+
+/**
+ * How much a warm touch asks: the thank-you asks who else to talk to, the stay-in-touch note at
+ * most one question, the proof-of-work note and the blurb nothing at all, and the referral ask
+ * its one question. None of them asks for a call: they already had one.
+ */
+function warmAsk(kind: MessageKind, body: string): Check {
+  const qs = questionsOf(body)
+  const fail = (why: string): Check => ({ rule: 'one_ask', ok: false, why })
+  if ((kind === 'proofOfWork' || kind === 'referralBlurb' || kind === 'referralBump') && qs.length)
+    return fail(
+      kind === 'referralBlurb'
+        ? 'Asks a question; the blurb is for them to forward, so it only says who you are'
+        : 'Asks a question; this note only gives them something, with no ask',
+    )
+  if (qs.length > 1) return fail(`Asks ${qs.length} questions; keep one, so it's easy to answer`)
+  if (qs.some((q) => TIME_ASK.test(q))) return fail('Asks for their time; you already had a call')
+  return { rule: 'one_ask', ok: true }
+}
+
+function warmChecks(kind: MessageKind, subject: string, body: string, ctx: CheckContext): Check[] {
+  const out: Check[] = []
+  if (!REFERRAL.includes(kind)) {
+    // their own words, quoted, are theirs; outside quotes this is a conversation, not a pitch
+    const all = `${subject}\n${body}`
+    const open = all.replace(QUOTED, ' ')
+    const said = [
+      ...jobWordsIn(all),
+      ...(open.match(REFER) ?? []).map((w) => w.toLowerCase()),
+      ...(ctx.role && open.toLowerCase().includes(ctx.role.toLowerCase()) ? [ctx.role] : []),
+    ]
+    out.push(
+      said.length
+        ? {
+            rule: 'not_job_pitch',
+            ok: false,
+            why: `Says "${said[0]}"; save the role and the referral for when one opens`,
+          }
+        : { rule: 'not_job_pitch', ok: true },
+    )
+  }
+  if (kind !== 'referralBlurb')
+    out.push(
+      endsWithThanks(body)
+        ? { rule: 'thanks', ok: true }
+        : {
+            rule: 'thanks',
+            ok: false,
+            why: 'Doesn\'t end with thanks; close with "Thank you," before your name',
+          },
+    )
+  return out
 }
 
 /* ------------------------------------------------------------ a job seeker's voice (voice.ts) */
@@ -649,5 +751,41 @@ export function voiceFor(
         sender?.built?.url ?? '',
       ].filter(Boolean),
     },
+  }
+}
+
+/**
+ * The CheckContext for a warm-lead touch (warm.ts): everything a number may come from (the
+ * film's knownFor, what the sender did for each proof, what they said, what the sender is
+ * building, the role and its fit line), the film's share link and the role's title, which only
+ * the referral kinds may say.
+ */
+export function touchContext(
+  out: Parameters<typeof knownFor>[0],
+  profile: Profile,
+  extra: {
+    homework?: Homework | null | undefined
+    said?: string | null | undefined
+    buildNote?: string | null | undefined
+    buildLink?: string | null | undefined
+    role?: { title: string; why?: string | null | undefined } | null | undefined
+    link?: string | null | undefined
+  } = {},
+): CheckContext {
+  return {
+    company: out.company ?? '',
+    known: [
+      knownFor(out, profile, extra.homework),
+      ...profile.proof.map((p) => p.did ?? ''),
+      extra.said ?? '',
+      extra.buildNote ?? '',
+      extra.buildLink ?? '',
+      extra.role?.title ?? '',
+      extra.role?.why ?? '',
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    ...(extra.link ? { link: extra.link } : {}),
+    role: extra.role?.title ?? null,
   }
 }

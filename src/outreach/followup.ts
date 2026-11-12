@@ -25,6 +25,11 @@ export interface Outreach {
    * went out even after the drafts change. Missing on films sent before it was kept.
    */
   opener?: Opener
+  /**
+   * when it was first marked replied (or interview): the day the warm-lead thank-you is due
+   * and what "conversations this month" counts (warm.ts). Missing on films marked before it was kept.
+   */
+  repliedAt?: string
 }
 
 const DAY = 86_400_000

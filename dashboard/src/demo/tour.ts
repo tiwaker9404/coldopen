@@ -16,7 +16,7 @@ export const STOPS: readonly Stop[] = [
   {
     place: 'today',
     title: 'Today: what to do next',
-    body: 'Follow-ups that are due, then Network this week: ten companies worth a film and a warm message right now, each with why. This account sent three films.',
+    body: 'Follow-ups that are due, warm leads (people who replied, and the thank-you or referral ask due for each), then Network this week: ten companies worth a film and a warm message right now. This account sent three films.',
   },
   {
     place: 'jobs',

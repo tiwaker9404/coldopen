@@ -1318,3 +1318,191 @@ describe('scene stills go with the film', () => {
     expect(detail.scenesOnDisk).toEqual(detail.scenes)
   })
 })
+
+describe('warm leads', () => {
+  type Due = {
+    film: { id: string }
+    next: { kind: string; due: boolean; role?: { id: string; title: string } }
+    said: string | null
+    draft: { subject: string; body: string; blurb?: string }
+    flags: unknown[]
+  }
+  const warm = async (headers: Record<string, string> = auth) => {
+    const r = await app.inject({ url: '/v1/warm', headers })
+    expect(r.statusCode).toBe(200)
+    return r.json() as { data: Due[]; waiting: number; month: { conversations: number } }
+  }
+  const dueFor = async (id: string) => (await warm()).data.find((d) => d.film.id === id)
+  const done = (id: string, payload: object, headers = auth) =>
+    app.inject({ method: 'POST', url: `/v1/warm/${id}/done`, headers, payload })
+  const mark = (id: string, status: string) =>
+    app.inject({
+      method: 'PUT',
+      url: `/v1/films/${id}/outreach`,
+      headers: auth,
+      payload: { status },
+    })
+  const film = async (url: string, company: string) => {
+    const id = (
+      await app.inject({
+        method: 'POST',
+        url: '/v1/films',
+        headers: auth,
+        payload: { url, profileId: 'warm-alex' },
+      })
+    ).json().id as string
+    await finish(id, company)
+    return id
+  }
+
+  it('thanks them, asks for the referral when a role that fits opens, and keeps each owner to their own', async () => {
+    // a job seeker's profile, newest, so its Fit check reads the roles
+    const put = await app.inject({
+      method: 'PUT',
+      url: '/v1/profiles/warm-alex',
+      headers: auth,
+      payload: { name: 'Alex', data: profile('candidate') },
+    })
+    expect(put.statusCode).toBeLessThan(300)
+    const before = (await warm()).month.conversations
+    const id = await film('warmco.example', 'Warmco')
+
+    // sent, no reply: no touch
+    await mark(id, 'sent')
+    expect(await dueFor(id)).toBeUndefined()
+
+    // a reply: the thank-you is due today, and it counts as a conversation this month
+    await mark(id, 'replied')
+    const thanks = await dueFor(id)
+    expect(thanks?.next).toMatchObject({ kind: 'thankYou', due: true })
+    expect(thanks?.draft.body).toContain('Is there anyone else you think I should talk to?')
+    expect(thanks?.flags).toEqual([])
+    expect((await warm()).month.conversations).toBe(before + 1)
+    // marking interview later keeps the day of the first reply
+    const [o] = await sql<
+      { outreach: { repliedAt: string } }[]
+    >`select outreach from runs where id = ${id}`
+    await mark(id, 'interview')
+    const [o2] = await sql<
+      { outreach: { repliedAt: string; status: string } }[]
+    >`select outreach from runs where id = ${id}`
+    expect(o2!.outreach).toMatchObject({ status: 'interview', repliedAt: o!.outreach.repliedAt })
+
+    // the thank-you needs one thing they said; then it's saved and the film drops off
+    const bad = await done(id, { kind: 'thankYou' })
+    expect(bad.statusCode).toBe(422)
+    expect(bad.json().error.fields[0].path).toBe('said')
+    const ok = await done(id, {
+      kind: 'thankYou',
+      said: 'carriers still send rate sheets as PDFs',
+      buildNote: 'a script that reads rate-sheet PDFs',
+    })
+    expect(ok.statusCode).toBe(200)
+    expect(ok.json().touches).toMatchObject([
+      { kind: 'thankYou', said: 'carriers still send rate sheets as PDFs' },
+    ])
+    expect(ok.json().next).toMatchObject({ kind: 'proofOfWork', due: false })
+    expect(await dueFor(id)).toBeUndefined()
+
+    // the reply was three days ago, and a strong role opened at Warmco two days ago: the
+    // referral ask was due the day after
+    const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString()
+    await sql`update runs set outreach = jsonb_set(outreach, '{repliedAt}', to_jsonb(${ago(3)}::text)) where id = ${id}`
+    const board = {
+      ats: 'ashby' as const,
+      token: 'warmco',
+      name: 'Warmco',
+      site: 'https://warmco.example',
+    }
+    const posted = ago(2)
+    const jobs = [
+      {
+        id: 'ashby:warmco:fde',
+        board: 'ashby:warmco',
+        company: 'Warmco',
+        title: 'Forward Deployed Engineer',
+        url: 'https://jobs.ashbyhq.com/warmco/fde',
+        location: 'Remote',
+        remote: true,
+        posted,
+      },
+    ]
+    await sql`
+      insert into job_boards (board, fetched_at, ok, last_ok_at, error, jobs)
+      values ('ashby:warmco', now(), true, now(), null, ${sql.json(jobs as never)})
+      on conflict (board) do update set jobs = excluded.jobs, fetched_at = now()`
+    await sql`
+      insert into job_details (job_id, board, requirements) values ('ashby:warmco:fde', 'ashby:warmco',
+        ${['Ships production agents with evals', 'Turns messy customer data into working pipelines', 'Explains technical trade-offs to non-engineers']})
+      on conflict (job_id) do update set requirements = excluded.requirements`
+    await sql`
+      insert into job_searches (owner, search, boards) values ('team', ${sql.json({} as never)}, ${sql.json([board] as never)})
+      on conflict (owner) do update set boards = excluded.boards`
+    const ask = await dueFor(id)
+    expect(ask?.next).toMatchObject({
+      kind: 'referralAsk',
+      due: true,
+      role: { id: 'ashby:warmco:fde', title: 'Forward Deployed Engineer' },
+    })
+    expect(ask?.draft.body).toContain(
+      'When we talked about "carriers still send rate sheets as PDFs"',
+    )
+    expect(ask?.draft.body).toContain('https://jobs.ashbyhq.com/warmco/fde')
+    expect(ask?.draft.blurb).toContain('Forward Deployed Engineer role at Warmco')
+    expect(ask?.flags).toEqual([])
+
+    // asked: saved with its role, and not asked again for it
+    expect((await done(id, { kind: 'referralAsk' })).statusCode).toBe(422)
+    expect((await done(id, { kind: 'referralAsk', roleId: 'ashby:warmco:fde' })).statusCode).toBe(
+      200,
+    )
+    expect(await dueFor(id)).toBeUndefined()
+    const rows = await sql`select kind, role_id from touches where run_id = ${id} order by id`
+    expect(rows.map((r) => [r.kind, r.roleId])).toEqual([
+      ['thankYou', null],
+      ['referralAsk', 'ashby:warmco:fde'],
+    ])
+
+    // someone else can't see, mark or stop this film's touches
+    const other = await makeToken(sql, 'u:warm-other', 'test')
+    const them = { authorization: `Bearer ${other.token}` }
+    expect((await warm(them)).data).toEqual([])
+    expect((await done(id, { kind: 'stayInTouch' }, them)).statusCode).toBe(404)
+    expect(
+      (await app.inject({ method: 'POST', url: `/v1/warm/${id}/stop`, headers: them })).statusCode,
+    ).toBe(404)
+
+    // "Stop reminders" ends every touch for the film, and stays stopped
+    const stop = await app.inject({ method: 'POST', url: `/v1/warm/${id}/stop`, headers: auth })
+    expect(stop.statusCode).toBe(200)
+    await sql`update touches set done_at = now() - interval '60 days' where run_id = ${id}`
+    expect(await dueFor(id)).toBeUndefined()
+    expect(
+      (await sql`select stopped from touches where run_id = ${id} and kind = 'stop'`)[0],
+    ).toEqual({
+      stopped: true,
+    })
+  })
+
+  it("never has touches on a seller's film or one that isn't warm", async () => {
+    await putProfile()
+    const id = (
+      await app.inject({
+        method: 'POST',
+        url: '/v1/films',
+        headers: auth,
+        payload: { url: 'sellerwarm.example', profileId: 'maya' },
+      })
+    ).json().id as string
+    await finish(id, 'Sellerwarm')
+    await mark(id, 'replied')
+    expect(await dueFor(id)).toBeUndefined()
+    const r = await done(id, { kind: 'stayInTouch' })
+    expect(r.statusCode).toBe(409)
+    expect(r.json().error.code).toBe('not_warm')
+    const cold = await film('coldco.example', 'Coldco')
+    await mark(cold, 'no_reply')
+    expect(await dueFor(cold)).toBeUndefined()
+    expect((await done(cold, { kind: 'stayInTouch' })).statusCode).toBe(409)
+  })
+})

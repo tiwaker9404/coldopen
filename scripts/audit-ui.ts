@@ -12,6 +12,7 @@ import { createRequire } from 'node:module'
 import { extname, resolve, sep } from 'node:path'
 import puppeteer, { type Page } from 'puppeteer'
 import { flatSearches, parseConnections, peopleSearches } from '../src/outreach/people.ts'
+import { draftTouch } from '../src/outreach/warm.ts'
 
 // a file inside dir, never outside it: a ../ in a request path would otherwise reach the rest of the disk
 const inside = (dir: string, rest: string) => {
@@ -419,6 +420,74 @@ const reviewed = (review: unknown) => ({
   scenes: [0, 1, 2, 3, 4, 5].map((i) => `/f/${FILM}/scene-${i}.jpg`),
 })
 
+/** Warm leads on Today: a thank-you to fill in and a referral ask with its blurb */
+const warmProfile = {
+  sender: candidate.sender,
+  points: candidate.points,
+  proof: candidate.proof,
+  projects: [],
+}
+const warmRole = {
+  id: 'ashby:parcelpine:fde',
+  title: 'Forward Deployed Engineer',
+  url: 'https://jobs.ashbyhq.com/parcelpine/fde',
+  why: null,
+}
+const warmLeads = {
+  data: [
+    {
+      film: {
+        ...film,
+        outreach: { status: 'replied', at: now, sentAt: now, repliedAt: now, next: null },
+        recipient: { name: 'Dana Okafor' },
+      },
+      next: { kind: 'thankYou', dueAt: now, due: true },
+      profile: warmProfile,
+      said: null,
+      buildNote: null,
+      draft: {
+        ...draftTouch({
+          kind: 'thankYou',
+          company: 'Parcelpine',
+          profile: warmProfile,
+          said: null,
+        }),
+        to: null,
+      },
+      flags: [],
+    },
+    {
+      film: {
+        ...film,
+        id: 'run_01AUDIT0000000000000000001',
+        company: 'Northwind Freight',
+        host: 'northwind.example',
+        outreach: { status: 'interview', at: now, sentAt: now, repliedAt: now, next: null },
+        recipient: { name: 'Priya Shah' },
+      },
+      next: { kind: 'referralAsk', dueAt: now, due: true, role: warmRole },
+      profile: warmProfile,
+      said: 'carriers still send rate sheets as PDFs',
+      buildNote: null,
+      draft: {
+        ...draftTouch({
+          kind: 'referralAsk',
+          company: 'Northwind Freight',
+          profile: warmProfile,
+          said: 'carriers still send rate sheets as PDFs',
+          role: warmRole,
+          share,
+        }),
+        to: null,
+      },
+      flags: [],
+    },
+  ],
+  waiting: 1,
+  nextDueAt: null,
+  month: { conversations: 2 },
+}
+
 type Stubs = Record<string, unknown>
 const withFilm: Stubs = {
   '/v1/profiles': profiles,
@@ -475,6 +544,51 @@ interface State {
 }
 
 const states: State[] = [
+  {
+    name: 'Today with warm leads',
+    url: `${base}/#today`,
+    stubs: { '/v1/profiles': profiles, '/v1/warm': warmLeads },
+    async run(page) {
+      await page.waitForSelector('#warm-title', { timeout: 5000 })
+      const out: string[] = []
+      const head = (await texts(page, '.warm .rate'))[0]
+      if (head !== '2 conversations this month') out.push(`the header reads “${head}”`)
+      // Warm leads sits above Network this week
+      const above = await page.evaluate(() => {
+        const w = document.querySelector('.warm')
+        const t = document.querySelector('.targets')
+        return !t || !!(w && w.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING)
+      })
+      if (!above) out.push('Warm leads is not above Network this week')
+      const boxes = await texts(page, '.warm-touch:first-child .warm-boxes label > span')
+      if (
+        boxes.join('|') !== 'One thing they said|Something I’ll build from what you said (optional)'
+      )
+        out.push(`the thank-you's boxes read “${boxes.join(', ')}”`)
+      const markDone = () =>
+        page.$eval('.warm li:first-child button:not(.link):not(.primary)', (b) => ({
+          text: b.textContent,
+          disabled: (b as HTMLButtonElement).disabled,
+        }))
+      const before = await markDone()
+      if (before.text !== 'Mark done' || !before.disabled)
+        out.push('Mark done is not disabled before “One thing they said” is filled in')
+      await page.type('.warm li:first-child .warm-boxes input', 'how they price by zone')
+      await wait(300)
+      const draft = (await texts(page, '.warm li:first-child pre'))[0] ?? ''
+      if (!draft.includes('what you said about "how they price by zone"'))
+        out.push('the thank-you draft does not update as you type')
+      if (!draft.includes('Is there anyone else you think I should talk to?'))
+        out.push('the thank-you does not ask who else to talk to')
+      if ((await markDone()).disabled) out.push('Mark done stays disabled once it is filled in')
+      const buttons = await texts(page, '.warm li:nth-child(2) .followup-do button')
+      if (buttons.join('|') !== 'Copy the ask and blurb|Mark done|Stop reminders')
+        out.push(`the referral ask's buttons read “${buttons.join(', ')}”`)
+      if ((await texts(page, '.warm li:nth-child(2) pre')).length !== 2)
+        out.push('the referral ask does not show the ask and the blurb')
+      return out
+    },
+  },
   {
     name: 'Composer with a LinkedIn job link',
     url: `${base}/#today`,

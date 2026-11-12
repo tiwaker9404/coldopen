@@ -3419,6 +3419,212 @@
           "ask": "What they’re building next and what’s hard about it."
         }
       ]
+    },
+    "/v1/warm": {
+      "data": [
+        {
+          "film": {
+            "id": "run_01M7867DHFJ9S1TEV99GXH8KSQ",
+            "status": "succeeded",
+            "url": "https://northwindfreight.example/",
+            "format": "square",
+            "batch": null,
+            "ref": null,
+            "sender": "Alex Rivera",
+            "pitch": null,
+            "progress": null,
+            "attempts": 1,
+            "error": null,
+            "errorCode": null,
+            "createdAt": "2026-11-12T15:32:38.062Z",
+            "completedAt": "2026-11-12T15:34:05.564Z",
+            "company": "Northwind Freight",
+            "host": "northwindfreight.example",
+            "durationSec": 29.2,
+            "files": {
+              "film": "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/files/film-square.mp4",
+              "poster": "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/files/poster.jpg",
+              "gif": "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/files/preview.gif",
+              "sheet": "/v1/films/run_01M7867DHFJ9S1TEV99GXH8KSQ/files/contact-sheet.jpg"
+            },
+            "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ",
+            "job": null,
+            "views": {
+              "opens": 2,
+              "viewers": 2,
+              "plays": 2,
+              "finishes": 2,
+              "clicks": 1,
+              "bestSeconds": 29.2,
+              "firstPlayAt": "2026-11-12T15:35:03.512Z",
+              "lastSeen": "2026-11-12T15:35:03.543Z"
+            },
+            "outreach": {
+              "at": "2026-11-12T15:35:03.484Z",
+              "opener": "homework",
+              "sentAt": "2026-11-12T15:35:03.477Z",
+              "status": "interview",
+              "next": null
+            },
+            "recipient": {
+              "name": "Priya Shah"
+            },
+            "detail": "I tracked a test pallet through Northwind and the late-risk flag showed up a day early",
+            "question": "How do most shippers act on a late-risk flag today?",
+            "built": null,
+            "crm": null,
+            "editOf": null
+          },
+          "next": {
+            "kind": "referralAsk",
+            "dueAt": "2026-11-12T15:35:05.633Z",
+            "due": true,
+            "role": {
+              "id": "ashby:northwindfreight:demo-fde",
+              "title": "Forward Deployed Engineer",
+              "url": "https://jobs.ashbyhq.com/northwindfreight/demo-fde",
+              "why": "Turns messy customer data into working pipelines"
+            }
+          },
+          "profile": {
+            "sender": {
+              "name": "Alex Rivera",
+              "role": "Forward deployed engineer",
+              "photo": "https://tiwaker9404.github.io/coldopen/media/demo/alex.jpg"
+            },
+            "points": [
+              "Ships production agents with evals, not demos",
+              "Turns messy customer data into working pipelines",
+              "Explains technical trade-offs to non-engineers",
+              "Learns a new codebase and ships in week one"
+            ],
+            "proof": [
+              {
+                "label": "open-source AI projects shipped",
+                "value": "6"
+              },
+              {
+                "label": "double refunds in a 200-run chaos test",
+                "value": "0"
+              },
+              {
+                "label": "Solutions Architect certified",
+                "value": "AWS"
+              }
+            ],
+            "projects": []
+          },
+          "said": "carriers still send rate sheets as PDFs",
+          "buildNote": null,
+          "draft": {
+            "subject": "Forward Deployed Engineer at Northwind Freight",
+            "body": "Hi [First name],\n\nWhen we talked about \"carriers still send rate sheets as PDFs\", I came away wanting to work on exactly that. Northwind Freight just posted the Forward Deployed Engineer role: https://jobs.ashbyhq.com/northwindfreight/demo-fde\n\nIt's close to what I do now: I turn messy customer data into working pipelines.\n\nWould you be open to passing my name to the hiring manager? I'm happy to send whatever would help, and there's a short blurb below you can forward. No problem at all if the timing isn't right.\n\nThank you,\nAlex",
+            "blurb": "Alex Rivera, a forward deployed engineer, is interested in the Forward Deployed Engineer role at Northwind Freight. One result that fits: 6 open-source AI projects shipped. We talked recently, and Alex reached out as soon as the role opened. Alex made a 30-second film for Northwind Freight: https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHFJ9S1TEV99GXH8KSQ",
+            "to": null
+          },
+          "flags": []
+        },
+        {
+          "film": {
+            "id": "run_01M7867DHYC6VB3T48FC96D79Z",
+            "status": "succeeded",
+            "url": "https://lumenhealth.example/",
+            "format": "square",
+            "batch": null,
+            "ref": null,
+            "sender": "Alex Rivera",
+            "pitch": null,
+            "progress": null,
+            "attempts": 1,
+            "error": null,
+            "errorCode": null,
+            "createdAt": "2026-11-12T15:32:38.078Z",
+            "completedAt": "2026-11-12T15:34:06.092Z",
+            "company": "Lumen Health",
+            "host": "lumenhealth.example",
+            "durationSec": 29.2,
+            "files": {
+              "film": "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/files/film-square.mp4",
+              "poster": "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/files/poster.jpg",
+              "gif": "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/files/preview.gif",
+              "sheet": "/v1/films/run_01M7867DHYC6VB3T48FC96D79Z/files/contact-sheet.jpg"
+            },
+            "share": "https://tiwaker9404.github.io/coldopen/media/demo/run_01M7867DHYC6VB3T48FC96D79Z",
+            "job": null,
+            "views": {
+              "opens": 1,
+              "viewers": 1,
+              "plays": 1,
+              "finishes": 1,
+              "clicks": 1,
+              "bestSeconds": 29.2,
+              "firstPlayAt": "2026-11-12T15:35:03.546Z",
+              "lastSeen": "2026-11-12T15:35:03.559Z"
+            },
+            "outreach": {
+              "at": "2026-11-12T15:35:03.495Z",
+              "opener": "question",
+              "sentAt": "2026-11-12T15:35:03.492Z",
+              "status": "replied",
+              "next": null
+            },
+            "recipient": {
+              "name": "Marcus Lee"
+            },
+            "detail": null,
+            "question": null,
+            "built": null,
+            "crm": null,
+            "editOf": null
+          },
+          "next": {
+            "kind": "thankYou",
+            "dueAt": "2026-11-12T15:35:05.633Z",
+            "due": true
+          },
+          "profile": {
+            "sender": {
+              "name": "Alex Rivera",
+              "role": "Forward deployed engineer",
+              "photo": "https://tiwaker9404.github.io/coldopen/media/demo/alex.jpg"
+            },
+            "points": [
+              "Ships production agents with evals, not demos",
+              "Turns messy customer data into working pipelines",
+              "Explains technical trade-offs to non-engineers",
+              "Learns a new codebase and ships in week one"
+            ],
+            "proof": [
+              {
+                "label": "open-source AI projects shipped",
+                "value": "6"
+              },
+              {
+                "label": "double refunds in a 200-run chaos test",
+                "value": "0"
+              },
+              {
+                "label": "Solutions Architect certified",
+                "value": "AWS"
+              }
+            ],
+            "projects": []
+          },
+          "said": null,
+          "buildNote": null,
+          "draft": {
+            "subject": "Thank you for the time",
+            "body": "Hi [First name],\n\nThank you for making the time to talk. I keep coming back to what you said about [one thing they said].\n\nI'm going to dig into it this week.\n\nIs there anyone else you think I should talk to?\n\nThank you,\nAlex",
+            "to": null
+          },
+          "flags": []
+        }
+      ],
+      "waiting": 0,
+      "nextDueAt": null,
+      "month": {
+        "conversations": 2
+      }
     }
   }
 }

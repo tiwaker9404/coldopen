@@ -16,6 +16,7 @@ import type { Config } from '../config.ts'
 import type { Sql } from '../db/index.ts'
 import { FilmInputSchema, type FilmResult } from '../film.ts'
 import { newId } from '../ids.ts'
+import { fitOf } from '../job/fit.ts'
 import { semanticNow } from '../job/semantic.ts'
 import { pastedTextProblem } from '../job/walled.ts'
 import { type BoardSchema, type FetchFn, parseBoardLink } from '../jobs/boards.ts'
@@ -29,6 +30,7 @@ import {
   ignoreGap,
   MAX_OWN_BOARDS,
   markSeen,
+  requirementsFor,
   saveSearch,
   suggestions,
   warmBoards,
@@ -47,6 +49,7 @@ import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry } from '../metrics.ts'
 import { briefOf } from '../outreach/brief.ts'
+import { checkMessage, touchContext } from '../outreach/checks.ts'
 import {
   checkHunterKey,
   domainOf,
@@ -81,6 +84,18 @@ import {
   parseConnections,
   peopleSearches,
 } from '../outreach/people.ts'
+import {
+  conversationsThisMonth,
+  draftTouch,
+  isWarm,
+  nextTouch,
+  rolesFor,
+  saidOf,
+  TOUCH_KINDS,
+  type Touch,
+  type TouchKind,
+  type WarmJob,
+} from '../outreach/warm.ts'
 import { type ModelMessages, messagesSchemaFor, writeMessages } from '../outreach/writer.ts'
 import { draftProfile } from '../profile/draft.ts'
 import { forSender, makerClaims, NOT_THE_MAKER } from '../profile/maker.ts'
@@ -1800,6 +1815,12 @@ export async function buildApi({
             ...(prev?.sentAt
               ? {}
               : { opener: openerFor(run.id, presetOf(run as FilmRow)) satisfies Opener }),
+            // the first reply starts the warm-lead touches (warm.ts), and stays the same after
+            ...(prev?.repliedAt
+              ? { repliedAt: prev.repliedAt }
+              : req.body.status === 'replied' || req.body.status === 'interview'
+                ? { repliedAt: now }
+                : {}),
           }
         : null
       const [r] = await sql<FilmRow[]>`
@@ -2231,6 +2252,254 @@ export async function buildApi({
         update runs set outreach = ${sql.json(followedUp(run.outreach) as never)}
         where id = ${req.params.id} returning *`
       return filmDto(r!, publicUrl)
+    },
+  )
+
+  /* ------------------------------------------------------------- warm leads */
+  /** the touches the sender marked done on these films, by film */
+  const touchesOf = async (owner: Owner, ids: string[]) => {
+    const rows = ids.length
+      ? await sql<(Touch & { runId: string; doneAt: Date })[]>`
+          select run_id, kind, role_id, said, build_note, build_link, done_at from touches
+          where owner = ${owner} and run_id = any(${ids}) order by done_at, id`
+      : []
+    const out = new Map<string, Touch[]>()
+    for (const r of rows)
+      out.set(r.runId, [
+        ...(out.get(r.runId) ?? []),
+        {
+          kind: r.kind,
+          roleId: r.roleId,
+          said: r.said,
+          buildNote: r.buildNote,
+          buildLink: r.buildLink,
+          doneAt: new Date(r.doneAt).toISOString(),
+        },
+      ])
+    return out
+  }
+  /** the day a film was first marked replied: kept since step 12, else its last status change */
+  const repliedOf = (r: FilmRow) => r.outreach?.repliedAt ?? r.outreach?.at ?? null
+  const warmFilm = (r: FilmRow) => ({
+    preset: presetOf(r),
+    status: r.outreach?.status,
+    repliedAt: repliedOf(r),
+    company: r.output?.company ?? null,
+    host: r.output?.host ?? r.input.url,
+  })
+  /**
+   * Roles from the Jobs cache at these films' companies, posted since the reply, with how well
+   * the sender fits each (Fit check). Only these few get their requirements read.
+   */
+  const warmJobs = async (owner: Owner, rows: FilmRow[]): Promise<WarmJob[]> => {
+    if (!rows.length) return []
+    const profile = await newestProfile(owner)
+    if (!profile) return []
+    const state = await getSearch(sql, owner, profile.sender.role)
+    const all = await cachedJobs(sql, boardsFor(state.boards))
+    // every role at a warm company posted since the reply, of any fit; rolesFor keeps strong and good
+    const jobs = all
+      .filter((j) => rows.some((r) => rolesFor(warmFilm(r), [{ ...j, fit: 'good' }]).length > 0))
+      .slice(0, 40)
+    const reqs = await requirementsFor(sql, jobs, jobsFetch ? { fetch: jobsFetch } : {})
+    return jobs.map((j) => {
+      const fit = fitOf(reqs.get(j.id) ?? [], profile)
+      return {
+        id: j.id,
+        title: j.title,
+        url: j.url,
+        company: j.company,
+        site: j.site,
+        posted: j.posted,
+        fit: fit?.level ?? null,
+        why: fit?.best?.with ?? null,
+      }
+    })
+  }
+  /** a film's newest post from its homework, for a stay-in-touch with nothing new built */
+  const newestPost = (r: FilmRow) =>
+    [...(r.output?.homework?.items ?? [])].sort((a, b) =>
+      (b.date ?? '').localeCompare(a.date ?? ''),
+    )[0] ?? null
+
+  app.get(
+    '/v1/warm',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Warm leads: the touches due after a reply, each with its draft',
+        description:
+          "Films marked replied or interview, from a job seeker's profile. Each gets a thank-you the day it's marked replied (naming one thing they said, and asking who else to talk to), a short note with what you built 5 days later when you said you'd build something, then a stay-in-touch note every 42 days. When a role with a strong or good Fit check is posted at their company after the reply, a referral ask is due the next day, once per role, with a forwardable blurb, and one bump 7 days after it was sent. Drafts only: nothing is sent for you. `month.conversations` counts films first marked replied or interview this calendar month, Pacific time.",
+      },
+    },
+    async (req) => {
+      const rows = await sql<FilmRow[]>`
+        select * from runs where agent = 'film' and owner = ${req.owner} and status = 'succeeded'
+          and outreach->>'status' in ('replied', 'interview')
+        order by id desc limit 500`
+      const now = Date.now()
+      const warm = rows.filter((r) => isWarm(warmFilm(r)))
+      const [touches, jobs] = await Promise.all([
+        touchesOf(
+          req.owner,
+          warm.map((r) => r.id),
+        ),
+        warmJobs(req.owner, warm),
+      ])
+      const steps = warm.map((r) => ({
+        r,
+        t: touches.get(r.id) ?? [],
+        next: nextTouch(warmFilm(r), touches.get(r.id) ?? [], jobs, now),
+      }))
+      const due = steps
+        .filter((s) => s.next?.due)
+        .sort((a, b) => a.next!.dueAt.localeCompare(b.next!.dueAt))
+      const upcoming = steps
+        .filter((s) => s.next && !s.next.due)
+        .map((s) => s.next!.dueAt)
+        .sort()
+      return {
+        data: due.map(({ r, t, next }) => {
+          const film = filmDto(r, publicUrl)
+          const profile = r.output?.profile ?? r.input.profile
+          const thanks = saidOf(t)
+          const post = newestPost(r)
+          const draft = draftTouch({
+            kind: next!.kind,
+            company: film.company ?? film.host ?? '',
+            profile,
+            said: thanks?.said ?? null,
+            buildNote: thanks?.buildNote ?? null,
+            role: next!.role ?? null,
+            share: film.share,
+            post: post ? { title: post.title, url: post.url } : null,
+          })
+          const ctx = touchContext(r.output ?? {}, profile, {
+            homework: r.output?.homework ?? null,
+            said: thanks?.said,
+            buildNote: thanks?.buildNote,
+            role: next!.role ?? null,
+            link: film.share,
+          })
+          // a saved line that breaks a rule is shown with why, not quietly edited
+          const flags = [
+            ...checkMessage(next!.kind, draft, ctx),
+            ...(draft.blurb ? checkMessage('referralBlurb', draft.blurb, ctx) : []),
+          ].filter((c) => !c.ok)
+          return {
+            film,
+            next,
+            // what the web app redrafts the thank-you from as the sender types
+            profile: {
+              sender: profile.sender,
+              points: profile.points,
+              proof: profile.proof,
+              ...(profile.creator ? { creator: profile.creator } : {}),
+              projects: profile.projects ?? [],
+            },
+            said: thanks?.said ?? null,
+            buildNote: thanks?.buildNote ?? null,
+            draft: { ...draft, to: r.recipient?.email ?? null },
+            flags,
+          }
+        }),
+        waiting: upcoming.length,
+        nextDueAt: upcoming[0] ?? null,
+        month: {
+          conversations: conversationsThisMonth(
+            rows.map((r) => ({ repliedAt: repliedOf(r) })),
+            now,
+          ),
+        },
+      }
+    },
+  )
+
+  const WarmDone = z.object({
+    kind: z.enum(TOUCH_KINDS),
+    roleId: z.string().trim().min(1).max(300).optional(),
+    said: z.string().trim().min(3).max(240).optional(),
+    buildNote: z.string().trim().min(3).max(160).optional(),
+    buildLink: z
+      .string()
+      .trim()
+      .regex(/^https:\/\/\S{4,300}$/, 'the link to what you built starts with https://')
+      .optional(),
+  })
+  /** a warm film the asker owns, or the reply that says why not */
+  const ownWarm = async (id: string, owner: Owner, reply: FastifyReply) => {
+    const run = (await ownFilm(id, owner)) as FilmRow | undefined
+    if (!run) return void notFound(reply)
+    if (!isWarm(warmFilm(run))) {
+      void reply.status(409).send({
+        error: {
+          code: 'not_warm',
+          message: "only a job seeker's film marked replied or interview has warm-lead touches",
+        },
+      })
+      return
+    }
+    return run
+  }
+
+  app.post(
+    '/v1/warm/:runId/done',
+    {
+      schema: {
+        tags: ['films'],
+        summary: 'Mark a warm-lead touch done (you sent it yourself)',
+        description:
+          'The thank-you takes `said` (one thing they said) and, optionally, `buildNote` (something you will build from it). The proof-of-work note takes `buildLink`. A referral ask or bump takes the `roleId` it was about. Marking the same touch twice is fine; the first one stands.',
+        params: z.object({ runId: RunId }),
+        body: WarmDone,
+      },
+    },
+    async (req, reply) => {
+      const run = await ownWarm(req.params.runId, req.owner, reply)
+      if (!run) return reply
+      const b = req.body
+      const need = (field: string, message: string) =>
+        reply.status(422).send({
+          error: { code: 'invalid_request', message, fields: [{ path: field, message }] },
+        })
+      if (b.kind === 'thankYou' && !b.said)
+        return need('said', 'add one thing they said, so the thank-you can name it')
+      if (b.kind === 'proofOfWork' && !b.buildLink)
+        return need('buildLink', 'add the link to what you built')
+      if ((b.kind === 'referralAsk' || b.kind === 'referralBump') && !b.roleId)
+        return need('roleId', 'say which role the referral ask was about')
+      const role = b.kind === 'referralAsk' || b.kind === 'referralBump' ? b.roleId! : null
+      await sql`
+        insert into touches (owner, run_id, kind, role_id, said, build_note, build_link)
+        values (${req.owner}, ${run.id}, ${b.kind satisfies TouchKind}, ${role},
+          ${b.kind === 'thankYou' ? (b.said ?? null) : null},
+          ${b.kind === 'thankYou' ? (b.buildNote ?? null) : null},
+          ${b.kind === 'proofOfWork' ? (b.buildLink ?? null) : null})
+        on conflict do nothing`
+      const touches = (await touchesOf(req.owner, [run.id])).get(run.id) ?? []
+      return {
+        touches,
+        next: nextTouch(warmFilm(run), touches, await warmJobs(req.owner, [run]), Date.now()),
+      }
+    },
+  )
+
+  app.post(
+    '/v1/warm/:runId/stop',
+    {
+      schema: {
+        tags: ['films'],
+        summary: '"Stop reminders": no more warm-lead touches for this film',
+        params: z.object({ runId: RunId }),
+      },
+    },
+    async (req, reply) => {
+      const run = (await ownFilm(req.params.runId, req.owner)) as FilmRow | undefined
+      if (!run) return notFound(reply)
+      await sql`
+        insert into touches (owner, run_id, kind, stopped) values (${req.owner}, ${run.id}, 'stop', true)
+        on conflict do nothing`
+      return { stopped: true }
     },
   )
 

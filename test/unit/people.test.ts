@@ -41,6 +41,33 @@ describe('people to send a film to', () => {
     ).toBe(true)
   })
 
+  it('opens every LinkedIn search on 2nd-degree connections, with a 1st-degree link beside it', () => {
+    const p = { ...profile('candidate'), schools: ['Duke University'] }
+    const gs = peopleSearches('Acme', {
+      jobTitle: 'Forward Deployed Engineer',
+      profile: p,
+      team: 12,
+      yc: { batch: 'W24', slug: 'acme' },
+    })
+    const all = flatSearches(gs)
+    const li = all.filter((s) => s.url.startsWith('https://www.linkedin.com/'))
+    expect(li.length).toBeGreaterThan(8)
+    for (const s of li) {
+      const u = new URL(s.url)
+      expect(u.searchParams.get('network'), s.label).toBe('["S"]')
+      const first = new URL(s.firstDegree!)
+      expect(first.searchParams.get('network'), s.label).toBe('["F"]')
+      // the same search, only the degree differs
+      expect(first.searchParams.get('keywords')).toBe(u.searchParams.get('keywords'))
+    }
+    // the YC page isn't a LinkedIn search, so it has no degrees
+    const yc = all.find((s) => s.label === 'YC page')!
+    expect(yc.url).toBe('https://www.ycombinator.com/companies/acme')
+    expect(yc.firstDegree).toBeUndefined()
+    // the deprecated flat list carries the same URLs
+    expect(flatSearches(gs)).toEqual(gs.flatMap((g) => g.searches))
+  })
+
   it('orders groups by company size', () => {
     const p = { ...profile('candidate'), schools: ['Duke University'] }
     const at = (team: number | null) =>
@@ -121,7 +148,7 @@ describe('people to send a film to', () => {
     // with no job, a job seeker's own role says what the job is
     const own = peopleSearches('Acme', { profile: profile('candidate') })
     expect(urls(own)).toContain(
-      'https://www.linkedin.com/search/results/people/?keywords=forward deployed engineer Acme&origin=GLOBAL_SEARCH_HEADER',
+      'https://www.linkedin.com/search/results/people/?keywords=forward deployed engineer Acme&network=["S"]&origin=FACETED_SEARCH',
     )
   })
 

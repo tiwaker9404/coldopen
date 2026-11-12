@@ -305,6 +305,18 @@ export function buildMcp(call: Call): McpServer {
   )
 
   mcp.registerTool(
+    'warm_leads_due',
+    {
+      title: 'Warm leads due',
+      description:
+        'People who replied, and the touch due for each today: a thank-you that asks who else to talk to, a note with what you built from the conversation, a stay-in-touch update every 6 weeks, or a referral ask (with a forwardable blurb) when a role that fits opens at their company. Each comes drafted; nothing is sent.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    async () => answer(call, 'GET', '/v1/warm'),
+  )
+
+  mcp.registerTool(
     'call_brief',
     {
       title: 'Brief for a call',

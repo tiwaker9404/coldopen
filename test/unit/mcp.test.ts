@@ -32,10 +32,33 @@ describe('coldopen as an MCP server', () => {
       'rewrite_messages',
       'search_jobs',
       'set_recipient',
+      'warm_leads_due',
     ])
     expect(tools.find((t) => t.name === 'search_jobs')?.annotations?.readOnlyHint).toBe(true)
     expect(tools.find((t) => t.name === 'make_film')?.annotations?.readOnlyHint).toBeUndefined()
     expect(tools.find((t) => t.name === 'find_targets')?.annotations?.readOnlyHint).toBe(true)
+  })
+
+  it('warm_leads_due is a thin call to Warm leads', async () => {
+    const warm = {
+      data: [{ next: { kind: 'thankYou', due: true }, draft: { subject: 's', body: 'b' } }],
+      waiting: 1,
+      nextDueAt: null,
+      month: { conversations: 2 },
+    }
+    const { client, calls } = await connect({ 'GET /v1/warm': { status: 200, json: warm } })
+    const { tools } = await client.listTools()
+    expect(tools.find((t) => t.name === 'warm_leads_due')?.annotations?.readOnlyHint).toBe(true)
+    const r = await client.callTool({ name: 'warm_leads_due', arguments: {} })
+    expect(calls).toEqual([{ method: 'GET', url: '/v1/warm' }])
+    expect(JSON.parse((r.content as { text: string }[])[0]!.text)).toEqual(warm)
+    // an API error comes back as the tool's error, in the API's words
+    const no = await connect({
+      'GET /v1/warm': { status: 401, json: { error: { message: 'missing or invalid API key' } } },
+    })
+    const e = await no.client.callTool({ name: 'warm_leads_due', arguments: {} })
+    expect(e.isError).toBe(true)
+    expect((e.content as { text: string }[])[0]!.text).toBe('missing or invalid API key')
   })
 
   it('find_targets is a thin call to Network this week', async () => {

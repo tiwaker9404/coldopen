@@ -231,6 +231,7 @@ const routes: string[] = [
   '/v1/connections',
   '/v1/jobs/suggested?limit=24',
   '/v1/targets?limit=10',
+  '/v1/warm',
   '/v1/startups?since=2023&maxTeam=50&hiring=any&limit=30&offset=0',
   '/v1/startups?hiring=yc-only&limit=1',
   ...ids.flatMap((id) =>

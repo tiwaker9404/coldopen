@@ -30,6 +30,7 @@ import { jobBoxNote, pasteBody, pasteNote, pasting, walledInList } from './paste
 import { Startups } from './Startups.tsx'
 import { NetworkThisWeek } from './Targets.tsx'
 import { ErrorNote, notify, useToast } from './ui.tsx'
+import { WarmLeads } from './WarmLeads.tsx'
 
 // the editor checks against the server's own schema, so it brings Zod: load it when opened
 const ProfileEditor = lazy(() =>
@@ -242,6 +243,7 @@ export function App() {
               />
               <GettingStarted films={list} onOpen={setOpen} onGuide={() => setSide('guide')} />
               <FollowUps onOpen={setOpen} />
+              <WarmLeads />
               <NetworkThisWeek onMake={(url) => setFill({ url, n: Date.now() })} />
               <InProduction list={list} name={name} open={open} onOpen={setOpen} />
               <Jobs onMade={setOpen} variant="preview" />
