@@ -4367,3 +4367,26 @@ a.tag {
   white-space: nowrap;
   border: 0;
 }
+
+/* ---------------------------------------------------- deleting a profile */
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.profile-confirm {
+  display: grid;
+  gap: 10px;
+  max-width: 34ch;
+  font-size: 14px;
+}
+
+.profile-confirm div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}

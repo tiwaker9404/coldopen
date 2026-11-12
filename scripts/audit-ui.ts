@@ -322,6 +322,12 @@ const candidate = JSON.parse(
   readFileSync(new URL('../profiles/candidate.example.json', import.meta.url), 'utf8'),
 )
 const profiles = { data: [{ id: 'me', name: 'Me', data: candidate, updatedAt: now }] }
+const twoProfiles = {
+  data: [
+    { id: 'fde', name: 'FDE résumé', data: candidate, updatedAt: now },
+    { id: 'gtm', name: 'GTM résumé', data: candidate, updatedAt: now },
+  ],
+}
 const hostedMe = {
   hosted: true,
   signIn: false,
@@ -545,6 +551,47 @@ interface State {
 
 const states: State[] = [
   {
+    // ends with the confirm open, so the axe pass after it checks the confirm step
+    name: 'Profile tab, deleting a profile',
+    url: `${base}/#profile`,
+    stubs: { '/v1/profiles': twoProfiles },
+    async run(page) {
+      await page.waitForSelector('.profile-card', { timeout: 5000 })
+      const out: string[] = []
+      const names = await page.$$eval('.profile-actions button[aria-label]', (bs) =>
+        bs.map((b) => b.getAttribute('aria-label')),
+      )
+      if (names.join('|') !== 'Delete FDE résumé|Delete GTM résumé')
+        out.push(`the Delete buttons are named “${names.join(', ')}”`)
+      await page.$eval('button[aria-label="Delete FDE résumé"]', (b) => (b as HTMLElement).click())
+      await wait(300)
+      const ask = (await texts(page, '.profile-confirm p'))[0]
+      if (
+        ask !==
+        'Delete FDE résumé? Films you already made keep working. GTM résumé becomes your default.'
+      )
+        out.push(`the confirm reads “${ask}”`)
+      const open = await page.$$eval('.profile-confirm', (els) => els.length)
+      if (open !== 1) out.push(`${open} cards are asking at once`)
+      return out
+    },
+  },
+  {
+    name: 'Profile tab, keeping a profile',
+    url: `${base}/#profile`,
+    stubs: { '/v1/profiles': twoProfiles },
+    async run(page) {
+      await page.waitForSelector('.profile-card', { timeout: 5000 })
+      await page.$eval('button[aria-label="Delete GTM résumé"]', (b) => (b as HTMLElement).click())
+      await wait(300)
+      await click(page, 'button', 'Keep it')
+      const focused = await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))
+      return focused === 'Delete GTM résumé'
+        ? []
+        : [`after “Keep it”, focus is on “${focused ?? 'nothing'}”`]
+    },
+  },
+  {
     name: 'Today with warm leads',
     url: `${base}/#today`,
     stubs: { '/v1/profiles': profiles, '/v1/warm': warmLeads },
@@ -586,6 +633,12 @@ const states: State[] = [
         out.push(`the referral ask's buttons read “${buttons.join(', ')}”`)
       if ((await texts(page, '.warm li:nth-child(2) pre')).length !== 2)
         out.push('the referral ask does not show the ask and the blurb')
+      // warm-lead touches due wait on the sender, so Today's count and call sheet include them
+      const line = (await texts(page, '.call-line'))[0] ?? ''
+      if (!line.includes('2 warm-lead touches due') || /Nothing waiting/.test(line))
+        out.push(`the call sheet reads “${line}”`)
+      const badge = (await texts(page, 'a[href="#today"] .count.due'))[0]
+      if (badge !== '2') out.push(`Today's count reads “${badge ?? 'nothing'}”, not 2`)
       return out
     },
   },

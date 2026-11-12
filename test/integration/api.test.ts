@@ -219,6 +219,72 @@ describe('auth and profiles', () => {
   })
 })
 
+describe('deleting a profile', () => {
+  // the films below are made from the most recently saved profile, so leave the list as it was
+  afterAll(async () => {
+    await sql`delete from profiles where id in ('fde-resume', 'theirs')`
+  })
+  const put = (id: string, name: string) =>
+    app.inject({
+      method: 'PUT',
+      url: `/v1/profiles/${id}`,
+      headers: auth,
+      payload: { name, data: profile('candidate') },
+    })
+  const del = (id: string) =>
+    app.inject({ method: 'DELETE', url: `/v1/profiles/${id}`, headers: auth })
+  const ids = async () =>
+    (await app.inject({ url: '/v1/profiles', headers: auth }))
+      .json()
+      .data.map((p: { id: string }) => p.id) as string[]
+
+  it('deletes a profile and leaves the others and existing films alone', async () => {
+    expect((await put('old-resume', 'Old résumé')).statusCode).toBe(200)
+    expect((await put('fde-resume', 'FDE résumé')).statusCode).toBe(200)
+    const made = await app.inject({
+      method: 'POST',
+      url: '/v1/films',
+      headers: auth,
+      payload: { url: 'delete-profile.example', profileId: 'old-resume' },
+    })
+    expect(made.statusCode).toBe(202)
+    const film = made.json().id as string
+
+    const r = await del('old-resume')
+    expect(r.statusCode).toBe(200)
+    expect(r.json()).toEqual({ deleted: true })
+    const left = await ids()
+    expect(left).not.toContain('old-resume')
+    expect(left).toEqual(expect.arrayContaining(['fde-resume', 'maya']))
+    // the film copied the profile when it was queued, so it still has everything it needs
+    const got = await app.inject({ url: `/v1/films/${film}`, headers: auth })
+    expect(got.statusCode).toBe(200)
+    expect(got.json().sender).toBe(profile('candidate').sender.name)
+    const [row] = await sql<
+      { name: string | null }[]
+    >`select input->'profile'->'sender'->>'name' as name from runs where id = ${film}`
+    expect(row!.name).toBe(profile('candidate').sender.name)
+  })
+
+  it("won't delete another owner's profile", async () => {
+    expect((await put('theirs', 'Someone else')).statusCode).toBe(200)
+    await sql`update profiles set owner = 'u:someone-else' where id = 'theirs'`
+    const r = await del('theirs')
+    expect(r.statusCode).toBe(404)
+    expect(r.json().error.code).toBe('not_found')
+    const [still] = await sql<
+      { n: number }[]
+    >`select count(*)::int as n from profiles where id = 'theirs'`
+    expect(still!.n).toBe(1)
+  })
+
+  it("returns not_found for a profile that doesn't exist", async () => {
+    const r = await del('no-such-profile')
+    expect(r.statusCode).toBe(404)
+    expect(r.json()).toEqual({ error: { code: 'not_found', message: 'no such profile' } })
+  })
+})
+
 describe('films', () => {
   it('queues a film, normalizes the URL and is idempotent', async () => {
     const make = (url: string) =>
