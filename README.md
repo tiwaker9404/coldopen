@@ -18,13 +18,14 @@ coldopen is an open-source agent for personalized video outreach. Give it a pros
 - **Fit it.** Fit check scores how well your profile answers each post, by meaning as well as shared words ([eval](evals/fit/results.md)). Fit gaps shows the skills your best matches keep asking for, one click to add.
 - **Make the film.** One click per job, or tick ten and make them all. Each film quotes a requirement from the post and answers it with your own numbers.
 - **Know who to write to this week.** Network this week, on Today, lists the 10 companies most worth a film and a warm message right now, whether or not they have an opening, each with its reasons ("6 people, so the founders read their own email", "raised a round in October"). The counter shows how many companies you've reached this week against the 10-a-week target.
-- **Reach the right person.** Who to reach is grouped the way networking works (founders, warm paths, people doing the job, the hiring manager, recruiting) and ordered by company size, with what to ask each group. Find their email with your own free Hunter key, and the message opens as a ready draft.
-- **Write like a curious person, not a job pitch.** Save your homework on each film (a detail from using their product, something you built with it, your question for them) and the drafts open with it, ask your question, and end with thanks. No job words and no numbers the film already shows.
+- **Reach the right person.** Who to reach is grouped the way networking works (founders, warm paths, people doing the job, the hiring manager, recruiting) and ordered by company size, with what to ask each group. Each LinkedIn search opens on your 2nd-degree connections, the ties that help job moves most, so you can ask for an intro. Find their email with your own free Hunter key, and the message opens as a ready draft.
+- **Write like a curious person, not a job pitch.** Save your homework on each film (a detail from using their product, something you built with it, your question for them) and the drafts open with it, ask your question, and end with thanks. No job words and no numbers the film already shows. The film itself goes in the email as a playing GIF, and LinkedIn drafts show where to attach it.
+- **Keep the people who replied.** Warm leads, on Today, brings back each person who replied with the next touch already drafted: a thank-you that asks who else to talk to, a short note with what you built from the conversation, a stay-in-touch note every six weeks, and a referral ask with a blurb they can forward when a role that fits opens at their company.
 - **Learn what gets replies.** Half your emails open with your homework, half with your question; Today shows which one is winning. Raised in the last 3 months (from SEC Form D filings) is a filter and a badge; when the round is from the last month, the email opens by congratulating them.
 - **Into your CRM.** Connect HubSpot's free CRM and each film you send becomes a company, a contact and a timeline note: sent, watched, replied, interview.
 - **From your AI assistant.** coldopen is an MCP server: Claude, Cursor or ChatGPT can search jobs and YC startups, make films, draft the messages and list follow-ups for you ([setup](#use-it-from-claude-or-cursor-mcp)).
 - **From any job post.** The [Chrome extension](extension/README.md) adds a Make film button to Greenhouse, Lever, Ashby, LinkedIn and YC job posts.
-- **Follow up, then prepare.** A follow-up comes due a week later for a job seeker (4 days for a seller), or sooner when they watch without replying. When they reply, you get a brief for the call: the company, where you fit, the questions they'll likely ask with your answers from your own record, and three questions to ask. Copy it as prep notes in one click.
+- **Follow up, then prepare.** A follow-up comes due a week later for a job seeker (4 days for a seller), or sooner when they watch without replying. Today's count includes every follow-up and warm-lead touch that's due, and the call sheet only says "Nothing waiting on you" when there's neither. When they reply, you get a brief for the call: the company, where you fit, the questions they'll likely ask with your answers from your own record, and three questions to ask. Copy it as prep notes in one click.
 
 ## See it work
 
@@ -47,10 +48,10 @@ Each film is six scenes:
 
 1. **Hook:** greets the company by name, on their own colors.
 2. **Their homepage:** a screenshot of their site, zooming in on the promise they lead with and highlighting it.
-3. **The best thing they've published:** quoted verbatim (often a number) from their homepage, changelog, blog, engineering posts, podcast notes, news or docs, set in their typeface, with where it's from underneath ("From their changelog, Oct 2026"). Only lines that make sense to a stranger are quoted ([the rule](docs/TASTE.md#grounding)).
-4. **The pitch:** what you offer, tailored to them. For a job seeker, two or three ideas for their product, each backed by one thing you actually did.
-5. **Your proof:** shown word for word from your profile.
-6. **One clear ask.**
+3. **The best thing they've published:** quoted verbatim (often a number) from their homepage, changelog, blog, engineering posts, podcast notes, news or docs, set in their typeface, with where it's from underneath ("From their changelog, Oct 2026"). Only lines that make sense to a stranger are quoted ([the rule](docs/TASTE.md#grounding)). The line under it makes sense alone too: for a job seeker, it names what the fact is about and where you'd start ("Parcelpine's returns are where I'd start: one view of every event").
+4. **The pitch:** what you offer, tailored to them. For a job seeker, two or three ideas for their product, each backed by one thing you actually did ("I'd stream carrier check-ins into one live view — like the containerized ETL I built").
+5. **Your proof:** shown word for word from your profile, each card saying what you did, where, and what changed.
+6. **One clear ask.** When you built the tool that made the film, a small line under it says so ("Made with coldopen, which I built").
 
 ![Contact sheet of a Northwind Freight film](docs/media/contact-sheet-northwind.jpg)
 
@@ -111,7 +112,7 @@ flowchart LR
 
 **[Try it free →](https://coldopen-nk8o.onrender.com/?ref=readme)** No account needed.
 
-The hosted app lets anyone try coldopen in the browser: upload a résumé, paste a job link or a company's website, and get a tracked share link. Visitors get one free film a day; signing in with GitHub keeps their work and allows five. It runs on free plans with no card (Render, GitHub Actions, Supabase, Cloudflare, Groq), and [docs/HOSTING.md](docs/HOSTING.md) sets it up.
+The [landing page](https://tiwaker9404.github.io/coldopen/) opens on a film made for a company, playing, with a link to a film made for a company like yours and one to make your own. The hosted app lets anyone try coldopen in the browser: upload a résumé, paste a job link or a company's website, and get a tracked share link. Visitors get one free film a day; signing in with GitHub keeps their work and allows five. It runs on free plans with no card (Render, GitHub Actions, Supabase, Cloudflare, Groq), and [docs/HOSTING.md](docs/HOSTING.md) sets it up.
 
 ## Run it for your team
 
@@ -121,14 +122,14 @@ docker compose up --build       # web app, API, renderer and Postgres on http://
 
 ![The coldopen web app](docs/media/dashboard.png)
 
-- **Web app.** Paste a job link, a company's website or a list of hundreds, and watch films render live. The page says what each film will be about before you press the button, and a short getting-started guide walks a new person from résumé to first reply. When something goes wrong, the app says what happened and what to do in a plain sentence, and names the field to fix; it never shows code or a blank page. The profile has one Save for everything, cleans up pasted bullet lists, and keeps every project you tick in the GitHub picker.
+- **Web app.** Paste a job link, a company's website or a list of hundreds, and watch films render live. The page says what each film will be about before you press the button, and a short getting-started guide walks a new person from résumé to first reply. When something goes wrong, the app says what happened and what to do in a plain sentence, and names the field to fix; it never shows code or a blank page. The profile has one Save for everything, cleans up pasted bullet lists, and keeps every project you tick in the GitHub picker. Each profile card has Delete, which asks on the card first; films you already made keep working.
 - **Send it from where you work.** Each film suggests who to write to, in groups ordered by who's most likely to reply at a company that size: founders (named on its YC page for a YC startup), warm paths (alumni, old colleagues, and people you already know there, with an intro request ready), people doing the job and new grads who just landed it, the likely hiring manager, and recruiting. Each group says when to write to them and what to ask. Say who it's for and the drafts greet them by name; find their work email with your own free Hunter key, or pick from the usual patterns for their domain. The email opens as a ready draft, already addressed, in Gmail, Outlook or your mail app. The share page's button books a call (your Calendly or Cal.com link) or replies, and presses are counted next to plays. Downloads are named after the company. Mark each film Sent, Replied or Interview right in the list, and a Follow up today list brings back films with no reply (a job seeker's after a week, with one note that brings something new, then it lets go; a seller's after 4 days, then a shorter last note a week later), or 2 days after they watch it, with the follow-up written and one click from Gmail. Mark it Replied and the film gets a brief for the call: what the company says, where you fit the role, what to prepare and three questions to ask (`GET /v1/films/:id/brief`).
 - **Fix a line without starting over.** Rewrite any line of a finished film and render it again, without reading the site again. Numbers still have to come from your profile or their site, checked before and during the render (`POST /v1/films/:id/edit`).
 - **Review it before you send it.** The Review tab shows a still of each of the six scenes with plain flags for anything a founder would find odd, and one button per fix: quote another fact, show another result, edit the line, or use their name as the logo. "Ready to send" shows when nothing is flagged (`GET /v1/films/:id/review`; `get_film` carries the flags too).
 - **Launch numbers.** The owner of a hosted app sees its funnel: visitors, people who made a film, sign-ups, films sent, watched and replied, and the most common reasons films failed (`GET /v1/funnel`).
 - **Jobs for you.** Say which roles you want and where, and the app lists open ones from the public job boards of 450+ companies (Greenhouse, Lever and Ashby): 70 picked by hand and about 400 hiring YC startups, found weekly from YC's own directory and kept only when the board is clearly the company's own. Each job shows why it fits, its pay (most Ashby and Lever posts list it), a YC badge, whether the company had H-1B petitions approved (from USCIS's H-1B Employer Data Hub), how many roles the company posted this month, and people you know there from your LinkedIn connections. Filter by YC only, H-1B sponsors, minimum pay, posted this week or month, or leave companies out; sort by best fit or hiring fastest. Fit check shows how well your profile answers each post's requirements, and Fit gaps lists the skills your best matches keep asking for, with one click to add one to your profile. Tick several jobs to make their films in one go, or add any other careers board with a link. Boards are read with no key, in the background, and cached for a few hours (`GET /v1/jobs/suggested`).
 - **Answer a job post.** Add `--job <link or file>` and the film quotes one of the role's requirements word for word, then answers it with your proof. See [docs/PROFILES.md](docs/PROFILES.md#answer-a-job-post).
-- **Know who watched.** Share pages report opens, plays, how far people got and who finished, with bots, link previews and email scanners left out. Get a Slack or Discord ping when someone starts watching. Using the CLI? `pnpm share:setup` puts your share links on Cloudflare's free plan, then `coldopen share films` and `coldopen views`. See [docs/SHARING.md](docs/SHARING.md).
+- **Know who watched.** Share pages report opens, plays, how far people got and who finished, with bots, link previews and email scanners left out. A job seeker's page says who sent it (a card with your name, one line, your LinkedIn and photo, and what you built), and its link preview reads "A 30-second film for <Company>, from <you>" with the poster. Get a Slack or Discord ping when someone starts watching. Using the CLI? `pnpm share:setup` puts your share links on Cloudflare's free plan, then `coldopen share films` and `coldopen views`. See [docs/SHARING.md](docs/SHARING.md).
 - **Batches.** `POST /v1/batches` with a list of URLs or jobs. For a LinkedIn job, or any other post behind a sign-in, add the description as `jobs[].text`; without it, the batch returns 422 `job_needs_text` and nothing is queued. Then download `results.csv` with share, GIF and video links per prospect, ready for a CRM or a sequencer like Apollo, Outreach or HubSpot.
 - **Slack.** Mention `@coldopen acme.com` in any channel and the finished film is posted back into the thread. Requests are signature-verified, and Slack's retries never start a second film. See [docs/SLACK.md](docs/SLACK.md).
 - **API.** Everything above is a REST call. OpenAPI docs are served at `/docs`; set `API_KEYS` to require a bearer key.
@@ -142,7 +143,7 @@ coldopen serves the [Model Context Protocol](https://modelcontextprotocol.io) at
 claude mcp add --transport http coldopen https://coldopen-nk8o.onrender.com/mcp --header "Authorization: Bearer co_…"
 ```
 
-Twelve tools, each a thin call to the REST API as you (so limits, ownership and checks are the app's own): `search_jobs`, `find_startups`, `find_targets`, `make_film`, `get_film`, `list_films`, `draft_messages`, `rewrite_messages`, `find_founders`, `set_recipient`, `follow_ups_due` and `call_brief`. Read-only tools are marked as such. `make_film` takes `jobText` with the description pasted in, for LinkedIn and other job links behind a sign-in. Nothing is ever sent for you. Then ask: _"Find Forward Deployed Engineer roles at YC startups that sponsor visas, make films for the top three, and draft the emails."_
+Thirteen tools, each a thin call to the REST API as you (so limits, ownership and checks are the app's own): `search_jobs`, `find_startups`, `find_targets`, `make_film`, `get_film`, `list_films`, `draft_messages`, `rewrite_messages`, `find_founders`, `set_recipient`, `follow_ups_due`, `warm_leads_due` and `call_brief`. Read-only tools are marked as such. `make_film` takes `jobText` with the description pasted in, for LinkedIn and other job links behind a sign-in. Nothing is ever sent for you. Then ask: _"Find Forward Deployed Engineer roles at YC startups that sponsor visas, make films for the top three, and draft the emails."_
 
 ## Writing scripts with a model (free)
 
@@ -233,6 +234,8 @@ A job seeker's drafts are written in the voice ([docs/TASTE.md](docs/TASTE.md#ne
 
 **Write it again.** A job seeker's drafts written before today's checks, or before homework you saved later, aren't rewritten on their own: the templates stand in, and "Write it again" in the film panel (`POST /v1/films/:id/messages/rewrite`) has the model write them from your homework. It's one model call, checked like any other draft, for job seekers only, with its own limit on the hosted app: 10 a day (`DAILY_REWRITES`), apart from résumé drafts, and an attempt the model couldn't finish isn't counted. The MCP `rewrite_messages` tool is the same call.
 
+**Flags and notes.** A flag means a draft failed a check and fell back to its template; the film panel says why under "Why this is the template version". A note means code changed a kept draft, for example leaving out the funding line to stay under 125 words; it shows under "What was changed". Neither appears when there's nothing to say. `GET /v1/films/:id/messages`, `GET /v1/followups` and the MCP `draft_messages` tool return the same drafts with `afterAccept`, `inmail`, `writer`, `flags` and `notes`.
+
 ## Network this week
 
 Networking happens all year, so Today ranks companies, not openings: the 10 most worth a film and a warm message now, for the roles you want (your saved job search, then your profile's role). Each card has its reasons in plain words and a "Make the film" button that fills in the site. "Not for me" hides a company, here and in the "Worth a warm message" sort on Jobs and Startups.
@@ -244,14 +247,23 @@ Networking happens all year, so Today ranks companies, not openings: the 10 most
 
 The counter, "x of 10 this week", is the recruiter's playbook target (10 people a week, 40 a month). It counts companies you reached since Monday 00:00 Pacific time, by a film made or a message marked sent, each company once however many films or edits it got. `GET /v1/targets` and the MCP `find_targets` tool return the same list and count.
 
-**Flags and notes.** A flag means a draft failed a check and fell back to its template; the film panel says why under "Why this is the template version". A note means code changed a kept draft, for example leaving out the funding line to stay under 125 words; it shows under "What was changed". Neither appears when there's nothing to say. `GET /v1/films/:id/messages`, `GET /v1/followups` and the MCP `draft_messages` tool return the same drafts with `afterAccept`, `inmail`, `writer`, `flags` and `notes`.
+## Warm leads
+
+A reply is the start, not the end. Mark a job seeker's film Replied or Interview and it joins Warm leads on Today, above Network this week, with one touch due at a time, drafted and checked like every other message ([src/outreach/warm.ts](src/outreach/warm.ts)):
+
+- **Thank-you, the day they reply.** Type one thing they said and the draft names it, then asks who else you should talk to. Add something you'll build from what they said, if you will.
+- **What you built, 5 days later.** When you said you'd build something, a short note with the link.
+- **Stay in touch, every 6 weeks.** Something new, and no ask.
+- **The referral ask, when a role opens.** When a role with a strong or good Fit check is posted at their company after the reply, the ask is due the next day, once per role: one ask, a real way out, and a blurb of at most 70 words they can forward as it is. One short bump a week later, then it lets go.
+
+Nothing is sent for you: copy the draft, send it yourself, then Mark done (or Stop reminders). The header counts conversations this month, and every due touch counts on Today's tab. `GET /v1/warm` and the MCP `warm_leads_due` tool return the same list.
 
 ## Quality, measured
 
 ```bash
-pnpm test         # 802 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish, the review before sending
+pnpm test         # 815 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish, the review before sending, warm leads, deleting a profile
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
-pnpm evals        # 180 quality checks across 16 evals on 3 fixture companies x 2 presets
+pnpm evals        # 201 quality checks across 20 evals on 3 fixture companies x 2 presets
 ```
 
 [Evals](evals/results.md) grade the output, not the code:
@@ -265,18 +277,18 @@ pnpm evals        # 180 quality checks across 16 evals on 3 fixture companies x 
 
 Run `pnpm evals --model <name>` to grade a real model's scripts the same way.
 
-**Messages, measured on a real model.** The [messages eval](.github/workflows/messages-eval.yml) runs Groq's `openai/gpt-oss-120b` against the message checks on every fixture film. It's started by hand from Actions, since it spends the free tier's minute. On 12 films:
+**Messages, measured on a real model.** The [messages eval](.github/workflows/messages-eval.yml) runs Groq's `openai/gpt-oss-120b` against the message checks on every fixture film. It's started by hand from Actions, since it spends the free tier's minute. On 12 films, with the warm voice and the film in the message ([run](https://github.com/tiwaker9404/coldopen/actions/runs/43313304871), 12 Nov):
 
 | Draft             | Passed on the first try | Fell back to the template |
 | ----------------- | ----------------------: | ------------------------: |
-| Connection note   |                    100% |                        0% |
-| After they accept |                    100% |                        0% |
-| InMail            |                     92% |                        0% |
-| Email             |                     67% |                        8% |
+| Connection note   |                     92% |                        0% |
+| After they accept |                     92% |                        0% |
+| InMail            |                     83% |                        8% |
+| Email             |                     83% |                        8% |
 
 Every kind of draft falls back at most 8% of the time, and a fallback still passes every check.
 
-**Read like a founder.** Checks catch rule breaks, not whether a message is warm or a reel makes a stranger want to talk. The [judged eval](.github/workflows/judge-eval.yml) has the same free model read a job seeker's work the way the person receiving it would: 24 messages (the email and the after-accept), 6 films' on-screen lines and 6 referral asks with their blurbs, each scored 1 to 5 on a short rubric (specific to them, homework visible, sounds like a person, the fact is worth quoting, the proof lands, easy to forward…) with a yes or no ("would you reply", "would you take a 15-minute call", "would you pass this on"). The judge never sees the sender's name, the targets or the checks. It writes every draft out in full with its scores ([evals/judge](evals/judge/)), for reading aloud. Advisory only: it never fails CI.
+**Read like a founder.** Checks catch rule breaks, not whether a message is warm or a reel makes a stranger want to talk. The [judged eval](.github/workflows/judge-eval.yml) has the same free model read a job seeker's work the way the person receiving it would: 24 messages (the email and the after-accept), 6 films' on-screen lines and 6 referral asks with their blurbs, each scored 1 to 5 on a short rubric (specific to them, homework visible, sounds like a person, the fact is worth quoting, the proof lands, easy to forward…) with a yes or no ("would you reply", "would you take a 15-minute call", "would you pass this on"). The judge never sees the sender's name, the targets or the checks. It writes every draft out in full with its scores ([evals/judge](evals/judge/)), for reading aloud. Advisory only: it never fails CI. On its first full run ([run](https://github.com/tiwaker9404/coldopen/actions/runs/43313200881), 12 Nov), 100% of referral asks would be passed on, half the films would get a call, and 46% of messages a reply; the lowest film line, "every line makes sense alone" (2.83 of 5), is why the line under the quoted fact now names what it's about.
 
 **Brand extraction, measured on live sites.** The [extract eval](evals/extract/) reads 20 real homepages, from YC startups to Apple, Nike and the BBC, one at a time with the network guard on, and checks each field automatically. A pass means plausible, not hand-verified. On 10 Nov ([run](https://github.com/tiwaker9404/coldopen/actions/runs/42861541477)), 14 of 20 sites passed every field:
 

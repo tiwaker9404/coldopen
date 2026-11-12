@@ -67,14 +67,17 @@ Copy one, replace every line with your own, and keep the shape.
 
 ## The fields
 
-| Field         | Limit                   | Shown in the film                                                                                                                                             |
-| ------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sender.name` |                         | Top of every scene, and the sign-off                                                                                                                          |
-| `sender.role` |                         | Used by the writer to frame the pitch                                                                                                                         |
-| `offer`       | 120 characters          | Seeds the pitch headline. The writer may tailor it, never extend it.                                                                                          |
-| `points`      | 2 to 6                  | The writer picks 2 or 3 for the pitch and may reword them for the company                                                                                     |
-| `proof`       | 1 to 8                  | 3 are shown, **word for word**: `value` (12 characters), `label` (60), `did` (12 to 90, optional: what you did, starting with a verb), `where` (40, optional) |
-| `cta`         | `line` 60, `contact` 80 | The last scene                                                                                                                                                |
+| Field                             | Limit                   | Shown in the film                                                                                                                                                                   |
+| --------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sender.name`                     |                         | Top of every scene, and the sign-off                                                                                                                                                |
+| `sender.role`                     |                         | Used by the writer to frame the pitch                                                                                                                                               |
+| `offer`                           | 120 characters          | Seeds the pitch headline. The writer may tailor it, never extend it.                                                                                                                |
+| `points`                          | 2 to 6                  | The writer picks 2 or 3 for the pitch and may reword them for the company                                                                                                           |
+| `proof`                           | 1 to 8                  | 3 are shown, **word for word**: `value` (12 characters), `label` (60), `did` (12 to 90, optional: what you did, starting with a verb), `where` (40, optional)                       |
+| `cta`                             | `line` 60, `contact` 80 | The last scene                                                                                                                                                                      |
+| `sender.linkedin`, `sender.photo` | links, optional         | A job seeker's share page: the card under the film says who sent it. The photo is a link to an image already online                                                                 |
+| `projects`                        | up to 8, optional       | The one closest to the company shows on the share page and in the email, and a pitch idea may rest on it ("like coldopen, which I built")                                           |
+| `creator`                         | optional                | "Made with <name>, which I built" on the end card, in the email and on the share page. On the hosted app, only the accounts in `UNLIMITED_GITHUB_USERS` can say they built coldopen |
 
 ## Choosing which proof a film shows
 
@@ -131,6 +134,7 @@ coldopen reads the company's site once, ranks your profiles by what the site tal
 - `--yes` takes the best match without asking. This is also what happens when coldopen isn't run in a terminal.
 - In a CSV batch, add a `profile` column to choose per row. Rows without one get the best match.
 - Each profile makes its own film, so trying a company with two profiles never overwrites the first.
+- In the web app, each profile card on the Profile tab has **Delete** for a résumé version you no longer use. It asks on the card first ("Films you already made keep working"), says which profile becomes your default when it's the default, and that you'll need a profile to make films when it's the last one. Films copy the profile when they're queued, so deleting one never changes a film or its share page (`DELETE /v1/profiles/:id`).
 
 The ranking only counts words that are actually on the company's site, and it shows you which ones, so you can always see why it suggested what it did.
 
