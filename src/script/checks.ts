@@ -1,5 +1,7 @@
 import type { BrandKit, Fact } from '../brand/types.ts'
 import { jobWordsIn } from '../outreach/voice.ts'
+import { rankProof, relevance } from '../profile/proof.ts'
+import { aboutText, notAnIdea, pitchAsIdeas } from './ideas.ts'
 import { BANNED, LIMITS } from './taste.ts'
 import type { Profile, Script } from './types.ts'
 
@@ -223,15 +225,23 @@ export function quotableFacts(
  * Every rule from the taste list, as code. Returns human-readable violations that are fed
  * back to the model verbatim, so they double as revision instructions.
  */
-export function checkScript(script: Script, kit: BrandKit, profile: Profile): string[] {
+export function checkScript(
+  script: Script,
+  kit: BrandKit,
+  profile: Profile,
+  opts: { semantic?: ReadonlyMap<number, number> } = {},
+): string[] {
   const v: string[] = []
+  // a job seeker's pitch is ideas for their product, when their site and the profile allow it
+  const ideas = profile.preset === 'candidate' && pitchAsIdeas(kit, profile)
+  const pointMax = ideas ? LIMITS.idea : LIMITS.point
   const lines: [string, string, number][] = [
     ['hook', script.hook, LIMITS.hook],
     ['noticed', script.noticed, LIMITS.noticed],
     ['insight.why', script.insight.why, LIMITS.why],
     ['pitch.headline', script.pitch.headline, LIMITS.headline],
     ...script.pitch.points.map(
-      (p, i) => [`pitch.points[${i}]`, p, LIMITS.point] as [string, string, number],
+      (p, i) => [`pitch.points[${i}]`, p, pointMax] as [string, string, number],
     ),
     ['cta', script.cta, LIMITS.cta],
   ]
@@ -410,11 +420,26 @@ export function checkScript(script: Script, kit: BrandKit, profile: Profile): st
       `pitch.headline "${script.pitch.headline}" claims things the profile doesn't say; build it from the offer: "${profile.offer}"`,
     )
   script.pitch.points.forEach((p, i) => {
-    if (overlap(p, own) < 0.5)
+    // a job seeker's idea rests on one thing they did, checked by pitch_is_idea below
+    if (ideas) {
+      const why = notAnIdea(p, kit, profile)
+      if (why) v.push(`pitch.points[${i}] "${p}" ${why} (pitch_is_idea)`)
+    } else if (overlap(p, own) < 0.5)
       v.push(
         `pitch.points[${i}] "${p}" adds claims the profile doesn't make; reword one of the profile's points instead`,
       )
   })
+  // a job seeker's proof: the one closest to their business is on screen when one is close at all
+  if (profile.preset === 'candidate' && profile.proof.length > 1) {
+    const about = aboutText(kit)
+    const top = rankProof(profile.proof, about, opts.semantic)[0]!
+    const p = profile.proof[top]!
+    const close = relevance(p, about, opts.semantic?.get(top)) > 0 && p.did && p.where
+    if (close && !script.proof.includes(top))
+      v.push(
+        `proof leaves out ${top} ("${p.value} ${p.label}"), the proof closest to ${kit.name}'s business; show it first`,
+      )
+  }
   if (words(script.pitch.headline) < 4)
     v.push(
       `pitch.headline "${script.pitch.headline}" is too generic; say what you offer in 4 to ${LIMITS.headline} words`,
@@ -458,6 +483,9 @@ function allSourceText(kit: BrandKit, profile: Profile): string {
   ].join(' ')
 }
 
+/** A line written as an idea for their product ("I'd … — like …") */
+const ideaLine = (p: string) => /^I(?:'d|’d| would)\s.+\blike\b/i.test(p.trim())
+
 /** Last resort after the revision budget: enforce limits mechanically, never ship a violation. */
 export function clampScript(script: Script, profile: Profile): Script {
   const cut = (s: string, n: number) => {
@@ -475,7 +503,11 @@ export function clampScript(script: Script, profile: Profile): Script {
     insight: { factId: script.insight.factId, why: cut(script.insight.why, LIMITS.why) },
     pitch: {
       headline: cut(script.pitch.headline, LIMITS.headline),
-      points: script.pitch.points.slice(0, 3).map((p) => cut(p, LIMITS.point)),
+      points: script.pitch.points
+        .slice(0, 3)
+        .map((p) =>
+          cut(p, profile.preset === 'candidate' && ideaLine(p) ? LIMITS.idea : LIMITS.point),
+        ),
     },
     proof: [...new Set(script.proof.filter((i) => i < profile.proof.length))].slice(0, 3),
     cta: cut(script.cta, LIMITS.cta),
@@ -538,7 +570,12 @@ export function precheckEdit(script: Script, profile: Profile, known: string): s
     ['Why it matters', script.insight.why, LIMITS.why],
     ['The headline', script.pitch.headline, LIMITS.headline],
     ...script.pitch.points.map(
-      (p, i) => [`Point ${i + 1}`, p, LIMITS.point] as [string, string, number],
+      (p, i) =>
+        [
+          `Point ${i + 1}`,
+          p,
+          profile.preset === 'candidate' && ideaLine(p) ? LIMITS.idea : LIMITS.point,
+        ] as [string, string, number],
     ),
     ['The ask', script.cta, LIMITS.cta],
   ]

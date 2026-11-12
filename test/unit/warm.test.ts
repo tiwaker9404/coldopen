@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  asSaid,
   BUMP_DAYS,
   conversationsThisMonth,
   draftTouch,
@@ -11,6 +12,7 @@ import {
   rolesFor,
   STAY_DAYS,
   type Touch,
+  WAY_OUT,
   type WarmFilm,
   type WarmJob,
 } from '../../src/outreach/warm.ts'
@@ -247,7 +249,8 @@ describe('warm leads: the drafts', () => {
       'the Forward Deployed Engineer role: https://jobs.ashbyhq.com/parcelpine/1',
     )
     expect(d.body).toContain('Would you be open to passing my name to the hiring manager?')
-    expect(d.body).toContain("No problem at all if the timing isn't right.")
+    // the way out is its own paragraph, warm and real
+    expect(d.body).toContain(`\n\n${WAY_OUT}\n\n`)
     expect(d.blurb).toMatch(/^Alex Rivera, a forward deployed engineer, is interested in/)
     expect(d.blurb).toContain('https://share.example/f/x')
     expect(d.blurb!.split(/\s+/).length).toBeLessThan(70)
@@ -284,5 +287,82 @@ describe('warm leads: the drafts', () => {
     expect(r).toBe(
       'Automated reconciliations in Python (month-end close, from 6 days to 2) at Rail Inc.',
     )
+  })
+})
+
+describe('warm leads: the referral blurb and ask, as a founder reads them', () => {
+  const ashwin = {
+    ...profile('candidate'),
+    sender: { name: 'Ashwin Tiwari', role: 'Forward Deployed Engineer' },
+    points: ['Deployed a custom asynchronous Python analytics engine for an enterprise client'],
+    proof: [
+      {
+        value: '6h → 45m',
+        label: 'daily client data sync, from 6 hours to 45 minutes',
+        did: 'Built containerized ETL with Docker and PostgreSQL',
+        where: 'Rail Inc.',
+      },
+      {
+        value: '1.5M',
+        label: 'HubSpot records moved with no data loss',
+        did: 'Built an automated Python migration pipeline',
+        where: 'Changing The Present',
+      },
+      { value: 'AWS', label: 'Solutions Architect certified' },
+    ],
+  }
+  const ask = (role: { title: string; url: string; why?: string }, company = 'Parcelpine') =>
+    draftTouch({
+      kind: 'referralAsk',
+      company,
+      profile: ashwin,
+      said: 'carriers still send rate sheets as PDFs',
+      role,
+      share: 'https://share.example/f/x',
+    })
+
+  it('keeps proper nouns and titles cased: "a Forward Deployed Engineer", "HubSpot"', () => {
+    expect(asSaid('Forward Deployed Engineer')).toBe('Forward Deployed Engineer')
+    expect(asSaid('Forward deployed engineer')).toBe('forward deployed engineer')
+    expect(asSaid('HubSpot records moved')).toBe('HubSpot records moved')
+    const d = ask({ title: 'CRM Migration Engineer', url: 'https://jobs.example/1' })
+    expect(d.blurb).toMatch(/^Ashwin Tiwari, a Forward Deployed Engineer, is interested in/)
+    expect(d.blurb).toContain('(1.5M HubSpot records moved with no data loss)')
+    expect(d.blurb).not.toMatch(/hubSpot|forward Deployed/)
+  })
+
+  it('says a past-tense point in the first person: "I deployed a custom …"', () => {
+    expect(inFirstPerson('Deployed a custom asynchronous Python analytics engine')).toBe(
+      'I deployed a custom asynchronous Python analytics engine',
+    )
+    expect(inFirstPerson('Built containerized ETL')).toBe('I built containerized ETL')
+    const d = ask({ title: 'Forward Deployed Engineer', url: 'https://jobs.example/1' })
+    expect(d.body).toContain("It's close to what I do now: I deployed a custom asynchronous")
+  })
+
+  it('gives the way out its own sentence, warm and real, then thanks', () => {
+    const d = ask({ title: 'Forward Deployed Engineer', url: 'https://jobs.example/1' })
+    const paragraphs = d.body.split('\n\n')
+    expect(paragraphs).toContain(WAY_OUT)
+    expect(WAY_OUT).toBe(
+      "If the timing's wrong or it isn't a fit, no worries at all, and thank you for the conversation either way.",
+    )
+    expect(paragraphs.indexOf(WAY_OUT)).toBe(paragraphs.length - 2)
+    expect(d.body.endsWith('Thank you,\nAshwin')).toBe(true)
+  })
+
+  it("the blurb's one result is the proof most relevant to the role, with did, where and label", () => {
+    const data = ask({ title: 'Data Engineer, ETL pipelines', url: 'https://jobs.example/2' })
+    expect(data.blurb).toContain(
+      'One result that fits: Built containerized ETL with Docker and PostgreSQL (daily client data sync, from 6 hours to 45 minutes) at Rail Inc.',
+    )
+    const crm = ask({ title: 'HubSpot Solutions Engineer', url: 'https://jobs.example/3' })
+    expect(crm.blurb).toContain(
+      'Built an automated Python migration pipeline (1.5M HubSpot records moved with no data loss) at Changing The Present',
+    )
+    // never the certification, which says nothing a stranger can weigh
+    expect(`${data.blurb} ${crm.blurb}`).not.toContain('certified')
+    // resultFor ranks as the film ranks proof
+    expect(resultFor(ashwin, 'HubSpot Solutions Engineer')).toContain('HubSpot records')
   })
 })

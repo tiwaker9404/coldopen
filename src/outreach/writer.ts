@@ -15,6 +15,7 @@ import { type Homework, type HomeworkItem, pickResearch } from '../brand/homewor
 import type { FilmResult } from '../film.ts'
 import { type ChatMessage, estimateTokens } from '../llm/types.ts'
 import { proofPhrase } from '../profile/proof.ts'
+import { ideaOf } from '../script/ideas.ts'
 import { BANNED, BEGGING, TASTE_RULES } from '../script/taste.ts'
 import type { Profile } from '../script/types.ts'
 import {
@@ -28,14 +29,25 @@ import {
   type MessageKind,
   passed,
 } from './checks.ts'
-import { contextFor, draftMessages, midSentence, type Opener } from './messages.ts'
+import {
+  contextFor,
+  draftMessages,
+  midSentence,
+  newestPublished,
+  type Opener,
+  type Published,
+} from './messages.ts'
 import {
   homeworkLine,
+  ideaTease,
   JOB_WORDS,
   lowerStart,
   OFFER,
+  OFFER_LATER,
+  publishedOpening,
   type SenderHomework,
   SIGN_OFF,
+  specificThing,
   THANKS,
   VOICE_RULES,
 } from './voice.ts'
@@ -378,6 +390,10 @@ export interface WarmBrief {
   homework: SenderHomework
   /** what the sender built that made this film */
   creator: { name: string; line: string } | null
+  /** the film's first idea for their product, from its pitch ("stream carrier check-ins into …") */
+  idea: string | null
+  /** the newest specific thing they published, for an opening with no homework */
+  newest: Published | null
 }
 
 export function briefFor(
@@ -386,6 +402,7 @@ export function briefFor(
   item: HomeworkItem | null,
   opener: Opener,
   sender?: SenderHomework | null,
+  published?: Published | null,
 ): MessageBrief {
   if (profile.preset === 'candidate') {
     const raw = film.highlights?.quote
@@ -417,6 +434,8 @@ export function briefFor(
         creator: profile.creator
           ? { name: profile.creator.name, line: profile.creator.line }
           : null,
+        idea: ideaOf(film.script?.pitch.points[0] ?? ''),
+        newest: published ?? null,
       },
     }
   }
@@ -469,8 +488,9 @@ export function buildMessagePrompt(
   item: HomeworkItem | null,
   opener: Opener,
   sender?: SenderHomework | null,
+  published?: Published | null,
 ): ChatMessage[] {
-  const b = briefFor(film, profile, item, opener, sender)
+  const b = briefFor(film, profile, item, opener, sender, published)
   if (b.warm) return warmPrompt(b, b.warm)
   const lead =
     b.opener === 'proof'
@@ -513,18 +533,23 @@ function warmPrompt(b: MessageBrief, w: WarmBrief): ChatMessage[] {
     ? `opening: one or two sentences on what the sender built with ${c}, in their words from HOMEWORK, with its link, as "I built something small with ${c}: …".`
     : hw.detail
       ? `opening: one or two sentences from what the sender saved about using ${c}, in their words from HOMEWORK, as "I've been using ${c}, and …" (or their own sentence when it starts with "I").`
-      : b.research
-        ? `opening: one sentence on what THEIR LATEST POST says, in its words ("I read that …"). The sender saved no homework, so don't say they used, tried or built anything.`
-        : `opening: one sentence on what their homepage leads with (NOTICED), in their words. The sender saved no homework, so don't say they used, tried or built anything.`
+      : w.newest
+        ? `opening: one sentence on NEWEST, the newest thing they published, saying where and when, in its words ("I read ${c}'s ${w.newest.kind} entry${w.newest.month ? ` from ${w.newest.month}` : ''}: …"). The sender saved no homework, so don't say they used, tried or built anything.`
+        : b.research
+          ? `opening: one sentence on what THEIR LATEST POST says, in its words ("I read that …"). The sender saved no homework, so don't say they used, tried or built anything.`
+          : `opening: one sentence on what their homepage leads with (NOTICED), in their words. The sender saved no homework, so don't say they used, tried or built anything.`
   const question = hw.question
     ? `question: exactly "${hw.question}", the sender's own question, word for word.`
-    : `question: one question about something in ${b.research ? 'THEIR LATEST POST, ' : ''}NOTICED${hw.detail || hw.built ? ' or the homework' : ''}, using one of their words. About their work, not about the sender.`
+    : `question: one question naming one specific thing (a product, a feature or a number) from ${w.newest ? 'NEWEST, ' : ''}${b.research ? 'THEIR LATEST POST, ' : ''}NOTICED${hw.detail || hw.built ? ' or the homework' : ''}, in their words. Never a category of people ("most of your customers"), never about the sender.`
+  const tease = w.idea
+    ? `tease: one sentence naming the film's first idea, FIRST IDEA, in a few words, as "I put one idea for ${c} into a ${FILM_LENGTH} film: <the idea>." then ${FILM}. The only part that mentions the film.`
+    : `tease: one sentence saying what's in the film in terms of their work, ending "into a ${FILM_LENGTH} film: ${FILM}". The only part that mentions the film.`
   const creator = w.creator
     ? `creator: one sentence starting "I built the tool that made it, ${w.creator.name}," saying what it does in the sender's words from CREATOR, without the word "film".`
     : 'creator: null (the sender has no CREATOR line).'
   const user = `COMPANY: ${c}
 NOTICED (what the film says about their homepage): ${w.noticed || '(nothing)'}${w.quote ? `\nTHEIR LINE THE FILM SHOWS: "${w.quote}"` : ''}
-${b.research ? `THEIR LATEST POST: "${b.research.title}": ${b.research.summary}` : 'THEIR LATEST POST: none'}
+${b.research ? `THEIR LATEST POST: "${b.research.title}": ${b.research.summary}` : 'THEIR LATEST POST: none'}${w.newest ? `\nNEWEST (their ${w.newest.kind}${w.newest.month ? `, ${w.newest.month}` : ''}): ${w.newest.text}` : ''}${w.idea ? `\nFIRST IDEA (the film's first idea for their product): ${w.idea}` : ''}
 HOMEWORK (the sender's own words; don't add experiences they didn't write):
 - using their product: ${hw.detail ?? 'nothing saved'}
 - built with it: ${hw.built ? `${hw.built.line} (${hw.built.url})` : 'nothing saved'}
@@ -536,15 +561,16 @@ ${VOICE_RULES}
 
 THE MESSAGES (limits are checked in code; going over means a rewrite):
 - note: a LinkedIn connection note, at most ${b.budgets.note} characters. One line about their work (the homework, or what NOTICED says) that says "${c}" in full, and one curious line. No link, no ${FILM}, no ask for their time, at most one question.
-- afterAccept: sent once they accept, at most ${b.budgets.afterAccept} characters. Thanks for connecting, one sentence from the homework (or NOTICED) that says "${c}" in full, the tease with ${FILM} (required, exactly once, where the link goes), then the question. No ask for their time. Code adds "Thank you for your time," and the name, so don't thank them at the end.
-- inmail: subject at most ${b.budgets.inmailSubject} characters, about their work, names ${c}; body at most ${b.budgets.inmailBody} characters: the homework (or NOTICED), the tease with ${FILM} (required, exactly once), the question. No ask for their time. Code adds the thanks and the name.
+- afterAccept: sent once they accept, at most ${b.budgets.afterAccept} characters. Thanks for connecting, one sentence from the homework (or ${w.newest ? 'NEWEST' : 'NOTICED'}) that says "${c}" in full, the tease with ${FILM} (required, exactly once, where the link goes), then the question. No ask for their time. Code adds "Thank you for your time," and the name, so don't thank them at the end.
+- inmail: subject at most ${b.budgets.inmailSubject} characters, about their work, names ${c}; body at most ${b.budgets.inmailBody} characters: the homework (or ${w.newest ? 'NEWEST' : 'NOTICED'}), the tease with ${FILM} (required, exactly once), the question. No ask for their time. Code adds the thanks and the name.
+- In every message, only name a product or feature of ${c}'s that NOTICED, THEIR LATEST POST, NEWEST, FIRST IDEA or HOMEWORK names. Never write "I've been using", "I tried" or "I used" unless HOMEWORK says it.
 - email, in parts, all together at most ${b.budgets.emailWords} words. Code adds the greeting, "Thanks for reading," and the signature.${b.opener === 'question' ? ' Code puts the question first, then the opening.' : ''}
   - subject: their work (the post's title, or what the homework is about), names ${c}. Never "inquiry", "application" or a job word.
   - ${opening}
-  - tease: one sentence saying what's in the film in terms of their work, ending "into a ${FILM_LENGTH} film: ${FILM}", for example "I put what I'd try next with ${c}'s <their thing> into a ${FILM_LENGTH} film: ${FILM}". The only part that mentions the film.
+  - ${tease}
   - ${creator}
   - ${question}
-  - offer: the soft 15-minute offer, as a statement, not a question: "${OFFER}" or close to it.
+  - offer: the soft 15-minute offer, tied to the question, as a statement: "${b.opener === 'question' ? OFFER_LATER : OFFER}" or close to it.
 - Every message says "${c}" in full (not "you", "your team" or a short name): the check looks for it. No numbers at all, except "15 minutes" and "${FILM_LENGTH}". No exclamation marks.
 - Never beg or ask a favor: no ${BEGGING.slice(0, 8)
     .map((x) => `"${x}"`)
@@ -631,7 +657,9 @@ export async function writeMessages(opts: {
       )
     : null
   const source = item ? researchSource(item) : null
-  const opener = briefFor(film, profile, item, opts.opener, sender).opener
+  // with no homework, a job seeker's email opens on the newest thing they published
+  const published = warm ? newestPublished(opts.homework, now) : null
+  const opener = briefFor(film, profile, item, opts.opener, sender, published).opener
   // a job seeker's drafts are checked in the voice, against their own homework, as the API checks them
   const ctx: CheckContext = warm
     ? contextFor(
@@ -639,6 +667,7 @@ export async function writeMessages(opts: {
         profile,
         LINK_ROOM,
         sender,
+        published,
       )
     : {
         company: film.company,
@@ -657,7 +686,7 @@ export async function writeMessages(opts: {
   const shape: Shape = { opener, research: !!item, saved: sender?.question ?? null }
   const hints = { warm, saved: sender?.question ?? null, company: film.company }
 
-  const messages = buildMessagePrompt(film, profile, item, opts.opener, sender)
+  const messages = buildMessagePrompt(film, profile, item, opts.opener, sender, published)
   const first = await opts.complete('messages-1', messages)
   const firstDrafts = assemble(first, film, profile, LINK_ROOM, shape)
   const firstChecks = Object.fromEntries(
@@ -696,6 +725,7 @@ export async function writeMessages(opts: {
     opener,
     research: item && source ? { line: source, source, title: item.title } : null,
     ...(sender ? { homework: sender } : {}),
+    ...(published ? { published } : {}),
   })
   const fallback: Drafts = {
     note: template.linkedin,
@@ -843,27 +873,59 @@ function scriptedWarm(b: MessageBrief, w: WarmBrief): WarmMessages {
   const rawPromise = w.noticed.match(/“([^”]+)”/)?.[1]
   const promise = rawPromise && quotable(rawPromise) ? clean(rawPromise) : ''
   const mine = homeworkLine(c, w.homework, post)
+  const own = !!(w.homework.built || w.homework.detail)
+  // with no homework, the newest specific thing they published: what shows the sender looked
+  const newest = !own && w.newest && quotable(w.newest.text) ? publishedOpening(c, w.newest) : ''
   const opening =
-    mine?.line ??
+    (own ? mine?.line : '') ||
+    newest ||
+    mine?.line ||
     (promise
       ? `${c}'s homepage leads with "${promise}".`
       : `I've been reading about what ${c} is building.`)
-  const aboutPost = mine?.kind === 'post'
+  const aboutPost = !own && !!(newest || mine?.kind === 'post')
   const saved = w.homework.question?.replace(/\s+/g, ' ').trim()
+  const elsewhere = [w.quote, w.noticed, b.research?.summary].filter(Boolean).join('\n')
+  const shipped = w.newest
+    ? specificThing(w.newest.text, elsewhere, c)
+    : post?.line && aboutPost
+      ? specificThing(post.line, elsewhere, c)
+      : null
+  const theirText = `${elsewhere}\n${w.newest?.text ?? ''}`
+  const used =
+    specificThing(w.homework.detail ?? '', theirText, c, true) ??
+    specificThing(w.homework.built?.line ?? '', theirText, c, true)
+  const ideaThing = w.idea ? specificThing(w.idea, theirText, c, true) : null
+  const homeThing =
+    (w.quote && specificThing(w.quote, w.noticed, c)) ||
+    (promise && specificThing(promise, w.quote, c)) ||
+    null
+  // one specific thing of theirs, never a category of people
   const question = saved
     ? saved.replace(/[.!]$/, '').replace(/\?*$/, '?')
-    : title && !aboutPost
-      ? `What have customers said since "${title}" went out?`
-      : promise && !opening.includes(promise)
-        ? `What made you lead the homepage with "${promise}"?`
-        : `What's the hardest part of what ${c} is building right now?`
-  const tease = `I put what I'd try next with ${c} into a ${FILM_LENGTH} film: ${FILM}`
+    : shipped
+      ? `What was the hardest part of the ${shipped} change to get right?`
+      : title && !aboutPost
+        ? `What have customers said since "${title}" went out?`
+        : used
+          ? `What's next for the ${used}?`
+          : promise && !opening.includes(promise)
+            ? `What made you lead the homepage with "${promise}"?`
+            : ideaThing
+              ? `How do teams handle ${ideaThing} with ${c} today?`
+              : homeThing
+                ? `What's changed most about ${homeThing} this year?`
+                : `What's the hardest part of what ${c} is building right now?`
+  // the tease names the film's first idea
+  const tease = w.idea
+    ? `${ideaTease(c, w.idea, FILM_LENGTH)} ${FILM}`
+    : `I put what I'd try next with ${c} into a ${FILM_LENGTH} film: ${FILM}`
   const creator = w.creator
     ? FILM_WORD.test(w.creator.line)
       ? `I built the tool that made it, ${w.creator.name}.`
       : `I built the tool that made it, ${w.creator.name}: ${lowerStart(clean(w.creator.line))}.`
     : null
-  const offer = OFFER
+  const offer = b.opener === 'question' ? OFFER_LATER : OFFER
   // inside the word budget: drop what the sender built first, then the homework for a plainer opening
   const total = (o: string, cr: string | null) =>
     words([o, tease, cr ?? '', question, offer].join(' '))
@@ -875,7 +937,13 @@ function scriptedWarm(b: MessageBrief, w: WarmBrief): WarmMessages {
         ? [opening, null]
         : [plain, null]
 
-  const tail = `Curious how most ${c} customers use it.`
+  const tail = shipped
+    ? `Curious how the ${shipped} change is landing.`
+    : used
+      ? `Curious what's next for the ${used}.`
+      : ideaThing
+        ? `Curious how teams handle ${ideaThing} today.`
+        : `Curious what's next at ${c}.`
   const noteLead = w.homework.built
     ? `I built something small with ${c}: ${lowerStart(clean(w.homework.built.line))}.`
     : mine?.kind === 'detail'

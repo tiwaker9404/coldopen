@@ -79,6 +79,9 @@ export function managerFor(title: string | undefined): string | null {
  * Warm paths: the sender's schools and past employers, for "who shares my background". People
  * answer someone from their own school or old team far more often than a stranger.
  */
+const NOT_AN_EMPLOYER =
+  /\b(github|gitlab|open[- ]source|side project|personal project|hackathon|kaggle|certif\w*)\b/i
+
 export function backgrounds(
   profile: Profile | undefined,
 ): { name: string; kind: 'school' | 'employer' }[] {
@@ -88,7 +91,9 @@ export function backgrounds(
     if (n && !out.some((x) => x.name.toLowerCase() === n.toLowerCase())) out.push({ name: n, kind })
   }
   for (const s of (profile?.schools ?? []).slice(0, 2)) add(s, 'school')
-  for (const p of profile?.proof ?? []) add(p.where, 'employer')
+  // GitHub or "Open-source project" is where the work is, not a place anyone worked
+  for (const p of profile?.proof ?? [])
+    if (!NOT_AN_EMPLOYER.test(p.where ?? '')) add(p.where, 'employer')
   // the current employer stays out of every search
   const now = profile?.sender.company?.trim().toLowerCase()
   return out.filter((x) => x.name.toLowerCase() !== now).slice(0, 5)

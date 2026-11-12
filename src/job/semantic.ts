@@ -90,6 +90,11 @@ export interface Semantic {
    * left out and embedded in the background, so they count on the next look.
    */
   known(profile: Profile, requirements: string[]): Map<string, { score: number; with: string }>
+  /**
+   * How close each line is, by meaning, to the closest of `about` (a company's facts), on the
+   * keyword scale: a proof that reads like their business scores higher.
+   */
+  closeness(lines: string[], about: string[]): Promise<number[]>
 }
 
 /** Embeddings kept by text, so a requirement or a record line is embedded once */
@@ -145,6 +150,12 @@ export function semanticFit(
       const [lv, rv] = [await vectors(lines), await vectors(requirements)]
       for (const [i, r] of requirements.entries()) out.set(r, match(lines, lv, rv[i]!))
       return out
+    },
+    async closeness(lines, about) {
+      const texts = about.filter((t) => t.trim())
+      if (!lines.length || !texts.length) return lines.map(() => 0)
+      const [lv, av] = [await vectors(lines), await vectors(texts)]
+      return lv.map((v) => Math.max(...av.map((a) => asScore(cosine(v, a), threshold))))
     },
     known(profile, requirements) {
       const lines = recordLines(profile)

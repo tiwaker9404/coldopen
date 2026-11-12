@@ -1635,7 +1635,8 @@ function ScriptEditor({ film, onMade }: { film: FilmDetail; onMade: (id: string)
           key={i}
           id={`line-points-${i}`}
           label={`Point ${i + 1}`}
-          max={LIMITS.point}
+          // a job seeker's idea for their product ("I'd … — like …") has room for what they did
+          max={/^I(?:'d|’d| would)\s.+\blike\b/i.test(p.trim()) ? LIMITS.idea : LIMITS.point}
           value={p}
           onChange={(v) => setE({ ...e, points: e.points.map((x, j) => (j === i ? v : x)) })}
         />

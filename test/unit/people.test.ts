@@ -28,8 +28,17 @@ describe('people to send a film to', () => {
       profile: profile('candidate'),
     })
     // no team size known: treated as a big company, so warm paths and the manager go first
-    expect(labels(gs)).toEqual(['Hiring manager', 'People doing the job', 'Recruiting', 'Founders'])
-    expect(gs[0]!.searches[0]!.url).toContain(encodeURIComponent('engineering manager Stripe'))
+    expect(labels(gs)).toEqual([
+      'Warm paths',
+      'Hiring manager',
+      'People doing the job',
+      'Recruiting',
+      'Founders',
+    ])
+    // the one employer in the proof; GitHub and an open-source project aren't places anyone worked
+    expect(urls([gs[0]!]).join(' ')).toContain('Brightline Logistics')
+    expect(urls([gs[0]!]).join(' ')).not.toMatch(/GitHub|Open-source/)
+    expect(gs[1]!.searches[0]!.url).toContain(encodeURIComponent('engineering manager Stripe'))
     for (const g of gs) {
       expect(g.why.length).toBeGreaterThan(10)
       expect(g.ask.length).toBeGreaterThan(10)

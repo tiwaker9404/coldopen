@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { MESSAGES_NOW, publishedFor } from '../../evals/fixture-films.ts'
 import { parseFeed } from '../../src/brand/homework.ts'
 import type { BrandKit } from '../../src/brand/types.ts'
 import type { FilmResult } from '../../src/film.ts'
@@ -21,6 +22,7 @@ import {
   freshRound,
   messagesFor,
   newerPost,
+  newestPublished,
   openerFor,
   researchSentence,
   type SenderHomework,
@@ -80,7 +82,8 @@ describe('the messages that go with a film', () => {
     // this profile has no creator line, and the film has no related project
     expect(m.email.body).not.toContain('I built')
     expect(m.email.body).toContain(
-      "One thing I wondered: what's the hardest part of what Parcelpine is building right now? If you ever have 15 minutes, I'd love to hear how you think about it.",
+      // nothing of theirs specific enough to ask about: the plainest question, and the offer tied to it
+      "One thing I wondered: what's the hardest part of what Parcelpine is building right now? Happy to trade notes on that for 15 minutes if it's useful.",
     )
     expect(
       m.email.body.trimEnd().endsWith(`Thanks for reading,\nAlex Rivera\n${p.cta.contact}`),
@@ -138,7 +141,8 @@ describe('what makes a cold email work', () => {
     expect(m.email.body).toContain(
       "Hi [First name],\n\nI've been using Parcelpine, and the one thing I kept hitting was losing a draft when my wifi dropped.\n\nI put what I'd try next",
     )
-    expect(m.email.body).toContain('One thing I wondered: how do most Parcelpine customers use it?')
+    // never a category ("most Parcelpine customers"): a detail with nothing of theirs in it gets the plainest question
+    expect(m.email.body).not.toMatch(/most \w+ customers/)
     expect(m.checks.detail).toBe(true)
     expect(m.checks.short).toBe(m.checks.words <= 125)
   })
@@ -248,7 +252,8 @@ describe('two openers, to learn which gets replies', () => {
       "Hi [First name],\n\nI've had one question about Parcelpine in mind: are most of your customers calling the API directly?\n\nI tried the rate API",
     )
     expect(q.email.body).toContain(
-      "If you ever have 15 minutes, I'd love to hear how you think about it.\n\nThanks for reading,",
+      // the offer, tied to the question a few lines up
+      "Happy to trade notes on that question for 15 minutes if it's useful.\n\nThanks for reading,",
     )
     const h = draftMessages(out as never, p, LINK, { homework, opener: 'homework' })
     expect(h.opener).toBe('homework')
@@ -552,7 +557,8 @@ describe('every template passes the checks', () => {
                   : draftMessages(film, p, LINK, { opener, research })
                 const ctx = {
                   ...(seeker
-                    ? contextFor(film, p, LINK, hw)
+                    ? // as messagesFor checks it: with the newest thing they published, quotable
+                      contextFor(film, p, LINK, hw, newestPublished(film.homework, NOW))
                     : { company: kit.name, known: knownFor(film, p), link: LINK }),
                   research: research
                     ? { line: seeker ? RESEARCH.source : RESEARCH.line, source: RESEARCH.source }
@@ -694,12 +700,15 @@ describe('every warm-lead template passes the checks', () => {
       share: LINK,
     })
     const blurb = d.blurb!
-    expect(blurb).toContain('One result that fits: 6 open-source AI projects shipped.')
+    // the proof with what they did and where, ranked as a film ranks it, with its number once
+    expect(blurb).toContain(
+      'One result that fits: Built a pipeline syncing carrier tracking APIs (40,000 carrier tracking events a day, in one feed) at Brightline Logistics.',
+    )
     // one result only: the other proof stays out
     expect(blurb).not.toContain('double refunds')
     expect(blurb).not.toMatch(/\b(I|my)\b/)
     expect(repeatedNumbers(blurb)).toEqual([])
-    expect(blurb.split('6').length - 1).toBe(1)
+    expect(blurb.split('40,000').length - 1).toBe(1)
   })
 })
 
@@ -786,7 +795,7 @@ describe('the connection note has no link and no ask', () => {
         .linkedin
     // room for the detail and the curious line
     expect(note('the rate API saved me a spreadsheet')).toBe(
-      "Hi [First name], I've been using Parcelpine, and the rate API saved me a spreadsheet. Curious how most Parcelpine customers use it. – Alex",
+      "Hi [First name], I've been using Parcelpine, and the rate API saved me a spreadsheet. Curious what's next at Parcelpine. – Alex",
     )
     // room for the detail alone
     const mid =
@@ -927,15 +936,15 @@ describe("a job seeker's email in the voice", () => {
       "I put what I'd try next",
       "Something I built that's close",
       'One thing I wondered',
-      'If you ever have 15 minutes',
+      'Happy to trade notes on that',
       'Thanks for reading,',
     ])
       expect(at(t), t).toBeGreaterThan(0)
     expect(at(homework.detail)).toBeLessThan(at("I put what I'd try next"))
     expect(at("I put what I'd try next")).toBeLessThan(at("Something I built that's close"))
     expect(at("Something I built that's close")).toBeLessThan(at('One thing I wondered'))
-    expect(at('One thing I wondered')).toBeLessThan(at('If you ever have 15 minutes'))
-    expect(at('If you ever have 15 minutes')).toBeLessThan(at('Thanks for reading,'))
+    expect(at('One thing I wondered')).toBeLessThan(at('Happy to trade notes on that'))
+    expect(at('Happy to trade notes on that')).toBeLessThan(at('Thanks for reading,'))
   })
 
   it("leads with their latest post when you haven't saved homework, on every fixture", () => {
@@ -944,8 +953,12 @@ describe("a job seeker's email in the voice", () => {
         const film = filmFor(kit, q)
         const e = draftMessages(film, q, LINK, { research: RESEARCH }).email
         expect(e.body, e.body).toContain('Hi [First name],\n\nI read that route planning')
-        // the post is named once: the tease and the question don't quote its title again
-        expect(e.body.toLowerCase().split('route planning')).toHaveLength(2)
+        // the title isn't quoted again; the question may name the change, to be specific
+        expect(e.body).not.toContain('"Route planning, now with live traffic"')
+        expect(e.body.toLowerCase().split('route planning').length).toBeLessThanOrEqual(3)
+        expect(e.body.toLowerCase()).toContain(
+          'what was the hardest part of the route planning change',
+        )
         // and the subject is about it
         expect(e.subject).toBe(`${kit.name}'s route planning, now with live traffic`)
       }
@@ -1130,7 +1143,9 @@ describe('the research line names the post once and ends on a whole clause', () 
     const body = draftMessages(out as never, profile('candidate'), LINK, {
       research: { line: item.summary!, source: item.summary!, title: item.title },
     }).email.body
-    expect(body.toLowerCase().split('route planning')).toHaveLength(2)
+    // said once in the opening, and at most once more by a question that names the change
+    expect(body.toLowerCase().split('route planning').length).toBeLessThanOrEqual(3)
+    expect(body).not.toContain('"Route planning, now with live traffic"')
   })
 
   it('names the post when the summary says something else', () => {
@@ -1669,5 +1684,69 @@ describe('proof in the message text', () => {
           expect(text).not.toContain('6h → 20m report prep')
         }
       }
+  })
+})
+
+describe("a job seeker's email: the film's idea, and what they published", () => {
+  const p = profile('candidate')
+  // a site with its own names for what it makes, as the judge's fixture sites have
+  const base = SITE_KITS.find((k) => k.name === 'Northwind Freight')!
+  const site = {
+    ...base,
+    facts: [
+      ...base.facts,
+      { id: 'f6', text: 'Exception alerts', kind: 'claim' },
+      { id: 'f7', text: 'Dock scheduling', kind: 'claim' },
+      { id: 'f8', text: 'Carrier check-ins', kind: 'claim' },
+    ],
+  } as BrandKit
+  const passes = (
+    kind: 'email' | 'afterAccept' | 'inmail',
+    text: string | { subject: string; body: string },
+    film: Parameters<typeof contextFor>[0],
+    published?: ReturnType<typeof newestPublished>,
+  ) => checkMessage(kind, text, contextFor(film, p, LINK, null, published)).filter((c) => !c.ok)
+
+  it("the tease names the film's first idea, in the email, after-accept and InMail", () => {
+    const film = filmFor(site, p)
+    const first = film.script!.pitch.points[0]!
+    expect(first).toMatch(/^I'd .+ — like /)
+    const idea = first.slice(4, first.indexOf(' — like'))
+    const m = draftMessages(film, p, LINK)
+    const tease = `I put one idea for Northwind Freight into a 30-second film: ${idea}.`
+    expect(m.email.body).toContain(`${tease}\n${LINK}`)
+    expect(m.afterAccept).toContain(`${tease} ${LINK}`)
+    expect(m.inmail?.body).toContain(tease)
+    expect(passes('email', m.email, film)).toEqual([])
+  })
+
+  it('with no homework, opens on the newest thing they published (with its month), not the homepage', () => {
+    const film = filmFor(site, p)
+    const published = newestPublished(publishedFor('northwind'), MESSAGES_NOW)
+    expect(published).toMatchObject({ kind: 'changelog', month: expect.stringMatching(/2026/) })
+    const m = draftMessages(film, p, LINK, { published })
+    const opening = m.email.body.split('\n\n')[1]!
+    expect(opening).toBe(
+      `I read Northwind Freight's changelog entry from ${published!.month}: "${published!.text.replace(/\.$/, '')}".`,
+    )
+    expect(m.email.body).not.toContain('homepage leads with')
+    // the question names something specific from that line, not a category of people
+    expect(m.email.body).toMatch(
+      /One thing I wondered: what was the hardest part of the \w[\w -]+ change/,
+    )
+    expect(m.email.body).not.toMatch(/most \w+ (shippers|customers)/)
+    expect(passes('email', m.email, film, published)).toEqual([])
+    expect(passes('afterAccept', m.afterAccept!, film, published)).toEqual([])
+    // homework the sender saved still leads
+    const own = draftMessages(film, p, LINK, {
+      published,
+      homework: {
+        detail: 'I booked a dock appointment in the demo and it moved itself',
+        question: null,
+        built: null,
+      },
+    })
+    expect(own.email.body.split('\n\n')[1]).toMatch(/dock appointment/)
+    expect(own.email.body).not.toContain('changelog entry')
   })
 })

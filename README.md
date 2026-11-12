@@ -48,7 +48,7 @@ Each film is six scenes:
 1. **Hook:** greets the company by name, on their own colors.
 2. **Their homepage:** a screenshot of their site, zooming in on the promise they lead with and highlighting it.
 3. **The best thing they've published:** quoted verbatim (often a number) from their homepage, changelog, blog, engineering posts, podcast notes, news or docs, set in their typeface, with where it's from underneath ("From their changelog, Oct 2026"). Only lines that make sense to a stranger are quoted ([the rule](docs/TASTE.md#grounding)).
-4. **The pitch:** what you offer, tailored to them.
+4. **The pitch:** what you offer, tailored to them. For a job seeker, two or three ideas for their product, each backed by one thing you actually did.
 5. **Your proof:** shown word for word from your profile.
 6. **One clear ask.**
 
@@ -212,7 +212,7 @@ A film only helps if someone opens the message it's in. Each candidate and sales
 - **An InMail** (subject and body), labeled honestly: it's free only when they have an Open Profile or you share a group. Otherwise, send the connection note.
 - **A warm email,** under 125 words. A seller's has five parts: the opening, the film, one research line from their own blog or changelog, why you fit, and a 15-minute ask. A job seeker's is written in the voice below.
 
-**The warm voice, for job seekers.** The people you write to (founders, recruiting, people doing the job) already know from your profile that you're looking, so the drafts ask for insight, not a job ([the rules and why](docs/TASTE.md#networking-messages)). The email opens with your homework, says what's in the film in terms of their work ("I put what I'd try next with their rate API into a 30-second film"), adds that you built the tool that made it when your profile says so, asks one real question about their work, offers 15 minutes as a statement, and ends "Thanks for reading". No "role", "hiring", "apply" or "job", and no proof numbers: the film shows those.
+**The warm voice, for job seekers.** The people you write to (founders, recruiting, people doing the job) already know from your profile that you're looking, so the drafts ask for insight, not a job ([the rules and why](docs/TASTE.md#networking-messages)). The email opens with your homework, names the film's first idea for their product ("I put one idea for <company> into a 30-second film: <the idea>"), adds that you built the tool that made it when your profile says so, asks one real question naming something specific of theirs, offers 15 minutes on it as a statement, and ends "Thanks for reading". No "role", "hiring", "apply" or "job", and no proof numbers: the film shows those.
 
 **Your homework.** In the film panel, "Your homework" saves three things per film: one detail from using their product, something you built with it, and your question for them (`PUT /v1/films/:id/homework`). They're the part no tool can fake, so every claim of experience in a draft must come from them: a draft that says "I tried…" or "I built…" without it fails the `homework_grounded` check. With no homework, the email opens on what their homepage leads with, and makes no claims.
 
@@ -249,7 +249,7 @@ The counter, "x of 10 this week", is the recruiter's playbook target (10 people 
 ## Quality, measured
 
 ```bash
-pnpm test         # 788 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish, the review before sending
+pnpm test         # 802 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish, the review before sending
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 180 quality checks across 16 evals on 3 fixture companies x 2 presets
 ```

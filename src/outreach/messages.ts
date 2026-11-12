@@ -1,6 +1,8 @@
-import { type Homework, type HomeworkItem, pickResearch } from '../brand/homework.ts'
+import { type Homework, type HomeworkItem, homeworkFacts, pickResearch } from '../brand/homework.ts'
 import type { FilmResult } from '../film.ts'
 import { proofPhrase } from '../profile/proof.ts'
+import { ideaOf } from '../script/ideas.ts'
+import { monthOf } from '../script/storyboard.ts'
 import { BANNED } from '../script/taste.ts'
 import type { Profile } from '../script/types.ts'
 import {
@@ -18,12 +20,16 @@ import {
 import {
   detailLine,
   homeworkLine,
+  ideaTease,
   lower,
   lowerStart,
   OFFER,
+  OFFER_LATER,
+  publishedOpening,
   researchSentence,
   type SenderHomework,
   SIGN_OFF,
+  specificThing,
   wholeClause,
 } from './voice.ts'
 
@@ -187,6 +193,58 @@ export interface DraftOptions {
    * itself, the text it came from, and the post's title
    */
   research?: { line: string; source: string; title?: string } | null
+  /**
+   * the newest specific thing they published (a changelog or engineering line, with its month),
+   * for a job seeker's email that has no homework to open with (newestPublished)
+   */
+  published?: Published | null
+}
+
+/** One line they published, as a message opens with it */
+export interface Published {
+  text: string
+  kind: string
+  /** "Oct 2026", when the source gives a date */
+  month?: string
+}
+
+/** What they ship says the most about them; a blog or news line is next */
+const PUBLISHED_ORDER = ['changelog', 'engineering', 'blog', 'news', 'podcast', 'docs']
+
+/**
+ * The newest specific thing they published, for an opening with no homework: from the film's
+ * homework facts (homeworkFacts, the last 120 days up to `now`), a changelog or engineering line
+ * first, short enough to quote and quotable. Null when they published nothing like that.
+ */
+export function newestPublished(
+  homework: Homework | null | undefined,
+  now?: number,
+): Published | null {
+  if (!homework?.items.length) return null
+  const facts = homeworkFacts(homework, now).filter(
+    (f) =>
+      f.source &&
+      f.source.kind !== 'docs' &&
+      quotable(f.text) &&
+      f.text.split(/\s+/).length <= 30 &&
+      !/["“”]/.test(f.text),
+  )
+  const rank = (k: string) => {
+    const i = PUBLISHED_ORDER.indexOf(k)
+    return i < 0 ? PUBLISHED_ORDER.length : i
+  }
+  // shipped work first (changelog, engineering), then the newest within each
+  const best = facts.sort(
+    (a, b) =>
+      Number(rank(a.source!.kind) > 1) - Number(rank(b.source!.kind) > 1) ||
+      (b.source!.date ?? '').localeCompare(a.source!.date ?? ''),
+  )[0]
+  if (!best?.source) return null
+  return {
+    text: clean(best.text),
+    kind: best.source.kind,
+    ...(best.source.date ? { month: monthOf(best.source.date) } : {}),
+  }
 }
 
 export function draftMessages(
@@ -492,12 +550,22 @@ function candidateMessages(
   // the opening, with what it's about: a line about their post names the post once
   const mine = homeworkLine(company, hw, post)
   const theirPost = homeworkLine(company, null, post)
+  // with no homework of the sender's own, the newest specific thing they published shows they
+  // looked: a changelog or engineering line with its month, not the homepage tagline
+  const pub = more.published && quotable(more.published.text) ? more.published : null
+  const ownHomework = !!(hw?.built || hw?.detail)
+  const newest = !ownHomework && pub ? publishedOpening(company, pub) : ''
   const leads = [
-    ...(mine ? [{ line: mine.line, post: mine.kind === 'post' }] : []),
+    ...(mine && mine.kind !== 'post' ? [{ line: mine.line, post: false }] : []),
+    ...(newest ? [{ line: newest, post: true }] : []),
+    ...(mine?.kind === 'post' ? [{ line: mine.line, post: true }] : []),
     ...(theirPost && theirPost.line !== mine?.line ? [{ line: theirPost.line, post: true }] : []),
     { line: opening, post: false },
   ]
+  // the film's first idea, named in the tease: the reason to open it
+  const idea = ideaOf(out.script?.pitch.points[0] ?? '')
   const teasesFor = (l: { post: boolean }) => [
+    ...(idea ? [ideaTease(company, idea, FILM_LENGTH)] : []),
     ...(title && !l.post
       ? [`I put what I'd try next after "${title}" into a ${FILM_LENGTH} film:`]
       : []),
@@ -520,12 +588,42 @@ function candidateMessages(
   ]
   const saved = hw?.question ? hw.question.replace(/\s+/g, ' ').trim() : ''
   const asked = saved && !saved.endsWith('?') ? `${saved.replace(/[.!]$/, '')}?` : saved
+  // a question names one specific thing of theirs (a product, a feature), never a category
+  const elsewhere = [rawQuote, out.script?.noticed, out.script?.pitch.points.join(' '), post?.line]
+    .filter(Boolean)
+    .join('\n')
+  const shipped = pub ? specificThing(pub.text, elsewhere, company) : null
+  // the post the research line reads names something too ("route planning")
+  const postThing = post?.line ? specificThing(post.line, elsewhere, company) : null
+  // what the sender's own words name, only when their site names it too
+  const theirText = `${elsewhere}\n${pub?.text ?? ''}\n${more.research?.source ?? ''}`
+  const usedThing =
+    specificThing(hw?.detail ?? '', theirText, company, true) ??
+    specificThing(hw?.built?.line ?? '', theirText, company, true)
+  // the film's first idea names one of their things ("carrier check-ins")
+  // (matched against what they published, never the film's own lines, which hold the idea)
+  const theirsOnly = [rawQuote, out.script?.noticed, post?.line, pub?.text]
+    .filter(Boolean)
+    .join('\n')
+  const ideaThing = idea ? specificThing(idea, theirsOnly, company, true) : null
+  // and the line the film quotes from their site always names something of theirs
+  // (from their site, never a job post's requirement)
+  const homeThing =
+    (siteQuote && specificThing(siteQuote, `${promise}\n${out.script?.noticed ?? ''}`, company)) ||
+    (promise && specificThing(promise, siteQuote, company)) ||
+    null
   const questionsFor = (l: { post: boolean }) =>
     unique([
       asked,
+      shipped ? `What was the hardest part of the ${shipped} change to get right?` : '',
+      postThing && l.post
+        ? `What was the hardest part of the ${postThing} change to get right?`
+        : '',
       title && !l.post ? `What have customers said since "${title}" went out?` : '',
-      hw?.built || hw?.detail ? `How do most ${company} customers use it?` : '',
+      usedThing ? `What's next for the ${usedThing}?` : '',
       promise ? `What made you lead the homepage with "${promise}"?` : '',
+      ideaThing ? `How do teams handle ${ideaThing} with ${company} today?` : '',
+      homeThing ? `What's changed most about ${homeThing} this year?` : '',
       `What's the hardest part of what ${company} is building right now?`,
     ])
   const subjects = unique([
@@ -534,6 +632,7 @@ function candidateMessages(
         ? title
         : `${company}'s ${lower(title)}`
       : '',
+    shipped && !ownHomework ? `${company}'s ${shipped} change` : '',
     hw?.built ? `Something I built with ${company}` : '',
     hw?.detail ? `Notes from using ${company}` : '',
     promise ? `${company}'s "${promise}"` : '',
@@ -542,7 +641,7 @@ function candidateMessages(
 
   /* checked as they'll be checked again: the voice, the film's facts and the sender's homework */
   const ctx: CheckContext = {
-    ...contextFor(out, profile, link, hw),
+    ...contextFor(out, profile, link, hw, more.published),
     research: more.research ? { line: more.research.line, source: more.research.source } : null,
   }
   // what they published lately, and the posts a follow-up may bring, are theirs too
@@ -550,8 +649,12 @@ function candidateMessages(
   ctx.known = [ctx.known, ...theirs, more.fresh].filter(Boolean).join('\n')
   ctx.theirs = [ctx.theirs, ...theirs].filter(Boolean).join('\n')
   // a quote said twice (the opening, then the tease, then the question) reads as a mail merge
+  // when nothing of theirs is specific enough for a curious question (no post, no quotable line,
+  // no idea in the film), the drafts are still built whole, and only that check is let go
+  let loose = false
   const ok = (kind: MessageKind, t: string | { subject: string; body: string }) =>
-    !quotesTwice(typeof t === 'string' ? t : t.body) && passed(checkMessage(kind, t, ctx))
+    !quotesTwice(typeof t === 'string' ? t : t.body) &&
+    checkMessage(kind, t, ctx).every((c) => c.ok || (loose && c.rule === 'curious'))
 
   /* ------------------------------------------------------------ the email */
 
@@ -570,7 +673,7 @@ function candidateMessages(
       link,
       ...(o.built ? ['', o.built] : []),
       '',
-      lead === 'question' ? OFFER : `One thing I wondered: ${midSentence(o.q)} ${OFFER}`,
+      lead === 'question' ? OFFER_LATER : `One thing I wondered: ${midSentence(o.q)} ${OFFER}`,
       '',
       SIGN_OFF,
       me,
@@ -580,19 +683,23 @@ function candidateMessages(
   // question, then the homework; the funding line before all of them
   let email: { subject: string; body: string } | null = null
   let whyNow = false
-  search: for (const now of fundingNews ? [true, false] : [false])
-    for (const l of leads)
-      for (const q of questionsFor(l))
-        for (const built of creators)
-          for (const tease of teasesFor(l)) {
-            const body = emailBody({ now, lead: l.line, tease, built, q })
-            const subject = subjects.find((t) => ok('email', { subject: t, body }))
-            if (subject) {
-              email = { subject, body }
-              whyNow = now
-              break search
+  search: for (const relaxed of [false, true])
+    for (const now of fundingNews ? [true, false] : [false])
+      for (const l of leads) {
+        loose = relaxed
+        for (const q of questionsFor(l))
+          for (const built of creators)
+            for (const tease of teasesFor(l)) {
+              const body = emailBody({ now, lead: l.line, tease, built, q })
+              const subject = subjects.find((t) => ok('email', { subject: t, body }))
+              if (subject) {
+                email = { subject, body }
+                whyNow = now
+                break search
+              }
             }
-          }
+      }
+  loose = false
   email ??= {
     subject: subjects.at(-1)!,
     body: emailBody({
@@ -607,7 +714,14 @@ function candidateMessages(
   /* ------------------------------------------------------------ LinkedIn */
 
   // the connection note: their work and one curious line, no link and no ask
-  const tail = `Curious how most ${company} customers use it.`
+  // one curious line, about one specific thing of theirs
+  const tail = shipped
+    ? `Curious how the ${shipped} change is landing.`
+    : usedThing
+      ? `Curious what's next for the ${usedThing}.`
+      : ideaThing
+        ? `Curious how teams handle ${ideaThing} today.`
+        : `Curious what's next at ${company}.`
   const noteBuilt = hw?.built
     ? `I built something small with ${company}: ${lowerStart(clean(hw.built.line))}.`
     : ''
@@ -619,6 +733,7 @@ function candidateMessages(
       noteDetail && `${noteDetail} ${tail}`,
       noteDetail,
       asked && `I've been looking at ${company} and wondered: ${asked}`,
+      pub && shipped && `I read about ${company}'s ${shipped} change. ${tail}`,
       title && `I read ${company}'s post "${title}". Curious what customers make of it.`,
       promise && `${company}'s homepage leads with "${promise}". Curious how you landed on it.`,
       `I've been reading about what ${company} is building and would like to connect.`,
@@ -646,19 +761,29 @@ function candidateMessages(
         teasesFor(l).map((tease) => dm(hello, { lead: l.line, tease, q })),
       ),
     )
-  const afterAccept = firstFit(dms(['Hi [First name], thanks for connecting.', '']), (a) =>
-    ok('afterAccept', a),
-  )
+  const accepts = dms(['Hi [First name], thanks for connecting.', ''])
+  const fitting = (d: string) => ok('afterAccept', d)
+  let afterAccept = accepts.find(fitting)
+  if (!afterAccept) {
+    loose = true
+    afterAccept = accepts.find(fitting) ?? accepts.at(-1)!
+    loose = false
+  }
   const inmailBodies = dms(['Hi [First name],', ''])
   const inmailSubjects = [...subjects, company]
   let inmail: { subject: string; body: string } | null = null
-  for (const body of inmailBodies) {
-    const subject = inmailSubjects.find((t) => ok('inmail', { subject: t, body }))
-    if (subject) {
-      inmail = { subject, body }
-      break
+  for (const relaxed of [false, true]) {
+    loose = relaxed
+    for (const body of inmailBodies) {
+      const subject = inmailSubjects.find((t) => ok('inmail', { subject: t, body }))
+      if (subject) {
+        inmail = { subject, body }
+        break
+      }
     }
+    if (inmail) break
   }
+  loose = false
   inmail ??= { subject: company, body: inmailBodies.at(-1)! }
 
   /* ------------------------------------------------------------ the one follow-up */
@@ -1009,12 +1134,16 @@ export function contextFor(
   profile: Profile,
   link: string,
   homework?: SenderHomework | null,
+  /** the line the email may open on, and its month ("Oct 2026"), are theirs to quote */
+  published?: Published | null,
 ): CheckContext {
   const known = [
     knownFor(out, profile, out.homework),
     homework?.detail ?? '',
     homework?.question ?? '',
     homework?.built?.line ?? '',
+    published?.text ?? '',
+    published?.month ?? '',
   ]
     .filter(Boolean)
     .join('\n')
@@ -1088,8 +1217,10 @@ export function messagesFor(
           )
         : null
   const newer = candidate ? newerPost(out.homework, item, more.now) : null
+  const published = candidate ? newestPublished(out.homework, more.now) : null
   const t = draftMessages(out, profile, link, {
     ...more,
+    ...(published ? { published } : {}),
     ...(homework ? { homework } : {}),
     ...(newer ? { newer: { title: newer.title, line: postText(newer) } } : {}),
     research: item ? { line: postText(item), source: postText(item), title: item.title } : null,
@@ -1104,7 +1235,7 @@ export function messagesFor(
   const company = out.company
   const detail = homework?.detail ? clean(homework.detail) : ''
   // a job seeker's drafts are checked in the voice, so a stored draft from before it falls back
-  const ctx = contextFor(out, profile, link, homework)
+  const ctx = contextFor(out, profile, link, homework, published)
   const fill = (s: string) => s.replaceAll(FILM_SLOT, link)
   const writer = { ...t.writer }
   const flags: Record<string, Check[]> = {}

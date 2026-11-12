@@ -9,6 +9,8 @@ export const LIMITS = {
   why: 14,
   headline: 10,
   point: 10,
+  /** a job seeker's idea for their product: "I'd <verb> <their thing> — like <what I did>" */
+  idea: 16,
   cta: 8,
 } as const
 

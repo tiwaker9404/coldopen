@@ -6,9 +6,11 @@ import { z } from 'zod'
 import { extractBrand } from './brand/extract.ts'
 import { type Homework, readHomework, withHomework } from './brand/homework.ts'
 import type { BrandKit } from './brand/types.ts'
+import { proofText } from './job/fit.ts'
 import { withJob } from './job/kit.ts'
 import { isJobPage, JobPostSchema, jobFromText } from './job/post.ts'
 import { fetchJob } from './job/read.ts'
+import { appSemantic } from './job/semantic.ts'
 import { LlmHttpError } from './llm/openai.ts'
 import { openerFor } from './outreach/messages.ts'
 import { type FilmMessages, messagesSchemaFor, writeMessages } from './outreach/writer.ts'
@@ -285,10 +287,28 @@ export function createFilmAgent(opts: FilmAgentOptions) {
       // Pure given the journaled homework (its readAt is the pinned day), so replays match.
       kit = withHomework(kit, homework)
 
+      // a job seeker's proof, by how close it is to their business in meaning (FIT_SEMANTIC on):
+      // its own step, so a replay gets the same scores. With it off, no step and no change.
+      const semantic =
+        profile.preset === 'candidate' &&
+        process.env.FIT_SEMANTIC &&
+        process.env.FIT_SEMANTIC !== 'off'
+          ? await ctx.step('proof-relevance', async () => {
+              const s = await appSemantic().catch(() => null)
+              if (!s) return [] as [number, number][]
+              const scores = await s.closeness(
+                profile.proof.map(proofText),
+                kit.facts.map((f) => f.text).concat(kit.headline, kit.description),
+              )
+              return scores.map((x, i) => [i, x] as [number, number])
+            })
+          : []
+      const scriptOpts = semantic.length ? { semantic: new Map(semantic) } : {}
+
       ctx.progress({ stage: 'script', label: `Writing the script for ${kit.name}` })
       const builtIn = (usedFallback: boolean) =>
         ctx.step('script', async () => ({
-          script: deterministicScript(kit, profile),
+          script: deterministicScript(kit, profile, scriptOpts),
           meta: {
             model: 'deterministic',
             rounds: 1,
@@ -335,6 +355,7 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           written = await writeScript({
             kit,
             profile,
+            ...scriptOpts,
             model: opts.llmModel,
             complete: (key, messages) => ctx.llm(key, { schema: ScriptSchema, messages }),
           })

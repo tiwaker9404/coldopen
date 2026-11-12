@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BrandKit } from '../../src/brand/types.ts'
 import { JOB_WORDS } from '../../src/outreach/voice.ts'
+import { rankProof, relevance } from '../../src/profile/proof.ts'
 import {
   checkScript,
   clampScript,
@@ -8,6 +9,7 @@ import {
   notAlone,
   standsAlone,
 } from '../../src/script/checks.ts'
+import { aboutText, ideaOf, theirThings } from '../../src/script/ideas.ts'
 import { buildStoryboard, captionFor, splitStat } from '../../src/script/storyboard.ts'
 import { LIMITS } from '../../src/script/taste.ts'
 import type { Script } from '../../src/script/types.ts'
@@ -144,7 +146,20 @@ describe('taste checks', () => {
     const v = checkScript(invented, kit, cand).join('\n')
     expect(v).toContain("claims things the profile doesn't say")
     expect(v).toContain('pitch.points[1]')
-    expect(v).not.toContain('pitch.points[0]')
+    // a job seeker's pitch is ideas for their product: the profile point copied over fails too
+    expect(v).toMatch(/pitch\.points\[0\].*copied over.*pitch_is_idea/)
+    // a seller's own point is still fine
+    const sales = profile('sales')
+    const sold = {
+      ...invented,
+      pitch: {
+        ...invented.pitch,
+        points: [sales.points[0]!, 'Runs payroll compliance for every country'],
+      },
+    }
+    const w = checkScript(sold, kit, sales).join('\n')
+    expect(w).toContain('pitch.points[1]')
+    expect(w).not.toContain('pitch.points[0]')
   })
 
   it('accepts numbers that exist in sources', () => {
@@ -639,4 +654,122 @@ describe("a job seeker's film: a builder's take on their product", () => {
     expect(user!.content).toContain(`says, in the first person, what you'd do about it ("I'd …")`)
     expect(user!.content).not.toContain('The pitch headline may name the role')
   })
+})
+
+describe("a job seeker's pitch: ideas for their product, and the proof that fits them", () => {
+  // the kind of site the judge read: feature headings, a changelog line, a customer number
+  const freight = {
+    ...kit,
+    facts: [
+      ...kit.facts,
+      { id: 'f4', text: 'Exception alerts', kind: 'claim' },
+      { id: 'f5', text: 'Dock scheduling', kind: 'claim' },
+      { id: 'f6', text: 'Carrier check-ins', kind: 'claim' },
+      { id: 'f7', text: '1,400+ shippers track freight on Northwind', kind: 'stat' },
+    ],
+  } as unknown as BrandKit
+  const seeker = profile('candidate')
+
+  it('writes 2–3 ideas, each "I\'d <verb> <their thing> — like <what the sender did>"', () => {
+    const s = deterministicScript(freight, seeker)
+    expect(s.pitch.points.length).toBeGreaterThanOrEqual(2)
+    expect(s.pitch.points.length).toBeLessThanOrEqual(3)
+    const dids = seeker.proof.map((p) => p.did).filter(Boolean) as string[]
+    for (const p of s.pitch.points) {
+      expect(p).toMatch(/^I'd .+ — like /)
+      expect(p.split(/\s+/).length).toBeLessThanOrEqual(LIMITS.idea)
+      // the idea names one of their things
+      const idea = ideaOf(p)!
+      expect(
+        theirThings(freight).some((t) => idea.includes(t)),
+        idea,
+      ).toBe(true)
+      // the "like …" is one thing the sender actually did, in its own words
+      const like = p.slice(p.indexOf('like the ') + 9).replace(/ I \w+$/, '')
+      expect(
+        dids.some((d) => d.toLowerCase().includes(like.toLowerCase())),
+        like,
+      ).toBe(true)
+      // and never a profile point copied over
+      expect(seeker.points).not.toContain(p)
+    }
+    expect(checkScript(s, freight, seeker)).toEqual([])
+  })
+
+  it('pitch_is_idea: a profile point copied over fails for a job seeker, not for a seller', () => {
+    const s = deterministicScript(freight, seeker)
+    const copied = {
+      ...s,
+      pitch: { ...s.pitch, points: [seeker.points[0]!, ...s.pitch.points.slice(1)] },
+    }
+    const v = checkScript(copied, freight, seeker)
+    expect(v.join('\n')).toMatch(/pitch\.points\[0\].*copied over.*\(pitch_is_idea\)/)
+    // an idea about something they never mention fails too
+    const invented = {
+      ...s,
+      pitch: {
+        ...s.pitch,
+        points: [
+          "I'd rebuild the billing portal — like the pipeline I built",
+          ...s.pitch.points.slice(1),
+        ],
+      },
+    }
+    expect(checkScript(invented, freight, seeker).join('\n')).toMatch(
+      /doesn't name anything of theirs/,
+    )
+    // and an idea resting on nothing the sender did
+    const unbacked = {
+      ...s,
+      pitch: {
+        ...s.pitch,
+        points: [
+          "I'd stream carrier check-ins into one live view — like the rocket I launched",
+          ...s.pitch.points.slice(1),
+        ],
+      },
+    }
+    expect(checkScript(unbacked, freight, seeker).join('\n')).toMatch(/isn't something you did/)
+    // a seller's points stay their own, and the old check still holds for them
+    const sales = profile('sales')
+    expect(
+      checkScript(deterministicScript(freight, sales), freight, sales).filter((x) =>
+        x.includes('pitch_is_idea'),
+      ),
+    ).toEqual([])
+  })
+
+  it('ranks proof by relevance to their business first, then impressiveness; no did or where ranks last', () => {
+    const order = rankProof(seeker.proof, aboutText(freight))
+    // the carrier-tracking pipeline is the freight proof, not the certification
+    expect(seeker.proof[order[0]!]!.where).toBe('Brightline Logistics')
+    expect(seeker.proof[order.at(-1)!]!.label).toBe('Solutions Architect certified')
+    expect(deterministicScript(freight, seeker).proof[0]).toBe(order[0])
+    // a returns company: the refund proof is closer than the freight one
+    const returns = {
+      ...kit,
+      name: 'Parcelpine',
+      headline: 'Returns that keep the customer',
+      description: 'Parcelpine turns refunds into exchanges for Shopify brands.',
+      facts: [{ id: 'f1', text: '61% of returns become exchanges', kind: 'stat' }],
+    } as unknown as BrandKit
+    expect(seeker.proof[rankProof(seeker.proof, aboutText(returns))[0]!]!.label).toContain(
+      'double refunds',
+    )
+    // with nothing in common, the most impressive real proof leads
+    expect(relevance(seeker.proof[0]!, 'Patients answer in plain language.')).toBe(0)
+    // closeness by meaning, when FIT_SEMANTIC is on, can lift a proof the words miss
+    const lifted = rankProof(seeker.proof, aboutText(freight), new Map([[2, 9]]))
+    expect(lifted[0]).toBe(2)
+  })
+
+  it('leaving out the proof closest to their business is a violation', () => {
+    const s = deterministicScript(freight, seeker)
+    const top = rankProof(seeker.proof, aboutText(freight))[0]!
+    const without = { ...s, proof: s.proof.filter((i) => i !== top) }
+    expect(checkScript(without, freight, seeker).join('\n')).toMatch(
+      /closest to Northwind Freight's business/,
+    )
+  })
+  // sales, recruiter and hiring films and prompts: film-presets.test.ts snapshots them unchanged
 })

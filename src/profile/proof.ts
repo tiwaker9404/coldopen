@@ -368,6 +368,104 @@ export function impressive(p: { value: string }): number {
   return big ? 2_000 + Math.min(999, Math.log10(n * scale) * 50) : 0
 }
 
+/* ------------------------------------------------------- what fits this company */
+
+/**
+ * Words that mean the same line of business, so "supply chain data" reads as close to "shippers
+ * track freight" and "double refunds" to "returns become exchanges". One family counts once.
+ */
+const FAMILIES: string[][] = [
+  // freight and logistics
+  'freight shipper shippers shipment shipments shipping pallet pallets carrier carriers dock docks warehouse warehouses logistics supply chain trucking truck trucks fleet lane lanes load loads delivery deliveries parcel parcels route routing eld'.split(
+    ' ',
+  ),
+  // commerce and returns
+  'return returns returner returners refund refunds exchange exchanges shopify store checkout order orders merchant merchants cart ecommerce shopper shoppers retail payment payments'.split(
+    ' ',
+  ),
+  // health care
+  'patient patients clinic clinics clinician clinicians health healthcare intake ehr hipaa medical visit visits care chart'.split(
+    ' ',
+  ),
+  // money
+  'bank banks banking financial finance ledger invoice invoices accounting loan loans fraud'.split(
+    ' ',
+  ),
+  // selling and customer records
+  'crm hubspot salesforce sales lead leads deal deals'.split(' '),
+]
+const FAMILY_OF = new Map<string, number>()
+FAMILIES.forEach((f, i) => {
+  for (const w of f) FAMILY_OF.set(w, i)
+})
+
+// words any line of a résumé or a homepage has, so sharing one shows nothing
+const PLAIN = new Set(
+  'the and for with that this your you our are was from into have has its their they them than what when which who will able data team teams across using use own every one two three more most less fewer faster first before after off through without all any top built build building make made real time live client clients customer customers user users people company companies business work working daily day days week weeks month months year years hour hours minute minutes second seconds new zero automated automatically python flow flows check checks line lines step steps app apps'.split(
+    ' ',
+  ),
+)
+const stemWord = (w: string) => (w.length > 4 ? w.replace(/(ies)$/, 'y').replace(/(es|s)$/, '') : w)
+/** the words a line is matched on: its own stems, and the families they belong to */
+function marks(s: string): Set<string> {
+  const out = new Set<string>()
+  for (const raw of s.toLowerCase().match(/[a-z][a-z0-9-]{2,}/g) ?? []) {
+    if (PLAIN.has(raw) || PLAIN.has(stemWord(raw))) continue
+    const fam = FAMILY_OF.get(raw) ?? FAMILY_OF.get(stemWord(raw))
+    if (fam !== undefined) out.add(`family:${fam}`)
+    else out.add(stemWord(raw))
+  }
+  return out
+}
+
+/**
+ * How close a proof is to this company, from what they publish (headline, description, facts, a
+ * job's requirements): shared words, with words from the same line of business counted as one.
+ * `semantic`, when FIT_SEMANTIC is on, is a closeness by meaning on the same scale, and the
+ * higher of the two counts.
+ */
+export function relevance(
+  p: Pick<ProofCard, 'label' | 'did' | 'where'>,
+  about: string,
+  semantic?: number,
+): number {
+  const mine = marks(`${p.did ?? ''} ${p.label} ${p.where ?? ''}`)
+  const theirs = marks(about)
+  let n = 0
+  for (const w of mine) if (theirs.has(w)) n += w.startsWith('family:') ? 1.5 : 1
+  return Math.max(n, semantic ?? 0)
+}
+
+/**
+ * The order a film shows proof in: the most relevant to this company first, then the most
+ * impressive (impressive()), then as the profile lists them. Proof without what was done or
+ * where ranks last, whatever it scores: a stranger can't read it on its own. Returns indices.
+ */
+export function rankProof(
+  proof: readonly ProofCard[],
+  about: string,
+  semantic?: ReadonlyMap<number, number>,
+): number[] {
+  return proof
+    .map((p, i) => ({
+      i,
+      whole: !!p.did?.trim() && !!p.where?.trim(),
+      fit: relevance(p, about, semantic?.get(i)),
+      // a result with a number reads stronger than a credential ("AWS certified")
+      counted: /\d/.test(p.value),
+      wow: impressive(p),
+    }))
+    .sort(
+      (a, b) =>
+        Number(b.whole) - Number(a.whole) ||
+        b.fit - a.fit ||
+        Number(b.counted) - Number(a.counted) ||
+        b.wow - a.wow ||
+        a.i - b.i,
+    )
+    .map((x) => x.i)
+}
+
 /* ------------------------------------------------------------------- checks */
 
 export interface Readable {

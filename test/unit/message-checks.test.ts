@@ -465,6 +465,99 @@ describe("a job seeker's messages, checked in the voice", () => {
     "Hi [First name], I tried Parcelpine's rate API this weekend. Curious how most teams use it. – Ashwin"
   const email = (body: string, subject = good.subject) => ({ subject, body })
 
+  it('homework_grounded: the leaked "retry API" draft fails, on every line, tease and subject included', () => {
+    // what the model wrote for Northwind Freight with no homework saved: the plan's example leaking in
+    const nw = {
+      ...voice,
+      company: 'Northwind Freight',
+      theirs:
+        "Northwind Freight\nEvery pallet, visible before it's late\n1,400+ shippers track freight on Northwind",
+      question: null,
+      own: { claims: [], names: [] },
+    }
+    const leaked = {
+      subject: "Northwind Freight's retry API",
+      body: [
+        'Hi [First name],',
+        '',
+        "I've been using Northwind Freight, and the retry API saved me a weekend.",
+        '',
+        "I put what I'd try next with your retry API into a 30-second film:",
+        link,
+        '',
+        "One thing I wondered: how do the 1,400+ shippers track freight on Northwind today? Happy to trade notes on that for 15 minutes if it's useful.",
+        '',
+        'Thanks for reading,',
+        'Ashwin Tiwari',
+      ].join('\n'),
+    }
+    const c = rule(checkMessage('email', leaked, nw), 'homework_grounded')
+    expect(c?.ok).toBe(false)
+    expect(c?.why).toMatch(/I've been using Northwind Freight/)
+    // with the made-up experience gone, the made-up feature still fails: in the tease
+    const noClaim = {
+      subject: 'A question about Northwind Freight',
+      body: leaked.body.replace(
+        "I've been using Northwind Freight, and the retry API saved me a weekend.",
+        'Northwind Freight\'s homepage leads with "Every pallet, visible before it\'s late".',
+      ),
+    }
+    expect(rule(checkMessage('email', noClaim, nw), 'homework_grounded')?.why).toMatch(
+      /your retry API/,
+    )
+    // and in the subject alone
+    const subjectOnly = {
+      subject: leaked.subject,
+      body: noClaim.body.replace('with your retry API', 'with Northwind Freight'),
+    }
+    expect(rule(checkMessage('email', subjectOnly, nw), 'homework_grounded')?.why).toMatch(
+      /Northwind Freight's retry API/,
+    )
+    // the note and after-accept are checked too, not only the email's opening
+    expect(
+      rule(
+        checkMessage(
+          'note',
+          "Hi [First name], I've been using Northwind Freight daily. – Ashwin",
+          nw,
+        ),
+        'homework_grounded',
+      )?.ok,
+    ).toBe(false)
+    expect(
+      rule(
+        checkMessage(
+          'afterAccept',
+          `Hi [First name], thanks for connecting.\n\nYour retry API is clever.\n\nI put one idea into a 30-second film: ${link}\n\nHow do shippers track freight today?\n\nThank you for your time,\nAshwin`,
+          nw,
+        ),
+        'homework_grounded',
+      )?.ok,
+    ).toBe(false)
+    // a feature they do name passes
+    const real = { ...subjectOnly, subject: "Northwind Freight's freight tracking" }
+    expect(rule(checkMessage('email', real, nw), 'homework_grounded')?.ok).toBe(true)
+  })
+
+  it('curious: a question about a category ("most shippers") fails; one naming their thing passes', () => {
+    const q = (question: string) =>
+      email(good.body.replace('are most of your customers calling the API directly?', question))
+    const asked = { ...voice, question: null }
+    for (const category of [
+      'how do most Parcelpine shippers handle it?',
+      'what are your customers asking Parcelpine for lately?',
+      "what's the hardest part of what Parcelpine is building right now?",
+    ])
+      expect(rule(checkMessage('email', q(category), asked), 'curious')?.ok, category).toBe(false)
+    for (const specific of [
+      'what was the hardest part of the route planning change to get right?',
+      'are most teams calling the rate API directly?',
+    ])
+      expect(rule(checkMessage('email', q(specific), asked), 'curious')?.ok, specific).toBe(true)
+    // the sender's own saved question passes as it is
+    expect(rule(checkMessage('email', good, voice), 'curious')?.ok).toBe(true)
+  })
+
   it('passes a good note, after-accept, InMail and email, and checks each new rule', () => {
     for (const [kind, text] of [
       ['note', goodNote],
@@ -578,7 +671,7 @@ describe("a job seeker's messages, checked in the voice", () => {
       )
       const c = rule(checkMessage('email', email(vague), { ...voice, question: null }), 'curious')
       expect(c?.ok).toBe(false)
-      expect(c?.why).toMatch(/isn't about their work/)
+      expect(c?.why).toMatch(/doesn't name anything specific of theirs/)
       const timeOnly = [
         'Hi [First name],',
         '',

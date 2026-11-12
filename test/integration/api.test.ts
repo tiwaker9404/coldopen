@@ -1069,19 +1069,21 @@ describe('"Write it again" on the hosted app', () => {
     calls++
     if (down) throw new Error('HTTP 503 from the model')
     return JSON.stringify({
-      note: "I've been using Parcelpine, and the per-zone view saved me a spreadsheet. Curious how most Parcelpine customers use it.",
-      afterAccept: `Thanks for connecting. I put what I'd try next with Parcelpine into a 30-second film: ${FILM} What's the hardest part of what Parcelpine is building right now?`,
+      // nothing the sender's homework doesn't say: every draft is checked for made-up experience
+      note: 'Reading about how Parcelpine keeps returns as exchanges. Curious how often they become store credit.',
+      afterAccept: `Thanks for connecting. I put what I'd try next with Parcelpine into a 30-second film: ${FILM} How often do returns turn into exchanges today?`,
       inmail: {
         subject: 'Notes from using Parcelpine',
-        body: `I put what I'd try next with Parcelpine into a 30-second film: ${FILM} What's the hardest part of what Parcelpine is building right now?`,
+        body: `I put what I'd try next with Parcelpine into a 30-second film: ${FILM} How often do returns turn into exchanges today?`,
       },
       email: {
         subject: 'Notes from using Parcelpine',
         opening: "I've been reading about what Parcelpine is building.",
         tease: `I put what I'd try next with Parcelpine into a 30-second film: ${FILM}`,
         creator: null,
-        question: "What's the hardest part of what Parcelpine is building right now?",
-        offer: "If you ever have 15 minutes, I'd love to hear how you think about it.",
+        // a specific thing of theirs, never a category ("what Parcelpine is building")
+        question: 'How often do returns turn into exchanges today?',
+        offer: "Happy to trade notes on that for 15 minutes if it's useful.",
       },
     })
   }, [0, 1])

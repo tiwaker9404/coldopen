@@ -6,7 +6,7 @@ import type { BrandKit } from '../../src/brand/types.ts'
 import { ScriptedProvider } from '../../src/llm/scripted.ts'
 import type { ChatMessage } from '../../src/llm/types.ts'
 import { checkMessage, knownFor, passed } from '../../src/outreach/checks.ts'
-import { jobWordsIn, type SenderHomework } from '../../src/outreach/voice.ts'
+import { jobWordsIn, type SenderHomework, VOICE_RULES } from '../../src/outreach/voice.ts'
 import {
   assemble,
   briefFor,
@@ -28,7 +28,7 @@ import {
 import { LocalContext } from '../../src/runtime/local.ts'
 import { buildStoryboard } from '../../src/script/storyboard.ts'
 import type { Profile } from '../../src/script/types.ts'
-import { deterministicScript } from '../../src/script/writer.ts'
+import { buildMessages, deterministicScript, SYSTEM_PROMPT } from '../../src/script/writer.ts'
 import { profile } from '../helpers/index.ts'
 
 /** The day the fixture changelog is read on: its dates are fixed, so the pick never drifts */
@@ -151,6 +151,53 @@ describe("a job seeker's drafts, in the voice", () => {
       '\n',
     )
 
+  it('no example product is left in any prompt: the rules use placeholders, never a real feature', () => {
+    // "your retry API" and "I've been using …" leaked from the plan's example into a real draft
+    const examples = [
+      /retry API/i,
+      /rate API/i,
+      /per-zone/i,
+      /Northwind/,
+      /Parcelpine/,
+      /Lumen/,
+      /Shopify/,
+      /pallet/i,
+      /dock/i,
+    ]
+    const other = { ...KIT, name: 'Quill', host: 'quill.example' } as BrandKit
+    const filmOther = { ...filmFor(candidate, other), company: 'Quill' }
+    const prompts = [
+      VOICE_RULES,
+      SYSTEM_PROMPT,
+      // the instructions, up to where the company's own data starts
+      ...buildMessages(other, candidate).map((m) => m.content.split('\nCOMPANY')[0]!),
+      buildMessagePrompt(filmOther, candidate, null, 'homework', null)[0]!.content,
+      buildMessagePrompt(filmOther, profile('sales'), null, 'homework', null)[0]!.content,
+    ]
+    for (const text of prompts)
+      for (const e of examples) expect(text, `${e} in ${text.slice(0, 80)}`).not.toMatch(e)
+    expect(VOICE_RULES).toContain('<company>')
+  })
+
+  it("the prompt names the film's first idea for the tease, and the newest post when there is no homework", () => {
+    const published = {
+      text: 'Route planning now reroutes trucks around live traffic.',
+      kind: 'changelog',
+      month: 'Oct 2026',
+    }
+    const [, user] = buildMessagePrompt(film, candidate, null, 'homework', null, published)
+    const first = film.script!.pitch.points[0]!
+    expect(first).toMatch(/^I'd .+ — like /)
+    expect(user!.content).toContain(
+      `FIRST IDEA (the film's first idea for their product): ${first.slice(4, first.indexOf(' — like'))}`,
+    )
+    expect(user!.content).toContain(
+      'NEWEST (their changelog, Oct 2026): Route planning now reroutes',
+    )
+    expect(user!.content).toMatch(/opening: one sentence on NEWEST/)
+    expect(user!.content).toMatch(/never a category of people/i)
+  })
+
   it('the candidate prompt has no proof numbers or role title', () => {
     const [system, user] = buildMessagePrompt(film, candidate, item, 'homework', hw())
     const prompt = `${system!.content}\n${user!.content}`
@@ -196,10 +243,12 @@ describe("a job seeker's drafts, in the voice", () => {
     const d = assemble(reply, film, withCreator, LINK_ROOM, { opener: 'homework', research: true })
     const lines = d.email.body.split('\n')
     expect(lines.slice(-4)).toEqual(['', 'Thanks for reading,', 'Alex Rivera', 'alex@example.com'])
-    expect(lines.at(-5)).toMatch(/\?.*If you ever have 15 minutes, I'd love to hear/)
+    expect(lines.at(-5)).toMatch(/\?.*Happy to trade notes on that for 15 minutes/)
     // the link sits on its own line, right after the tease
     const at = lines.indexOf(LINK_ROOM)
-    expect(lines[at - 1]).toBe("I put what I'd try next with Parcelpine into a 30-second film:")
+    expect(lines[at - 1]).toBe(
+      'I put one idea for Parcelpine into a 30-second film: stream returns into one live view.',
+    )
     expect(lines.slice(1, at)).toContain(
       "I've been using Parcelpine, and the per-zone breakdown saved me a spreadsheet.",
     )
@@ -238,7 +287,9 @@ describe("a job seeker's drafts, in the voice", () => {
     expect(paragraphs(ask.drafts.email.body)[2]).toBe(
       "I've been using Parcelpine, and the per-zone breakdown saved me a spreadsheet.",
     )
-    expect(paragraphs(ask.drafts.email.body).at(-2)).toMatch(/^If you ever have 15 minutes/)
+    expect(paragraphs(ask.drafts.email.body).at(-2)).toMatch(
+      /^Happy to trade notes on that question for 15 minutes/,
+    )
     // a seller's opener names mean nothing here: the homework leads
     expect(briefFor(film, candidate, item, 'proof').opener).toBe('homework')
   })

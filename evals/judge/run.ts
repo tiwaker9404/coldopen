@@ -31,7 +31,12 @@ import { closeBrowser } from '../../src/browser.ts'
 import { OpenAICompatibleProvider } from '../../src/llm/openai.ts'
 import { ScriptedProvider } from '../../src/llm/scripted.ts'
 import type { LlmProvider } from '../../src/llm/types.ts'
-import { draftMessages, openerFor, type SenderHomework } from '../../src/outreach/messages.ts'
+import {
+  draftMessages,
+  newestPublished,
+  openerFor,
+  type SenderHomework,
+} from '../../src/outreach/messages.ts'
 import { draftTouch } from '../../src/outreach/warm.ts'
 import {
   briefFor,
@@ -226,6 +231,7 @@ async function messagesFor(
       opener: briefFor(film, profile, item, opener, sender).opener,
       research: item && source ? { line: source, source, title: item.title } : null,
       homework: sender,
+      published: newestPublished(homework, MESSAGES_NOW),
     })
     return {
       m: null,

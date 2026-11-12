@@ -19,6 +19,7 @@ The model writes six short lines and makes two choices: which fact from the comp
 | Why it matters   |        14 | One idea, not a paragraph                               |
 | Pitch headline   |        10 | Display type at 7.6% of the frame height                |
 | Each pitch point |        10 | Three of them fit without shrinking                     |
+| A job seeker's idea |     16 | "I'd <verb> <their thing> — like <what I did>" still fits |
 | Ask              |         8 | One question, easy to say yes to                        |
 
 ## Grounding
@@ -90,9 +91,9 @@ A job seeker's connection note, after-accept message, InMail and email are also 
 | `not_job_pitch`     | No job words (`JOB_WORDS`: role, position, opening, hiring, apply, application, candidate, résumé, job…), subject included. A title quoted from their own post doesn't count inside quotation marks                  |
 | `thanks`            | The after-accept message, InMail and email end with thanks (`THANKS`: "Thanks for reading", "Thank you for your time"…) just before the signature                                                                    |
 | `no_proof_numbers`  | None of the proof values the film shows. The 15-minute offer and the film's length don't count                                                                                                                       |
-| `curious`           | The email and after-accept message ask one question about their work: it shares a word with their site, posts or your notes on their product, or it's your saved question word for word                              |
+| `curious`           | The email and after-accept message ask one question about their work: it shares a specific word with their site, posts or your notes on their product (not their brand name, and not a category such as shippers, customers or teams), or it's your saved question word for word |
 | `one_ask`           | In the voice: the email asks its curious question and may add the 15-minute offer as a second question (or say it as a statement), never two asks for time. The note may ask one curious question, never for time    |
-| `homework_grounded` | A first-person product claim ("I tried", "I used", "I built", "when I") in the email or after-accept message matches your saved detail or built line (overlap ≥ 0.5) or names what you built. No homework, no claims |
+| `homework_grounded` | Every line of every draft, subject and tease included: a first-person product claim ("I tried", "I used", "I've been using", "when I") matches your saved detail or built line (overlap ≥ 0.5) or names what you built, and a feature of theirs ("your retry API", "<Company>'s …") is one their published text or your homework names. No homework, no claims |
 
 A failed rule comes back as a flag with a plain sentence saying why, which the film panel shows under "Why this is the template version". When code changes a kept draft (for example, leaving out the funding line to stay under 125 words), that's a note, not a flag.
 
@@ -112,8 +113,8 @@ A job seeker's messages go to people who already know from the profile that the 
 
 1. **Their work first.** The first line is about them: what you used, read or built with their product, never the role or a number. _Why:_ openers about the person's own product get answered. Ben Lang's founder emails open with a product detail only a user would notice.
 2. **One thing that isn't on the résumé.** Your homework (a product detail, a small build, a docs or changelog observation), or the line saying you built the tool that made the film. _Why:_ building something for the company is the strongest signal, and the film is already a version of it.
-3. **The film is a gift with a reason to open it.** One line about what's in it, in terms of their work ("I put what I'd try next with your rate API into a 30-second film"), never "I made a film for your role". _Why:_ the film makes you memorable; the line around it has to make them want to open it.
-4. **One real question about their work.** Something you wondered while using the product or reading their post (your saved question, word for word, when you have one), then a soft 15-minute offer as a statement. _Why:_ a question about what they're building is easier to answer than a request for a call.
+3. **The film is a gift with a reason to open it.** One line naming the film's first idea in a few words ("I put one idea for <company> into a 30-second film: <the idea>."), never "I made a film for your role". _Why:_ the founder judge read "what I'd try next with …" as abstract; the idea itself is the reason to open it.
+4. **One real question about their work.** Something you wondered while using the product or reading their post (your saved question, word for word, when you have one), naming one specific thing of theirs (a product, a feature or a number), never a category ("most of your customers"). Then an offer tied to it, as a statement: "Happy to trade notes on that for 15 minutes if it's useful." _Why:_ a question about what they're building is easier to answer than a request for a call, and "I'd love to hear how you think about it" read as vague.
 5. **Thanks for their time.** "Thanks for reading" or "Thank you for your time": grateful, never begging. _Why:_ in Boomerang's study of 350,000 emails, closings with thanks got replies 62% of the time against 46% without.
 6. **No job words, no numbers.** No "role, position, opening, hiring, apply, candidate, résumé, job" in the note, after-accept message, InMail or email, and no proof numbers: the film shows them. _Why:_ "the goal of a cold email is to get time, not to get hired" (Eli Kamerow), and a number they've already seen reads as a pitch.
 7. **Sounds like a person.** Contractions, plain words, under 125 words, no flattery, and the banned list still applies. _Why:_ a YC founder found only 22 of 172 daily applicants looked like a person; sounding human is the edge.
@@ -136,7 +137,7 @@ The email opens one of two ways, half and half by film: with your homework, or w
 >
 > I built the tool that made it, coldopen, so I spend a lot of time on how small teams reach people.
 >
-> One thing I wondered: are most of your customers calling the API directly, or going through the Shopify app? If you ever have 15 minutes, I'd love to hear how you think about it.
+> One thing I wondered: are most teams calling the rate API directly, or going through the Shopify app? Happy to trade notes on that for 15 minutes if it's useful.
 >
 > Thanks for reading,
 > Ashwin
@@ -144,6 +145,8 @@ The email opens one of two ways, half and half by film: with your homework, or w
 Why the after works: it opens with something only a user would know, the film line says what's in it for them, it shows something that isn't on the résumé, it asks one question they can answer, and it ends with thanks. It never says "role" and never repeats a number from the film.
 
 **When the model writes them.** A job seeker's prompt carries what the film noticed, their latest post, your homework (verbatim, marked as your own words) and your creator line, plus `VOICE_RULES`. It carries no proof and no role title: the film shows the proof, and a title in the prompt ends up in the message. The model writes the email in parts (opening, tease with `[film]`, creator line, question, offer) and code lays them out as the templates are, adding the greeting, "Thanks for reading," and the signature. A saved question the model rephrased is put back word for word. A draft that fails a voice rule goes back once with what to do ("drop the word "role"; talk about their product", "take out the claim your homework doesn't make"), then falls back to its template. Drafts written before today's rules, or before homework you saved later, aren't rewritten on their own: the templates stand in, and "Write it again" in the film panel (`POST /v1/films/:id/messages/rewrite`) has the model write them from your homework.
+
+**With no homework,** the email opens on the newest specific thing they published (a changelog or engineering line, with its month: `newestPublished()`), quoted, not on the homepage tagline, and the question names something from that line ("What was the hardest part of the dock appointment change to get right?"). The prompts carry placeholders (`<company>`, `<their feature>`), never a real product: the plan's "retry API" example once leaked into a draft.
 
 Every claim of experience must come from what you saved. A template only says "I tried…" or "I built…" in your own words (your detail, your built line, your creator line). A saved line that would break a rule (a job word, a number from the film) is left out, never edited, and the draft opens on their homepage instead.
 
@@ -153,6 +156,8 @@ Sources: [Next Play, the guide to getting a job with cold email](https://nextpla
 
 The people who see a job seeker's film know from the profile that the sender is looking, so the film reads like a curious builder's take on their product, not an application (the same research as the networking messages above: ask for insight, not a job).
 
+- **Pitch points are ideas for their product:** 2 or 3, each "I'd <verb> <their thing> — like <what I did>", at most 16 words (`src/script/ideas.ts`). The thing is one of their own names for what they make (a short feature heading, what their headline leads with, a two-word name they use twice); the "like …" is one proof's `did` or a project ("like the containerized ETL I built"). `pitch_is_idea` fails a profile point copied over, an idea naming nothing of theirs, and a "like …" that isn't something you did. It applies when their site and your profile give at least two ideas; a profile with no `did` and no projects keeps its own points. The judge found résumé lines under "What I'd try first with …".
+- **Proof that fits them:** proof is ranked by relevance to the company first (shared words with their headline, description, facts and a job's requirements, with words from the same line of business counted together: freight, returns, health care, money, selling; or by meaning when `FIT_SEMANTIC` is on), then by `impressive()`. Proof with no `did` or `where` ranks last, and a credential below a result with a number (`rankProof()` in src/profile/proof.ts). Leaving the closest proof off screen is a violation. The referral blurb uses the same ranking against the role.
 - **Pitch headline:** what you'd try or build with their product, or for its customers, in 4 to 10 words grounded in your points and the fact the film quotes. The built-in writer picks one of four lines per company (`HEADLINES`, with `variant()`), each with a slot for their thing: the topic the quoted fact shares with their homepage ("Parcelpine's returns"), else the company. Two companies rarely share a line.
 - **Why it matters:** what you'd do with the fact ("I'd …"). With a job post, the fact is still one of its requirements, quoted word for word, and the line says what you'd do about it.
 - **The ask:** a warm invitation about their work, at most 8 words, a question ("Trade notes on Parcelpine's returns?", "Could we talk about Lumen Health sometime?"; `CTAS`). Never "hire me", "interview", "role" or "job".

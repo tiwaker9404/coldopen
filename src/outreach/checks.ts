@@ -10,7 +10,14 @@ import type { FilmResult } from '../film.ts'
 import { numbersIn, overlap, sameNumber } from '../script/checks.ts'
 import { BANNED, BEGGING } from '../script/taste.ts'
 import type { Profile } from '../script/types.ts'
-import { builtLine, detailLine, endsWithThanks, jobWordsIn, type SenderHomework } from './voice.ts'
+import {
+  builtLine,
+  detailLine,
+  endsWithThanks,
+  GENERIC_NOUNS,
+  jobWordsIn,
+  type SenderHomework,
+} from './voice.ts'
 
 export const MESSAGE_LIMITS = {
   /** a connection note on a free LinkedIn account */
@@ -528,18 +535,99 @@ const COMMON = new Set(
     ' ',
   ),
 )
-const contentWords = (s: string) =>
+const contentWords = (s: string, skip: ReadonlySet<string> = new Set()) =>
   new Set(
     straight(s)
       .toLowerCase()
+      .replace(/'s\b/g, '')
       .replace(/'/g, '')
-      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
       .split(/\s+/)
-      .filter((w) => w.length >= 4 && !COMMON.has(w)),
+      .filter((w) => w.length >= 4 && !COMMON.has(w) && !GENERIC_NOUNS.has(w) && !skip.has(w))
+      .map((w) => w.replace(/(?<=[a-z]{3})(es|s)$/, '')),
   )
-const sharesWord = (a: string, b: string) => {
-  const theirs = contentWords(b)
-  return [...contentWords(a)].some((w) => theirs.has(w))
+/**
+ * the company's brand word ("Northwind" in "Northwind Freight"): naming them isn't being
+ * specific about their work, though "freight" may well be
+ */
+const nameWords = (company: string) =>
+  new Set(
+    straight(company)
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter(Boolean)
+      .slice(0, 1),
+  )
+/**
+ * Whether a question names a specific thing their own text names: a product, a feature or a
+ * number word they use. Their name and categories of people ("shippers", "customers") don't count.
+ */
+const sharesWord = (a: string, b: string, company = '') => {
+  const skip = nameWords(company)
+  const theirs = contentWords(b, skip)
+  return [...contentWords(a, skip)].some((w) => theirs.has(w))
+}
+
+/** Nouns any message may put after "your" without naming a feature of theirs */
+const ANY_COMPANY_HAS = new Set(
+  'homepage site website post posts blog changelog docs team product work customer customers podcast newsletter page latest recent newer new own question time thoughts notes engineering roadmap launch way approach take view side'.split(
+    ' ',
+  ),
+)
+const REF_STOP = new Set(
+  'the and for with that this from into have has its their they them than what when which who will just about over more most only also like now and or but so if is are was were be been to of in on at by as it a an do does did'.split(
+    ' ',
+  ),
+)
+
+/**
+ * The features a message says they have ("your retry API", "Northwind's dock board") that
+ * nothing they published, nor the sender's homework, names. A message only names what's real.
+ */
+export function madeUpFeatures(text: string, company: string, theirs: string): string[] {
+  const names = [company.trim(), company.trim().split(/\s+/)[0]!].filter((n) => n.length >= 2)
+  const open = straight(text).replace(QUOTED, ' ')
+  // three letters count here: "API" is a feature's name as much as "retry" is
+  const wordsOf = (x: string) =>
+    new Set(
+      straight(x)
+        .toLowerCase()
+        .replace(/'s\b/g, '')
+        .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+        .split(/\s+/)
+        .filter((w) => w.length >= 3 && !REF_STOP.has(w))
+        .map((w) => w.replace(/(?<=[a-z]{3})(es|s)$/, '')),
+    )
+  const known = wordsOf(theirs)
+  const refs = new RegExp(
+    // "your X", or their name as an owner ("Parcelpine's X"); "with Parcelpine today" names nothing
+    `\\b(?:your|(?:${names.map((n) => escapeRe(straight(n))).join('|')})'s)\\s+((?:[a-z][\\w-]*\\s*){1,3})`,
+    'gi',
+  )
+  const out: string[] = []
+  for (const m of open.matchAll(refs)) {
+    // the name ends at its head noun: "your customers calling the API" names "customers"
+    const ws: string[] = []
+    for (const w of m[1]!.trim().split(/\s+/)) {
+      const l = w.toLowerCase()
+      if (REF_STOP.has(l) || (ws.length && /(ing|ed|ly)$/.test(l))) break
+      ws.push(w)
+      if (ANY_COMPANY_HAS.has(l) || /[^s]s$/.test(l)) break
+    }
+    const telling = ws.filter((w) => !ANY_COMPANY_HAS.has(w.toLowerCase()))
+    if (!telling.length) continue
+    // a name they never use: every telling word has to be one of theirs
+    const missing = telling.filter((w) => ![...wordsOf(w)].every((c) => known.has(c)))
+    if (missing.length && wordsOf(missing.join(' ')).size)
+      out.push(
+        `${m[0]
+          .trim()
+          .split(/\s+/)
+          .slice(0, 1 + ws.length)
+          .join(' ')}`,
+      )
+  }
+  return [...new Set(out)]
 }
 
 /**
@@ -623,7 +711,8 @@ function voiceChecks(kind: MessageKind, subject: string, body: string, ctx: Chec
     // word for word, though a question after a colon may start lower-case ("I wondered: are…")
     const saved = ctx.question?.replace(/\s+/g, ' ').trim().toLowerCase()
     const verbatim = !!saved && body.replace(/\s+/g, ' ').toLowerCase().includes(saved)
-    const about = asked.some((q) => sharesWord(q, `${ctx.company}\n${ctx.theirs ?? ''}`))
+    // a specific thing of theirs, not their name or "most of your customers"
+    const about = asked.some((q) => sharesWord(q, ctx.theirs ?? '', ctx.company))
     out.push(
       verbatim || about
         ? { rule: 'curious', ok: true }
@@ -631,30 +720,42 @@ function voiceChecks(kind: MessageKind, subject: string, body: string, ctx: Chec
             rule: 'curious',
             ok: false,
             why: asked.length
-              ? "The question isn't about their work; ask about something in their post, site or product"
+              ? "The question doesn't name anything specific of theirs; ask about one product, feature or number from their post, site or your homework, not a category like their customers"
               : 'Has no question about their work; ask one thing you wondered about their product or post',
           },
     )
+  }
 
-    // an experience with their product is the sender's to claim, in their own saved words
-    const claims = sentencesOf(body).filter((x) => CLAIM.test(x))
-    const names = (ctx.own?.names ?? []).filter(Boolean).map((n) => straight(n).toLowerCase())
-    const sources = (ctx.own?.claims ?? []).filter(Boolean)
-    const ungrounded = claims.filter(
-      (x) =>
-        !names.some((n) => straight(x).toLowerCase().includes(n)) &&
-        !sources.some((src) => overlap(x, src) >= HOMEWORK_OVERLAP),
-    )
-    out.push(
-      ungrounded.length
+  // every line of every message, the subject and the tease included: an experience with their
+  // product is the sender's to claim, in their own saved words, and a feature of theirs is one
+  // their own text (or the sender's homework) names. The model once wrote "your retry API" and
+  // "I've been using Northwind Freight" with no homework saying either.
+  // the greeting and the slots the app fills in aren't the sender's words
+  const words = all.replace(PLACEHOLDER, ' ').replace(/^\s*(hi|hello|hey)\b[^,\n]*,/gim, '')
+  const claims = sentencesOf(words).filter((x) => CLAIM.test(x))
+  const names = (ctx.own?.names ?? []).filter(Boolean).map((n) => straight(n).toLowerCase())
+  const sources = (ctx.own?.claims ?? []).filter(Boolean)
+  const ungrounded = claims.filter(
+    (x) =>
+      !names.some((n) => straight(x).toLowerCase().includes(n)) &&
+      !sources.some((src) => overlap(x, src) >= HOMEWORK_OVERLAP),
+  )
+  const invented = madeUpFeatures(all, ctx.company, ctx.theirs ?? '')
+  out.push(
+    ungrounded.length
+      ? {
+          rule: 'homework_grounded',
+          ok: false,
+          why: `Claims "${ungrounded[0]!.slice(0, 60)}", which your homework doesn't say; keep to what you saved`,
+        }
+      : invented.length
         ? {
             rule: 'homework_grounded',
             ok: false,
-            why: `Claims "${ungrounded[0]!.slice(0, 60)}", which your homework doesn't say; keep to what you saved`,
+            why: `Says "${invented[0]}", which nothing they published or your homework names; only name what's really theirs`,
           }
         : { rule: 'homework_grounded', ok: true },
-    )
-  }
+  )
   return out
 }
 
@@ -729,6 +830,9 @@ export function voiceFor(
       out.company ?? '',
       out.highlights?.quote.text ?? '',
       out.script?.noticed ?? '',
+      // the film's own lines name their things: the pitch's ideas come from their site
+      out.script?.pitch.headline ?? '',
+      ...(out.script?.pitch.points ?? []),
       ...posts,
       sender?.detail ?? '',
       sender?.built?.line ?? '',

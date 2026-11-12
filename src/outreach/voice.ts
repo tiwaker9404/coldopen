@@ -57,8 +57,13 @@ export const THANKS = [
 /** What the templates sign off with */
 export const SIGN_OFF = 'Thanks for reading,'
 
-/** The 15-minute offer, as a statement: their question comes first, the call is optional */
-export const OFFER = "If you ever have 15 minutes, I'd love to hear how you think about it."
+/**
+ * The 15-minute offer, as a statement tied to the question just asked: their question comes
+ * first, the call is optional. "I'd love to hear how you think about it" read as vague (judge).
+ */
+export const OFFER = "Happy to trade notes on that for 15 minutes if it's useful."
+/** The offer when the question opened the email, a few lines up */
+export const OFFER_LATER = "Happy to trade notes on that question for 15 minutes if it's useful."
 
 /** Text inside quotation marks (straight or curly) is their words, so job words there don't count */
 const QUOTED = /"[^"\n]*"|“[^”\n]*”/g
@@ -111,11 +116,11 @@ export const VOICE_RULES = `
 Voice rules for these messages (checked in code; a violation means a rewrite):
 1. Their work first. The first line is about them: what the sender used, read or built with their product. Never the role, never a number.
 2. One thing that isn't on the résumé: the sender's homework (a product detail, a small build, something from their docs or changelog), or the line about what the sender built that made this film.
-3. The film is a gift with a reason to open it. One line saying what's in it in terms of their work ("what I'd try next with your retry API, in 30 seconds"), never "I made a film for your role".
-4. One real question about their work: something the sender wondered while using the product or reading their post. If the sender saved a question, use it word for word. The 15-minute offer is soft, and comes after the question.
+3. The film is a gift with a reason to open it. One line naming the film's first idea for their product, in a few words ("I put one idea for <company> into a 30-second film: <the idea>"), never "I made a film for your role".
+4. One real question about their work, naming a specific thing (a product, a feature or a number) from their post, their site or the homework, never a category of people ("most of your customers"). If the sender saved a question, use it word for word. The 15-minute offer is soft, tied to the question, and comes after it.
 5. Thanks for their time. End with "Thanks for reading" or "Thank you for your time". Grateful, never begging.
 6. No job words and no numbers. Never write ${JOB_WORDS.filter((w) => w !== 'openings' && w !== 'résumé').join(', ')}. No proof numbers: the film shows them.
-7. Sound like a person. Contractions, plain words, under 125 words, no flattery. Only claim an experience ("I tried", "I used", "I built") that the sender's homework says.
+7. Sound like a person. Contractions, plain words, under 125 words, no flattery. Only claim an experience ("I tried", "I used", "I built") that the sender's homework says, in any line of any message. Only name a product or feature of theirs that their post, their site or the homework names: never make one up.
 `.trim()
 
 /* ------------------------------------------------------------ the homework line */
@@ -205,4 +210,122 @@ export function homeworkLine(
   const said = post?.line ? wholeClause(post.line.replace(/\s+/g, ' ').trim()) : ''
   if (said) return { kind: 'post', line: researchSentence(post?.title?.trim() ?? '', said) }
   return null
+}
+
+/* ------------------------------------------------------------ the tease and what they published */
+
+/**
+ * The film line, naming the film's first idea in a few words: "I put one idea for Northwind
+ * Freight into a 30-second film: stream carrier check-ins into one live view." The judge read
+ * "what I'd try next with …" as abstract; the idea itself is the reason to open it.
+ */
+export const ideaTease = (company: string, idea: string, length: string) =>
+  `I put one idea for ${company} into a ${length} film: ${idea.trim().replace(/[.!]$/, '')}.`
+
+/** Where a line they published is from, as the opening says it: "changelog", "engineering blog" */
+const SAID_IN: Record<string, string> = {
+  changelog: 'changelog',
+  engineering: 'engineering blog',
+  blog: 'blog',
+  news: 'news page',
+  podcast: 'podcast notes',
+  docs: 'docs',
+}
+
+/**
+ * The opening when the sender saved no homework: the newest specific thing they published (a
+ * changelog or engineering line, with its month), not the homepage tagline. In their words,
+ * quoted, so it claims nothing about the sender.
+ */
+export function publishedOpening(
+  company: string,
+  line: { text: string; kind: string; month?: string | undefined },
+): string {
+  const where = SAID_IN[line.kind] ?? 'site'
+  const when = line.month ? ` from ${line.month}` : ''
+  return `I read ${company}'s ${where} entry${when}: "${line.text.trim().replace(/[.]$/, '')}".`
+}
+
+/**
+ * Words that name a category of people or say nothing specific: a question about "most of your
+ * customers" or "what you're building" could go to any company, so it doesn't count as curious.
+ */
+export const GENERIC_NOUNS = new Set(
+  'shipper shippers customer customers team teams company companies user users people client clients brand brands business businesses product products platform platforms work thing things part parts hardest building build built right now today folks companies merchants partners'.split(
+    ' ',
+  ),
+)
+
+// verbs that start or end a pair without naming a thing ("move dock", "carrier runs")
+const VERBISH = new Set(
+  'become becomes stream sync unify ship put triage prototype tighten log roll catch build showing using making letting helping getting saying kept hitting move moves book books see sees saw get gets got walks walk tracked track sends sent make makes show shows run runs send sends take takes give gives turn turns help helps keep keeps let lets find finds start starts flows flow saves save reach reaches lands land use uses offer offers'.split(
+    ' ',
+  ),
+)
+
+const STOPS = new Set(
+  'the and for with that this your you our are was from into have has its their they them than what when which who will just about over more most only also like now new on of to in a an at by or as is it be so if then both every each all any own before after through how back something someone fastest clearest once around much many one view per minute minutes hour hours day days week weeks month months year years percent'.split(
+    ' ',
+  ),
+)
+
+/**
+ * A specific thing a line names, for a question to ask about: a two-word name in it that their
+ * other text says too ("dock appointment"), else one in it at all, else a word their other text
+ * shares. Never a category of people (GENERIC_NOUNS) or the company's own name. Null when the
+ * line names nothing a question could hold on to.
+ */
+export function specificThing(
+  line: string,
+  elsewhere: string,
+  company = '',
+  /** only a name their other text says too: for the sender's own words, which name anything */
+  strict = false,
+): string | null {
+  // their brand word ("Northwind"), not the plain words of a name ("Freight")
+  const name = new Set(company.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 1))
+  const ok = (w: string) =>
+    /^[a-z][a-z-]{2,}$/.test(w) && !STOPS.has(w) && !GENERIC_NOUNS.has(w) && !name.has(w)
+  const ws = line
+    .toLowerCase()
+    .replace(/[^a-z\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+  const other = ` ${elsewhere
+    .toLowerCase()
+    .replace(/[^a-z\s-]/g, ' ')
+    .replace(/\s+/g, ' ')} `
+  const pairs: string[] = []
+  for (let i = 0; i + 1 < ws.length; i++) {
+    const [a, b] = [ws[i]!, ws[i + 1]!]
+    // "routing agents", "dock appointment"; not "runs late" (an -s verb then an adverb)
+    if (
+      ok(a) &&
+      ok(b) &&
+      !VERBISH.has(a) &&
+      !VERBISH.has(b) &&
+      !/(ly|ed)$/.test(b) &&
+      !/ed$/.test(a) &&
+      !/[^s]s$/.test(a)
+    )
+      pairs.push(`${a} ${b}`)
+  }
+  const said = (p: string) => other.includes(` ${p.replace(/s$/, '')}`)
+  const found = strict
+    ? (pairs.find(said) ?? ws.filter((w) => ok(w) && !VERBISH.has(w) && w.length >= 4).find(said))
+    : (pairs.find(said) ??
+      pairs[0] ??
+      ws.filter(ok).find((w) => said(w)) ??
+      // the longest plain word in their own line ("documentation", "freight")
+      ws
+        .filter((w) => ok(w) && !VERBISH.has(w) && !/(ed|ly)$/.test(w) && w.length >= 5)
+        .sort((a, b) => b.length - a.length)[0])
+  if (!found) return null
+  // as the line writes it ("rate API", not "rate api")
+  const at = line.toLowerCase().indexOf(found)
+  const written = at >= 0 ? line.slice(at, at + found.length) : found
+  // a capital only because it starts their sentence ("Route planning") comes down
+  return at === 0 && /^[A-Z][a-z]+(\s[a-z]|$)/.test(written)
+    ? written[0]!.toLowerCase() + written.slice(1)
+    : written
 }

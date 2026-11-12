@@ -127,19 +127,20 @@ describe('film pipeline (no database)', () => {
     const p = profile('candidate')
     // a job seeker's reply, in the voice: no job words, no numbers, a question about their work
     const reply: ModelMessages = {
-      note: "I've been reading about what Parcelpine is building. Curious how most Parcelpine customers use it.",
-      afterAccept: `Thanks for connecting. I put what I'd try next with Parcelpine into a 30-second film: ${FILM} What's the hardest part of what Parcelpine is building right now?`,
+      note: "I've been reading about what Parcelpine is building. Curious how often returns become store credit.",
+      afterAccept: `Thanks for connecting. I put what I'd try next with Parcelpine into a 30-second film: ${FILM} How often do returns become store credit today?`,
       inmail: {
         subject: 'A question about Parcelpine',
-        body: `I put what I'd try next with Parcelpine into a 30-second film: ${FILM} What's the hardest part of what Parcelpine is building right now?`,
+        body: `I put what I'd try next with Parcelpine into a 30-second film: ${FILM} How often do returns become store credit today?`,
       },
       email: {
         subject: 'A question about Parcelpine',
         opening: "I've been reading about what Parcelpine is building.",
         tease: `I put what I'd try next with Parcelpine into a 30-second film: ${FILM}`,
         creator: null,
-        question: "What's the hardest part of what Parcelpine is building right now?",
-        offer: "If you ever have 15 minutes, I'd love to hear how you think about it.",
+        // a specific thing of theirs, never a category ("what Parcelpine is building")
+        question: 'How often do returns become store credit today?',
+        offer: "Happy to trade notes on that for 15 minutes if it's useful.",
       },
     }
     let messageCalls = 0

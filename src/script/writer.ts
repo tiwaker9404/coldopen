@@ -3,7 +3,9 @@ import { answers, proofText } from '../job/fit.ts'
 import type { ChatMessage } from '../llm/types.ts'
 import { JOB_WORDS } from '../outreach/voice.ts'
 import { isDuty } from '../profile/pitch.ts'
+import { rankProof } from '../profile/proof.ts'
 import { checkScript, clampScript, jobPitchIn, overlap, quotableFacts, words } from './checks.ts'
+import { aboutText, ideasFor, pitchAsIdeas, proofFor, theirThings } from './ideas.ts'
 import { monthOf } from './storyboard.ts'
 import { LIMITS, TASTE_RULES } from './taste.ts'
 import type { Profile, Script, ScriptMeta } from './types.ts'
@@ -24,7 +26,7 @@ const CANDIDATE_NEVER = `${JOB_WORDS.filter((w) => w !== 'openings' && w !== 'r�
 const PRESETS: Record<Profile['preset'], string> = {
   sales:
     'The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.',
-  candidate: `The sender is a curious builder writing to people at this company about their product. They know from the sender's profile that the sender is looking for work, so the film never says so: it reads like a builder's take on what they make, not an application. Show that the sender understands what the company builds and who it serves. pitch.headline names what the sender would try or build with this company's product, or for its customers, in 4 to 10 words grounded in the sender's points and the fact you quote ("What I'd build next for <their thing>"), never "why I fit". The pitch points stay tailored from the sender's points. insight.why says what the sender would do with that fact ("I'd …"). The cta is a warm invitation to talk about their work, at most 8 words ("Trade notes on <their thing>?", "15 minutes on what's next?"). Never write ${CANDIDATE_NEVER} in the hook, noticed, why, headline or cta. Write in the first person ("I").`,
+  candidate: `The sender is a curious builder writing to people at this company about their product. They know from the sender's profile that the sender is looking for work, so the film never says so: it reads like a builder's take on what they make, not an application. Show that the sender understands what the company builds and who it serves. pitch.headline names what the sender would try or build with this company's product, or for its customers, in 4 to 10 words grounded in the sender's points and the fact you quote ("What I'd build next for <their thing>"), never "why I fit". pitch.points are 2 or 3 ideas for their product, each at most ${LIMITS.idea} words, written "I'd <verb> <their thing> — like <what the sender did, short>": the thing is one of THEIR THINGS or a word from their facts, and the "like …" is one proof's "did" or a project, said short ("like the <thing they made> I <verb>ed"). Never copy one of the sender's points as a pitch point. insight.why says what the sender would do with that fact ("I'd …"). The cta is a warm invitation to talk about their work, at most 8 words ("Trade notes on <their thing>?", "15 minutes on what's next?"). Never write ${CANDIDATE_NEVER} in the hook, noticed, why, headline or cta. Write in the first person ("I").`,
   hiring:
     'The sender is on the team at this company and is announcing an open role to everyone, as a LinkedIn post. The company facts are your own company. Speak to whoever is watching as "you" and about your company as "we" or "our". Make the role feel concrete and worth applying for, without hype. The call to action points to the job post.',
   recruiter:
@@ -54,7 +56,17 @@ function sourceTag(f: Fact): string {
 /** Lines about what they built lately: a changelog or engineering post (all from the last 120 days) */
 const shipped = (f: Fact) => f.source?.kind === 'changelog' || f.source?.kind === 'engineering'
 
-export function buildMessages(kit: BrandKit, profile: Profile): ChatMessage[] {
+/** What a film's writers may be told about how close each proof is to the company by meaning */
+export interface ScriptOptions {
+  /** per proof index, its closeness to the company by meaning (FIT_SEMANTIC), on relevance()'s scale */
+  semantic?: ReadonlyMap<number, number>
+}
+
+export function buildMessages(
+  kit: BrandKit,
+  profile: Profile,
+  opts: ScriptOptions = {},
+): ChatMessage[] {
   // only facts a stranger can read on their own are offered (checks.ts standsAlone)
   const offered = quotableFacts(kit).filter((f) => f.kind !== 'requirement')
   const facts = offered
@@ -85,6 +97,22 @@ ${profile.preset === 'recruiter' ? RECRUITER_JOB_BRIEF(kit.job.title) : profile.
         `${i}: ${p.value} ${p.label}${p.where ? ` (${p.where})` : ''}${p.did ? `; did: ${p.did}` : ''}`,
     )
     .join('\n')
+  // a job seeker's film shows the proof closest to their business first, and pitches ideas
+  const seeker = profile.preset === 'candidate'
+  const order = seeker ? rankProof(profile.proof, aboutText(kit), opts.semantic) : []
+  const things = seeker ? theirThings(kit).slice(0, 6) : []
+  const projects = seeker ? (profile.projects ?? []).slice(0, 3) : []
+  const seekerNotes = seeker
+    ? `\nProof most relevant to them first (pick from the start of this list): ${order.join(', ')}${
+        things.length
+          ? `\nTHEIR THINGS (their own names for what they make): ${things.join(', ')}`
+          : ''
+      }${
+        projects.length
+          ? `\nProjects the sender built (a "like …" may name one): ${projects.map((p) => `${p.name}: ${p.line}`).join('; ')}`
+          : ''
+      }`
+    : ''
   const user = `${PRESETS[profile.preset]}
 
 COMPANY
@@ -102,7 +130,7 @@ Offer: ${profile.offer}${recruiter && profile.recipient ? `\nCandidate: ${profil
 ${recruiter ? "The candidate's strengths you may tailor" : 'Points you may tailor'}:
 ${profile.points.map((p) => `- ${p}`).join('\n')}
 ${recruiter ? "The candidate's proof" : 'Proof'} (pick by index; shown verbatim):
-${proof}
+${proof}${seekerNotes}
 ${profile.preset === 'candidate' ? `The sender's own ask, for its tone (write a warm invitation about their work instead): ${profile.cta.line}` : `Call to action: ${profile.cta.line}`}${job}`
   return [
     { role: 'system', content: SYSTEM_PROMPT },
@@ -123,16 +151,18 @@ export async function writeScript(opts: {
   complete: Complete
   model: string
   maxRounds?: number
+  semantic?: ReadonlyMap<number, number>
 }): Promise<{ script: Script; meta: ScriptMeta }> {
   const { kit, profile } = opts
   const max = opts.maxRounds ?? 4
-  const messages = buildMessages(kit, profile)
+  const more: ScriptOptions = opts.semantic ? { semantic: opts.semantic } : {}
+  const messages = buildMessages(kit, profile, more)
   const history: string[][] = []
   let script: Script | null = null
 
   for (let round = 1; round <= max; round++) {
     script = await opts.complete(`script-${round}`, messages)
-    const v = checkScript(script, kit, profile)
+    const v = checkScript(script, kit, profile, more)
     history.push(v)
     if (v.length === 0)
       return {
@@ -160,14 +190,14 @@ export async function writeScript(opts: {
 
   // keep every line the model got right; swap only the lines it couldn't fix. Swapping comes
   // before clamping, so a line is never shipped cut off mid-sentence.
-  const fallback = deterministicScript(kit, profile)
-  const fixed = repair(script!, fallback, kit, profile)
-  const second = checkScript(fixed.script, kit, profile).length
-    ? repair(clampScript(fixed.script, profile), fallback, kit, profile)
+  const fallback = deterministicScript(kit, profile, more)
+  const fixed = repair(script!, fallback, kit, profile, more)
+  const second = checkScript(fixed.script, kit, profile, more).length
+    ? repair(clampScript(fixed.script, profile), fallback, kit, profile, more)
     : fixed
   const repaired = second.script
   const replaced = [...new Set([...fixed.replaced, ...second.replaced])]
-  const remaining = checkScript(repaired, kit, profile)
+  const remaining = checkScript(repaired, kit, profile, more)
   if (remaining.length === 0) {
     return {
       script: repaired,
@@ -175,7 +205,7 @@ export async function writeScript(opts: {
     }
   }
   return {
-    script: deterministicScript(kit, profile),
+    script: deterministicScript(kit, profile, more),
     meta: {
       model: opts.model,
       rounds: max,
@@ -208,14 +238,15 @@ function repair(
   fallback: Script,
   kit: BrandKit,
   profile: Profile,
+  more: ScriptOptions = {},
 ): { script: Script; replaced: string[] } {
   let current = script
-  let count = checkScript(current, kit, profile).length
+  let count = checkScript(current, kit, profile, more).length
   const replaced: string[] = []
   for (const f of FIELDS) {
     if (count === 0) break
     const next = withField(current, fallback, f)
-    const n = checkScript(next, kit, profile).length
+    const n = checkScript(next, kit, profile, more).length
     if (n < count) {
       current = next
       count = n
@@ -406,9 +437,13 @@ function whyLine(fact: Fact, candidate: boolean, company: string | undefined, ke
  * A rule-based writer used as the stand-in model (tests, CI, the no-key demo) and as the
  * final fallback. Plainer than a good LLM, but always on-brief and always grounded.
  */
-export function deterministicScript(kit: BrandKit, profile: Profile): Script {
+export function deterministicScript(
+  kit: BrandKit,
+  profile: Profile,
+  opts: ScriptOptions = {},
+): Script {
   if (profile.preset === 'hiring') return hiringScript(kit, profile)
-  if (kit.job) return jobScript(kit, profile, kit.job.title)
+  if (kit.job) return jobScript(kit, profile, kit.job.title, opts)
   const name = kit.name
   const first = name.split(/\s+/)[0]!
   const fact = bestFact(kit, profile)
@@ -439,15 +474,29 @@ export function deterministicScript(kit: BrandKit, profile: Profile): Script {
             : `${profile.offer.replace(/[.]$/, '')}, made for ${first}`,
         LIMITS.headline,
       ),
-      // prefer points that already fit, so nothing is cut mid-phrase
-      points: [...profile.points]
-        .sort((a, b) => Number(words(a) > LIMITS.point) - Number(words(b) > LIMITS.point))
-        .slice(0, 3)
-        .map((p) => clip(p, LIMITS.point)),
+      // a job seeker's pitch is ideas for their product; anyone else's, their own points (prefer
+      // points that already fit, so nothing is cut mid-phrase)
+      points:
+        candidate && pitchAsIdeas(kit, profile)
+          ? ideaPoints(kit, profile, opts)
+          : [...profile.points]
+              .sort((a, b) => Number(words(a) > LIMITS.point) - Number(words(b) > LIMITS.point))
+              .slice(0, 3)
+              .map((p) => clip(p, LIMITS.point)),
     },
-    proof: profile.proof.slice(0, 3).map((_, i) => i),
+    // a job seeker's proof: the closest to their business first, then the most impressive
+    proof: candidate
+      ? proofFor(kit, profile, opts.semantic)
+      : profile.proof.slice(0, 3).map((_, i) => i),
     cta: candidate ? candidateCta(name, topicOf(kit, fact)) : clip(profile.cta.line, LIMITS.cta),
   }
+}
+
+/** A job seeker's pitch points: ideas for their product, resting on the proof closest to them */
+function ideaPoints(kit: BrandKit, profile: Profile, opts: ScriptOptions): string[] {
+  return ideasFor(kit, profile, rankProof(profile.proof, aboutText(kit), opts.semantic)).map(
+    (i) => i.line,
+  )
 }
 
 /** A job seeker's ask: a warm invitation about their work, picked per company (CTAS) */
@@ -544,7 +593,12 @@ function answerLine(p: ProofItem, direct: boolean, you = false): string {
  * The deterministic writer for a job post: feature the requirement the sender's record answers
  * best, answer it with the matching proof, and lead the proof scene with what fits the role.
  */
-function jobScript(kit: BrandKit, profile: Profile, title: string): Script {
+function jobScript(
+  kit: BrandKit,
+  profile: Profile,
+  title: string,
+  opts: ScriptOptions = {},
+): Script {
   const name = kit.name
   const first = name.split(/\s+/)[0]!
   const reqs = kit.facts.filter((f) => f.kind === 'requirement')
@@ -611,15 +665,24 @@ function jobScript(kit: BrandKit, profile: Profile, title: string): Script {
     insight: { factId: req.id, why: candidate ? ownWords(why, profile, name) : why },
     pitch: {
       headline: clip(headline, LIMITS.headline),
-      points: byFit(profile.points, allReqs)
-        // the bullet that answered the requirement is already on screen
-        .filter((x) => !(theirBullet && x.i === best.point.i) || profile.points.length <= 2)
-        .map((x) => profile.points[x.i]!)
-        .sort((a, b) => Number(words(a) > LIMITS.point) - Number(words(b) > LIMITS.point))
-        .slice(0, 3)
-        .map((p) => clip(p, LIMITS.point)),
+      points:
+        candidate && pitchAsIdeas(kit, profile)
+          ? ideaPoints(kit, profile, opts)
+          : byFit(profile.points, allReqs)
+              // the bullet that answered the requirement is already on screen
+              .filter((x) => !(theirBullet && x.i === best.point.i) || profile.points.length <= 2)
+              .map((x) => profile.points[x.i]!)
+              .sort((a, b) => Number(words(a) > LIMITS.point) - Number(words(b) > LIMITS.point))
+              .slice(0, 3)
+              .map((p) => clip(p, LIMITS.point)),
     },
-    proof: [answer, ...rest].slice(0, 3),
+    // a job seeker's: the proof that answers the requirement, then the closest to their business
+    proof: candidate
+      ? [
+          answer,
+          ...rankProof(profile.proof, aboutText(kit), opts.semantic).filter((i) => i !== answer),
+        ].slice(0, 3)
+      : [answer, ...rest].slice(0, 3),
     cta: candidate ? candidateCta(name, topic) : clip(profile.cta.line, LIMITS.cta),
   }
 }

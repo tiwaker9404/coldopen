@@ -12,9 +12,10 @@
  * Pure: no network, no clock (every function takes `now`). The drafts are templates, written
  * here so the web app can show the thank-you as the sender types; checks.ts checks them.
  */
+import { proofPhrase, rankProof, startsWithVerb } from '../profile/proof.ts'
 import type { Profile } from '../script/types.ts'
 import { companyKey, sameCompany } from './people.ts'
-import { lower, lowerStart } from './voice.ts'
+import { lowerStart } from './voice.ts'
 
 export const TOUCH_KINDS = [
   'thankYou',
@@ -295,27 +296,36 @@ const overlapWith = (a: string, b: string) => {
   return [...words(b)].filter((w) => x.has(w)).length
 }
 
-/** The one result that fits a role: the proof closest to its title, said once, no repeated number */
+/**
+ * A line said mid-sentence, with names and titles kept as written: "Forward Deployed Engineer"
+ * and "HubSpot records" stay cased, "Forward deployed engineer" becomes "forward deployed
+ * engineer". Only a plain capital on an ordinary first word comes down.
+ */
+export function asSaid(s: string): string {
+  const [first, second] = s.trim().split(/\s+/)
+  if (!first || !/^[A-Z][a-z'’-]+$/.test(first)) return s.trim()
+  // "Forward Deployed Engineer": a title in title case is a name
+  if (second && /^[A-Z][a-z]/.test(second)) return s.trim()
+  return `${first[0]!.toLowerCase()}${s.trim().slice(1)}`
+}
+
+/**
+ * The one result that fits a role: the proof most relevant to it (the role and why the sender
+ * fits it, ranked as the film ranks proof for a company), with what they did, the change and
+ * where, said once, with no repeated number.
+ */
 export function resultFor(
   profile: Pick<Profile, 'proof' | 'points'>,
   title: string,
+  about = '',
 ): string | null {
-  const scored = profile.proof
-    .map((p, i) => ({
-      p,
-      i,
-      score: overlapWith(`${p.label} ${p.did ?? ''} ${p.where ?? ''}`, title) + (p.did ? 0.5 : 0),
-    }))
-    .sort((a, b) => b.score - a.score || a.i - b.i)
-  const best = scored[0]?.p
+  const order = rankProof(profile.proof, `${title}\n${about}`)
+  const best = order.length ? profile.proof[order[0]!] : undefined
   if (best) {
-    // the label already says the number ("report time, 6 hours to 20 minutes"): don't say it twice
-    const digits = /\d/.test(best.value)
-    const label =
-      digits && !best.label.includes(best.value) && !best.did
-        ? `${best.value} ${best.label}`
-        : best.label
-    const what = best.did ? `${tidy(best.did)} (${lower(tidy(label))})` : tidy(label)
+    // the number once: "40,000 tracking events a day", or a change card's label alone
+    // ("report time, from 6 hours to 20 minutes"), which already says both numbers
+    const label = /\d/.test(best.value) ? proofPhrase(best) : best.label
+    const what = best.did ? `${tidy(best.did)} (${asSaid(tidy(label))})` : tidy(label)
     return best.where ? `${what} at ${best.where.trim()}` : what
   }
   const point = profile.points[0]
@@ -336,8 +346,10 @@ export function whyFits(profile: Pick<Profile, 'points'>, title: string, why?: s
 export function inFirstPerson(point: string): string {
   const m = point.match(/^([A-Z][a-z]+)(\s.*)$/)
   if (!m || /^I\s/.test(point) || /^(Is|Has|Was|Does|This|Its|Plus|Across)$/.test(m[1]!))
-    return lower(point)
+    return asSaid(point)
   const w = m[1]!.toLowerCase()
+  // "Deployed a custom analytics engine" -> "I deployed a custom analytics engine"
+  if (startsWithVerb(m[1]!)) return `I ${w}${m[2]}`
   const verb = /(ch|sh|ss|x|z)es$/.test(w)
     ? w.slice(0, -2)
     : /[^aeiou]ies$/.test(w)
@@ -345,7 +357,7 @@ export function inFirstPerson(point: string): string {
       : /[^s]s$/.test(w)
         ? w.slice(0, -1)
         : null
-  return verb ? `I ${verb}${m[2]}` : lower(point)
+  return verb ? `I ${verb}${m[2]}` : asSaid(point)
 }
 
 /** What the sender built or shipped lately: their creator line, else their first project */
@@ -423,7 +435,9 @@ export function draftTouch(t: TouchInput): TouchDraft {
           hi,
           `When we talked about ${s ? quoted(s) : SAID_SLOT}, I came away wanting to work on exactly that. ${company} just posted the ${title} role${url ? `: ${url}` : '.'}`,
           fits && `It's close to what I do now: ${inFirstPerson(fits)}.`,
-          "Would you be open to passing my name to the hiring manager? I'm happy to send whatever would help, and there's a short blurb below you can forward. No problem at all if the timing isn't right.",
+          "Would you be open to passing my name to the hiring manager? I'm happy to send whatever would help, and there's a short blurb below you can forward.",
+          // the way out, on its own and meant: a no should cost them nothing
+          WAY_OUT,
           sign('Thank you,'),
         ),
         blurb: blurbFor(t, title),
@@ -444,6 +458,10 @@ export function draftTouch(t: TouchInput): TouchDraft {
   }
 }
 
+/** How the referral ask lets them say no, as its own sentence */
+export const WAY_OUT =
+  "If the timing's wrong or it isn't a fit, no worries at all, and thank you for the conversation either way."
+
 /** The blurb's most words: short enough to forward without editing */
 export const BLURB_WORDS = 70
 
@@ -455,9 +473,10 @@ function blurbFor(t: TouchInput, title: string): string {
   const name = t.profile.sender.name.trim()
   const first = firstName(name)
   const role = t.profile.sender.role?.trim()
-  const r0 = role ? lower(tidy(role)) : ''
+  // "a Forward Deployed Engineer" keeps its title case; "a forward deployed engineer" its own
+  const r0 = role ? asSaid(tidy(role)) : ''
   const who = r0 ? `${name}, ${/^[aeiou]/i.test(r0) ? 'an' : 'a'} ${r0},` : name
-  const result = resultFor(t.profile, title)
+  const result = resultFor(t.profile, title, `${t.role?.why ?? ''} ${t.company}`)
   const film = t.share ? `${first} made a 30-second film for ${t.company}: ${t.share}` : null
   const parts = (r: string | null) =>
     [
