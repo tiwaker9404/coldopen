@@ -9,7 +9,8 @@
  * The films are the messages eval's (evals/fixture-films.ts): 3 fixture sites, with and without
  * their latest post, and the sender's saved homework. Each is made twice, with two job seekers:
  * the fixture candidate (not coldopen's maker, so no creator line) and Ashwin's FDE profile (his
- * hand-checked proof, and coldopen as what he built). That's 12 films, 24 messages (the email and
+ * hand-checked proof, coldopen as what he built, and his own saved homework per site: ASHWIN in
+ * fixture-films.ts, with none on the film that has their latest post). That's 12 films, 24 messages (the email and
  * the after-accept), 6 distinct films on screen, and 6 referral asks with their blurbs.
  *
  * The model writes the messages, as a real film would; the film's script comes from the built-in
@@ -54,7 +55,14 @@ import { LocalContext } from '../../src/runtime/local.ts'
 import { buildStoryboard, type Storyboard } from '../../src/script/storyboard.ts'
 import { type Profile, ProfileSchema } from '../../src/script/types.ts'
 import { deterministicScript } from '../../src/script/writer.ts'
-import { CREATOR, homeworkFor, MESSAGES_NOW, publishedFor, SENDER } from '../fixture-films.ts'
+import {
+  ASHWIN,
+  CREATOR,
+  homeworkFor,
+  MESSAGES_NOW,
+  publishedFor,
+  SENDER,
+} from '../fixture-films.ts'
 import { asReceived, filmLines } from './items.ts'
 import {
   FREE_TOKENS_A_MINUTE,
@@ -290,8 +298,11 @@ async function main() {
         )
         for (const homework of [null, homeworkFor(site)]) {
           const variant = homework ? 'research' : 'plain'
-          const given = SENDER[`${site}_candidate_${variant}`]
-          if (!given) throw new Error(`no sender homework for ${site}_candidate_${variant}`)
+          // Ashwin's films carry his own saved homework; the fixture candidate's, the messages eval's
+          const saved =
+            key === 'ashwin' ? `${site}_ashwin_${variant}` : `${site}_candidate_${variant}`
+          const given = (key === 'ashwin' ? ASHWIN : SENDER)[saved]
+          if (!given) throw new Error(`no sender homework for ${saved}`)
           const id = `${filmId}_${variant}`
           process.stdout.write(`writing ${id}… `)
           const r = await messagesFor(

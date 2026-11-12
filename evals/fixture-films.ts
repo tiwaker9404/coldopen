@@ -133,3 +133,39 @@ export const CREATOR = {
   url: 'https://tiwaker9404.github.io/coldopen/',
   line: 'An open-source agent that turns a company site into an on-brand pitch',
 }
+
+/**
+ * Ashwin's own homework for his films in the judged eval, as he'd save it after using each
+ * product: one thing he noticed (in his words, no numbers) and a question that names a part of
+ * the product, not a kind of customer. On each site the film with their latest post has none, so
+ * the opening falls back to what they published newest, as a film without homework does.
+ */
+export const ASHWIN: Record<string, { hw: SenderHomework; creator: boolean }> = (() => {
+  const saved = {
+    parcelpine: {
+      detail:
+        'when I started a return for a size swap, the exchange page offered the next size up with bonus credit before it ever showed me the refund',
+      question:
+        'When a fraud check flags a serial returner, does the shopper still see the exchange offer, or only the refund?',
+    },
+    northwind: {
+      detail:
+        "the load timeline pulled the carrier's ELD pings in on its own, so I never had to ask a driver where the truck was",
+      question:
+        'When a routing agent moves a dock appointment, does the exception alert go to the account owner as well, or only to the carrier?',
+    },
+    lumen: {
+      detail:
+        "the clinician summary showed only what changed since the last visit, with the patient's own words one click away",
+      question:
+        "Do clinicians read the intake note inside the EHR first, or on Lumen's one-screen summary?",
+    },
+  }
+  const none = { detail: null, question: null, built: null }
+  return Object.fromEntries(
+    Object.entries(saved).flatMap(([site, s]) => [
+      [`${site}_ashwin_plain`, { hw: { ...s, built: null }, creator: true }],
+      [`${site}_ashwin_research`, { hw: none, creator: true }],
+    ]),
+  )
+})()

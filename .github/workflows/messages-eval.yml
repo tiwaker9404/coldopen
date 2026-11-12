@@ -38,9 +38,13 @@ jobs:
           --base-url https://api.groq.com/openai/v1
           --pace 40
           --out messages-eval.md
+      # the report goes in the log too: sessions that build coldopen can read a run's log, but not
+      # its job summary or its artifacts
       - name: Job summary
         if: always()
-        run: test -f messages-eval.md && cat messages-eval.md >> "$GITHUB_STEP_SUMMARY" || true
+        run: |
+          test -f messages-eval.md && cat messages-eval.md >> "$GITHUB_STEP_SUMMARY" || true
+          test -f messages-eval.md && cat messages-eval.md || true
       - uses: actions/upload-artifact@v7
         if: always()
         with: { name: messages-eval, path: messages-eval.md, if-no-files-found: ignore }

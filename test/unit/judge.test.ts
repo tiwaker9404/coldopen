@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { ASHWIN, FEEDS } from '../../evals/fixture-films.ts'
 import { asReceived, filmLines } from '../../evals/judge/items.ts'
 import {
   type Complete,
@@ -339,5 +342,39 @@ describe('the summary', () => {
     expect(review).toContain('The judge: The tease is abstract.')
     // Ashwin reads the draft as it was sent, name and all
     expect(review).toContain('Hi Sam, from Alex Rivera')
+  })
+})
+
+describe("Ashwin's homework in the judged eval: what a real user would save", () => {
+  const sites = Object.keys(FEEDS)
+  const page = (site: string) =>
+    readFileSync(join(import.meta.dirname, `../../fixtures/sites/${site}/index.html`), 'utf8')
+      .replace(/<style[\s\S]*?<\/style>/g, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .toLowerCase()
+
+  it('saves a detail and a question on one film per site, and nothing on the one with their latest post', () => {
+    for (const site of sites) {
+      const plain = ASHWIN[`${site}_ashwin_plain`]!.hw
+      const research = ASHWIN[`${site}_ashwin_research`]!.hw
+      expect(plain.detail, site).toBeTruthy()
+      expect(plain.question, site).toMatch(/\?$/)
+      expect(research).toEqual({ detail: null, question: null, built: null })
+    }
+  })
+
+  it('asks about a part of their product, not a kind of customer, in plain words with no numbers', () => {
+    for (const site of sites) {
+      const { detail, question } = ASHWIN[`${site}_ashwin_plain`]!.hw
+      const text = page(site)
+      // two words in a row from their own page: a named part of the product ("fraud check")
+      const pairs = (s: string) =>
+        (s.toLowerCase().match(/[a-z][a-z-]+/g) ?? [])
+          .map((w, i, ws) => `${w} ${ws[i + 1] ?? ''}`)
+          .filter((p) => text.includes(p.replace(/s\b/g, '')) && p.length > 9)
+      expect(pairs(question!).length, question!).toBeGreaterThan(0)
+      expect(question).not.toMatch(/\bmost (shippers|clinics|brands|customers)\b/i)
+      for (const line of [detail!, question!]) expect(line).not.toMatch(/\d/)
+    }
   })
 })
