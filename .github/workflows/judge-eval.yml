@@ -1,0 +1,64 @@
+name: Judged eval
+
+# Reads a job seeker's messages, films and referral asks the way a busy founder would: Groq's
+# gpt-oss-120b writes the messages for 12 fixture films, then scores every email, after-accept,
+# film and referral ask on a short rubric, and writes them all out in full for Ashwin to read
+# aloud. Advisory only: nothing in CI depends on it, and it never fails on a low score.
+# Started by hand, or by a push to a batch branch that changes the judge, so it can run before
+# the batch reaches main (a dispatch-only workflow can't be started from a branch until main has
+# it). Reads the existing LLM_API_KEY secret, writes the summary and the review to the job
+# summary, uploads the review, and never commits.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["batch/**"]
+    paths:
+      - "evals/judge/**"
+      - "evals/fixture-films.ts"
+      - ".github/workflows/judge-eval.yml"
+
+permissions:
+  contents: read
+
+# one group per commit: a run stuck in GitHub's queue can't be cancelled, and a group per branch
+# would hold every later run behind it
+concurrency:
+  group: judge-eval-${{ github.sha }}
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    # about 18 model calls for the messages and 30 for the judge, paced for 8k tokens a minute
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+        env: { PUPPETEER_SKIP_DOWNLOAD: "1" }
+      # the fixture sites are read in headless Chromium, as a film's research step reads them
+      - run: pnpm exec puppeteer browsers install chrome
+      - name: Judge the messages and films with Groq
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        # every call (messages and judge) is paced for the free tier; a rate limit that won't
+        # clear marks the rest "not scored" and the run still writes its report
+        run: >
+          node evals/judge/run.ts
+          --model openai/gpt-oss-120b
+          --base-url https://api.groq.com/openai/v1
+          --out-dir .
+      - name: Job summary
+        if: always()
+        run: |
+          test -f judge-summary.md && cat judge-summary.md >> "$GITHUB_STEP_SUMMARY" || true
+          test -f judge-review.md && { echo; echo '---'; echo; cat judge-review.md; } >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: judge-review
+          path: |
+            judge-review.md
+            judge-summary.md
+          if-no-files-found: ignore

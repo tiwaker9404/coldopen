@@ -249,7 +249,7 @@ The counter, "x of 10 this week", is the recruiter's playbook target (10 people 
 ## Quality, measured
 
 ```bash
-pnpm test         # 723 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish, the review before sending
+pnpm test         # 788 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish, the review before sending
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 180 quality checks across 16 evals on 3 fixture companies x 2 presets
 ```
@@ -275,6 +275,8 @@ Run `pnpm evals --model <name>` to grade a real model's scripts the same way.
 | Email             |                     67% |                        8% |
 
 Every kind of draft falls back at most 8% of the time, and a fallback still passes every check.
+
+**Read like a founder.** Checks catch rule breaks, not whether a message is warm or a reel makes a stranger want to talk. The [judged eval](.github/workflows/judge-eval.yml) has the same free model read a job seeker's work the way the person receiving it would: 24 messages (the email and the after-accept), 6 films' on-screen lines and 6 referral asks with their blurbs, each scored 1 to 5 on a short rubric (specific to them, homework visible, sounds like a person, the fact is worth quoting, the proof lands, easy to forward…) with a yes or no ("would you reply", "would you take a 15-minute call", "would you pass this on"). The judge never sees the sender's name, the targets or the checks. It writes every draft out in full with its scores ([evals/judge](evals/judge/)), for reading aloud. Advisory only: it never fails CI.
 
 **Brand extraction, measured on live sites.** The [extract eval](evals/extract/) reads 20 real homepages, from YC startups to Apple, Nike and the BBC, one at a time with the network guard on, and checks each field automatically. A pass means plausible, not hand-verified. On 10 Nov ([run](https://github.com/tiwaker9404/coldopen/actions/runs/42861541477)), 14 of 20 sites passed every field:
 
