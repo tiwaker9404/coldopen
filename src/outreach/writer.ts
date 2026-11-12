@@ -615,7 +615,10 @@ export function resend(
     case 'no_proof_numbers':
       return `Take out ${quoted ? `"${quoted}"` : 'the number'}: the film shows the numbers, so the message has none`
     case 'homework_grounded':
-      return `Take out "${quoted ?? 'the claim'}": only say you used, tried or built something when HOMEWORK or CREATOR says so, in the sender's words; otherwise write about their product without "I tried" or "I used"`
+      // a feature of theirs nothing names, or an experience the homework doesn't say
+      return /^Says "/.test(c.why ?? '')
+        ? `Take out "${quoted ?? 'that feature'}": only name a product or feature of theirs that NOTICED, THEIR LATEST POST, NEWEST, FIRST IDEA or HOMEWORK names, in their words`
+        : `Take out "${quoted ?? 'the claim'}": only say you used, tried or built something when HOMEWORK or CREATOR says so, in the sender's words; otherwise write about their product without "I tried" or "I used"`
     case 'names_company':
       return `Say "${o.company ?? 'the company'}" in full, exactly as written in COMPANY`
     case 'film_once':

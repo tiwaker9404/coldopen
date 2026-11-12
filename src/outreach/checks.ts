@@ -586,7 +586,10 @@ const REF_STOP = new Set(
  */
 export function madeUpFeatures(text: string, company: string, theirs: string): string[] {
   const names = [company.trim(), company.trim().split(/\s+/)[0]!].filter((n) => n.length >= 2)
-  const open = straight(text).replace(QUOTED, ' ')
+  // the model writes non-breaking hyphens ("per‑zone"): one name, as with a plain hyphen
+  const open = straight(text)
+    .replace(/[\u2010\u2011\u2012]/g, '-')
+    .replace(QUOTED, ' ')
   // three letters count here: "API" is a feature's name as much as "retry" is
   const wordsOf = (x: string) =>
     new Set(
@@ -598,7 +601,7 @@ export function madeUpFeatures(text: string, company: string, theirs: string): s
         .filter((w) => w.length >= 3 && !REF_STOP.has(w))
         .map((w) => w.replace(/(?<=[a-z]{3})(es|s)$/, '')),
     )
-  const known = wordsOf(theirs)
+  const known = wordsOf(theirs.replace(/[\u2010\u2011\u2012]/g, '-'))
   const refs = new RegExp(
     // "your X", or their name as an owner ("Parcelpine's X"); "with Parcelpine today" names nothing
     `\\b(?:your|(?:${names.map((n) => escapeRe(straight(n))).join('|')})'s)\\s+((?:[a-z][\\w-]*\\s*){1,3})`,
@@ -740,7 +743,12 @@ function voiceChecks(kind: MessageKind, subject: string, body: string, ctx: Chec
       !names.some((n) => straight(x).toLowerCase().includes(n)) &&
       !sources.some((src) => overlap(x, src) >= HOMEWORK_OVERLAP),
   )
-  const invented = madeUpFeatures(all, ctx.company, ctx.theirs ?? '')
+  // their published text, or the sender's own saved homework, may name a feature
+  const invented = madeUpFeatures(
+    all,
+    ctx.company,
+    [ctx.theirs ?? '', ...(ctx.own?.claims ?? [])].join('\n'),
+  )
   out.push(
     ungrounded.length
       ? {

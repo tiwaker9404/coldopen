@@ -9,6 +9,7 @@ import {
   FILM_LENGTH,
   knownFor,
   MESSAGE_LIMITS,
+  madeUpFeatures,
   passed,
   RESEARCH_OVERLAP,
 } from '../../src/outreach/checks.ts'
@@ -534,6 +535,17 @@ describe("a job seeker's messages, checked in the voice", () => {
         'homework_grounded',
       )?.ok,
     ).toBe(false)
+    // so does one the sender's own homework names, even with the model's non-breaking hyphen
+    expect(
+      madeUpFeatures(
+        "Parcelpine's per\u2011zone breakdown saved me a spreadsheet.",
+        'Parcelpine',
+        'Parcelpine\nthe per-zone breakdown in the rate view saved me a spreadsheet',
+      ),
+    ).toEqual([])
+    expect(
+      madeUpFeatures("Parcelpine's per\u2011zone dashboard", 'Parcelpine', 'Parcelpine'),
+    ).toEqual(["Parcelpine's per-zone dashboard"])
     // a feature they do name passes
     const real = { ...subjectOnly, subject: "Northwind Freight's freight tracking" }
     expect(rule(checkMessage('email', real, nw), 'homework_grounded')?.ok).toBe(true)
