@@ -3,14 +3,14 @@
 Does "this line of your record answers that requirement" agree with a person's judgment?
 128 hand-labeled pairs (63 that answer, the rest that don't, many of
 them sharing words without answering). Each model's cut-off is picked on half the pairs and
-scored on the other 64, so these numbers are out of sample. Ran in 2s.
+scored on the other 64, so these numbers are out of sample. Ran in 1s.
 
 | Matcher                           | Precision | Recall |   F1 | Accuracy | Notes                       |
 | --------------------------------- | --------: | -----: | ---: | -------: | --------------------------- |
 | Shared words (keyword)            |       83% |    15% | 0.25 |      53% | AUC 0.58                    |
-| all-MiniLM-L6-v2 (cut-off 0.33)   |       73% |    56% | 0.63 |      66% | AUC 0.75, 1.3 ms a sentence |
+| all-MiniLM-L6-v2 (cut-off 0.33)   |       73% |    56% | 0.63 |      66% | AUC 0.75, 1.5 ms a sentence |
 | all-MiniLM-L6-v2 + keyword        |       73% |    56% | 0.63 |      66% | answered if either says so  |
-| bge-small-en-v1.5 (cut-off 0.605) |       74% |    76% | 0.75 |      73% | AUC 0.83, 2.3 ms a sentence |
+| bge-small-en-v1.5 (cut-off 0.605) |       74% |    76% | 0.75 |      73% | AUC 0.83, 2.5 ms a sentence |
 | bge-small-en-v1.5 + keyword       |       74% |    76% | 0.75 |      73% | answered if either says so  |
 
 Precision: of the requirements it says you answer, how many you do. Recall: of the ones you
