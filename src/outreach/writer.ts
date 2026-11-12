@@ -252,7 +252,11 @@ function teaseLines(tease: string, link: string): string[] {
   // no [film], or two: written as is, so has_link says what's wrong
   if (parts.length !== 2) return [sentence(t.replaceAll(FILM, link))]
   const [before, after] = parts.map((p) => p.trim()) as [string, string]
-  return [...(before ? [before] : []), link, ...(after ? [after] : [])]
+  // "…into a 30-second film: <the idea> [film]." – the full stop belongs to the idea, above the
+  // link, not on a line of its own under the GIF
+  if (/^[.!]?$/.test(after))
+    return [...(before ? [/:$/.test(before) ? before : sentence(before)] : []), link]
+  return [...(before ? [before] : []), link, after]
 }
 
 /**

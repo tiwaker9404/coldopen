@@ -258,6 +258,29 @@ describe("a job seeker's drafts, in the voice", () => {
     expect(d.afterAccept.split(LINK_ROOM)).toHaveLength(2)
     expect(d.inmail.body.endsWith('Thank you for your time,\nAlex')).toBe(true)
     expect(d.note).toMatch(/^Hi \[First name\], .* – Alex$/)
+
+    // a model that ends the tease "… <the idea> [film]." keeps the full stop with the idea, never
+    // on a line of its own under the GIF (the judge read one)
+    const dotted = assemble(
+      {
+        ...reply,
+        email: {
+          ...reply.email,
+          tease: `I put one idea for Parcelpine into a 30-second film: stream returns into one live view ${FILM}.`,
+        },
+      },
+      film,
+      withCreator,
+      LINK_ROOM,
+      { opener: 'homework', research: true },
+    )
+    const ls = dotted.email.body.split('\n')
+    const i = ls.indexOf(LINK_ROOM)
+    expect(ls[i - 1]).toBe(
+      'I put one idea for Parcelpine into a 30-second film: stream returns into one live view.',
+    )
+    expect(ls[i + 1]).toBe('')
+    expect(dotted.email.body).not.toMatch(/\n[.!]\n/)
   })
 
   it('cuts a creator line that says "film" to the name, and drops it without profile.creator', () => {
