@@ -14,8 +14,10 @@ import {
   type ProfileData,
   send,
   setApiKey,
+  type WarmLeads as WarmList,
 } from './api.ts'
 import { Board } from './Board.tsx'
+import { callLine, dueCount as countDue } from './callSheet.ts'
 import { DrawerBoundary } from './ErrorBoundary.tsx'
 import { FilmPanel } from './FilmPanel.tsx'
 import { FilmRow } from './FilmRow.tsx'
@@ -123,7 +125,11 @@ export function App() {
     queryKey: ['followups'],
     queryFn: () => api<{ data: unknown[] }>('/v1/followups'),
   })
-  const dueCount = followups.data?.data.length ?? 0
+  // warm-lead touches wait on the sender too; the same query WarmLeads reads, so marking one done
+  // updates the count straight away
+  const warm = useQuery({ queryKey: ['warm'], queryFn: () => api<WarmList>('/v1/warm') })
+  const due = { followUps: followups.data?.data.length ?? 0, warm: warm.data?.data.length ?? 0 }
+  const dueCount = countDue(due)
   // Pitch a role needs no profile: a recruiter arriving from a share page goes straight there
   const onboarding = !loading && noProfile && list.length === 0 && place !== 'pitch'
   const name = (f: Film) => nameOf(f, list)
@@ -232,7 +238,7 @@ export function App() {
             </>
           ) : (
             <>
-              <CallSheet list={list} due={dueCount} />
+              <CallSheet list={list} due={due} />
               <Composer
                 me={me.data}
                 profiles={profiles.data?.data ?? []}
@@ -360,14 +366,13 @@ function PageTitle({ title, sub, aside }: { title: string; sub: string; aside?: 
  * Today is the call sheet: on a set, the page that says what happens today. The date, then one
  * line on what needs you, most urgent first.
  */
-function CallSheet({ list, due }: { list: Film[]; due: number }) {
-  const rolling = list.filter((f) => f.status === 'queued' || f.status === 'running').length
-  const ready = list.filter((f) => f.status === 'succeeded' && !f.outreach).length
-  const parts = [
-    due > 0 && `${due} ${due === 1 ? 'follow-up' : 'follow-ups'} due`,
-    rolling > 0 && `${rolling} ${rolling === 1 ? 'film' : 'films'} in production`,
-    ready > 0 && `${ready} ready to send`,
-  ].filter(Boolean) as string[]
+function CallSheet({ list, due }: { list: Film[]; due: { followUps: number; warm: number } }) {
+  const line = callLine({
+    ...due,
+    rolling: list.filter((f) => f.status === 'queued' || f.status === 'running').length,
+    ready: list.filter((f) => f.status === 'succeeded' && !f.outreach).length,
+    anyFilms: list.length > 0,
+  })
   const day = new Date().toLocaleDateString(undefined, {
     weekday: 'long',
     month: 'long',
@@ -376,13 +381,7 @@ function CallSheet({ list, due }: { list: Film[]; due: number }) {
   return (
     <header className="call-sheet">
       <p className="call-day">Call sheet for {day}</p>
-      <p className="call-line">
-        {parts.length
-          ? `${parts.join(', ')}.`
-          : list.length
-            ? 'Nothing waiting on you. Make the next film.'
-            : 'Your first film is one link away.'}
-      </p>
+      <p className="call-line">{line}</p>
     </header>
   )
 }
