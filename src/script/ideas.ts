@@ -225,27 +225,27 @@ const KINDS: Kind[] = [
     work: /\b(migrat\w*|moved?|records?|databases?|oracle|postgres\w*)\b/i,
     suits: /record|data|chart|history|ehr|ledger|account/i,
     idea: (t, again) => (again ? `move ${t} onto one clean record` : `unify the data behind ${t}`),
-    start: 'one clean record for every account',
+    start: 'one clean record per account',
   },
   {
     work: /\b(etl|pipelines?|sync\w*|stream\w*|ingest\w*|feeds?|middleware|payloads?|apis?|integrat\w*)\b/i,
     suits: /timeline|check-in|track|feed|visib|pallet|load|data|lane|intake|form/i,
     idea: (t, again) =>
       again ? `sync ${t} with the tools customers use` : `stream ${t} into one live view`,
-    start: 'one view of every event as it lands',
+    start: 'one view of every event',
   },
   {
     work: /\b(agents?|llms?|ai|gpt|models?|chatbots?|nlp)\b/i,
     suits: /alert|exception|intake|question|support|fraud|message|form/i,
     idea: (t, again) => (again ? `let an agent triage ${t}` : `put an agent on ${t}`),
-    start: 'an agent that takes the first pass',
+    start: 'an agent on the first pass',
   },
   {
     work: /\b(analytics|dashboards?|reports?|reporting|insights?|metrics?|forecast\w*)\b/i,
     suits: /dashboard|return|exchange|shipper|clinic|stat|credit|order/i,
     idea: (t, again) =>
       again ? `show ${t} trends week by week` : `build a live dashboard for ${t}`,
-    start: 'a weekly view of what moves it',
+    start: 'a weekly view of what moves',
     people: true,
   },
   {
@@ -253,7 +253,7 @@ const KINDS: Kind[] = [
     suits: /check|fraud|exception|refund|alert|return/i,
     idea: (t, again) =>
       again ? `catch ${t} errors before they ship` : `stress-test ${t} before customers notice`,
-    start: 'checks that catch errors before customers do',
+    start: 'checks that catch errors first',
   },
   {
     work: /\b(deploy\w*|docker|aws|kubernetes|infra\w*|downtime|container\w*|cloud)\b/i,
@@ -262,20 +262,20 @@ const KINDS: Kind[] = [
       again
         ? `roll out ${t} changes one customer at a time`
         : `ship ${t} changes with zero downtime`,
-    start: 'changes rolled out one customer at a time',
+    start: 'rollouts one customer at a time',
   },
   {
     work: /\b(rbac|access|identit\w*|permissions?|auth\w*|security|compliance)\b/i,
     suits: /hipaa|security|data|record|account/i,
     idea: (t, again) => (again ? `log every change to ${t}` : `tighten who can change ${t}`),
-    start: 'a log of every change and who made it',
+    start: 'a log of every change',
   },
 ]
 const ANY: Kind = {
   work: /./,
   suits: /./,
   idea: (t) => `prototype the next step for ${t}`,
-  start: 'a small prototype of the next step',
+  start: 'a small prototype',
 }
 
 /**
@@ -480,6 +480,17 @@ export const pitchAsIdeas = (kit: Kit, profile: Pick<Profile, 'proof' | 'project
 
 /* ------------------------------------------------------------ the line under the fact */
 
+/** what people do with a product, as the name of the activity ("track freight" -> "freight tracking") */
+const ACTIVITY: Record<string, string> = {
+  track: 'tracking',
+  ship: 'shipping',
+  book: 'booking',
+  schedule: 'scheduling',
+  route: 'routing',
+  process: 'processing',
+  manage: 'management',
+}
+
 /**
  * What a quoted fact is about, in their words: the first of their things the fact names ("61% of
  * returns become exchanges" -> "returns"), else the noun it ends on after "on", "for" or "of"
@@ -496,9 +507,22 @@ export function subjectOf(kit: Kit, fact: Pick<Fact, 'text'>): string | null {
   const named = theirThings(kit)
     .map((t) => ({ t, i: at(t) }))
     .filter((x) => x.i >= 0)
-    .sort((a, b) => a.i - b.i)[0]
-  if (named) return named.t
+    .sort((a, b) => a.i - b.i)
+  // a thing they make reads as a place to start; a group of people ("shippers") doesn't
+  const thing = named.find((x) => !PEOPLE.test(x.t))
+  if (thing) return thing.t
   const first = kit.name.toLowerCase().split(/\s+/)[0]!
+  // "1,400+ shippers track freight on Northwind": what those people do there, "freight tracking"
+  const does = fact.text.match(
+    /\b(shippers|brands|clinics|patients|customers|teams|merchants|shoppers|users|clinicians|carriers|drivers|developers|engineers|stores|practices)\s+([a-z]+)\s+([a-z][a-z-]{3,})/i,
+  )
+  if (does) {
+    const [verb, object] = [does[2]!.toLowerCase(), does[3]!.toLowerCase()]
+    const ing = ACTIVITY[verb.replace(/s$/, '')]
+    if (!object.includes(first) && !NOT_A_THING.has(object))
+      return ing ? `${object} ${ing}` : object
+  }
+  if (named[0]) return named[0].t
   const tail = fact.text
     .trim()
     .replace(/[.!]$/, '')
@@ -511,7 +535,7 @@ export function subjectOf(kit: Kit, fact: Pick<Fact, 'text'>): string | null {
 /**
  * A job seeker's line under the quoted fact: its subject, and the first thing they'd build for it
  * from the same work their first idea rests on: "Parcelpine's returns are where I'd start: one
- * view of every event as it lands". It reads whole without the fact above it ("this number" didn't), so
+ * view of every event". It reads whole without the fact above it ("this number" didn't), so
  * it names the company. Longest first, only those that fit `max` words.
  */
 export function startLines(
@@ -526,9 +550,10 @@ export function startLines(
   const name = kit.name.trim()
   const first = name.split(/\s+/)[0]!
   const lines = subject
-    ? [`${name}'s ${subject}`, `${first}'s ${subject}`].map(
-        (s) => `${s} ${/[^s]s$/.test(subject) ? 'are' : 'is'} where I'd start: ${start}`,
-      )
+    ? [`${name}'s ${subject}`, `${first}'s ${subject}`]
+        // "Northwind Freight's freight tracking" says freight twice
+        .filter((s) => !twice(s))
+        .map((s) => `${s} ${/[^s]s$/.test(subject) ? 'are' : 'is'} where I'd start: ${start}`)
     : [`With ${name}, I'd start with ${start}`, `With ${first}, I'd start with ${start}`]
   return lines.filter((l) => words(l) <= max)
 }

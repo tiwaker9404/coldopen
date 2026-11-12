@@ -9,7 +9,14 @@ import {
   notAlone,
   standsAlone,
 } from '../../src/script/checks.ts'
-import { aboutText, ideaOf, ideasFor, subjectOf, theirThings } from '../../src/script/ideas.ts'
+import {
+  aboutText,
+  ideaOf,
+  ideasFor,
+  startLines,
+  subjectOf,
+  theirThings,
+} from '../../src/script/ideas.ts'
 import { buildStoryboard, captionFor, splitStat } from '../../src/script/storyboard.ts'
 import { LIMITS } from '../../src/script/taste.ts'
 import type { Script } from '../../src/script/types.ts'
@@ -812,6 +819,20 @@ describe("a job seeker's line under the quoted fact: its subject, and where they
     const l = deterministicScript(intake, seeker).insight.why
     expect(l).toMatch(/^Lumen( Health)?'s documentation is where I'd start: /)
     for (const why of [r, l]) expect(why).not.toMatch(/\bthis (number|claim)\b/i)
+  })
+
+  it('starts from what people do there, not from the people ("shippers track freight")', () => {
+    const counted = {
+      ...freight,
+      facts: [
+        ...freight.facts,
+        { id: 'f7', text: '1,400+ shippers track freight on Northwind', kind: 'stat' },
+      ],
+    } as unknown as BrandKit
+    expect(subjectOf(counted, counted.facts.at(-1)!)).toBe('freight tracking')
+    const why = startLines(counted, counted.facts.at(-1)!, seeker)[0]
+    // "Northwind Freight's freight tracking" would say freight twice
+    expect(why).toMatch(/^Northwind's freight tracking is where I'd start: /)
   })
 
   it('makes sense alone, passes the job-pitch check and fits the why limit', () => {
