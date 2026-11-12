@@ -12,15 +12,15 @@ The model writes six short lines and makes two choices: which fact from the comp
 
 ## Word limits
 
-| Line             | Max words | Why                                                     |
-| ---------------- | --------: | ------------------------------------------------------- |
-| Hook             |         6 | Read in under a second, before anyone scrolls           |
-| What we noticed  |        12 | Sits above a moving screenshot; it has to be glanceable |
-| Why it matters   |        14 | One idea, not a paragraph                               |
-| Pitch headline   |        10 | Display type at 7.6% of the frame height                |
-| Each pitch point |        10 | Three of them fit without shrinking                     |
-| A job seeker's idea |     16 | "I'd <verb> <their thing> — like <what I did>" still fits |
-| Ask              |         8 | One question, easy to say yes to                        |
+| Line                | Max words | Why                                                       |
+| ------------------- | --------: | --------------------------------------------------------- |
+| Hook                |         6 | Read in under a second, before anyone scrolls             |
+| What we noticed     |        12 | Sits above a moving screenshot; it has to be glanceable   |
+| Why it matters      |        14 | One idea, not a paragraph                                 |
+| Pitch headline      |        10 | Display type at 7.6% of the frame height                  |
+| Each pitch point    |        10 | Three of them fit without shrinking                       |
+| A job seeker's idea |        16 | "I'd <verb> <their thing> — like <what I did>" still fits |
+| Ask                 |         8 | One question, easy to say yes to                          |
 
 ## Grounding
 
@@ -86,13 +86,13 @@ The messages that go with a film are checked too ([src/outreach/checks.ts](../sr
 
 A job seeker's connection note, after-accept message, InMail and email are also checked in the voice below (`candidate: true` in the check context; `voiceFor()` fills in the rest):
 
-| Rule                | What it checks                                                                                                                                                                                                       |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `not_job_pitch`     | No job words (`JOB_WORDS`: role, position, opening, hiring, apply, application, candidate, résumé, job…), subject included. A title quoted from their own post doesn't count inside quotation marks                  |
-| `thanks`            | The after-accept message, InMail and email end with thanks (`THANKS`: "Thanks for reading", "Thank you for your time"…) just before the signature                                                                    |
-| `no_proof_numbers`  | None of the proof values the film shows. The 15-minute offer and the film's length don't count                                                                                                                       |
-| `curious`           | The email and after-accept message ask one question about their work: it shares a specific word with their site, posts or your notes on their product (not their brand name, and not a category such as shippers, customers or teams), or it's your saved question word for word |
-| `one_ask`           | In the voice: the email asks its curious question and may add the 15-minute offer as a second question (or say it as a statement), never two asks for time. The note may ask one curious question, never for time    |
+| Rule                | What it checks                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `not_job_pitch`     | No job words (`JOB_WORDS`: role, position, opening, hiring, apply, application, candidate, résumé, job…), subject included. A title quoted from their own post doesn't count inside quotation marks                                                                                                                                                            |
+| `thanks`            | The after-accept message, InMail and email end with thanks (`THANKS`: "Thanks for reading", "Thank you for your time"…) just before the signature                                                                                                                                                                                                              |
+| `no_proof_numbers`  | None of the proof values the film shows. The 15-minute offer and the film's length don't count                                                                                                                                                                                                                                                                 |
+| `curious`           | The email and after-accept message ask one question about their work: it shares a specific word with their site, posts or your notes on their product (not their brand name, and not a category such as shippers, customers or teams), or it's your saved question word for word                                                                               |
+| `one_ask`           | In the voice: the email asks its curious question and may add the 15-minute offer as a second question (or say it as a statement), never two asks for time. The note may ask one curious question, never for time                                                                                                                                              |
 | `homework_grounded` | Every line of every draft, subject and tease included: a first-person product claim ("I tried", "I used", "I've been using", "when I") matches your saved detail or built line (overlap ≥ 0.5) or names what you built, and a feature of theirs ("your retry API", "<Company>'s …") is one their published text or your homework names. No homework, no claims |
 
 A failed rule comes back as a flag with a plain sentence saying why, which the film panel shows under "Why this is the template version". When code changes a kept draft (for example, leaving out the funding line to stay under 125 words), that's a note, not a flag.
