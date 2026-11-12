@@ -78,9 +78,10 @@ describe('the built-in writer varies by company', () => {
           const p = profile(preset)
           const base = deterministicScript(k, p)
           const who = p.sender.company ? `${p.sender.company} helps` : 'We help'
+          // a job seeker's line under the fact is built from the fact and their first idea
           const whys =
             preset === 'candidate'
-              ? [...(stat ? WHY.candidateStat : WHY.candidateClaim)]
+              ? [base.insight.why]
               : (stat ? WHY.salesStat : WHY.salesClaim).map((f) => f(who))
           const tries: Script[] = [
             ...HOOKS.map((h) => h(n))

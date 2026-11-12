@@ -9,7 +9,7 @@ import {
   notAlone,
   standsAlone,
 } from '../../src/script/checks.ts'
-import { aboutText, ideaOf, theirThings } from '../../src/script/ideas.ts'
+import { aboutText, ideaOf, ideasFor, subjectOf, theirThings } from '../../src/script/ideas.ts'
 import { buildStoryboard, captionFor, splitStat } from '../../src/script/storyboard.ts'
 import { LIMITS } from '../../src/script/taste.ts'
 import type { Script } from '../../src/script/types.ts'
@@ -772,4 +772,78 @@ describe("a job seeker's pitch: ideas for their product, and the proof that fits
     )
   })
   // sales, recruiter and hiring films and prompts: film-presets.test.ts snapshots them unchanged
+})
+
+describe("a job seeker's line under the quoted fact: its subject, and where they'd start", () => {
+  const seeker = profile('candidate')
+  const freight = {
+    ...kit,
+    facts: [
+      ...kit.facts,
+      { id: 'f4', text: 'Exception alerts', kind: 'claim' },
+      { id: 'f5', text: 'Dock scheduling', kind: 'claim' },
+      { id: 'f6', text: 'Carrier check-ins', kind: 'claim' },
+    ],
+  } as unknown as BrandKit
+  const returns = {
+    ...kit,
+    name: 'Parcelpine',
+    headline: 'Returns that keep the customer',
+    description:
+      'Parcelpine turns returns into exchanges for Shopify brands, with instant store credit and fraud checks built in.',
+    facts: [
+      { id: 'f1', text: 'Fraud checks', kind: 'claim' },
+      { id: 'f2', text: '61% of returns become exchanges or store credit', kind: 'stat' },
+    ],
+  } as unknown as BrandKit
+  const intake = {
+    ...kit,
+    name: 'Lumen Health',
+    headline: 'Patient intake that writes itself.',
+    description: "Lumen turns a patient's own words into a structured intake note.",
+    facts: [{ id: 'f1', text: '11 minutes saved per visit on documentation', kind: 'stat' }],
+  } as unknown as BrandKit
+
+  it('names what the fact is about, not "this number"', () => {
+    expect(subjectOf(returns, returns.facts[1]!)).toBe('returns')
+    expect(subjectOf(intake, intake.facts[0]!)).toBe('documentation')
+    const r = deterministicScript(returns, seeker).insight.why
+    expect(r).toMatch(/^Parcelpine's returns are where I'd start: /)
+    const l = deterministicScript(intake, seeker).insight.why
+    expect(l).toMatch(/^Lumen( Health)?'s documentation is where I'd start: /)
+    for (const why of [r, l]) expect(why).not.toMatch(/\bthis (number|claim)\b/i)
+  })
+
+  it('makes sense alone, passes the job-pitch check and fits the why limit', () => {
+    for (const k of [freight, returns, intake]) {
+      const s = deterministicScript(k, seeker)
+      expect(standsAlone({ text: s.insight.why }, k), s.insight.why).toBe(true)
+      expect(jobPitchIn(s.insight.why, k.name)).toEqual([])
+      expect(s.insight.why.split(/\s+/).length).toBeLessThanOrEqual(LIMITS.why)
+      expect(checkScript(s, k, seeker)).toEqual([])
+    }
+  })
+
+  it('takes the first thing to build from the same work as pitch point 1, without repeating it', () => {
+    const s = deterministicScript(returns, seeker)
+    const first = ideasFor(returns, seeker, rankProof(seeker.proof, aboutText(returns)))[0]!
+    expect(s.insight.why.endsWith(first.start)).toBe(true)
+    expect(s.insight.why.toLowerCase()).not.toContain(ideaOf(s.pitch.points[0]!)!.toLowerCase())
+  })
+
+  it('flags a model line that leans on the fact above it, or repeats pitch point 1', () => {
+    const s = deterministicScript(returns, seeker)
+    const leaning = {
+      ...s,
+      insight: { ...s.insight, why: "I'd start by asking which customers move this number most" },
+    }
+    expect(checkScript(leaning, returns, seeker).join('\n')).toMatch(
+      /insight.why .* doesn't make sense read alone/,
+    )
+    const again = {
+      ...s,
+      insight: { ...s.insight, why: `Parcelpine: ${ideaOf(s.pitch.points[0]!)}` },
+    }
+    expect(checkScript(again, returns, seeker).join('\n')).toMatch(/repeats pitch.points\[0\]/)
+  })
 })

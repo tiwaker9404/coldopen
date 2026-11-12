@@ -1,7 +1,7 @@
 import type { BrandKit, Fact } from '../brand/types.ts'
 import { jobWordsIn } from '../outreach/voice.ts'
 import { rankProof, relevance } from '../profile/proof.ts'
-import { aboutText, notAnIdea, pitchAsIdeas } from './ideas.ts'
+import { aboutText, ideaOf, notAnIdea, pitchAsIdeas } from './ideas.ts'
 import { BANNED, LIMITS } from './taste.ts'
 import type { Profile, Script } from './types.ts'
 
@@ -388,6 +388,24 @@ export function checkScript(
           ? 'insight.why must connect it to the person watching (use "you" or "your"); a compliment alone is filler'
           : `insight.why must connect the fact to what ${profile.sender.company ?? 'the sender'} offers (name it, or the problem it solves); a compliment alone is filler`,
     )
+  // a job seeker's line under the fact is read alone (the judge: "every line makes sense alone"),
+  // so it names what the fact is about rather than "this number", and isn't pitch point 1 again
+  if (profile.preset === 'candidate' && !kit.job) {
+    const alone = notAlone({ text: script.insight.why }, kit)
+    if (alone)
+      v.push(
+        `insight.why "${script.insight.why}" doesn't make sense read alone (${alone}); name what the fact is about and one thing you'd build for it: "${kit.name}'s <their thing> is where I'd start: <what you'd build>"`,
+      )
+    const idea = ideaOf(script.pitch.points[0] ?? '')?.toLowerCase()
+    const why = script.insight.why.trim().toLowerCase()
+    if (
+      script.pitch.points[0] &&
+      (why === script.pitch.points[0].trim().toLowerCase() || (idea && why.includes(idea)))
+    )
+      v.push(
+        'insight.why repeats pitch.points[0] word for word; say the first thing you would build for the fact instead',
+      )
+  }
   // a job seeker's film reads like a builder's take on their product, not an application: the
   // hook, noticed, why, headline and ask never say role, job, hiring or "hire me"
   if (profile.preset === 'candidate') {

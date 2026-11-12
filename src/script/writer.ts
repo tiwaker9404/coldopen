@@ -4,8 +4,24 @@ import type { ChatMessage } from '../llm/types.ts'
 import { JOB_WORDS } from '../outreach/voice.ts'
 import { isDuty } from '../profile/pitch.ts'
 import { rankProof } from '../profile/proof.ts'
-import { checkScript, clampScript, jobPitchIn, overlap, quotableFacts, words } from './checks.ts'
-import { aboutText, ideasFor, pitchAsIdeas, proofFor, theirThings } from './ideas.ts'
+import {
+  checkScript,
+  clampScript,
+  jobPitchIn,
+  overlap,
+  quotableFacts,
+  standsAlone,
+  words,
+} from './checks.ts'
+import {
+  aboutText,
+  ideaOf,
+  ideasFor,
+  pitchAsIdeas,
+  proofFor,
+  startLines,
+  theirThings,
+} from './ideas.ts'
 import { monthOf } from './storyboard.ts'
 import { LIMITS, TASTE_RULES } from './taste.ts'
 import type { Profile, Script, ScriptMeta } from './types.ts'
@@ -26,7 +42,7 @@ const CANDIDATE_NEVER = `${JOB_WORDS.filter((w) => w !== 'openings' && w !== 'r�
 const PRESETS: Record<Profile['preset'], string> = {
   sales:
     'The sender sells the offer below to companies like this one. The film has one job: earn a reply by proving the sender understood this business. Talk about their customers and outcomes, not your features.',
-  candidate: `The sender is a curious builder writing to people at this company about their product. They know from the sender's profile that the sender is looking for work, so the film never says so: it reads like a builder's take on what they make, not an application. Show that the sender understands what the company builds and who it serves. pitch.headline names what the sender would try or build with this company's product, or for its customers, in 4 to 10 words grounded in the sender's points and the fact you quote ("What I'd build next for <their thing>"), never "why I fit". pitch.points are 2 or 3 ideas for their product, each at most ${LIMITS.idea} words, written "I'd <verb> <their thing> — like <what the sender did, short>": the thing is one of THEIR THINGS or a word from their facts, and the "like …" is one proof's "did" or a project, said short ("like the <thing they made> I <verb>ed"). Never copy one of the sender's points as a pitch point. insight.why says what the sender would do with that fact ("I'd …"). The cta is a warm invitation to talk about their work, at most 8 words ("Trade notes on <their thing>?", "15 minutes on what's next?"). Never write ${CANDIDATE_NEVER} in the hook, noticed, why, headline or cta. Write in the first person ("I").`,
+  candidate: `The sender is a curious builder writing to people at this company about their product. They know from the sender's profile that the sender is looking for work, so the film never says so: it reads like a builder's take on what they make, not an application. Show that the sender understands what the company builds and who it serves. pitch.headline names what the sender would try or build with this company's product, or for its customers, in 4 to 10 words grounded in the sender's points and the fact you quote ("What I'd build next for <their thing>"), never "why I fit". pitch.points are 2 or 3 ideas for their product, each at most ${LIMITS.idea} words, written "I'd <verb> <their thing> — like <what the sender did, short>": the thing is one of THEIR THINGS or a word from their facts, and the "like …" is one proof's "did" or a project, said short ("like the <thing they made> I <verb>ed"). Never copy one of the sender's points as a pitch point. insight.why is read on its own under the quoted fact, so it names what the fact is about (one of THEIR THINGS, or the fact's own subject, with the company's name) and one thing the sender would build for it, from the same work as the first pitch point: "<Company>'s <their thing> is where I'd start: <what you'd build, short>". Never "this number" or "this", and never pitch point 1 word for word. The cta is a warm invitation to talk about their work, at most 8 words ("Trade notes on <their thing>?", "15 minutes on what's next?"). Never write ${CANDIDATE_NEVER} in the hook, noticed, why, headline or cta. Write in the first person ("I").`,
   hiring:
     'The sender is on the team at this company and is announcing an open role to everyone, as a LinkedIn post. The company facts are your own company. Speak to whoever is watching as "you" and about your company as "we" or "our". Make the role feel concrete and worth applying for, without hype. The call to action points to the job post.',
   recruiter:
@@ -398,19 +414,7 @@ function fitted(
 }
 
 export const WHY = {
-  // what the sender would do with the fact ("I'd …"), not why they fit
-  candidateStat: [
-    "I'd want to find out what moves this number next",
-    "I'd start by asking which customers move this number most",
-    "I'd build something small to push this number further",
-    "I'd dig into what sits behind a number like this",
-  ],
-  candidateClaim: [
-    "I'd try building on this for the next set of customers",
-    "I'd start by asking customers where this lands best",
-    "I'd prototype the next step that makes this true",
-    "I'd want to see how far this promise can go",
-  ],
+  // a seller's line ties the fact to what they offer; a job seeker's is startLine() below
   salesStat: [
     (who: string) => `${who} teams measure what moves a number like this`,
     (who: string) => `${who} teams find the next number like this`,
@@ -426,11 +430,35 @@ export const WHY = {
 } as const
 
 /** One honest sentence tying the featured fact to the sender, without claiming anything new. */
-function whyLine(fact: Fact, candidate: boolean, company: string | undefined, key: string): string {
-  const numeric = fact.kind === 'stat'
-  if (candidate) return variant(key, 'why', numeric ? WHY.candidateStat : WHY.candidateClaim)
+function whyLine(fact: Fact, company: string | undefined, key: string): string {
   const who = company ? `${company} helps` : 'We help'
-  return variant(key, 'why', numeric ? WHY.salesStat : WHY.salesClaim)(who)
+  return variant(key, 'why', fact.kind === 'stat' ? WHY.salesStat : WHY.salesClaim)(who)
+}
+
+/**
+ * A job seeker's line under the quoted fact: what the fact is about and the first thing they'd
+ * build for it, from the same work as their first idea (ideas.ts startLines). The founder judge
+ * read "I'd start by asking which customers move this number most" alone and couldn't tell what
+ * "this number" was, so the line names its subject and stands alone, and never says pitch point 1.
+ */
+export function startLine(
+  kit: BrandKit,
+  fact: Fact,
+  profile: Profile,
+  points: string[],
+  opts: ScriptOptions = {},
+): string {
+  const order = rankProof(profile.proof, aboutText(kit), opts.semantic)
+  const point1 = (points[0] ?? '').trim().toLowerCase()
+  const ok = (l: string) =>
+    standsAlone({ text: l }, kit) &&
+    !jobPitchIn(l, kit.name).length &&
+    l.toLowerCase() !== point1 &&
+    !(ideaOf(points[0] ?? '') && l.toLowerCase().includes(ideaOf(points[0]!)!.toLowerCase()))
+  return (
+    startLines(kit, fact, profile, order).find(ok) ??
+    `With ${kit.name.split(/\s+/)[0]}, I'd start with a small prototype`
+  )
 }
 
 /**
@@ -452,12 +480,23 @@ export function deterministicScript(
     profile.preset === 'recruiter'
       ? recruiterHook(profile.recipient?.name.split(/\s+/)[0], name, first)
       : hookFor(name, first)
+  // a job seeker's pitch is ideas for their product; anyone else's, their own points (prefer
+  // points that already fit, so nothing is cut mid-phrase)
+  const points =
+    candidate && pitchAsIdeas(kit, profile)
+      ? ideaPoints(kit, profile, opts)
+      : [...profile.points]
+          .sort((a, b) => Number(words(a) > LIMITS.point) - Number(words(b) > LIMITS.point))
+          .slice(0, 3)
+          .map((p) => clip(p, LIMITS.point))
   return {
     hook,
     noticed: noticedLine(kit, first),
     insight: {
       factId: fact.id,
-      why: clip(whyLine(fact, candidate, profile.sender.company, name), LIMITS.why),
+      why: candidate
+        ? startLine(kit, fact, profile, points, opts)
+        : clip(whyLine(fact, profile.sender.company, name), LIMITS.why),
     },
     pitch: {
       headline: clip(
@@ -474,15 +513,7 @@ export function deterministicScript(
             : `${profile.offer.replace(/[.]$/, '')}, made for ${first}`,
         LIMITS.headline,
       ),
-      // a job seeker's pitch is ideas for their product; anyone else's, their own points (prefer
-      // points that already fit, so nothing is cut mid-phrase)
-      points:
-        candidate && pitchAsIdeas(kit, profile)
-          ? ideaPoints(kit, profile, opts)
-          : [...profile.points]
-              .sort((a, b) => Number(words(a) > LIMITS.point) - Number(words(b) > LIMITS.point))
-              .slice(0, 3)
-              .map((p) => clip(p, LIMITS.point)),
+      points,
     },
     // a job seeker's proof: the closest to their business first, then the most impressive
     proof: candidate

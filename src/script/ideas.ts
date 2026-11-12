@@ -211,6 +211,8 @@ interface Kind {
   idea: (thing: string, again?: boolean) => string
   /** whether the idea reads right about people ("a live dashboard for shippers") */
   people?: boolean
+  /** the first thing they'd build, as it reads under the quoted fact ("… is where I'd start: <this>") */
+  start: string
 }
 
 /** their things that are people, which only some ideas suit */
@@ -223,23 +225,27 @@ const KINDS: Kind[] = [
     work: /\b(migrat\w*|moved?|records?|databases?|oracle|postgres\w*)\b/i,
     suits: /record|data|chart|history|ehr|ledger|account/i,
     idea: (t, again) => (again ? `move ${t} onto one clean record` : `unify the data behind ${t}`),
+    start: 'one clean record for every account',
   },
   {
     work: /\b(etl|pipelines?|sync\w*|stream\w*|ingest\w*|feeds?|middleware|payloads?|apis?|integrat\w*)\b/i,
     suits: /timeline|check-in|track|feed|visib|pallet|load|data|lane|intake|form/i,
     idea: (t, again) =>
       again ? `sync ${t} with the tools customers use` : `stream ${t} into one live view`,
+    start: 'one view of every event as it lands',
   },
   {
     work: /\b(agents?|llms?|ai|gpt|models?|chatbots?|nlp)\b/i,
     suits: /alert|exception|intake|question|support|fraud|message|form/i,
     idea: (t, again) => (again ? `let an agent triage ${t}` : `put an agent on ${t}`),
+    start: 'an agent that takes the first pass',
   },
   {
     work: /\b(analytics|dashboards?|reports?|reporting|insights?|metrics?|forecast\w*)\b/i,
     suits: /dashboard|return|exchange|shipper|clinic|stat|credit|order/i,
     idea: (t, again) =>
       again ? `show ${t} trends week by week` : `build a live dashboard for ${t}`,
+    start: 'a weekly view of what moves it',
     people: true,
   },
   {
@@ -247,6 +253,7 @@ const KINDS: Kind[] = [
     suits: /check|fraud|exception|refund|alert|return/i,
     idea: (t, again) =>
       again ? `catch ${t} errors before they ship` : `stress-test ${t} before customers notice`,
+    start: 'checks that catch errors before customers do',
   },
   {
     work: /\b(deploy\w*|docker|aws|kubernetes|infra\w*|downtime|container\w*|cloud)\b/i,
@@ -255,14 +262,21 @@ const KINDS: Kind[] = [
       again
         ? `roll out ${t} changes one customer at a time`
         : `ship ${t} changes with zero downtime`,
+    start: 'changes rolled out one customer at a time',
   },
   {
     work: /\b(rbac|access|identit\w*|permissions?|auth\w*|security|compliance)\b/i,
     suits: /hipaa|security|data|record|account/i,
     idea: (t, again) => (again ? `log every change to ${t}` : `tighten who can change ${t}`),
+    start: 'a log of every change and who made it',
   },
 ]
-const ANY: Kind = { work: /./, suits: /./, idea: (t) => `prototype the next step for ${t}` }
+const ANY: Kind = {
+  work: /./,
+  suits: /./,
+  idea: (t) => `prototype the next step for ${t}`,
+  start: 'a small prototype of the next step',
+}
 
 /**
  * The kind of idea a line of work suggests: the one the thing it made names ("containerized
@@ -320,6 +334,8 @@ export interface Idea {
   line: string
   /** which proof it rests on, or the project's name */
   from: { proof: number } | { project: string }
+  /** the first thing they'd build from the same work, said short (Kind.start) */
+  start: string
 }
 
 /** How many lines of the sender's own work an idea can rest on: proof with `did`, and projects */
@@ -389,7 +405,7 @@ export function ideasFor(
       if (!line) continue
       used.add(thing)
       kinds.add(k)
-      out.push({ line, from: s.from })
+      out.push({ line, from: s.from, start: k.start })
     }
   return out
 }
@@ -461,3 +477,58 @@ export function notAnIdea(
 /** Whether a job seeker's pitch must be ideas: it can be, from what their site and the profile give */
 export const pitchAsIdeas = (kit: Kit, profile: Pick<Profile, 'proof' | 'projects'>) =>
   ideasFor(kit, profile).length >= 2
+
+/* ------------------------------------------------------------ the line under the fact */
+
+/**
+ * What a quoted fact is about, in their words: the first of their things the fact names ("61% of
+ * returns become exchanges" -> "returns"), else the noun it ends on after "on", "for" or "of"
+ * ("11 minutes saved per visit on documentation" -> "documentation"). Never the company's name.
+ */
+export function subjectOf(kit: Kit, fact: Pick<Fact, 'text'>): string | null {
+  const text = fact.text.toLowerCase()
+  const at = (t: string) => {
+    const hits = [...contentOf(t)]
+      .map((w) => text.search(new RegExp(`\\b${w.replace(/[^a-z0-9-]/g, '')}`)))
+      .filter((i) => i >= 0)
+    return hits.length === contentOf(t).size && hits.length ? Math.min(...hits) : -1
+  }
+  const named = theirThings(kit)
+    .map((t) => ({ t, i: at(t) }))
+    .filter((x) => x.i >= 0)
+    .sort((a, b) => a.i - b.i)[0]
+  if (named) return named.t
+  const first = kit.name.toLowerCase().split(/\s+/)[0]!
+  const tail = fact.text
+    .trim()
+    .replace(/[.!]$/, '')
+    .match(/\b(?:on|for|of)\s+((?:[a-z][a-z-]+\s)?[a-z][a-z-]{4,})$/i)?.[1]
+  if (tail && !tail.toLowerCase().includes(first) && !NOT_A_THING.has(tail.toLowerCase()))
+    return lowerWords(tail)
+  return null
+}
+
+/**
+ * A job seeker's line under the quoted fact: its subject, and the first thing they'd build for it
+ * from the same work their first idea rests on: "Parcelpine's returns are where I'd start: one
+ * view of every event as it lands". It reads whole without the fact above it ("this number" didn't), so
+ * it names the company. Longest first, only those that fit `max` words.
+ */
+export function startLines(
+  kit: Kit,
+  fact: Pick<Fact, 'text'>,
+  profile: Pick<Profile, 'proof' | 'projects'>,
+  order?: number[],
+  max = LIMITS.why,
+): string[] {
+  const start = ideasFor(kit, profile, order)[0]?.start ?? ANY.start
+  const subject = subjectOf(kit, fact)
+  const name = kit.name.trim()
+  const first = name.split(/\s+/)[0]!
+  const lines = subject
+    ? [`${name}'s ${subject}`, `${first}'s ${subject}`].map(
+        (s) => `${s} ${/[^s]s$/.test(subject) ? 'are' : 'is'} where I'd start: ${start}`,
+      )
+    : [`With ${name}, I'd start with ${start}`, `With ${first}, I'd start with ${start}`]
+  return lines.filter((l) => words(l) <= max)
+}
