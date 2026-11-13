@@ -226,7 +226,15 @@ export class DurableContext implements AgentContext {
   llm<T>(key: string, opts: LlmOptions<T> & { schema: ZodType<T> }): Promise<T>
   async llm<T>(key: string, opts: LlmOptions<T>): Promise<T | string> {
     const { seq, existing } = this.#next(key, 'llm')
-    if (existing?.status === 'completed') return this.#replay<{ value: T | string }>(existing).value
+    if (existing?.status === 'completed') {
+      const m = existing.meta as Partial<LlmMeta>
+      opts.onTokens?.({
+        model: String(m.model ?? ''),
+        inputTokens: Number(m.inputTokens ?? 0),
+        outputTokens: Number(m.outputTokens ?? 0),
+      })
+      return this.#replay<{ value: T | string }>(existing).value
+    }
 
     let meta: LlmMeta = { model: '', inputTokens: 0, outputTokens: 0, latencyMs: 0, repairs: 0 }
     const result = await this.#execute(
@@ -238,6 +246,7 @@ export class DurableContext implements AgentContext {
         const out = await callModel(this.#d.llm, opts, this.signal)
         meta = out.meta
         this.#d.onLlmCall?.(meta)
+        opts.onTokens?.(meta)
         return { value: out.value }
       },
       () => ({ ...meta }),
@@ -405,6 +414,7 @@ export class NaiveContext implements AgentContext {
   async llm<T>(_key: string, opts: LlmOptions<T>): Promise<T | string> {
     const out = await callModel(this.#d.llm, opts, this.signal)
     this.#d.onLlmCall?.(out.meta)
+    opts.onTokens?.(out.meta)
     return normalize(out.value)
   }
 

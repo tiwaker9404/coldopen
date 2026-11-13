@@ -91,14 +91,16 @@ export async function createRun(
     idempotencyKey?: string | undefined
     /** who it belongs to (the hosted app); a private install leaves it 'team' */
     owner?: string
+    /** what started it when a person didn't: 'autopilot' */
+    origin?: string
   },
 ): Promise<CreateRunResult> {
   return atomically(sql, async (tx) => {
     const id = newId('run')
     const t = carrier()
     const [run] = await tx<Run[]>`
-      insert into runs (id, agent, input, idempotency_key, owner, trace)
-      values (${id}, ${input.agent}, ${tx.json(input.input as never)}, ${input.idempotencyKey ?? null}, ${input.owner ?? 'team'}, ${Object.keys(t).length ? tx.json(t) : null})
+      insert into runs (id, agent, input, idempotency_key, owner, trace, origin)
+      values (${id}, ${input.agent}, ${tx.json(input.input as never)}, ${input.idempotencyKey ?? null}, ${input.owner ?? 'team'}, ${Object.keys(t).length ? tx.json(t) : null}, ${input.origin ?? null})
       on conflict (idempotency_key) do nothing
       returning *`
     if (run) {

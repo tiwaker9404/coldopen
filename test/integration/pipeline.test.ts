@@ -41,6 +41,12 @@ describe('film pipeline (no database)', () => {
     expect(r.qa.issues).toEqual([])
     // no model: no messages stored, so the API uses the templates
     expect(r.messages).toBeUndefined()
+    // and the record says so, for "Written from templates"
+    expect(r.writers).toEqual({
+      script: 'built-in',
+      messages: 'built-in',
+      tokens: { script: 0, messages: 0 },
+    })
     for (const f of Object.values(r.files).flat())
       expect(existsSync(join(filmsDir, f)), f).toBe(true)
     // one still per scene, for the review's filmstrip
@@ -171,6 +177,10 @@ describe('film pipeline (no database)', () => {
     expect(r.messages?.drafts.note).toBe(`Hi [First name], ${reply.note} – Alex`)
     expect(r.messages?.drafts.email.body).toContain(`\n${FILM}\n`)
     expect(messageCalls).toBe(1)
+    // both written by the model, with the tokens each took
+    expect(r.writers).toMatchObject({ script: 'model', messages: 'model' })
+    expect(r.writers!.tokens.script).toBeGreaterThan(0)
+    expect(r.writers!.tokens.messages).toBeGreaterThan(0)
 
     const second = new LocalContext({ runId: 'run_msgs', llm, journalFile })
     await second.load()

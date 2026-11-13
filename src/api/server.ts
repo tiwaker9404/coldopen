@@ -13,6 +13,7 @@ import {
 } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 import { dayOf, isOn, pickToday } from '../autopilot/pick.ts'
+import { runAutopilotOnce } from '../autopilot/run.ts'
 import { AutopilotSchema, type AutopilotSettings, DEFAULT_SETTINGS } from '../autopilot/settings.ts'
 import type { Config } from '../config.ts'
 import type { Sql } from '../db/index.ts'
@@ -1208,7 +1209,21 @@ export async function buildApi({
    * or hidden companies. The fingerprint is read from the database, so every API process agrees.
    */
   const TARGETS = new Map<string, SavedTargets<Target[]>>()
-  const targetsFor = async (owner: Owner): Promise<{ list: Target[]; roles: string[] }> => {
+  /** one of their profiles by id, when it's still there and still valid */
+  const profileById = async (owner: Owner, id: string) => {
+    const [p] = await sql<{ data: unknown }[]>`
+      select data from profiles where owner = ${owner} and id = ${id}`
+    const parsed = p ? ProfileSchema.safeParse(p.data) : null
+    return parsed?.success ? parsed.data : undefined
+  }
+  /**
+   * `profileId` scores from that profile (Autopilot's own) instead of the newest one, which
+   * Network this week uses; each is cached apart.
+   */
+  const targetsFor = async (
+    owner: Owner,
+    profileId?: string,
+  ): Promise<{ list: Target[]; roles: string[] }> => {
     const [f] = await sql<
       { films: string; conns: string; search: string; prof: string; hides: string }[]
     >`
@@ -1222,7 +1237,7 @@ export async function buildApi({
         (select coalesce(max(updated_at)::text, '') from profiles where owner = ${owner}) as prof,
         (select count(*) || ':' || coalesce(max(created_at)::text, '')
            from target_hides where owner = ${owner}) as hides`
-    const profile = await newestProfile(owner)
+    const profile = profileId ? await profileById(owner, profileId) : await newestProfile(owner)
     const state = await getSearch(sql, owner, profile?.sender.role)
     const roles = targetRoles(state.search, profile)
     const startups = allStartups()
@@ -1233,9 +1248,10 @@ export async function buildApi({
         ? sem.known(profile, [...new Set(startups.flatMap((x) => (x.o ? [x.o] : [])))])
         : undefined
     const day = new Date().toISOString().slice(0, 10)
-    const key = JSON.stringify([day, f])
+    const key = JSON.stringify([day, f, profileId ?? null])
     const known = meaning?.size ?? -1
-    const hit = TARGETS.get(owner)
+    const slot = profileId ? `${owner}\u0000${profileId}` : owner
+    const hit = TARGETS.get(slot)
     if (reuseTargets(hit, key, known, Date.now())) return { list: hit.list, roles }
 
     const [jobs, films, connections, hidden] = await Promise.all([
@@ -1264,7 +1280,7 @@ export async function buildApi({
       Date.now(),
       500,
     )
-    TARGETS.set(owner, { key, meaning: known, at: Date.now(), list })
+    TARGETS.set(slot, { key, meaning: known, at: Date.now(), list })
     if (TARGETS.size > 500) TARGETS.delete(TARGETS.keys().next().value!)
     return { list, roles }
   }
@@ -2193,11 +2209,13 @@ export async function buildApi({
       const profiles = await seekerProfiles(req, reply)
       if (!profiles) return reply
       const settings = await autopilotOf(req.owner)
+      const gone = autopilotDto(settings, profiles).profileGone
       const now = Date.now()
       const day = dayOf(now)
-      // the same cached, sliced scoring as /v1/targets, so this never holds the event loop
+      // the same cached, sliced scoring as /v1/targets, so this never holds the event loop,
+      // scored from Autopilot's own profile (the newest job seeker profile until one is picked)
       const [{ list }, made] = await Promise.all([
-        targetsFor(req.owner),
+        targetsFor(req.owner, settings.profileId && !gone ? settings.profileId : profiles[0]!.id),
         sql<{ host: string | null }[]>`
           select coalesce(output->>'host', input->>'url') as host from runs
           where agent = 'film' and owner = ${req.owner} and origin = 'autopilot'
@@ -2208,7 +2226,7 @@ export async function buildApi({
       const { picks, skipped } = pickToday({ targets: list, settings, madeToday, now })
       return {
         day,
-        runs: isOn(settings, now) && !autopilotDto(settings, profiles).profileGone,
+        runs: isOn(settings, now) && !gone,
         perDay: settings.perDay,
         madeToday: madeToday.length,
         picks,
@@ -2315,6 +2333,25 @@ export async function buildApi({
       return { synced, failed }
     },
   )
+
+  /**
+   * The morning run, called by .github/workflows/autopilot.yml every 3 minutes from 5am
+   * Pacific on weekdays: one film per owner per call (src/autopilot/run.ts). Only the holder
+   * of RENDER_DISPATCH_TOKEN, the token the app and GitHub Actions already share.
+   */
+  const dispatchToken = cfg.RENDER_DISPATCH_TOKEN ? digest(cfg.RENDER_DISPATCH_TOKEN) : null
+  app.post('/internal/autopilot/run', { schema: { hide: true } }, async (req, reply) => {
+    const h = req.headers.authorization ?? ''
+    const t = h.startsWith('Bearer ') ? h.slice(7) : ''
+    if (!dispatchToken || !t || !timingSafeEqual(dispatchToken, digest(t)))
+      return reply
+        .status(401)
+        .send({ error: { code: 'unauthorized', message: 'the dispatch token is needed' } })
+    return runAutopilotOnce(sql, cfg, Date.now(), {
+      targets: async (owner, profileId) => (await targetsFor(owner, profileId)).list,
+      kick,
+    })
+  })
 
   app.get(
     '/v1/me/openers',

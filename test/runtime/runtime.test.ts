@@ -99,6 +99,41 @@ describe('happy path', () => {
   })
 })
 
+describe('model tokens', () => {
+  it('reports the tokens a call used, and the same tokens again when it replays', async () => {
+    const llm = new FakeLlm(() => 'draft')
+    const used: number[] = []
+    const onTokens = (u: { inputTokens: number; outputTokens: number }) =>
+      used.push(u.inputTokens + u.outputTokens)
+    const agent = defineAgent({
+      name: 'counter',
+      async run(ctx) {
+        return ctx.llm('draft', { messages: [{ role: 'user', content: 'x' }], onTokens })
+      },
+    })
+    await startWorker(reg(agent as never), llm)
+    const id = await start('counter')
+    await waitForStatus(sql, id, ['succeeded'])
+    expect(used).toEqual([15])
+
+    // a re-execution replays the call from the journal: no second call, the same count
+    const ctx = new DurableContext({
+      sql,
+      lease: { runId: id, token: 'replay', workerId: 'w' },
+      attempt: 2,
+      journal: await getSteps(sql, id),
+      llm,
+      signal: new AbortController().signal,
+      log: () => {},
+    })
+    expect(await ctx.llm('draft', { messages: [{ role: 'user', content: 'x' }], onTokens })).toBe(
+      'draft',
+    )
+    expect(used).toEqual([15, 15])
+    expect(llm.calls).toBe(1)
+  })
+})
+
 describe('crash recovery', () => {
   it('resumes after a worker dies mid-run: no LLM re-billing, no double charge, zombie fenced', async () => {
     const payments = new FakePayments()

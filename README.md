@@ -249,7 +249,9 @@ The counter, "x of 10 this week", is the recruiter's playbook target (10 people 
 
 ## Autopilot
 
-Being built now. On the Profile page, a signed-in job seeker turns Autopilot on and chooses films a weekday (1 to 25; 20 a weekday is 100 a week, about LinkedIn's weekly limit on connection requests, so the rest go by email), which days, which profile, which format, and an optional Slack or Discord webhook. "See today's pick" shows the companies today's films are for: Network this week's list in its order, skipping any with no website or already filmed by Autopilot today, up to the day's number ([src/autopilot/pick.ts](src/autopilot/pick.ts)). Days are Pacific time. Turning it on makes nothing yet; the daily run that makes the films is the next step. Deleting the profile it uses turns it off, and the Profile page says so. `GET` and `PUT /v1/autopilot` and `GET /v1/autopilot/today` do the same.
+Being built now. On the Profile page, a signed-in job seeker turns Autopilot on and chooses films a weekday (1 to 25; 20 a weekday is 100 a week, about LinkedIn's weekly limit on connection requests, so the rest go by email), which days, which profile, which format, and an optional Slack or Discord webhook. "See today's pick" shows the companies today's films are for: Network this week's list, scored from Autopilot's own profile, in its order, skipping any with no website or already filmed by Autopilot today, up to the day's number ([src/autopilot/pick.ts](src/autopilot/pick.ts)). Days are Pacific time.
+
+Every weekday from 5am Pacific, a GitHub Actions job ([autopilot.yml](.github/workflows/autopilot.yml)) calls the app every 3 minutes, and each call makes at most one film per person ([src/autopilot/run.ts](src/autopilot/run.ts)), so the model's free tier isn't asked for every film at once. The first call stores the day's pick, best first, and later calls work down that list, so the order holds if scoring changes during the morning and a run that stopped halfway carries on. Films go through the normal pipeline, daily limits and model chain; when every model is busy the built-in writer takes over, and each film records which writer wrote its script and messages and the tokens they took. A company you filmed by hand is never picked. Nothing is sent for you. Deleting the profile it uses turns it off, and the Profile page says so. `GET` and `PUT /v1/autopilot` and `GET /v1/autopilot/today` do the same.
 
 ## Warm leads
 
@@ -265,7 +267,7 @@ Nothing is sent for you: copy the draft, send it yourself, then Mark done (or St
 ## Quality, measured
 
 ```bash
-pnpm test         # 854 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, Autopilot's settings and daily pick, facts from everything they publish, the review before sending, warm leads, deleting a profile, only coldopen's maker claiming it (in any wording), the app answering while a page is slow or a service is down, and shutting down on time
+pnpm test         # 868 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, Autopilot's settings, daily pick and morning run, facts from everything they publish, the review before sending, warm leads, deleting a profile, only coldopen's maker claiming it (in any wording), the app answering while a page is slow or a service is down, and shutting down on time
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 201 quality checks across 20 evals on 3 fixture companies x 2 presets
 ```

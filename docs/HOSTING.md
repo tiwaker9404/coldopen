@@ -40,7 +40,7 @@ Use the session pooler, not the direct connection, which is IPv6 only. coldopen 
 
 In the repo: **Settings → Secrets and variables → Actions**.
 
-- **Secrets** tab, **New repository secret** for each: `DATABASE_URL` (step 1), `LLM_API_KEY` (your Groq key), `GEMINI_API_KEY` (optional, a free [Google AI Studio](https://aistudio.google.com/apikey) key: the third model, tried when Groq is busy), `SHARE_URL` (`https://coldopen-share.<you>.workers.dev`), `SHARE_TOKEN` (on a Mac: `security find-generic-password -a "$USER" -s coldopen-share-token -w | pbcopy`).
+- **Secrets** tab, **New repository secret** for each: `DATABASE_URL` (step 1), `LLM_API_KEY` (your Groq key), `GEMINI_API_KEY` (optional, a free [Google AI Studio](https://aistudio.google.com/apikey) key: the third model, tried when Groq is busy), `SHARE_URL` (`https://coldopen-share.<you>.workers.dev`), `SHARE_TOKEN` (on a Mac: `security find-generic-password -a "$USER" -s coldopen-share-token -w | pbcopy`). For Autopilot's morning run (`.github/workflows/autopilot.yml`), also `RENDER_DISPATCH_TOKEN`: the same `github_pat_…` value as the app's (step 2), which the workflow sends to the app's `/internal/autopilot/run`.
 - **Variables** tab, **New repository variable:** `RENDER_FILMS` = `true`.
 
 The **Render films for the hosted app** workflow now runs whenever a film is waiting. Its logs are public, like everything in a public repository, so it logs errors only.

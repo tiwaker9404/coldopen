@@ -97,7 +97,12 @@ export class LocalContext implements AgentContext {
   async llm<T>(key: string, opts: LlmOptions<T>): Promise<T | string> {
     if (!this.#llm) throw new Error('no LLM configured')
     const llm = this.#llm
-    return this.step(key, async () => (await callModel(llm, opts, this.signal)).value)
+    // the CLI's journal keeps the reply only, so a replayed call reports no tokens
+    return this.step(key, async () => {
+      const out = await callModel(llm, opts, this.signal)
+      opts.onTokens?.(out.meta)
+      return out.value
+    })
   }
 
   async tool<T>(key: string, fn: (k: string) => Promise<T>, _opts?: ToolOptions): Promise<T> {

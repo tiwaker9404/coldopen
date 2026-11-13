@@ -1,0 +1,57 @@
+name: Autopilot
+
+# Every weekday from 5am Pacific (13:00 UTC: 5am in winter, 6am in summer), makes today's
+# Autopilot films on the hosted app: one call every 3 minutes, and each call makes at most one
+# film per person, best company first, so the model's free tier (about 8k tokens a minute on
+# Groq) isn't asked for every film at once. The app keeps the day's pick and what it made, so
+# a run that stops halfway carries on with the next call, and extra calls never make extra films.
+#
+# Needs the repository secret RENDER_DISPATCH_TOKEN: the same value as the app's.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 13 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: autopilot
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    env:
+      APP: https://coldopen-nk8o.onrender.com
+      TOKEN: ${{ secrets.RENDER_DISPATCH_TOKEN }}
+    steps:
+      - name: Wake the hosted app
+        run: |
+          for i in 1 2 3 4 5; do
+            curl -fsS --max-time 90 "$APP/healthz" && exit 0
+            sleep 20
+          done
+          echo "::error::the hosted app didn't answer"
+          exit 1
+      - name: Make today's films, one call every 3 minutes
+        run: |
+          if [ -z "$TOKEN" ]; then echo "::error::the RENDER_DISPATCH_TOKEN secret isn't set"; exit 1; fi
+          call() {
+            curl -fsS --max-time 120 -X POST -H "authorization: Bearer $TOKEN" "$APP/internal/autopilot/run"
+          }
+          for n in $(seq 1 40); do
+            # one retry after 30 s, then on to the next call
+            out=$(call || { sleep 30; call; }) || { echo "call $n failed twice"; out=''; }
+            # this repository's logs are public: counts only, never who or which company
+            echo "$out" | jq -r --arg n "$n" \
+              '"call \($n): \([.owners[] | select(.made)] | length) made, \([.owners[] | select(.done | not)] | length) of \(.owners | length) still going"' \
+              2>/dev/null || echo "call $n: no answer"
+            if [ -n "$out" ] && echo "$out" | jq -e '.done' >/dev/null 2>&1; then
+              echo "every film for today is made"
+              exit 0
+            fi
+            [ "$n" -lt 40 ] && sleep 180
+          done
+          echo "stopped after 40 calls"

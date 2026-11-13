@@ -13,6 +13,11 @@ export interface LlmOptions<T> {
   /** validate the model's JSON output; invalid output is sent back to the model to repair */
   schema?: ZodType<T>
   temperature?: number
+  /**
+   * told the tokens the call used, also when it's replayed from the journal (with the tokens
+   * the first execution recorded), so a run's totals are the same however often it resumes
+   */
+  onTokens?: (used: { model: string; inputTokens: number; outputTokens: number }) => void
 }
 
 /**

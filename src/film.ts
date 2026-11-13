@@ -126,6 +126,14 @@ export interface FilmResult {
   brand?: FilmBrand
   /** the facts the film could quote (the featured one too), for "Use another fact" */
   facts?: ReviewFact[]
+  /**
+   * who wrote the film's words: the model, or the built-in writer (the script's deterministic
+   * writer, the messages' templates) when no model was set or every model was busy; and the
+   * model tokens each took, as the provider reported them (estimated when it didn't).
+   * `messages` is 'none' for films that come without messages (recruiter and hiring films).
+   * Films made before 13 Nov don't have it.
+   */
+  writers?: Writers
   /** what the film says, for writing the message that goes with it */
   highlights?: {
     /**
@@ -142,6 +150,12 @@ export interface FilmResult {
    * uses the templates then.
    */
   messages?: FilmMessages
+}
+
+export interface Writers {
+  script: 'model' | 'built-in' | 'edited'
+  messages: 'model' | 'built-in' | 'none'
+  tokens: { script: number; messages: number }
 }
 
 export interface FilmAgentOptions {
@@ -305,6 +319,13 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           : []
       const scriptOpts = semantic.length ? { semantic: new Map(semantic) } : {}
 
+      // the tokens each writer's model calls took, replayed calls included, for `writers`
+      const tokens = { script: 0, messages: 0 }
+      const count =
+        (k: keyof typeof tokens) => (u: { inputTokens: number; outputTokens: number }) => {
+          tokens[k] += u.inputTokens + u.outputTokens
+        }
+
       ctx.progress({ stage: 'script', label: `Writing the script for ${kit.name}` })
       const builtIn = (usedFallback: boolean) =>
         ctx.step('script', async () => ({
@@ -357,7 +378,8 @@ export function createFilmAgent(opts: FilmAgentOptions) {
             profile,
             ...scriptOpts,
             model: opts.llmModel,
-            complete: (key, messages) => ctx.llm(key, { schema: ScriptSchema, messages }),
+            complete: (key, messages) =>
+              ctx.llm(key, { schema: ScriptSchema, messages, onTokens: count('script') }),
           })
         } catch (err) {
           // every model is rate limited or down: a plain, correct script beats no film
@@ -409,7 +431,11 @@ export function createFilmAgent(opts: FilmAgentOptions) {
             model,
             now,
             complete: (key, m) =>
-              ctx.llm(key, { schema: messagesSchemaFor(profile.preset), messages: m }),
+              ctx.llm(key, {
+                schema: messagesSchemaFor(profile.preset),
+                messages: m,
+                onTokens: count('messages'),
+              }),
           })
         } catch (err) {
           // every model is rate limited or down, or can't keep to the shape: the templates write
@@ -653,6 +679,21 @@ export function createFilmAgent(opts: FilmAgentOptions) {
           },
           script,
           scriptMeta: meta,
+          writers: {
+            script:
+              meta.model === 'edited'
+                ? 'edited'
+                : meta.model === 'deterministic' || meta.usedFallback
+                  ? 'built-in'
+                  : 'model',
+            messages:
+              profile.preset !== 'candidate' && profile.preset !== 'sales'
+                ? 'none'
+                : messages
+                  ? 'model'
+                  : 'built-in',
+            tokens,
+          },
           qa: out.qa,
           render: { frames, ms },
           ...(kit.job ? { job: kit.job } : {}),

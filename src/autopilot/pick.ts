@@ -91,3 +91,19 @@ export function pickToday({ targets, settings, madeToday }: PickInput): {
   }
   return { picks, skipped }
 }
+
+/** how many picks the day's row keeps: room for the films a weekday and for picks that fail */
+export const PICKED_MAX = 50
+
+/**
+ * The day's stored picks still to film, in their stored order: leaves out any company that
+ * already has a film from Autopilot today (made, rendering or failed), was skipped today, or
+ * got a film by hand since the morning's pick.
+ */
+export function untried(picked: Picked[], tried: Iterable<string>): Picked[] {
+  const out = new Set([...tried].map(hostOf).filter(Boolean))
+  return picked.filter((p) => {
+    const h = hostOf(p.site)
+    return h && !out.has(h)
+  })
+}
