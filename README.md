@@ -247,6 +247,10 @@ Networking happens all year, so Today ranks companies, not openings: the 10 most
 
 The counter, "x of 10 this week", is the recruiter's playbook target (10 people a week, 40 a month). It counts companies you reached since Monday 00:00 Pacific time, by a film made or a message marked sent, each company once however many films or edits it got. `GET /v1/targets` and the MCP `find_targets` tool return the same list and count.
 
+## Autopilot
+
+Being built now. On the Profile page, a signed-in job seeker turns Autopilot on and chooses films a weekday (1 to 25; 20 a weekday is 100 a week, about LinkedIn's weekly limit on connection requests, so the rest go by email), which days, which profile, which format, and an optional Slack or Discord webhook. "See today's pick" shows the companies today's films are for: Network this week's list in its order, skipping any with no website or already filmed by Autopilot today, up to the day's number ([src/autopilot/pick.ts](src/autopilot/pick.ts)). Days are Pacific time. Turning it on makes nothing yet; the daily run that makes the films is the next step. Deleting the profile it uses turns it off, and the Profile page says so. `GET` and `PUT /v1/autopilot` and `GET /v1/autopilot/today` do the same.
+
 ## Warm leads
 
 A reply is the start, not the end. Mark a job seeker's film Replied or Interview and it joins Warm leads on Today, above Network this week, with one touch due at a time, drafted and checked like every other message ([src/outreach/warm.ts](src/outreach/warm.ts)):
@@ -261,7 +265,7 @@ Nothing is sent for you: copy the draft, send it yourself, then Mark done (or St
 ## Quality, measured
 
 ```bash
-pnpm test         # 835 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish, the review before sending, warm leads, deleting a profile, only coldopen's maker claiming it (in any wording), the app answering while a page is slow or a service is down, and shutting down on time
+pnpm test         # 854 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, Autopilot's settings and daily pick, facts from everything they publish, the review before sending, warm leads, deleting a profile, only coldopen's maker claiming it (in any wording), the app answering while a page is slow or a service is down, and shutting down on time
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 201 quality checks across 20 evals on 3 fixture companies x 2 presets
 ```

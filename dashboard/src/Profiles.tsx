@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Privacy } from './Account.tsx'
+import { AutopilotSection } from './Autopilot.tsx'
 import { type Me, type Profile, send } from './api.ts'
 import { Tools } from './Guide.tsx'
 import { ErrorNote, useToast } from './ui.tsx'
@@ -57,6 +58,8 @@ export function ProfilesPage({
           </ul>
         )}
       </section>
+
+      {profiles.length > 0 && <AutopilotSection />}
 
       <section className="section" aria-labelledby="tools-title">
         <div className="section-head">

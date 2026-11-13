@@ -350,6 +350,31 @@ export interface Targets {
   roles: string[]
 }
 
+export interface Autopilot {
+  on: boolean
+  perDay: number
+  /** ISO weekdays, Monday 1 */
+  days: number[]
+  profileId: string | null
+  format: Format
+  webhook: string | null
+  /** the job seeker profiles it can film from */
+  profiles: { id: string; name: string }[]
+  /** the profile it used was deleted, which turned it off */
+  profileGone: boolean
+  note?: string
+}
+
+export interface AutopilotToday {
+  day: { date: string; weekday: number }
+  /** on, and today (Pacific) is one of its days */
+  runs: boolean
+  perDay: number
+  madeToday: number
+  picks: { site: string; company: string; reasons: string[] }[]
+  skipped: { site: string; why: string }[]
+}
+
 export interface Me {
   hosted: boolean
   signIn: boolean

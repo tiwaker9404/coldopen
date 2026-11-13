@@ -79,6 +79,9 @@ const NAMES: Record<string, string> = {
   profileId: 'the profile',
   format: 'the format',
   limit: 'the limit',
+  perDay: 'films a weekday',
+  days: 'the days',
+  webhook: 'the webhook',
 }
 
 /** fields that are lists, so "too small" means "add more of them" */
@@ -136,6 +139,8 @@ function sentence(issue: Issue, parts: string[]): string {
 
   switch (issue.keyword) {
     case 'too_small':
+      // a number's own message can give the whole range, which "at least 1" can't
+      if (!isList && origin !== 'string' && own) return own
       if (isList) return min <= 1 ? `Add at least one to ${field}` : `Add at least ${min} ${field}`
       if (origin === 'string')
         return min <= 1
@@ -143,6 +148,7 @@ function sentence(issue: Issue, parts: string[]): string {
           : `${cap(field)} needs at least ${plural(min, 'character')}`
       return `${cap(field)} should be at least ${min}`
     case 'too_big':
+      if (!isList && origin !== 'string' && own) return own
       if (isList) return `Keep ${field} to ${max} at most`
       if (origin === 'string') return `${cap(field)} can be at most ${plural(max, 'character')}`
       return `${cap(field)} should be at most ${max}`

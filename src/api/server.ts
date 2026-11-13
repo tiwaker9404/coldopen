@@ -12,6 +12,8 @@ import {
   type ZodTypeProvider,
 } from 'fastify-type-provider-zod'
 import { z } from 'zod'
+import { dayOf, isOn, pickToday } from '../autopilot/pick.ts'
+import { AutopilotSchema, type AutopilotSettings, DEFAULT_SETTINGS } from '../autopilot/settings.ts'
 import type { Config } from '../config.ts'
 import type { Sql } from '../db/index.ts'
 import { FilmInputSchema, type FilmResult } from '../film.ts'
@@ -44,6 +46,7 @@ import {
   hostOf as targetHost,
   targetRoles,
   targetsInSlices,
+  WEEK_ZONE,
   WEEKLY_TARGET,
   weekStart,
 } from '../jobs/targets.ts'
@@ -837,6 +840,8 @@ export async function buildApi({
       await sql`delete from profiles where owner = ${req.owner}`
       await sql`delete from connections where owner = ${req.owner}`
       await sql`delete from job_searches where owner = ${req.owner}`
+      await sql`delete from autopilot where owner = ${req.owner}`
+      await sql`delete from autopilot_runs where owner = ${req.owner}`
       await sql`delete from owner_keys where owner = ${req.owner}`
       if (req.owner.startsWith('u:')) await sql`delete from users where id = ${req.owner.slice(2)}`
       signOut(cfg, reply)
@@ -880,6 +885,10 @@ export async function buildApi({
         insert into profiles (owner, id, name, data) values (${req.owner}, ${req.params.id}, ${req.body.name}, ${sql.json(req.body.data as never)})
         on conflict (owner, id) do update set name = excluded.name, data = excluded.data, updated_at = now()
         returning id, name, data, updated_at`
+      // Autopilot films only from a job seeker's profile
+      if (req.body.data.preset !== 'candidate')
+        await sql`update autopilot set "on" = false, updated_at = now()
+          where owner = ${req.owner} and profile_id = ${req.params.id}`
       return row
     },
   )
@@ -890,6 +899,10 @@ export async function buildApi({
     async (req, reply) => {
       const rows =
         await sql`delete from profiles where owner = ${req.owner} and id = ${req.params.id} returning id`
+      // Autopilot can't film from a profile that's gone: it stays off until they pick another
+      if (rows.length)
+        await sql`update autopilot set "on" = false, updated_at = now()
+          where owner = ${req.owner} and profile_id = ${req.params.id}`
       return rows.length
         ? { deleted: true }
         : reply.status(404).send({ error: { code: 'not_found', message: 'no such profile' } })
@@ -2058,6 +2071,150 @@ export async function buildApi({
       (await deleteToken(sql, req.owner, req.params.id))
         ? { deleted: true }
         : reply.status(404).send({ error: { code: 'not_found', message: 'no such token' } }),
+  )
+
+  /* -------------------------------------------------------------- autopilot */
+  /**
+   * Autopilot's settings and today's pick. Signed-in job seekers only: it films from a job
+   * seeker's profile, and a visitor's work is gone in a week. Nothing here makes a film.
+   */
+  type AutopilotRow = {
+    on: boolean
+    perDay: number
+    days: number[]
+    profileId: string | null
+    format: AutopilotSettings['format']
+    webhook: string | null
+  }
+  /** their job seeker profiles, newest first; null when they can't use Autopilot */
+  const seekerProfiles = async (req: FastifyRequest, reply: FastifyReply) => {
+    if (!signedIn(req.owner)) {
+      void reply
+        .status(403)
+        .send({ error: { code: 'sign_in', message: 'sign in to use Autopilot' } })
+      return null
+    }
+    const rows = await sql<{ id: string; name: string; data: { preset?: string } }[]>`
+      select id, name, data from profiles where owner = ${req.owner} order by updated_at desc`
+    const seekers = rows.filter((p) => p.data?.preset === 'candidate')
+    if (!seekers.length) {
+      void reply.status(403).send({
+        error: {
+          code: 'job_seekers_only',
+          message: 'Autopilot is for job seekers: save a job seeker profile first',
+        },
+      })
+      return null
+    }
+    return seekers.map((p) => ({ id: p.id, name: p.name }))
+  }
+  const autopilotOf = async (owner: Owner): Promise<AutopilotSettings> => {
+    const [row] = await sql<AutopilotRow[]>`
+      select "on", per_day, days, profile_id, format, webhook from autopilot where owner = ${owner}`
+    return row ? { ...row, days: [...row.days] } : DEFAULT_SETTINGS
+  }
+  const autopilotDto = (s: AutopilotSettings, profiles: { id: string; name: string }[]) => {
+    // the profile it filmed from was deleted (or is no longer a job seeker's): it's off until
+    // they pick another
+    const profileGone = !!s.profileId && !profiles.some((p) => p.id === s.profileId)
+    return {
+      ...s,
+      profiles,
+      profileGone,
+      ...(profileGone
+        ? {
+            note: 'Autopilot turned off because the profile it used was deleted. Pick another profile to turn it back on.',
+          }
+        : {}),
+    }
+  }
+
+  app.get(
+    '/v1/autopilot',
+    {
+      schema: {
+        tags: ['autopilot'],
+        summary: 'Your Autopilot settings: films a weekday, which days, profile, format, webhook',
+        description:
+          'Signed-in job seekers only. `profiles` lists the job seeker profiles it can film from; `profileGone` says the one it used was deleted, which turned it off. Days are ISO weekdays (Monday 1), Pacific time.',
+      },
+    },
+    async (req, reply) => {
+      const profiles = await seekerProfiles(req, reply)
+      if (!profiles) return reply
+      return autopilotDto(await autopilotOf(req.owner), profiles)
+    },
+  )
+
+  app.put(
+    '/v1/autopilot',
+    {
+      schema: {
+        tags: ['autopilot'],
+        summary: 'Turn Autopilot on or off, and choose how many films a weekday',
+        description:
+          'Films a weekday is 1 to 25. The webhook, when set, must be an https link on hooks.slack.com or discord.com/api/webhooks. Turning it on makes nothing straight away: the next daily run does.',
+        body: AutopilotSchema,
+      },
+    },
+    async (req, reply) => {
+      const profiles = await seekerProfiles(req, reply)
+      if (!profiles) return reply
+      const b = req.body
+      const bad = (message: string) =>
+        reply.status(422).send({
+          error: { code: 'bad_profile', message, fields: [{ path: 'profileId', message }] },
+        })
+      if (b.profileId && !profiles.some((p) => p.id === b.profileId))
+        return bad('Pick one of your job seeker profiles')
+      if (b.on && !b.profileId) return bad('Pick the profile Autopilot makes films from')
+      await sql`
+        insert into autopilot (owner, "on", per_day, days, profile_id, format, webhook)
+        values (${req.owner}, ${b.on}, ${b.perDay}, ${b.days}::int[], ${b.profileId},
+          ${b.format}, ${b.webhook})
+        on conflict (owner) do update set "on" = excluded."on", per_day = excluded.per_day,
+          days = excluded.days, profile_id = excluded.profile_id, format = excluded.format,
+          webhook = excluded.webhook, updated_at = now()`
+      return autopilotDto(await autopilotOf(req.owner), profiles)
+    },
+  )
+
+  app.get(
+    '/v1/autopilot/today',
+    {
+      schema: {
+        tags: ['autopilot'],
+        summary: "Today's pick: the companies Autopilot's films would be for, made or not",
+        description:
+          "Network this week's companies in order, skipping any with no website or already filmed by Autopilot today, up to films a weekday less the ones made today. Makes nothing. `runs` says whether Autopilot is on and today (Pacific) is one of its days.",
+      },
+    },
+    async (req, reply) => {
+      const profiles = await seekerProfiles(req, reply)
+      if (!profiles) return reply
+      const settings = await autopilotOf(req.owner)
+      const now = Date.now()
+      const day = dayOf(now)
+      // the same cached, sliced scoring as /v1/targets, so this never holds the event loop
+      const [{ list }, made] = await Promise.all([
+        targetsFor(req.owner),
+        sql<{ host: string | null }[]>`
+          select coalesce(output->>'host', input->>'url') as host from runs
+          where agent = 'film' and owner = ${req.owner} and origin = 'autopilot'
+            and status not in ('failed', 'cancelled')
+            and (created_at at time zone ${WEEK_ZONE})::date = ${day.date}::date`,
+      ])
+      const madeToday = made.flatMap((m) => (m.host ? [m.host] : []))
+      const { picks, skipped } = pickToday({ targets: list, settings, madeToday, now })
+      return {
+        day,
+        runs: isOn(settings, now) && !autopilotDto(settings, profiles).profileGone,
+        perDay: settings.perDay,
+        madeToday: madeToday.length,
+        picks,
+        skipped,
+      }
+    },
   )
 
   app.get(

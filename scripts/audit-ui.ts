@@ -592,6 +592,58 @@ const states: State[] = [
     },
   },
   {
+    // ends with today's pick open, so the axe pass checks the whole Autopilot section
+    name: 'Profile tab, Autopilot with today’s pick',
+    url: `${base}/#profile`,
+    stubs: {
+      '/v1/profiles': twoProfiles,
+      '/v1/autopilot': {
+        on: true,
+        perDay: 20,
+        days: [1, 2, 3, 4, 5],
+        profileId: 'fde',
+        format: 'square',
+        webhook: 'https://hooks.slack.com/services/T0/B0/audit',
+        profiles: [
+          { id: 'fde', name: 'FDE résumé' },
+          { id: 'gtm', name: 'GTM résumé' },
+        ],
+        profileGone: false,
+      },
+      '/v1/autopilot/today': {
+        day: { date: '2026-11-13', weekday: 5 },
+        runs: true,
+        perDay: 20,
+        madeToday: 1,
+        picks: [
+          {
+            site: 'https://parcelpine.example',
+            company: 'Parcelpine',
+            reasons: ['12 people, so the founders read their own email'],
+          },
+          {
+            site: 'https://northwind.example',
+            company: 'Northwind Analytics With A Long Name That Wraps On A Phone',
+            reasons: ['Posted a Forward Deployed Engineer role 3 days ago'],
+          },
+        ],
+        skipped: [{ site: '', why: 'Lumen has no website to make the film from' }],
+      },
+    },
+    async run(page) {
+      await page.waitForSelector('#autopilot-title', { timeout: 5000 })
+      const out: string[] = []
+      const why = (await texts(page, '#per-day-why'))[0] ?? ''
+      if (!why.includes('20 a weekday is 100 a week'))
+        out.push(`the films-a-weekday note reads “${why}”`)
+      await click(page, 'button', 'See today’s pick')
+      await page.waitForSelector('.autopilot-picks', { timeout: 5000 }).catch(() => null)
+      const picks = await texts(page, '.autopilot-picks a')
+      if (picks.length !== 2) out.push(`today’s pick shows ${picks.length} companies`)
+      return out
+    },
+  },
+  {
     name: 'Today with warm leads',
     url: `${base}/#today`,
     stubs: { '/v1/profiles': profiles, '/v1/warm': warmLeads },
