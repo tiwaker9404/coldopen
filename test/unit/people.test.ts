@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { openGroup, peopleGroups } from '../../dashboard/src/peopleTabs.ts'
 import { targetRoles } from '../../src/jobs/targets.ts'
 import {
+  companyIndex,
   companyKey,
   flatSearches,
   knownAt,
@@ -309,5 +310,26 @@ describe('people you already know there', () => {
   it('puts recruiters, then the likely manager, first', () => {
     const known = knownAt(parseConnections(CONNECTIONS), 'Stripe', 'stripe.com', 'Backend Engineer')
     expect(known.map((c) => c.name)).toEqual(['Priya Shah', 'Ben Ortiz', 'Ana Lima'])
+  })
+
+  it('finds the same people by index as one by one, in the same order, for any company', () => {
+    const people = [
+      ...parseConnections(CONNECTIONS),
+      { name: 'Dee Mind', company: 'Google DeepMind' },
+      { name: 'Ed Goo', company: 'Goo' },
+      { name: 'Flo Stripes', company: 'Stripes Media' },
+      { name: 'Gil Meta', company: 'Meta Platforms, Inc.' },
+      { name: 'Hal Blank', company: '' },
+    ]
+    const byIndex = companyIndex(people)
+    const companies = ['Google', 'google.com', 'Stripe', 'stripe.com', 'Meta', 'Goo', 'Stripes', '']
+    for (const a of companies)
+      for (const b of ['', 'meta.com', 'deepmind.google']) {
+        const keys = [companyKey(a), companyKey(b)]
+        const oneByOne = people.filter((c) => keys.some((k) => k && sameCompany(k, c.company)))
+        expect(byIndex(keys), `${a} / ${b}`).toEqual(oneByOne)
+      }
+    expect(byIndex([companyKey('Google')]).map((c) => c.name)).toContain('Dee Mind')
+    expect(byIndex([companyKey('Goo')]).map((c) => c.name)).toEqual(['Ed Goo'])
   })
 })

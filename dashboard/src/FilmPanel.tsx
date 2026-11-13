@@ -1712,11 +1712,16 @@ function Line({
 function Views({ id }: { id: string }) {
   const q = useQuery({
     queryKey: ['views', id],
-    queryFn: () => api<{ summary: ViewSummary; sessions: ViewSession[] }>(`/v1/films/${id}/views`),
+    queryFn: () =>
+      api<{ summary: ViewSummary; sessions: ViewSession[]; loaded?: boolean }>(
+        `/v1/films/${id}/views`,
+      ),
     refetchInterval: 15_000,
   })
   const v = q.data
   if (!v) return null
+  if (v.loaded === false)
+    return <p className="small muted">Views didn't load just now. They'll show up on their own.</p>
   const s = v.summary
   if (s.opens === 0)
     return (

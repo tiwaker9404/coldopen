@@ -38,16 +38,18 @@ import {
 import { allStartups, searchStartups, startupOf } from '../jobs/startups.ts'
 import {
   reachedThisWeek,
+  reuseTargets,
+  type SavedTargets,
   type Target,
   hostOf as targetHost,
   targetRoles,
-  targets,
+  targetsInSlices,
   WEEKLY_TARGET,
   weekStart,
 } from '../jobs/targets.ts'
 import type { LlmProvider } from '../llm/types.ts'
 import type { Logger } from '../logger.ts'
-import { registerQueueGauges, registry } from '../metrics.ts'
+import { registerQueueGauges, registry, watchEventLoop } from '../metrics.ts'
 import { briefOf } from '../outreach/brief.ts'
 import { checkMessage, touchContext } from '../outreach/checks.ts'
 import {
@@ -202,7 +204,7 @@ interface FilmRow extends Run {
   recipient?: Recipient | null
 }
 
-function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
+function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary, viewsLoaded = true) {
   const out = r.output
   // on the hosted app, finished films live on the share worker and outlive restarts
   const base = out?.shared ? out.shared.link : `/v1/films/${r.id}/files`
@@ -245,6 +247,8 @@ function filmDto(r: FilmRow, publicUrl: string, views?: ViewSummary) {
       (r.input.job ? { title: r.input.job.title ?? null, url: r.input.job.url ?? null } : null),
     /** what people did on the share page; null until the film is finished */
     views: out ? (views ?? NO_VIEWS) : null,
+    /** false when the share worker didn't answer in time: the counts above are blanks */
+    viewsLoaded: !out || viewsLoaded,
     /** what happened after it was sent, as the sender marked it, and what to do next */
     outreach: r.outreach
       ? {
@@ -336,6 +340,9 @@ export async function buildApi({
     bodyLimit: 2 * 1024 * 1024,
     trustProxy: true,
   }).withTypeProvider<ZodTypeProvider>()
+  // first, and from memory: Render restarts the app when this takes over 5 seconds, so it
+  // never waits on the database or another service (/readyz checks the database)
+  app.get('/healthz', { schema: { hide: true } }, async () => ({ ok: true }))
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
   // before any route, so every handler runs inside its request's span
@@ -401,7 +408,27 @@ export async function buildApi({
   registerQueueGauges(sql)
 
   /* ------------------------------------------------------------------- ops */
-  app.get('/healthz', { schema: { hide: true } }, async () => ({ ok: true }))
+  // what's in flight, so a blocked event loop is logged with the route that held it
+  const inFlight = new Map<string, { route: string; at: number }>()
+  app.addHook('onRequest', async (req) => {
+    if (req.url !== '/healthz')
+      inFlight.set(req.id, {
+        route: `${req.method} ${req.routeOptions.url ?? req.url}`,
+        at: Date.now(),
+      })
+  })
+  app.addHook('onResponse', async (req) => {
+    inFlight.delete(req.id)
+  })
+  const stopWatch = watchEventLoop({
+    log: app.log,
+    inFlight: () => {
+      const now = Date.now()
+      for (const [id, r] of inFlight) if (now - r.at > 10 * 60_000) inFlight.delete(id)
+      return [...new Set([...inFlight.values()].map((r) => r.route))]
+    },
+  })
+  app.addHook('onClose', async () => stopWatch())
   // the web app's bundled Archivo, so /privacy matches the app (its name carries a build hash)
   const appFont = (() => {
     try {
@@ -590,12 +617,25 @@ export async function buildApi({
     return null
   }
 
-  /** View counts: from the share worker when films are published there, else from Postgres. */
-  async function summariesFor(runs: FilmRow[]): Promise<Map<string, ViewSummary>> {
+  // after the share worker fails to answer, pages stop asking it for half a minute, so each
+  // one shows views as not loaded at once instead of waiting out the timeout again
+  const SHARE_QUIET_MS = 30_000
+  let shareQuietUntil = 0
+  /**
+   * View counts: from the share worker when films are published there, else from Postgres.
+   * `unloaded` holds the films whose views the share worker didn't give in time (a few
+   * seconds): the page shows those as not loaded rather than waiting or failing.
+   */
+  async function viewsFor(
+    runs: FilmRow[],
+  ): Promise<{ views: Map<string, ViewSummary>; unloaded: Set<string> }> {
     const shared = runs.filter((r) => r.output?.shared)
     const local = runs.filter((r) => !r.output?.shared).map((r) => r.id)
-    const out = await viewSummaries(sql, local)
-    if (shared.length && share) {
+    const views = await viewSummaries(sql, local)
+    const unloaded = new Set<string>()
+    if (shared.length && share && Date.now() < shareQuietUntil) {
+      for (const r of shared) unloaded.add(r.id)
+    } else if (shared.length && share) {
       try {
         const remote = await shareViews(
           share,
@@ -603,14 +643,17 @@ export async function buildApi({
         )
         for (const r of shared) {
           const v = remote.get(r.output!.shared!.id)
-          if (v) out.set(r.id, v)
+          if (v) views.set(r.id, v)
         }
       } catch (err) {
         app.log.warn({ err }, 'could not read views from the share worker')
+        shareQuietUntil = Date.now() + SHARE_QUIET_MS
+        for (const r of shared) unloaded.add(r.id)
       }
     }
-    return out
+    return { views, unloaded }
   }
+  const summariesFor = async (runs: FilmRow[]) => (await viewsFor(runs)).views
   /** on the hosted app, a visitor's share links last 7 days and an account's 30 */
   // visitors' films are kept 7 days and accounts' 30; unlimited users' until they delete them
   const keep = (req: FastifyRequest) =>
@@ -1151,7 +1194,7 @@ export async function buildApi({
    * depend on changes: their search, profile, connections, films (made, edited or marked sent)
    * or hidden companies. The fingerprint is read from the database, so every API process agrees.
    */
-  const TARGETS = new Map<string, { key: string; list: Target[] }>()
+  const TARGETS = new Map<string, SavedTargets<Target[]>>()
   const targetsFor = async (owner: Owner): Promise<{ list: Target[]; roles: string[] }> => {
     const [f] = await sql<
       { films: string; conns: string; search: string; prof: string; hides: string }[]
@@ -1177,9 +1220,10 @@ export async function buildApi({
         ? sem.known(profile, [...new Set(startups.flatMap((x) => (x.o ? [x.o] : [])))])
         : undefined
     const day = new Date().toISOString().slice(0, 10)
-    const key = JSON.stringify([day, f, meaning?.size ?? -1])
+    const key = JSON.stringify([day, f])
+    const known = meaning?.size ?? -1
     const hit = TARGETS.get(owner)
-    if (hit?.key === key) return { list: hit.list, roles }
+    if (reuseTargets(hit, key, known, Date.now())) return { list: hit.list, roles }
 
     const [jobs, films, connections, hidden] = await Promise.all([
       cachedJobs(sql, boardsFor(state.boards)),
@@ -1192,7 +1236,7 @@ export async function buildApi({
         select name, company from connections where owner = ${owner} limit 30000`,
       sql<{ host: string }[]>`select host from target_hides where owner = ${owner}`,
     ])
-    const list = targets(
+    const list = await targetsInSlices(
       {
         profile,
         search: state.search,
@@ -1207,7 +1251,7 @@ export async function buildApi({
       Date.now(),
       500,
     )
-    TARGETS.set(owner, { key, list })
+    TARGETS.set(owner, { key, meaning: known, at: Date.now(), list })
     if (TARGETS.size > 500) TARGETS.delete(TARGETS.keys().next().value!)
     return { list, roles }
   }
@@ -1566,9 +1610,9 @@ export async function buildApi({
           ${req.query.before ? sql`and id < ${req.query.before}` : sql``}
           ${req.query.batch ? sql`and input->>'batch' = ${req.query.batch}` : sql``}
         order by id desc limit ${req.query.limit}`
-      const views = await summariesFor(rows.filter((r) => r.status === 'succeeded'))
+      const { views, unloaded } = await viewsFor(rows.filter((r) => r.status === 'succeeded'))
       return {
-        data: rows.map((r) => filmDto(r, publicUrl, views.get(r.id))),
+        data: rows.map((r) => filmDto(r, publicUrl, views.get(r.id), !unloaded.has(r.id))),
         nextCursor: rows.length === req.query.limit ? rows.at(-1)!.id : null,
       }
     },
@@ -1586,14 +1630,14 @@ export async function buildApi({
     async (req, reply) => {
       const run = await ownFilm(req.params.id, req.owner)
       if (!run) return notFound(reply)
-      const [steps, timeline, views, review] = await Promise.all([
+      const [steps, timeline, { views, unloaded }, review] = await Promise.all([
         getSteps(sql, run.id),
         getLog(sql, run.id),
-        summariesFor([run]),
+        viewsFor([run]),
         reviewOf(run),
       ])
       return {
-        ...filmDto(run, publicUrl, views.get(run.id)),
+        ...filmDto(run, publicUrl, views.get(run.id), !unloaded.has(run.id)),
         script: run.output?.script ?? null,
         scriptMeta: run.output?.scriptMeta ?? null,
         /** the line quoted from their site or job post, and the proof shown */
@@ -3052,8 +3096,15 @@ export async function buildApi({
     async (req, reply) => {
       const run = await ownFilm(req.params.id, req.owner)
       if (!run) return notFound(reply)
-      if (run.output?.shared && share) return oneFilmViews(share, run.output.shared.id)
-      return filmViews(sql, req.params.id)
+      if (run.output?.shared && share) {
+        try {
+          return { ...(await oneFilmViews(share, run.output.shared.id)), loaded: true }
+        } catch (err) {
+          app.log.warn({ err }, 'could not read views from the share worker')
+          return { summary: NO_VIEWS, sessions: [], loaded: false }
+        }
+      }
+      return { ...(await filmViews(sql, req.params.id)), loaded: true }
     },
   )
 

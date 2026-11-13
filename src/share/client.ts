@@ -81,12 +81,20 @@ export function newShareId(company: string): string {
   return `${slug(company)}-${tail}`
 }
 
+/**
+ * How long a page waits on the share worker for views before showing them as not loaded. An
+ * upload (a film's MP4) gets a minute; a read the person is waiting on gets a few seconds.
+ */
+export const SHARE_READ_MS = 4_000
+const SHARE_UPLOAD_MS = 60_000
+
 async function call<T>(
   cfg: ShareConfig,
   method: string,
   path: string,
   body?: BodyInit,
   type?: string,
+  timeoutMs = SHARE_UPLOAD_MS,
 ) {
   const res = await fetch(`${cfg.url}${path}`, {
     method,
@@ -95,7 +103,7 @@ async function call<T>(
       ...(type ? { 'content-type': type } : {}),
     },
     ...(body !== undefined ? { body } : {}),
-    signal: AbortSignal.timeout(60_000),
+    signal: AbortSignal.timeout(timeoutMs),
   })
   const text = await res.text()
   if (!res.ok) {
@@ -157,15 +165,26 @@ export async function allViews(cfg: ShareConfig) {
     cfg,
     'GET',
     '/api/views',
+    undefined,
+    undefined,
+    SHARE_READ_MS,
   )
 }
 
 export async function oneFilmViews(cfg: ShareConfig, id: string) {
-  return call<{ summary: ViewSummary; sessions: ViewRow[] }>(cfg, 'GET', `/api/films/${id}/views`)
+  return call<{ summary: ViewSummary; sessions: ViewRow[] }>(
+    cfg,
+    'GET',
+    `/api/films/${id}/views`,
+    undefined,
+    undefined,
+    SHARE_READ_MS,
+  )
 }
 
 export async function unshare(cfg: ShareConfig, id: string) {
-  return call(cfg, 'DELETE', `/api/films/${id}`)
+  // a deleted account's links should go too, so this waits a little longer than a read
+  return call(cfg, 'DELETE', `/api/films/${id}`, undefined, undefined, 10_000)
 }
 
 /** Summaries for these films only (no listing of everything stored). */
@@ -181,6 +200,9 @@ export async function shareViews(
       cfg,
       'GET',
       `/api/views?ids=${chunk.map(encodeURIComponent).join(',')}`,
+      undefined,
+      undefined,
+      SHARE_READ_MS,
     )
     for (const [id, v] of Object.entries(r.views)) out.set(id, v)
   }

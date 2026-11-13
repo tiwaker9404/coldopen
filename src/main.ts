@@ -4,10 +4,13 @@ import { closeBrowser } from './browser.ts'
 import { loadConfig } from './config.ts'
 import { connect, migrate } from './db/index.ts'
 import { createFilmAgent } from './film.ts'
+import { appSemantic } from './job/semantic.ts'
+import { loadListings } from './jobs/service.ts'
 import { buildLlm } from './llm/chain.ts'
 import type { LlmProvider } from './llm/types.ts'
 import { createLogger } from './logger.ts'
 import { registry, Worker } from './runtime/worker.ts'
+import { closeServer, type StopStep, stopAll } from './shutdown.ts'
 import { SlackClient } from './slack.ts'
 import { startTracing } from './tracing.ts'
 
@@ -24,7 +27,7 @@ const cfg = loadConfig()
 const log = createLogger(cfg.LOG_LEVEL, `coldopen:${role}`)
 const tracing = startTracing(`coldopen-${role}`)
 const sql = connect(cfg.DATABASE_URL, cfg.DB_POOL_SIZE)
-const stoppers: (() => Promise<void>)[] = []
+const stoppers: StopStep[] = []
 
 const llm: LlmProvider =
   cfg.LLM_PROVIDER === 'openai'
@@ -75,8 +78,8 @@ async function main() {
     )
     const worker = new Worker(sql, cfg, log, agents, llm)
     await worker.start()
-    stoppers.push(() => worker.stop(60_000))
-    stoppers.push(closeBrowser)
+    stoppers.push({ name: 'worker', stop: () => worker.stop(60_000) })
+    stoppers.push({ name: 'browser', stop: closeBrowser })
     if (role === 'drain') void drain(worker)
   }
   if (role === 'api' || role === 'all') {
@@ -87,8 +90,19 @@ async function main() {
       slack,
       llm: cfg.LLM_PROVIDER === 'openai' ? llm : null,
     })
+    // fit by meaning's model, loaded before taking requests: loading it holds the event loop
+    // for about 5 s on the hosted app's 0.1 CPU, longer than Render waits for /healthz
+    // (at most a minute: a slow download goes on in the background, as before)
+    const started = Date.now()
+    const loaded = await Promise.race([
+      appSemantic(),
+      new Promise<null>((r) => setTimeout(r, 60_000, null).unref()),
+    ])
+    if (loaded) log.info({ ms: Date.now() - started }, 'fit by meaning loaded')
+    // and the job boards' saved listings, for the same reason
+    await loadListings(sql).catch((err) => log.warn({ err }, 'could not load job listings'))
     await app.listen({ port: cfg.PORT, host: cfg.HOST })
-    stoppers.unshift(() => app.close())
+    stoppers.unshift({ name: 'http server', stop: () => closeServer(app) })
   }
 }
 
@@ -154,11 +168,15 @@ async function shutdown(signal: string) {
   if (stopping) return
   stopping = true
   log.info({ signal }, 'shutting down')
-  for (const stop of stoppers)
-    await stop().catch((err) => log.error({ err }, 'shutdown step failed'))
-  await tracing?.shutdown()
-  await sql.end({ timeout: 5 })
-  process.exit(0)
+  await stopAll(
+    [
+      ...stoppers,
+      { name: 'tracing', stop: async () => tracing?.shutdown() },
+      { name: 'database', stop: () => sql.end({ timeout: 5 }) },
+    ],
+    // a worker gets its minute to hand back its films; the web app has nothing that long
+    { log, exit: (code) => process.exit(code), deadlineMs: role === 'api' ? 10_000 : 75_000 },
+  )
 }
 process.on('SIGTERM', () => void shutdown('SIGTERM'))
 process.on('SIGINT', () => void shutdown('SIGINT'))

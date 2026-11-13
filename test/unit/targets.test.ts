@@ -4,9 +4,12 @@ import type { Startup } from '../../src/jobs/startups-build.ts'
 import {
   hostOf,
   reachedThisWeek,
+  reuseTargets,
+  TARGETS_TTL_MS,
   type TargetInput,
   targetRoles,
   targets,
+  targetsInSlices,
   weekStart,
 } from '../../src/jobs/targets.ts'
 import type { Profile } from '../../src/script/types.ts'
@@ -340,5 +343,35 @@ describe('Network this week: x of 10', () => {
       now,
     )
     expect(n).toBe(4) // anchor, beacon, cobalt, Fjord Labs
+  })
+})
+
+describe('Network this week between requests', () => {
+  const saved = { key: 'k', meaning: 10, at: NOW, list: ['Anchor'] }
+
+  it('serves the saved list while nothing it depends on has changed', () => {
+    expect(reuseTargets(saved, 'k', 10, NOW + 6 * 3_600_000)).toBe(true)
+  })
+
+  it('scores again as soon as a film is made, marked or a company hidden (a new key)', () => {
+    expect(reuseTargets(saved, 'k2', 10, NOW + 1)).toBe(false)
+    expect(reuseTargets(undefined, 'k', 10, NOW)).toBe(false)
+  })
+
+  it('keeps a list for a minute while fit by meaning embeds more companies, then counts them', () => {
+    expect(reuseTargets(saved, 'k', 40, NOW + TARGETS_TTL_MS - 1)).toBe(true)
+    expect(reuseTargets(saved, 'k', 40, NOW + TARGETS_TTL_MS)).toBe(false)
+  })
+
+  it('gives the same list scored a slice at a time as all at once', async () => {
+    const input = base({
+      connections: [
+        { name: 'Priya Shah', company: 'Anchor, Inc.' },
+        { name: 'Ben Ortiz', company: 'Megacorp' },
+      ],
+    })
+    // a zero-length slice yields after every company
+    expect(await targetsInSlices(input, NOW, undefined, 0)).toEqual(targets(input, NOW))
+    expect(await targetsInSlices(input, NOW, 1)).toEqual(targets(input, NOW, 1))
   })
 })

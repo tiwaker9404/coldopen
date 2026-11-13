@@ -5,6 +5,7 @@ import {
   defaultSearch,
   placeFit,
   rank,
+  rankInSlices,
   SearchSchema,
   spread,
   titleFit,
@@ -179,6 +180,17 @@ describe('ranking', () => {
     location,
     remote: /remote/i.test(location),
     ...extra,
+  })
+
+  it('ranks the same a slice at a time as all at once, duplicates and all', async () => {
+    const s = SearchSchema.parse({ roles: ['Solutions Engineer'], locations: ['Bay Area'] })
+    const jobs = [
+      job('Solutions Engineer', 'San Francisco, CA', { posted: days(2) }),
+      job('Solutions Engineer', 'Remote - US', { posted: days(1) }),
+      job('Solutions Engineer', 'San Francisco, CA', { posted: days(2) }),
+      job('Account Executive', 'San Francisco, CA'),
+    ]
+    expect(await rankInSlices(jobs, s, NOW, 0)).toEqual(rank(jobs, s, NOW))
   })
 
   it('keeps fitting roles in the right places, newest and closest first, with reasons', () => {

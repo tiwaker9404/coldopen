@@ -1,3 +1,4 @@
+import { monitorEventLoopDelay } from 'node:perf_hooks'
 import client from '@prometheus-io/client'
 import type { Sql } from './db/index.ts'
 
@@ -87,4 +88,59 @@ export function registerQueueGauges(sql: Sql): void {
       this.set(Math.max(0, row?.s ?? 0))
     },
   })
+}
+
+/**
+ * How late the event loop ran, as the 99th percentile over the last 10 seconds. The hosted app
+ * has 0.1 CPU, and Render restarts it when /healthz takes over 5 seconds, so anything that
+ * holds the loop shows here first.
+ */
+export const eventLoopDelayP99 = new client.Gauge({
+  name: 'coldopen_event_loop_delay_p99_ms',
+  help: 'Event-loop delay, 99th percentile over the last 10 seconds, in milliseconds',
+  registers: [registry],
+})
+
+interface WarnLog {
+  warn(obj: object, msg: string): void
+}
+
+/**
+ * Keeps the gauge current and logs a warning, with the routes in flight, whenever the loop was
+ * held for longer than `warnMs`: the route in flight is usually the one that held it. Timers are
+ * unref'd; the returned function stops them.
+ */
+export function watchEventLoop(opts: {
+  log: WarnLog
+  inFlight: () => string[]
+  warnMs?: number
+  windowMs?: number
+}): () => void {
+  const warnMs = opts.warnMs ?? 1000
+  const h = monitorEventLoopDelay({ resolution: 20 })
+  h.enable()
+  const window = setInterval(() => {
+    eventLoopDelayP99.set(h.count ? Math.round(h.percentile(99) / 1e6) : 0)
+    h.reset()
+  }, opts.windowMs ?? 10_000)
+  // a timer that should fire every 250 ms: when it's late, the loop was held that long
+  const every = 250
+  let due = performance.now() + every
+  const tick = setInterval(() => {
+    const now = performance.now()
+    const late = now - due
+    due = now + every
+    if (late > warnMs)
+      opts.log.warn(
+        { delayMs: Math.round(late), routes: opts.inFlight() },
+        'event loop was blocked',
+      )
+  }, every)
+  window.unref()
+  tick.unref()
+  return () => {
+    clearInterval(window)
+    clearInterval(tick)
+    h.disable()
+  }
 }

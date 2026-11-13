@@ -1,6 +1,7 @@
 import { ANSWERED, terms } from '../job/fit.ts'
-import { companyKey, sameCompany } from '../outreach/people.ts'
+import { companyIndex, companyKey } from '../outreach/people.ts'
 import type { Profile } from '../script/types.ts'
+import { inSlices, SLICE_MS } from '../slices.ts'
 import type { Job } from './boards.ts'
 import { ago, type Search, titleFit } from './rank.ts'
 import type { Startup } from './startups-build.ts'
@@ -164,11 +165,8 @@ interface Entry {
   jobs: TargetInput['jobs']
 }
 
-/**
- * The companies most worth a film and a warm message right now, best first. `limit` cuts the
- * list (10 for Today); leave it out for every company that scored.
- */
-export function targets(input: TargetInput, now = Date.now(), limit?: number): Target[] {
+/** Every company once, and how to score one: shared by the list and the sliced list */
+function scorer(input: TargetInput, now: number) {
   const { profile, search } = input
   const roles = targetRoles(search, profile)
   const employer = employerRule(profile)
@@ -180,6 +178,8 @@ export function targets(input: TargetInput, now = Date.now(), limit?: number): T
   })
   const filmedHosts = new Set(recent.map((f) => hostOf(f.host)).filter(Boolean))
   const filmedNames = new Set(recent.map((f) => companyKey(f.company ?? '')).filter(Boolean))
+  // each connection's company worked out once, not once per company scored
+  const knownAt = companyIndex(input.connections)
 
   // every company once, by its website: YC's list first, then the companies whose boards we read
   const all = new Map<string, Entry>()
@@ -218,11 +218,10 @@ export function targets(input: TargetInput, now = Date.now(), limit?: number): T
     all.set(host, e)
   }
 
-  const out: Target[] = []
-  for (const e of all.values()) {
+  const scoreOne = (e: Entry): Target | null => {
     if (hidden.has(e.host) || filmedHosts.has(e.host) || filmedNames.has(companyKey(e.name)))
-      continue
-    if (employer && (employer.test(e.name.toLowerCase()) || employer.test(e.host))) continue
+      return null
+    if (employer && (employer.test(e.name.toLowerCase()) || employer.test(e.host))) return null
 
     let score = 0
     const lead: string[] = []
@@ -244,7 +243,7 @@ export function targets(input: TargetInput, now = Date.now(), limit?: number): T
     const close = e.oneLiner ? input.meaning?.get(e.oneLiner) : undefined
     const near = !!close && close.score >= ANSWERED
     if (near) fit += 1
-    if (fit === 0) continue
+    if (fit === 0) return null
     score += fit
 
     // reachable: who reads the note
@@ -294,11 +293,7 @@ export function targets(input: TargetInput, now = Date.now(), limit?: number): T
     }
 
     // warm paths: people they already know there
-    const key = companyKey(e.name)
-    const hostKey = companyKey(e.host)
-    const known = input.connections.filter(
-      (c) => sameCompany(key, c.company) || (hostKey && sameCompany(hostKey, c.company)),
-    )
+    const known = knownAt([companyKey(e.name), companyKey(e.host)])
     if (known.length) {
       score += known.length >= 3 ? 1.5 : 1
       const names = known.slice(0, 2).map((c) => firstName(c.name))
@@ -319,7 +314,7 @@ export function targets(input: TargetInput, now = Date.now(), limit?: number): T
     const reasons = [...lead, ...after]
       .slice(0, 5)
       .map((r) => r.charAt(0).toUpperCase() + r.slice(1))
-    out.push({
+    return {
       company: e.name,
       site: e.site,
       oneLiner: e.oneLiner,
@@ -327,8 +322,48 @@ export function targets(input: TargetInput, now = Date.now(), limit?: number): T
       score: Math.round(score * 100) / 100,
       reasons,
       ...(e.yc ? { yc: e.yc } : {}),
-    })
+    }
   }
+  return { companies: [...all.values()], scoreOne }
+}
+
+/**
+ * The companies most worth a film and a warm message right now, best first. `limit` cuts the
+ * list (10 for Today); leave it out for every company that scored.
+ */
+export function targets(input: TargetInput, now = Date.now(), limit?: number): Target[] {
+  const { companies, scoreOne } = scorer(input, now)
+  return best(
+    companies.flatMap((e) => scoreOne(e) ?? []),
+    limit,
+  )
+}
+
+/**
+ * The same list, scored a slice at a time so the event loop gets a turn every `sliceMs`:
+ * scoring every YC startup took about 2 s on the hosted app's 0.1 CPU, longer than a page
+ * should hold /healthz.
+ */
+export async function targetsInSlices(
+  input: TargetInput,
+  now = Date.now(),
+  limit?: number,
+  sliceMs = SLICE_MS,
+): Promise<Target[]> {
+  const { companies, scoreOne } = scorer(input, now)
+  const out: Target[] = []
+  await inSlices(
+    companies,
+    (e) => {
+      const t = scoreOne(e)
+      if (t) out.push(t)
+    },
+    sliceMs,
+  )
+  return best(out, limit)
+}
+
+function best(out: Target[], limit?: number): Target[] {
   out.sort(
     (a, b) =>
       b.score - a.score ||
@@ -359,6 +394,35 @@ function zoneOffset(t: number, zone: string): number {
   )
   const wall = Date.UTC(+p.year!, +p.month! - 1, +p.day!, +p.hour!, +p.minute!, +p.second!)
   return Math.round((wall - Math.floor(t / 1000) * 1000) / 60_000)
+}
+
+/** how long a scored list is served while fit by meaning is still embedding companies */
+export const TARGETS_TTL_MS = 60_000
+
+/** One person's scored list, as the API keeps it between requests. */
+export interface SavedTargets<T> {
+  /** the day and what the list depends on: films, connections, search, profile, hides */
+  key: string
+  /** how many one-liners fit by meaning had embedded when it was scored */
+  meaning: number
+  at: number
+  list: T
+}
+
+/**
+ * Can the saved list be served again? Never once anything it depends on changed (a film made,
+ * edited or marked, a company hidden, a new day). While the meaning model is still embedding
+ * in the background, each request would see a few more companies and score everything again,
+ * so a list stays good for a minute after it was scored; after that, new meanings count.
+ */
+export function reuseTargets<T>(
+  saved: SavedTargets<T> | undefined,
+  key: string,
+  meaning: number,
+  now: number,
+): saved is SavedTargets<T> {
+  if (!saved || saved.key !== key) return false
+  return saved.meaning === meaning || now - saved.at < TARGETS_TTL_MS
 }
 
 /**

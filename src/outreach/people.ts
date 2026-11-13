@@ -388,12 +388,47 @@ export function companyKey(name: string): string {
 
 /** Is someone who works at `theirs` at the company with key `key`? */
 export function sameCompany(key: string, theirs: string): boolean {
-  const k = companyKey(theirs)
+  return sameKey(key, companyKey(theirs))
+}
+
+/**
+ * Do two company keys name the same company? Equal, or one starts the other and ends at a
+ * word: "Google DeepMind" at "google", or "Meta" when the company is "Meta Platforms". Keys are
+ * only letters, digits and single spaces, so "ends at a word" is "followed by a space".
+ */
+function sameKey(key: string, k: string): boolean {
   if (!k || !key) return false
   if (k === key) return true
-  // "Google DeepMind" at "google", or "Meta" when the company is "Meta Platforms"
   const [short, long] = k.length < key.length ? [k, key] : [key, k]
-  return short.length >= 4 && new RegExp(`^${short}\\b`).test(long)
+  return short.length >= 4 && long.startsWith(short) && long[short.length] === ' '
+}
+
+const firstWord = (key: string) => key.split(' ', 1)[0]!
+
+/**
+ * People looked up by company, for matching thousands of companies at once (Network this week
+ * scores every YC startup against every connection). The same rule as sameCompany, with each
+ * person's company key worked out once. Two keys that match share their first word, so only
+ * the people under that word are compared. Results keep the people's original order.
+ */
+export function companyIndex<T extends { company: string }>(people: T[]): (keys: string[]) => T[] {
+  const byWord = new Map<string, { key: string; at: number }[]>()
+  people.forEach((p, at) => {
+    const key = companyKey(p.company)
+    if (!key) return
+    const w = firstWord(key)
+    const list = byWord.get(w)
+    if (list) list.push({ key, at })
+    else byWord.set(w, [{ key, at }])
+  })
+  return (keys) => {
+    const hits = new Set<number>()
+    for (const key of keys) {
+      if (!key) continue
+      for (const e of byWord.get(firstWord(key)) ?? []) if (sameKey(key, e.key)) hits.add(e.at)
+    }
+    return [...hits].sort((a, b) => a - b).map((i) => people[i]!)
+  }
 }
 
 /** One CSV line, with quoted fields and doubled quotes. */

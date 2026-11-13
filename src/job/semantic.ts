@@ -97,6 +97,14 @@ export interface Semantic {
   closeness(lines: string[], about: string[]): Promise<number[]>
 }
 
+/**
+ * Texts per model call. onnxruntime-node runs the model on the main thread, so each call holds
+ * the event loop for as long as it takes. On the hosted app's 0.1 CPU, 64 texts held it for
+ * about 2.1 s (and 4,400 startup one-liners, embedded after the first Today, for minutes on
+ * end); 4 hold it for about 0.2 s, for nearly the same total time.
+ */
+export const EMBED_BATCH = 4
+
 /** Embeddings kept by text, so a requirement or a record line is embedded once */
 export function semanticFit(
   embedder: Embedder,
@@ -106,10 +114,12 @@ export function semanticFit(
   const MAX = 20_000
   async function vectors(texts: string[]): Promise<Float32Array[]> {
     const missing = [...new Set(texts.filter((t) => !cache.has(t)))]
-    for (let i = 0; i < missing.length; i += 64) {
-      const batch = missing.slice(i, i + 64)
+    for (let i = 0; i < missing.length; i += EMBED_BATCH) {
+      const batch = missing.slice(i, i + EMBED_BATCH)
       const vs = await embedder.embed(batch)
       for (const [j, t] of batch.entries()) cache.set(t, vs[j]!)
+      // let requests (and /healthz) in between batches
+      await new Promise((r) => setImmediate(r))
     }
     if (cache.size > MAX)
       for (const k of [...cache.keys()].slice(0, cache.size - MAX)) cache.delete(k)
@@ -183,6 +193,12 @@ export function appSemantic(): Promise<Semantic | null> {
   const want = process.env.FIT_SEMANTIC
   if (!want || want === 'off') return Promise.resolve(null)
   shared ??= loadEmbedder(want === 'on' ? DEFAULT_MODEL : want)
+    // the first run sets the model up, holding the event loop about 2.5 s on 0.1 CPU: do it
+    // here, while the app loads, rather than in the middle of someone's first page
+    .then(async (e) => {
+      await e.embed(['warm up'])
+      return e
+    })
     .then((e) => {
       ready = semanticFit(e)
       return ready

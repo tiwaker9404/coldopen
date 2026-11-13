@@ -16,7 +16,14 @@ import {
 } from './boards.ts'
 import { DEFAULT_BOARDS, raisedOf, sizeOf, visaOf, ycOf } from './companies.ts'
 import { detailsFromBoard, greenhouseDetails } from './details.ts'
-import { defaultSearch, rank, type Search, SearchSchema, type Suggestion, spread } from './rank.ts'
+import {
+  defaultSearch,
+  rankInSlices,
+  type Search,
+  SearchSchema,
+  type Suggestion,
+  spread,
+} from './rank.ts'
 import { CITIZEN_ONLY, CLEARANCE, yearsAsked } from './where.ts'
 
 /** Raised in the window, and (when a size is asked for) a round of that size */
@@ -205,8 +212,10 @@ async function cachedRows(sql: Sql, keys: string[]): Promise<Map<string, Cached>
   const changed = meta
     .filter((m) => memory.get(m.board)?.fetchedAt.getTime() !== m.fetchedAt.getTime())
     .map((m) => m.board)
-  for (let i = 0; i < changed.length; i += 200) {
-    const part = changed.slice(i, i + 200)
+  // 50 boards a query: each answer is parsed in one go, and 200 boards' jobs held the event
+  // loop for about a second on the hosted app's 0.1 CPU
+  for (let i = 0; i < changed.length; i += 50) {
+    const part = changed.slice(i, i + 50)
     for (const r of await sql<Cached[]>`select * from job_boards where board in ${sql(part)}`)
       memory.set(r.board, r)
   }
@@ -276,6 +285,15 @@ export async function cachedJobs(sql: Sql, boards: Board[]): Promise<Job[]> {
       ...(b.site ? { site: b.site } : {}),
     })),
   )
+}
+
+/**
+ * Reads every default board's saved listing into memory once, as the app starts: the first page
+ * after a restart (Today) otherwise parses about 17,000 jobs from the database in the middle of
+ * someone's visit, which held the event loop for a second on the hosted app's 0.1 CPU.
+ */
+export async function loadListings(sql: Sql): Promise<number> {
+  return (await cachedRows(sql, DEFAULT_BOARDS.map(boardKey))).size
 }
 
 /** default boards and theirs, without the same board twice */
@@ -487,7 +505,7 @@ export async function suggestions(
       )
       const pace = momentum(all, opts.now)
       // the best title matches, then how well the person's record answers each one's requirements
-      const matched = rank(
+      const matched = await rankInSlices(
         jobs.filter((j) => !hidden.has(j.id)),
         state.search,
         opts.now,

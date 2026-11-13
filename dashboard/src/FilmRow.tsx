@@ -89,6 +89,7 @@ export function watched(film: Film): string {
     const days = Math.floor((Date.now() - Date.parse(o.sentAt)) / 86_400_000)
     return `No reply in ${days} days. Time to follow up`
   }
+  if (film.viewsLoaded === false) return 'Ready, views not loaded'
   if (!v || v.opens === 0) return 'Ready, not opened yet'
   if (v.plays === 0) return `Opened ${v.opens === 1 ? 'once' : `${v.opens} times`}, not played`
   const what =

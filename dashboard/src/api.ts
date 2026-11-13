@@ -23,6 +23,8 @@ export interface Film {
   share: string | null
   job: { title: string | null; url: string | null } | null
   views: ViewSummary | null
+  /** false when the share worker didn't answer in time, so the counts aren't known */
+  viewsLoaded?: boolean
   outreach: {
     status: OutreachStatus
     at: string

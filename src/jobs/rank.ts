@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { inSlices, SLICE_MS } from '../slices.ts'
 import type { Job } from './boards.ts'
 import { inUS, LEVELS, levelOf, managesOf } from './where.ts'
 
@@ -255,23 +256,19 @@ function sameName(key: string, company: string): boolean {
   return c === key || (key.length >= 4 && c.startsWith(`${key} `))
 }
 
-/**
- * Jobs that fit the search, best first: title fit, then where, then how new. Jobs whose title
- * fits none of the roles are left out; with no roles at all, nothing is suggested.
- */
-export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
+/** How one job scores against the search, or null if it's left out (shared by both ranks) */
+function ranker(s: Search, now: number): (j: Job) => Suggestion | null {
   const anyRole = s.roles.length === 0
   const wantsSenior = asksFor(s.roles, SENIOR)
   const excluded = s.exclude.map(nameKey).filter(Boolean)
   const excludedTitles = s.excludeTitles.map(
     (w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'),
   )
-  const out: Suggestion[] = []
   const seen = new Set<string>()
-  for (const j of jobs) {
+  return (j) => {
     // the same post listed twice on one board (once per office) is one suggestion
     const dupe = `${j.board}|${j.title.toLowerCase()}|${j.location.toLowerCase()}`
-    if (seen.has(dupe)) continue
+    if (seen.has(dupe)) return null
 
     let fit = anyRole ? 1 : 0
     let role = ''
@@ -282,35 +279,35 @@ export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
         role = r
       }
     }
-    if (fit === 0) continue
-    if (s.country === 'us' && !inUS(j)) continue
-    if (s.levels.length && !s.levels.includes(levelOf(j.title))) continue
-    if (s.roleType !== 'any' && managesOf(j.title) !== (s.roleType === 'manager')) continue
-    if (excludedTitles.some((w) => w.test(j.title))) continue
+    if (fit === 0) return null
+    if (s.country === 'us' && !inUS(j)) return null
+    if (s.levels.length && !s.levels.includes(levelOf(j.title))) return null
+    if (s.roleType !== 'any' && managesOf(j.title) !== (s.roleType === 'manager')) return null
+    if (excludedTitles.some((w) => w.test(j.title))) return null
     if (s.types.length) {
       // a post that doesn't say is a full-time role, unless its title says intern
       const t = j.type ?? (levelOf(j.title) === 'intern' ? 'intern' : 'full_time')
-      if (!s.types.includes(t)) continue
+      if (!s.types.includes(t)) return null
     }
     if (s.workplaces.length) {
       const w = j.workplace ?? (j.remote ? 'remote' : null)
       // a post that doesn't say could be hybrid or on site
-      if (w ? !s.workplaces.includes(w) : !s.workplaces.some((x) => x !== 'remote')) continue
+      if (w ? !s.workplaces.includes(w) : !s.workplaces.some((x) => x !== 'remote')) return null
     }
     if (s.within !== 'any') {
       const d = ago(j.posted, now)
       const max = { day: 1, '3days': 3, week: 7, month: 31 }[s.within]
-      if (d === null || d > max) continue
+      if (d === null || d > max) return null
     }
-    if (excluded.length && excluded.some((x) => sameName(x, j.company))) continue
-    if (s.minPay && j.pay && j.pay.currency === 'USD' && j.pay.max < s.minPay) continue
-    if (s.skipSenior && !wantsSenior && SENIOR.test(j.title)) continue
+    if (excluded.length && excluded.some((x) => sameName(x, j.company))) return null
+    if (s.minPay && j.pay && j.pay.currency === 'USD' && j.pay.max < s.minPay) return null
+    if (s.skipSenior && !wantsSenior && SENIOR.test(j.title)) return null
     if (
       s.skipSenior &&
       /\b(senior|sr\.?)\b/i.test(j.title) &&
       !asksFor(s.roles, /\b(senior|sr)\b/i)
     )
-      continue
+      return null
 
     const why: string[] = [role]
     let score = fit
@@ -324,7 +321,7 @@ export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
       } else if (s.remote && j.remote) {
         why.push('Remote')
         score += 0.5
-      } else continue
+      } else return null
     } else if (j.remote) why.push('Remote')
 
     // full-time roles come first; internships follow unless the search asks for them
@@ -340,8 +337,43 @@ export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
       else if (days > 120) score -= 0.5
     }
     seen.add(dupe)
-    out.push({ ...j, score, why })
+    return { ...j, score, why }
   }
+}
+
+/**
+ * Jobs that fit the search, best first: title fit, then where, then how new. Jobs whose title
+ * fits none of the roles are left out; with no roles at all, nothing is suggested.
+ */
+export function rank(jobs: Job[], s: Search, now = Date.now()): Suggestion[] {
+  const one = ranker(s, now)
+  return bestFirst(jobs.flatMap((j) => one(j) ?? []))
+}
+
+/**
+ * The same ranking, a slice at a time so the event loop gets a turn every `sliceMs`: ranking
+ * every board's roles (about 17,000) took about 2.5 s on the hosted app's 0.1 CPU.
+ */
+export async function rankInSlices(
+  jobs: Job[],
+  s: Search,
+  now = Date.now(),
+  sliceMs = SLICE_MS,
+): Promise<Suggestion[]> {
+  const one = ranker(s, now)
+  const out: Suggestion[] = []
+  await inSlices(
+    jobs,
+    (j) => {
+      const r = one(j)
+      if (r) out.push(r)
+    },
+    sliceMs,
+  )
+  return bestFirst(out)
+}
+
+function bestFirst(out: Suggestion[]): Suggestion[] {
   return out.sort(
     (a, b) =>
       b.score - a.score ||
