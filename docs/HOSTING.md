@@ -157,6 +157,9 @@ Defaults you can change (in Render's **Environment**, or the server's `.env`): `
 ## What to expect
 
 - **On Render and GitHub Actions,** a film takes 2 to 3 minutes, two at a time. The site sleeps after 15 quiet minutes and takes about a minute to wake. Supabase pauses a project idle for a week; open its dashboard to wake it.
+- **Starting up** (a deploy, or waking from sleep) takes about 5 seconds longer than before: the app loads the fit model and the job boards' saved listings before it takes requests, so the first page isn't held up by them. The model gets at most a minute; if it's still downloading, it carries on in the background.
+- **When the share worker is slow,** a page waits at most 4 seconds for view counts, then shows them as not loaded. After a failure, pages skip the share worker for 30 seconds. Uploading a film's files still gets a minute.
+- **Stopping** (a deploy or a restart) has a deadline: 10 seconds for the web app (open requests get 3 seconds, then their connections are cut) and 75 seconds for a worker, which gets its minute to hand back films in progress. Past the deadline the process exits anyway and logs the step that hung ([OBSERVABILITY.md](OBSERVABILITY.md#the-event-loop-and-shutdown)).
 - **On Oracle,** a film takes about a minute and nothing sleeps, but Oracle may reclaim a free server that uses almost no CPU for a week. If it's stopped, start it again from the console.
 - **Your own films** keep working on your laptop as before. The hosted app is separate, with its own accounts.
 

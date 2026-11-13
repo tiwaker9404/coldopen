@@ -261,7 +261,7 @@ Nothing is sent for you: copy the draft, send it yourself, then Mark done (or St
 ## Quality, measured
 
 ```bash
-pnpm test         # 819 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish, the review before sending, warm leads, deleting a profile, only coldopen's maker claiming it
+pnpm test         # 835 tests: runtime, extraction, render QA, résumé drafts and proof a stranger understands, job posts, share links and views, hosted accounts and limits, pipeline resume, API, plain-language errors, profile form, Slack, model path, messages and their checks, who to reach, Network this week, facts from everything they publish, the review before sending, warm leads, deleting a profile, only coldopen's maker claiming it (in any wording), the app answering while a page is slow or a service is down, and shutting down on time
 pnpm test:chaos   # SIGKILL a real renderer mid-film; a new one must finish without redoing scenes
 pnpm evals        # 201 quality checks across 20 evals on 3 fixture companies x 2 presets
 ```
@@ -310,7 +310,7 @@ The fixture companies in [fixtures/sites](fixtures/sites) (a freight platform, a
 
 ## Observability
 
-Logs, Prometheus metrics at `/metrics`, and OpenTelemetry traces: one trace follows a film from the API request to the finished video across processes, with a span per durable step, LLM call (GenAI conventions: model, tokens) and job board read. Point `OTEL_EXPORTER_OTLP_ENDPOINT` at any OTLP backend, or run `docker compose --profile tracing up` for Jaeger. See [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md).
+Logs, Prometheus metrics at `/metrics`, and OpenTelemetry traces: one trace follows a film from the API request to the finished video across processes, with a span per durable step, LLM call (GenAI conventions: model, tokens) and job board read. The event loop's delay is a metric too, with a warning naming the routes in flight when it's held for over a second, and shutdown names the step that hung if it passes its deadline. Point `OTEL_EXPORTER_OTLP_ENDPOINT` at any OTLP backend, or run `docker compose --profile tracing up` for Jaeger. See [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md).
 
 ## Security
 

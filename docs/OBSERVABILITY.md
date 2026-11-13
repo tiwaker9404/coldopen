@@ -53,3 +53,21 @@ Grafana Cloud's free tier takes OTLP directly: set the endpoint to its OTLP gate
 (`https://otlp-gateway-<region>.grafana.net/otlp`) and the headers to its token.
 
 Code: [src/tracing.ts](../src/tracing.ts). Tests: [test/unit/tracing.test.ts](../test/unit/tracing.test.ts).
+
+## The event loop and shutdown
+
+The hosted app runs on 0.1 CPU, and Render restarts it when `/healthz` takes over 5 seconds, so
+anything that holds the event loop shows up here first.
+
+| Signal                                                  | What it says                                                                                                                                                                                                                          |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `coldopen_event_loop_delay_p99_ms` (gauge, `/metrics`)  | How late the event loop ran, 99th percentile over the last 10 seconds, in milliseconds. A few ms is healthy; hundreds mean something is holding it                                                                                    |
+| `event loop was blocked` (warn log)                     | A timer due every 250 ms ran more than 1 second late. `delayMs` is how late; `routes` lists the requests in flight then (for example `GET /v1/targets`), and the one that held the loop is usually among them. `/healthz` is left out |
+| `shutdown hung on "<step>"; exiting anyway` (error log) | Shutdown passed its deadline: 10 s for `api`, 75 s for `worker`, `all` and `drain`. `hung` names the step that never settled (`http server`, `worker`, `browser`, `tracing` or `database`), and the process exits with code 1         |
+| `shutdown step failed` (error log)                      | One step threw; `step` names it, and shutdown goes on to the next                                                                                                                                                                     |
+
+On the hosted app `/metrics` needs an API key (`Authorization: Bearer <key>` from `API_KEYS`).
+`/healthz` is the first route and answers from memory, never waiting on the database
+(`/readyz` checks the database).
+
+Code: [src/metrics.ts](../src/metrics.ts), [src/shutdown.ts](../src/shutdown.ts).
