@@ -856,6 +856,47 @@ const states: State[] = [
     },
   },
   {
+    // ends with the claim typed and flagged, so the axe pass checks the field's error
+    name: 'Profile editor, something you built, not the maker',
+    url: `${base}/#profile`,
+    stubs: { '/v1/profiles': profiles, '/v1/me': { ...hostedMe, maker: false } },
+    async run(page) {
+      await click(page, 'button', 'Edit profile')
+      await wait(400)
+      const read = () =>
+        page.evaluate(() => {
+          const set = [...document.querySelectorAll('fieldset')].find(
+            (f) => f.querySelector('legend')?.textContent === 'Something you built',
+          )
+          return {
+            found: !!set,
+            hint: set?.querySelector('.hint')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+            placeholders: [...(set?.querySelectorAll('input') ?? [])].map((i) => i.placeholder),
+            error: set?.querySelector('.field-error')?.textContent?.trim() ?? '',
+          }
+        })
+      const before = await read()
+      const out: string[] = []
+      if (!before.found) return ['the profile editor has no “Something you built” section']
+      if (/coldopen|made this film/i.test(before.hint))
+        out.push(`the hint still asks about coldopen: “${before.hint}”`)
+      const want = [
+        'Name of something you built',
+        'https://github.com/you/project',
+        'One line on what it does',
+      ]
+      if (before.placeholders.join('|') !== want.join('|'))
+        out.push(`the placeholders read ${before.placeholders.join(', ')}`)
+      if (before.error) out.push('a claim is flagged before anything was typed')
+      await page.type('#f-creator-line', 'I built the tool that made this film')
+      await wait(200)
+      const after = await read()
+      if (!after.error.startsWith('Only the person who built coldopen'))
+        out.push('typing the claim did not flag it under the field')
+      return out
+    },
+  },
+  {
     name: 'Film panel people tabs',
     url: `${base}/#films`,
     stubs: (() => {

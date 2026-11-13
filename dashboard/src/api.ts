@@ -356,6 +356,8 @@ export interface Me {
   keepsDays: number | null
   /** the owner: can see the app-wide funnel */
   stats?: boolean
+  /** coldopen's maker: the only one asked whether he built the tool that made the film */
+  maker?: boolean
   /** where feedback goes */
   contact?: string
   /** ways to sign in, the most common first */

@@ -706,6 +706,8 @@ export async function buildApi({
         keepsDays: free ? null : s ? 30 : 7,
         /** can see the app-wide funnel at GET /v1/funnel */
         stats: cfg.HOSTED && free,
+        /** coldopen's maker: the only one the profile editor asks about building it */
+        maker: maker(req),
         /** where feedback goes: the app's contact address, when it has one */
         ...(cfg.CONTACT_EMAIL ? { contact: cfg.CONTACT_EMAIL } : {}),
       }
@@ -885,13 +887,15 @@ export async function buildApi({
           throw new Error(
             `"${resume.unmatchedExcludes.join('", "')}" doesn't appear in your résumé, so nothing would be left out. Use the name exactly as the résumé writes it`,
           )
-        return await draftProfile({
+        const draft = await draftProfile({
           resume,
           role: req.body.role,
           exclude: req.body.exclude,
           llm,
           ...(req.body.contact ? { contact: req.body.contact } : {}),
         })
+        // a draft never says they built coldopen unless they did
+        return { ...draft, profile: forSender(draft.profile, maker(req)) }
       } catch (err) {
         return reply
           .status(422)

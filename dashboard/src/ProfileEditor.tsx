@@ -1,6 +1,7 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { type InputHTMLAttributes, useEffect, useRef, useState } from 'react'
-import { ApiError, type Profile, type ProfileData, send } from './api.ts'
+import { makerClaims, NOT_THE_MAKER } from '../../src/profile/maker.ts'
+import { ApiError, api, type Me, type Profile, type ProfileData, send } from './api.ts'
 import { BLANK } from './examples.ts'
 import { GitHubRepos } from './GitHubRepos.tsx'
 import { MAX_PROJECTS, needsLine } from './github.ts'
@@ -61,7 +62,14 @@ export function ProfileEditor({
     setD((cur) => ({ ...cur, ...patch }))
     if (path) setErrors((e) => clearField(e, path))
   }
-  const err = (path: string) => errors[path]
+  // only coldopen's maker is asked whether he built it; anyone else sees a claim flagged as
+  // they type it, by the same rule the server saves with
+  const me = useQuery({ queryKey: ['me'], queryFn: () => api<Me>('/v1/me') })
+  const isMaker = me.data?.maker === true
+  const claims = new Set(
+    me.data && !isMaker ? makerClaims({ creator: d.creator, projects: d.projects }) : [],
+  )
+  const err = (path: string) => errors[path] ?? (claims.has(path) ? NOT_THE_MAKER : undefined)
 
   /** closing with unsaved changes asks first, whichever way you close */
   const close = useRef(() => {})
@@ -519,8 +527,9 @@ export function ProfileEditor({
           <fieldset>
             <legend>Something you built</legend>
             <p className="hint">
-              If you built the tool that made this film, say so. Messages and the end card can
-              mention it.
+              {isMaker
+                ? 'If you built the tool that made this film, say so. Messages and the end card can mention it.'
+                : 'Something of your own a company can open: an app, a tool, a library. Messages and the end card can mention it.'}
             </p>
             <div className="project">
               <Text
@@ -528,7 +537,7 @@ export function ProfileEditor({
                 max={MAX.creatorName}
                 error={err('creator.name')}
                 aria-label="What you built: name"
-                placeholder="coldopen"
+                placeholder={isMaker ? 'coldopen' : 'Name of something you built'}
                 value={creator.name}
                 onValue={(v) => setCreator('name', v)}
               />
@@ -536,7 +545,9 @@ export function ProfileEditor({
                 path="creator.url"
                 error={err('creator.url')}
                 aria-label="What you built: link"
-                placeholder="https://github.com/you/tool"
+                placeholder={
+                  isMaker ? 'https://github.com/you/tool' : 'https://github.com/you/project'
+                }
                 inputMode="url"
                 value={creator.url}
                 onValue={(v) => setCreator('url', v)}
@@ -547,7 +558,9 @@ export function ProfileEditor({
                 max={MAX.creatorLine}
                 error={err('creator.line')}
                 aria-label="What you built: one line on what it is"
-                placeholder="I built the tool that made this film"
+                placeholder={
+                  isMaker ? 'I built the tool that made this film' : 'One line on what it does'
+                }
                 value={creator.line}
                 onValue={(v) => setCreator('line', v)}
               />

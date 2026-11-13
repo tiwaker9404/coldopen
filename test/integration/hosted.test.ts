@@ -420,6 +420,43 @@ describe('only coldopen’s maker can say he built it', () => {
     }
   })
 
+  it('refuses the claim however it is worded, not only by name', async () => {
+    const b = await signIn(43, 'mallory3')
+    const reworded = {
+      ...profile('candidate'),
+      creator: {
+        name: 'FilmTool',
+        url: 'https://filmtool.example',
+        line: 'I built the tool that made this film',
+      },
+    }
+    const r = await b.req('PUT', '/v1/profiles/me', { name: 'Me', data: reworded })
+    expect(r.statusCode).toBe(422)
+    expect(r.json().error).toMatchObject({
+      code: 'not_the_maker',
+      fields: [{ path: 'creator.line' }],
+    })
+  })
+
+  it('tells the web app who the maker is, by the same rule the save uses', async () => {
+    const mallory = await signIn(44, 'mallory4')
+    expect((await mallory.req('GET', '/v1/me')).json().maker).toBe(false)
+    expect((await browser().req('GET', '/v1/me')).json().maker).toBe(false)
+    const boss = await signIn(8, 'boss')
+    expect((await boss.req('GET', '/v1/me')).json().maker).toBe(true)
+    const reworded = {
+      ...profile('candidate'),
+      creator: {
+        name: 'coldopen',
+        url: 'https://coldopen.example',
+        line: 'I built the tool that made this film',
+      },
+    }
+    expect(
+      (await boss.req('PUT', '/v1/profiles/me', { name: 'Me', data: reworded })).statusCode,
+    ).toBe(200)
+  })
+
   it('makes their film without the claim when it comes with the film or was saved before', async () => {
     const mallory = await signIn(42, 'mallory2')
     const r = await mallory.req('POST', '/v1/films', { url: 'claims.example', profile: claim })
