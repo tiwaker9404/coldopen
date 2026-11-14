@@ -277,18 +277,18 @@ pnpm evals        # 201 quality checks across 20 evals on 3 fixture companies x 
 
 Run `pnpm evals --model <name>` to grade a real model's scripts the same way.
 
-**Messages, measured on a real model.** The [messages eval](.github/workflows/messages-eval.yml) runs Groq's `openai/gpt-oss-120b` against the message checks on every fixture film. It's started by hand from Actions, since it spends the free tier's minute. On 12 films, with the warm voice and the film in the message ([run](https://github.com/tiwaker9404/coldopen/actions/runs/43313304871), 12 Nov):
+**Messages, measured on a real model.** The [messages eval](.github/workflows/messages-eval.yml) runs Groq's `openai/gpt-oss-120b` against the message checks on every fixture film. It's started by hand from Actions, since it spends the free tier's minute. On 12 films, with the warm voice and the film in the message ([run](https://github.com/tiwaker9404/coldopen/actions/runs/43530451692), 13 Nov):
 
 | Draft             | Passed on the first try | Fell back to the template |
 | ----------------- | ----------------------: | ------------------------: |
-| Connection note   |                     92% |                        0% |
-| After they accept |                     92% |                        0% |
-| InMail            |                     83% |                        8% |
-| Email             |                     83% |                        8% |
+| Connection note   |                    100% |                        0% |
+| After they accept |                    100% |                        0% |
+| InMail            |                     92% |                        8% |
+| Email             |                     67% |                       17% |
 
-Every kind of draft falls back at most 8% of the time, and a fallback still passes every check.
+The connection note and after-accept message pass on the first try every time. The email is the hardest: 2 of 12 fell back to the template (one job seeker's, one seller's), and a fallback still passes every check.
 
-**Read like a founder.** Checks catch rule breaks, not whether a message is warm or a reel makes a stranger want to talk. The [judged eval](.github/workflows/judge-eval.yml) has the same free model read a job seeker's work the way the person receiving it would: 24 messages (the email and the after-accept), 6 films' on-screen lines and 6 referral asks with their blurbs, each scored 1 to 5 on a short rubric (specific to them, homework visible, sounds like a person, the fact is worth quoting, the proof lands, easy to forward…) with a yes or no ("would you reply", "would you take a 15-minute call", "would you pass this on"). The judge never sees the sender's name, the targets or the checks. It writes every draft out in full with its scores ([evals/judge](evals/judge/)), for reading aloud. Advisory only: it never fails CI. On its first full run ([run](https://github.com/tiwaker9404/coldopen/actions/runs/43313200881), 12 Nov), 100% of referral asks would be passed on, half the films would get a call, and 46% of messages a reply; the lowest film line, "every line makes sense alone" (2.83 of 5), is why the line under the quoted fact now names what it's about.
+**Read like a founder.** Checks catch rule breaks, not whether a message is warm or a reel makes a stranger want to talk. The [judged eval](.github/workflows/judge-eval.yml) has the same free model read a job seeker's work the way the person receiving it would: 24 messages (the email and the after-accept), 6 films' on-screen lines and 6 referral asks with their blurbs, each scored 1 to 5 on a short rubric (specific to them, homework visible, sounds like a person, the fact is worth quoting, the proof lands, easy to forward…) with a yes or no ("would you reply", "would you take a 15-minute call", "would you pass this on"). The judge never sees the sender's name, the targets or the checks. It writes every draft out in full with its scores ([evals/judge](evals/judge/)), for reading aloud. Advisory only: it never fails CI. On its latest full run ([run](https://github.com/tiwaker9404/coldopen/actions/runs/43527693612), 13 Nov), 75% of messages would get a reply (up from 46% on the first run), two thirds of the films would get a call (up from half), and every referral ask would be passed on. The lowest film line is still "every line makes sense alone" (2.83 of 5): the judge now points at pitch points that lean on the résumé ("— like the Python migration pipeline I built") and proof cards without context.
 
 **Brand extraction, measured on live sites.** The [extract eval](evals/extract/) reads 20 real homepages, from YC startups to Apple, Nike and the BBC, one at a time with the network guard on, and checks each field automatically. A pass means plausible, not hand-verified. On 10 Nov ([run](https://github.com/tiwaker9404/coldopen/actions/runs/42861541477)), 14 of 20 sites passed every field:
 
