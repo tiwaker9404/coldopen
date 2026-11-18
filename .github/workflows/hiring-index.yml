@@ -2,7 +2,8 @@ name: Hiring Index
 
 # The hiring signals pipeline, daily: snapshot every open role on 450+ job boards (raw, kept on
 # the `data` branch), model the snapshots with dbt in DuckDB (tested), export the Hiring Index's
-# numbers, and publish the page with the landing site on GitHub Pages.
+# numbers, and have pages.yml publish them with the landing site. pages.yml is the only workflow
+# that deploys Pages: it also builds the demo, so a deploy from here would drop /demo/.
 on:
   workflow_dispatch:
   schedule:
@@ -13,8 +14,7 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
+  actions: write
 
 concurrency:
   group: hiring-index
@@ -24,9 +24,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
@@ -73,14 +70,8 @@ jobs:
           git diff --cached --quiet || git commit -m "Hiring Index: snapshot $(date -u +%F)"
           git push origin data
 
+      # pages.yml reads the numbers from the data branch and publishes them with the site and the demo
       - name: Publish with the landing page
         if: github.ref == 'refs/heads/main'
-        run: cp data/hiring-index/data.json site/hiring-index/data.json
-      - if: github.ref == 'refs/heads/main'
-        uses: actions/configure-pages@v5
-      - if: github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@v3
-        with: { path: site }
-      - if: github.ref == 'refs/heads/main'
-        id: deployment
-        uses: actions/deploy-pages@v4
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh workflow run pages.yml --ref main --repo "$GITHUB_REPOSITORY"

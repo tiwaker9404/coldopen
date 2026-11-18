@@ -1,5 +1,6 @@
 # Publishes site/ (the landing page) and the demo (the web app on recorded data, at /demo/) to
-# GitHub Pages on every push to main that touches either.
+# GitHub Pages on every push to main that touches either, and after the daily Hiring Index run
+# (hiring-index.yml starts it). The only workflow that deploys Pages.
 # One-time setup in the repo: Settings > Pages > Source: GitHub Actions.
 name: pages
 
@@ -46,6 +47,9 @@ jobs:
         run: |
           pnpm dashboard:build
           ! grep -l "demo_read_only" dashboard/dist/assets/*.js
+      # a deploy without the demo replaces the live one; refuse it rather than publish a 404
+      - name: The site has the demo
+        run: test -f site/demo/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
