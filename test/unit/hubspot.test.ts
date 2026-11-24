@@ -90,7 +90,7 @@ function withCustoms(decision: 'clear' | 'hold' | 'down', hub = fakeHubSpot()) {
   const reports: unknown[] = []
   const inspected: unknown[] = []
   const f = async (url: string, init: RequestInit) => {
-    if (!url.startsWith('https://customs.test')) return hub.f(url, init)
+    if (new URL(url).hostname !== 'customs.test') return hub.f(url, init)
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer cus_test')
     if (decision === 'down') throw new TypeError('fetch failed')
     const body = JSON.parse(String(init.body))
