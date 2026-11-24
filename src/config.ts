@@ -54,6 +54,10 @@ const schema = z.object({
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
 
   /** Slack app (optional): mention the bot with a URL, the film comes back in the thread */
+  /** Customs checks each HubSpot contact write before it happens; off unless the key is set */
+  CUSTOMS_API_KEY: z.string().optional(),
+  CUSTOMS_URL: z.string().url().optional(),
+  CUSTOMS_AGENT: z.string().optional(),
   SLACK_BOT_TOKEN: z.string().optional(),
   SLACK_SIGNING_SECRET: z.string().optional(),
 

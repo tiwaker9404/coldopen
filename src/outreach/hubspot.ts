@@ -6,6 +6,8 @@
  * synced without it.
  */
 
+import { type Customs, checkContactWrite, reportContactWrite } from './customs.ts'
+
 export type FetchFn = (url: string, init: RequestInit) => Promise<Response>
 
 const API = 'https://api.hubapi.com'
@@ -218,19 +220,41 @@ export async function syncFilm(
   film: FilmForCrm,
   prev: CrmState | null,
   f: FetchFn = fetch,
+  customs: Customs | null = null,
 ): Promise<CrmState> {
   const noted = new Set(prev?.noted ?? [])
   let companyId = prev?.companyId
   let contactId = prev?.contactId
+  let held: string | undefined
   if (!companyId && film.domain)
     companyId = await upsertCompany(token, { domain: film.domain, name: film.company }, f)
   if (!contactId && film.recipient?.email) {
-    contactId = await upsertContact(
-      token,
-      { email: film.recipient.email, name: film.recipient.name, company: film.company },
-      f,
-    )
-    if (companyId) await associate(token, contactId, companyId, f)
+    const write = {
+      email: film.recipient.email,
+      name: film.recipient.name,
+      company: film.company,
+      domain: film.domain,
+    }
+    // with Customs on, the contact is written only if it clears; the company and the notes hold no
+    // one's personal data and sync as before
+    const ruling = customs ? await checkContactWrite(customs, write, f) : null
+    if (ruling && !ruling.cleared) {
+      held =
+        ruling.decision === 'unreachable'
+          ? `The contact wasn't added: ${ruling.reason}. It will try again on the next change.`
+          : `Customs ${ruling.decision === 'hold' ? 'held' : ruling.decision === 'deny' ? 'blocked' : 'sent back'} the contact: ${ruling.reason}`
+    } else {
+      try {
+        contactId = await upsertContact(token, write, f)
+      } catch (err) {
+        if (customs && ruling?.cleared)
+          await reportContactWrite(customs, ruling.actionId, write, false, f)
+        throw err
+      }
+      if (customs && ruling?.cleared)
+        await reportContactWrite(customs, ruling.actionId, write, true, f)
+      if (companyId) await associate(token, contactId, companyId, f)
+    }
   }
   for (const step of stepsOf(film)) {
     if (noted.has(step) || (!contactId && !companyId)) continue
@@ -247,5 +271,6 @@ export async function syncFilm(
     ...(companyId ? { companyId } : {}),
     noted: [...noted],
     syncedAt: new Date().toISOString(),
+    ...(held ? { error: held } : {}),
   }
 }
