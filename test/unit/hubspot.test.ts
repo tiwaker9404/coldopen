@@ -84,3 +84,74 @@ describe('HubSpot sync', () => {
     expect(noteFor('no_reply', film)).toContain('No reply')
   })
 })
+
+/** A pretend Customs beside the pretend HubSpot: answers inspect with `decision`, records reports */
+function withCustoms(decision: 'clear' | 'hold' | 'down', hub = fakeHubSpot()) {
+  const reports: unknown[] = []
+  const inspected: unknown[] = []
+  const f = async (url: string, init: RequestInit) => {
+    if (!url.startsWith('https://customs.test')) return hub.f(url, init)
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer cus_test')
+    if (decision === 'down') throw new TypeError('fetch failed')
+    const body = JSON.parse(String(init.body))
+    if (url.endsWith('/v1/inspect')) {
+      inspected.push(body)
+      return Response.json(
+        decision === 'clear'
+          ? { decision: 'clear', findings: [] }
+          : {
+              decision: 'hold',
+              findings: [
+                { decision: 'hold', reason: 'this would create a duplicate: p.shah@acme.com' },
+              ],
+            },
+      )
+    }
+    reports.push(body)
+    return Response.json({ ok: true })
+  }
+  return { f, calls: hub.calls, reports, inspected }
+}
+
+const cx = { url: 'https://customs.test', key: 'cus_test', agent: 'coldopen' }
+
+describe('HubSpot sync behind Customs', () => {
+  it('writes the contact once Customs clears it, then reports the write', async () => {
+    const { f, calls, reports, inspected } = withCustoms('clear')
+    const s = await syncFilm('pat-1', film, null, f, cx)
+    expect(s.contactId).toBe('101')
+    expect(s.error).toBeUndefined()
+    expect(inspected[0]).toMatchObject({
+      tool: 'crm_upsert',
+      agent_id: 'coldopen',
+      recipient: { email: 'priya@acme.com', company_domain: 'acme.com' },
+    })
+    expect(reports[0]).toMatchObject({ ok: true, executed: { recipient_email: 'priya@acme.com' } })
+    expect(calls.some((c) => c.path === '/crm/v3/objects/contacts')).toBe(true)
+  })
+
+  it("doesn't write a contact Customs holds, says why, and still syncs the company", async () => {
+    const { f, calls, reports } = withCustoms('hold')
+    const s = await syncFilm('pat-1', film, null, f, cx)
+    expect(s.contactId).toBeUndefined()
+    expect(s.companyId).toBe('100')
+    expect(s.error).toContain('Customs held the contact')
+    expect(s.error).toContain('duplicate')
+    expect(calls.some((c) => c.path.startsWith('/crm/v3/objects/contacts'))).toBe(false)
+    expect(reports).toEqual([])
+  })
+
+  it("doesn't write the contact when Customs can't be reached, and doesn't throw", async () => {
+    const { f, calls } = withCustoms('down')
+    const s = await syncFilm('pat-1', film, null, f, cx)
+    expect(s.contactId).toBeUndefined()
+    expect(s.error).toContain('try again on the next change')
+    expect(calls.some((c) => c.path.startsWith('/crm/v3/objects/contacts'))).toBe(false)
+  })
+
+  it('is off without a key', async () => {
+    const { customsFrom } = await import('../../src/outreach/customs.ts')
+    expect(customsFrom({})).toBeNull()
+    expect(customsFrom({ CUSTOMS_API_KEY: 'cus_x' })).toMatchObject({ agent: 'coldopen' })
+  })
+})

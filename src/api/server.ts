@@ -62,6 +62,7 @@ import type { Logger } from '../logger.ts'
 import { registerQueueGauges, registry, watchEventLoop } from '../metrics.ts'
 import { briefOf } from '../outreach/brief.ts'
 import { checkMessage, touchContext } from '../outreach/checks.ts'
+import { customsFrom } from '../outreach/customs.ts'
 import {
   checkHunterKey,
   domainOf,
@@ -1954,6 +1955,7 @@ export async function buildApi({
         },
         run.crm ?? null,
         crmFetch,
+        customsFrom(cfg),
       )
     } catch (err) {
       state = {
